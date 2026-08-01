@@ -244,7 +244,7 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
 
 
 
-/* VERSION 9 — TRUE TRANSPARENT BOOT LAYER */
+/* VERSION 10 STABLE — APPROVED LANDING PAGE + WORKING STOMP */
 .poster-intro{
   position:fixed;
   inset:0;
@@ -265,12 +265,11 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   height:100svh;
   aspect-ratio:2/3;
   max-width:100vw;
+  background:#000;
   overflow:hidden;
-  background:#020202;
+  transform-origin:27% 78%;
 }
-.landing-background{
-  position:absolute;
-  inset:0;
+.landing-poster{
   width:100%;
   height:100%;
   object-fit:contain;
@@ -278,27 +277,11 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   user-select:none;
   -webkit-user-drag:none;
 }
-.walking-boot{
-  position:absolute;
-  z-index:3;
-  left:0;
-  top:48.2%;
-  width:54%;
-  height:auto;
-  transform-origin:37% 88%;
-  transform:translate3d(-122%,0,0) rotate(-4deg);
-  will-change:transform;
-  backface-visibility:hidden;
-  -webkit-backface-visibility:hidden;
-  filter:drop-shadow(0 14px 16px rgba(0,0,0,.75));
-  animation:bootWalkIn 3.4s cubic-bezier(.2,.72,.2,1) forwards;
-  pointer-events:none;
-}
 .poster-enter{
   position:absolute;
   z-index:5;
   left:34.5%;
-  top:49.1%;
+  top:49.2%;
   width:45.5%;
   height:8%;
   border:0;
@@ -313,87 +296,37 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
 }
 .impact-dust{
   position:absolute;
-  z-index:4;
-  left:2%;
-  top:72%;
-  width:44%;
-  height:13%;
+  z-index:6;
+  left:-3%;
+  top:70%;
+  width:54%;
+  height:18%;
   opacity:0;
   pointer-events:none;
   background:radial-gradient(ellipse at 35% 70%,
-    rgba(184,119,72,.72),
-    rgba(103,58,34,.30) 42%,
+    rgba(190,126,74,.72),
+    rgba(105,59,31,.28) 42%,
     transparent 72%);
   filter:blur(7px);
   transform:scale(.45);
 }
-.poster-intro.stomping .walking-boot{
-  animation:bootStomp .82s cubic-bezier(.18,.82,.22,1) both;
+.poster-intro.stomping .poster-shell{
+  animation:stableStomp .86s cubic-bezier(.18,.82,.22,1) both;
 }
 .poster-intro.stomping .impact-dust{
-  animation:dustBurst .82s ease both;
+  animation:stableDust .86s ease both;
 }
-.poster-intro.stomping .poster-shell{
-  animation:impactJolt .82s ease both;
+@keyframes stableStomp{
+  0%{transform:translate3d(0,0,0) rotate(0) scale(1)}
+  32%{transform:translate3d(0,-24px,0) rotate(-1deg) scale(1.008)}
+  62%{transform:translate3d(0,10px,0) rotate(.4deg) scale(.996)}
+  78%{transform:translate3d(0,-3px,0) rotate(-.15deg) scale(1.001)}
+  100%{transform:translate3d(0,0,0) rotate(0) scale(1)}
 }
-@keyframes bootWalkIn{
-  0%{
-    transform:translate3d(-122%,0,0) rotate(-4deg);
-  }
-  18%{
-    transform:translate3d(-99%,-3.2%,0) rotate(3deg);
-  }
-  36%{
-    transform:translate3d(-73%,0,0) rotate(-3deg);
-  }
-  54%{
-    transform:translate3d(-47%,-2.8%,0) rotate(2deg);
-  }
-  72%{
-    transform:translate3d(-20%,0,0) rotate(-1.5deg);
-  }
-  88%{
-    transform:translate3d(-4%,-1.2%,0) rotate(.8deg);
-  }
-  100%{
-    transform:translate3d(0,0,0) rotate(0);
-  }
-}
-@keyframes bootStomp{
-  0%{
-    transform:translate3d(0,0,0) rotate(0) scale(1);
-  }
-  34%{
-    transform:translate3d(0,-7.5%,0) rotate(-2deg) scale(1.01);
-  }
-  63%{
-    transform:translate3d(0,2.2%,0) rotate(.8deg) scale(1.015);
-  }
-  78%{
-    transform:translate3d(0,-1.2%,0) rotate(-.3deg) scale(1.002);
-  }
-  100%{
-    transform:translate3d(0,0,0) rotate(0) scale(1);
-  }
-}
-@keyframes dustBurst{
-  0%,36%{
-    opacity:0;
-    transform:scale(.45) translate3d(0,0,0);
-  }
-  63%{
-    opacity:1;
-    transform:scale(1) translate3d(0,-8%,0);
-  }
-  100%{
-    opacity:0;
-    transform:scale(1.55) translate3d(0,-24%,0);
-  }
-}
-@keyframes impactJolt{
-  0%,100%{transform:translate3d(0,0,0)}
-  63%{transform:translate3d(0,5px,0)}
-  78%{transform:translate3d(0,-2px,0)}
+@keyframes stableDust{
+  0%,38%{opacity:0;transform:scale(.45) translateY(0)}
+  62%{opacity:1;transform:scale(1) translateY(-5px)}
+  100%{opacity:0;transform:scale(1.5) translateY(-20px)}
 }
 @media (orientation:landscape){
   .poster-shell{
@@ -402,8 +335,6 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   }
 }
 @media(prefers-reduced-motion:reduce){
-  .walking-boot{
-    animation:none;
-    transform:translate3d(0,0,0);
-  }
+  .poster-intro.stomping .poster-shell{animation:none}
+  .poster-intro.stomping .impact-dust{display:none}
 }

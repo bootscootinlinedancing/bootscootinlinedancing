@@ -23,7 +23,7 @@ enter.addEventListener('click', () => {
     navigator.vibrate([35, 35, 85]);
   }
 
-  window.setTimeout(finishIntro, 880);
+  window.setTimeout(finishIntro, 920);
 });
 
 menuButton.addEventListener('click', () => {

@@ -1,25 +1,20 @@
-BOOT SCOOTIN' WEBSITE — VERSION 9
+BOOT SCOOTIN' WEBSITE — VERSION 10 STABLE
 
-THIS VERSION USES THE CORRECT PROFESSIONAL METHOD
+THIS IS THE SAFE RESTORE VERSION
 
-- The boot is now its own transparent PNG file.
-- The background, wording and button are a separate website layer.
-- No title, sign or background pixels are attached to the moving boot.
-- The boot animation uses translate3d and transform only for smoother iPhone rendering.
-- The same boot walks in, stays in place, then stomps when ENTER THE DANCE FLOOR is pressed.
-- The stomp includes dust, vibration on supported phones and a subtle impact jolt.
-
-IMPORTANT FILES
-- walking-boot.png
-- landing-background.webp
-- index.html
-- styles.css
-- script.js
+- Restores the approved realistic landing page exactly as one clean image.
+- Removes the broken walking animation completely.
+- Removes all fragments, black blocks and duplicated elements.
+- Keeps the ENTER THE DANCE FLOOR button clickable.
+- Pressing the button makes the whole scene lift and stomp, with dust and vibration.
+- The website opens only after the stomp finishes.
 
 UPLOAD
-1. Download and unzip Version 9.
+1. Download and unzip.
 2. Upload every file to the same GitHub repository.
-3. Replace the existing files.
+3. Replace existing files.
 4. Commit directly to main.
 5. Wait for Cloudflare Pages to redeploy.
 6. Test in a Private Safari tab.
+
+This version is deliberately stable. We can rebuild the walking animation later from a proper transparent boot asset without risking the live page again.
