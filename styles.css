@@ -414,3 +414,161 @@ nav a[aria-current="page"]{color:var(--red)}
   .about-intro{text-align:center}
   .story-panel{position:static}
 }
+
+
+/* VERSION 14 — INTERACTIVE CLASS CALENDAR */
+.calendar-page{padding-top:78px}
+.calendar-hero{padding-bottom:3.5rem}
+.calendar-hero h1{
+  font-family:Rye,serif;
+  font-size:clamp(3rem,7vw,6rem);
+  margin:.3rem 0 1rem;
+}
+.calendar-layout{
+  width:min(1180px,94vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);
+  gap:2rem;
+  align-items:start;
+}
+.calendar-card{
+  background:#fffaf3;
+  border:1px solid #d7c5aa;
+  box-shadow:0 24px 55px rgba(40,24,14,.18);
+  overflow:hidden;
+}
+.calendar-toolbar{
+  display:grid;
+  grid-template-columns:56px 1fr 56px;
+  align-items:center;
+  gap:1rem;
+  background:#120b09;
+  color:#fff;
+  padding:1.2rem;
+  text-align:center;
+}
+.calendar-month{
+  font-family:Rye,serif;
+  font-size:clamp(1.6rem,4vw,2.4rem);
+  margin:0;
+}
+.calendar-hint{margin:.2rem 0 0;color:#ccbca8;font-size:.9rem}
+.calendar-arrow{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  border:1px solid #7a2427;
+  background:#221111;
+  color:#fff;
+  font-size:2rem;
+  cursor:pointer;
+}
+.calendar-arrow:hover{background:var(--red)}
+.calendar-weekdays,.calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+}
+.calendar-weekdays{
+  background:#e9dcc8;
+  border-bottom:1px solid #d4c2a7;
+}
+.calendar-weekdays span{
+  text-align:center;
+  padding:.8rem .2rem;
+  font-weight:700;
+  text-transform:uppercase;
+  font-size:.75rem;
+  letter-spacing:.05em;
+}
+.calendar-grid{padding:.7rem}
+.calendar-day{
+  min-height:68px;
+  display:grid;
+  place-items:center;
+  border:1px solid #eadfce;
+  background:#fffaf3;
+  color:#211712;
+  font:inherit;
+  font-size:1.05rem;
+}
+button.calendar-day{cursor:pointer}
+.calendar-day.blank{background:#f3eadc;border-color:#f3eadc}
+.calendar-day.has-event{
+  position:relative;
+  color:#fff;
+  font-weight:700;
+  border-color:#fffaf3;
+}
+.calendar-day.has-event::after{
+  content:"";
+  position:absolute;
+  bottom:8px;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#fff;
+}
+.calendar-day.has-event.ecc{background:linear-gradient(145deg,#8d151a,#c9222a)}
+.calendar-day.has-event.low{background:linear-gradient(145deg,#291313,#7b1116)}
+.calendar-day.has-event:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.event-panel{
+  background:#120b09;
+  color:#fff;
+  border:1px solid rgba(198,29,36,.55);
+  padding:2rem;
+  min-height:390px;
+  position:sticky;
+  top:110px;
+}
+.event-panel h2{font-size:clamp(2rem,4vw,3rem);margin:.5rem 0 1rem}
+.event-empty{
+  display:grid;
+  place-items:center;
+  font-size:5rem;
+  min-height:170px;
+  opacity:.75;
+}
+.event-date{
+  color:#d8c4a7;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  margin:.3rem 0;
+}
+.event-details{margin:1.5rem 0}
+.event-details div{
+  display:grid;
+  grid-template-columns:80px 1fr;
+  gap:1rem;
+  padding:.8rem 0;
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+.event-details dt{font-weight:700;color:#d8c4a7}
+.event-details dd{margin:0}
+.event-book{width:100%;margin-top:.7rem}
+.calendar-legend{
+  width:min(1180px,94vw);
+  margin:1.5rem auto 0;
+  display:flex;
+  justify-content:center;
+  gap:1.5rem;
+  flex-wrap:wrap;
+}
+.calendar-legend span{display:flex;align-items:center;gap:.55rem}
+.legend-dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+.ecc-dot{background:#c9222a}
+.low-dot{background:#571014}
+@media(max-width:800px){
+  .calendar-page{padding-top:70px}
+  .calendar-layout{grid-template-columns:1fr}
+  .event-panel{position:static}
+  .calendar-day{min-height:54px}
+}
+@media(max-width:480px){
+  .calendar-toolbar{grid-template-columns:42px 1fr 42px;padding:1rem .6rem}
+  .calendar-arrow{width:36px;height:36px;font-size:1.5rem}
+  .calendar-weekdays span{font-size:.62rem;padding:.7rem .1rem}
+  .calendar-grid{padding:.35rem}
+  .calendar-day{min-height:45px;font-size:.92rem}
+  .calendar-day.has-event::after{bottom:5px;width:5px;height:5px}
+}

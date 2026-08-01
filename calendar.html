@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090606">
+  <meta name="description" content="Boot Scootin' Line Dancing class calendar for Birmingham venues.">
+  <title>Class Calendar | Boot Scootin' Line Dancing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
+      <span class="round-mark">BS</span>
+      <span class="wordmark">
+        <strong>BOOT SCOOTIN'</strong>
+        <span>LINE DANCING</span>
+      </span>
+    </a>
+    <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
+    <nav id="nav">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="index.html#classes">Classes</a>
+      <a href="calendar.html" aria-current="page">Calendar</a>
+      <a href="index.html#venues">Venues</a>
+      <a href="index.html#gallery">Gallery</a>
+      <a href="index.html#contact">Contact</a>
+    </nav>
+    <a class="button compact" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Book a class</a>
+  </header>
+
+  <main class="calendar-page">
+    <section class="calendar-hero section dark">
+      <div class="section-title centre reveal">
+        <p class="kicker">Plan your next dance</p>
+        <h1>Class calendar</h1>
+        <p>Tap a highlighted date to see the venue, time and booking information.</p>
+      </div>
+    </section>
+
+    <section class="section paper">
+      <div class="calendar-layout">
+        <div class="calendar-card reveal">
+          <div class="calendar-toolbar">
+            <button class="calendar-arrow" id="prevMonth" type="button" aria-label="Previous month">‹</button>
+            <div>
+              <p class="calendar-month" id="calendarMonth">August 2026</p>
+              <p class="calendar-hint">Red dates have a class</p>
+            </div>
+            <button class="calendar-arrow" id="nextMonth" type="button" aria-label="Next month">›</button>
+          </div>
+
+          <div class="calendar-weekdays" aria-hidden="true">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+
+          <div class="calendar-grid" id="calendarGrid" aria-label="Class calendar"></div>
+        </div>
+
+        <aside class="event-panel reveal" id="eventPanel" aria-live="polite">
+          <p class="kicker red">Choose a date</p>
+          <h2>Your next class</h2>
+          <p>Tap one of the highlighted dates to see exactly where we'll be dancing.</p>
+          <div class="event-empty">👢</div>
+        </aside>
+      </div>
+
+      <div class="calendar-legend reveal">
+        <span><i class="legend-dot ecc-dot"></i> Edgbaston Community Centre</span>
+        <span><i class="legend-dot low-dot"></i> Low Places</span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-lockup">
+      <span class="round-mark large">BS</span>
+      <div class="wordmark footer-wordmark">
+        <strong>BOOT SCOOTIN'</strong>
+        <span>LINE DANCING</span>
+      </div>
+    </div>
+    <p class="script">Grab your boots. Bring your smile. Let's dance. ♥</p>
+    <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    const classEvents = [
+      {
+        date: "2026-08-07",
+        venue: "Edgbaston Community Centre",
+        type: "ecc",
+        time: "7:30pm–8:30pm",
+        price: "£6 per person",
+        note: "Beginner-friendly Friday class.",
+        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703"
+      },
+      {
+        date: "2026-08-14",
+        venue: "Low Places",
+        type: "low",
+        time: "7:15pm–9:00pm",
+        price: "£6 per person",
+        note: "Warm-up, class and social dancing afterwards.",
+        booking: "https://www.eventbrite.co.uk/e/boot-scootin-line-dancing-launch-night-at-low-places-bar-tickets-1994513541694"
+      },
+      {
+        date: "2026-08-21",
+        venue: "Edgbaston Community Centre",
+        type: "ecc",
+        time: "7:30pm–8:30pm",
+        price: "£6 per person",
+        note: "Beginner-friendly Friday class.",
+        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703"
+      },
+      {
+        date: "2026-08-26",
+        venue: "Low Places",
+        type: "low",
+        time: "7:15pm–9:00pm",
+        price: "£6 per person",
+        note: "Midweek class and social dancing.",
+        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703"
+      }
+    ];
+
+    let currentYear = 2026;
+    let currentMonth = 7;
+
+    const monthLabel = document.getElementById("calendarMonth");
+    const grid = document.getElementById("calendarGrid");
+    const panel = document.getElementById("eventPanel");
+
+    const monthNames = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+
+    function dateKey(year, month, day) {
+      return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    function renderCalendar() {
+      monthLabel.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+      grid.innerHTML = "";
+
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const mondayIndex = (firstDay.getDay() + 6) % 7;
+
+      for (let i = 0; i < mondayIndex; i++) {
+        const blank = document.createElement("span");
+        blank.className = "calendar-day blank";
+        grid.appendChild(blank);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const key = dateKey(currentYear, currentMonth, day);
+        const event = classEvents.find(item => item.date === key);
+
+        const cell = document.createElement(event ? "button" : "span");
+        cell.className = "calendar-day";
+        cell.textContent = day;
+
+        if (event) {
+          cell.type = "button";
+          cell.classList.add("has-event", event.type);
+          cell.setAttribute("aria-label", `${day} ${monthNames[currentMonth]}: ${event.venue}`);
+          cell.addEventListener("click", () => showEvent(event));
+        }
+
+        grid.appendChild(cell);
+      }
+    }
+
+    function showEvent(event) {
+      const date = new Date(`${event.date}T12:00:00`);
+      const formatted = date.toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+
+      panel.innerHTML = `
+        <p class="kicker red">Where we're dancing</p>
+        <p class="event-date">${formatted}</p>
+        <h2>${event.venue}</h2>
+        <dl class="event-details">
+          <div><dt>Time</dt><dd>${event.time}</dd></div>
+          <div><dt>Price</dt><dd>${event.price}</dd></div>
+          <div><dt>Details</dt><dd>${event.note}</dd></div>
+        </dl>
+        <a class="button event-book" href="${event.booking}" target="_blank" rel="noopener">Book this class</a>
+      `;
+    }
+
+    document.getElementById("prevMonth").addEventListener("click", () => {
+      currentMonth -= 1;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear -= 1;
+      }
+      renderCalendar();
+    });
+
+    document.getElementById("nextMonth").addEventListener("click", () => {
+      currentMonth += 1;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear += 1;
+      }
+      renderCalendar();
+    });
+
+    renderCalendar();
+  </script>
+</body>
+</html>

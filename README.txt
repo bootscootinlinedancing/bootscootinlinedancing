@@ -40,3 +40,11 @@ VERSION 13 FIX
 - The shared JavaScript was trying to control the homepage intro on about.html, where that intro does not exist.
 - Added safe checks so the homepage intro code only runs on the homepage.
 - About-page content and reveal animations now load normally.
+
+
+VERSION 14 UPDATE
+- Added a new interactive calendar page: calendar.html.
+- Added Calendar to the website navigation.
+- Visitors can move between months and tap highlighted class dates.
+- Each class date shows venue, time, price, details and a booking button.
+- Added confirmed August 2026 dates for Edgbaston Community Centre and Low Places.
