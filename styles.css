@@ -338,3 +338,79 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   .poster-intro.stomping .poster-shell{animation:none}
   .poster-intro.stomping .impact-dust{display:none}
 }
+
+
+/* VERSION 12 — ABOUT PAGE */
+.about-page{padding-top:88px}
+.about-hero{min-height:72vh;display:grid;align-items:center}
+.about-hero-grid{
+  width:min(1120px,90vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:minmax(260px,.8fr) minmax(320px,1.2fr);
+  align-items:center;
+  gap:clamp(2rem,6vw,6rem);
+}
+.about-photo img{
+  width:100%;
+  aspect-ratio:1/1;
+  object-fit:cover;
+  border-radius:50%;
+  border:8px solid #efe3d0;
+  box-shadow:0 0 0 2px var(--red),0 28px 65px rgba(0,0,0,.6);
+}
+.about-intro h1{
+  margin:.25rem 0 1rem;
+  color:#fff;
+  font-family:Rye,serif;
+  font-size:clamp(3rem,8vw,6.4rem);
+  line-height:1;
+}
+.about-role{
+  text-transform:uppercase;
+  letter-spacing:.16em;
+  color:#d7c4aa;
+  font-size:.92rem;
+}
+.about-script{font-size:clamp(1.8rem,4vw,3rem);color:#fff}
+.story-layout{
+  width:min(1120px,90vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:minmax(0,1.45fr) minmax(280px,.75fr);
+  gap:clamp(2rem,6vw,5rem);
+  align-items:start;
+}
+.story-copy p{font-size:1.08rem;line-height:1.85}
+.story-copy blockquote{margin-top:2rem}
+.story-panel{
+  background:#120b09;
+  color:#fff;
+  padding:2rem;
+  border:1px solid rgba(198,29,36,.55);
+  position:sticky;
+  top:120px;
+}
+.story-panel h3{font-size:2rem;margin:.35rem 0 1.2rem}
+.about-list{padding:0;margin:0 0 2rem;list-style:none}
+.about-list li{
+  padding:.75rem 0 .75rem 1.7rem;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  position:relative;
+}
+.about-list li::before{
+  content:"★";
+  color:var(--red);
+  position:absolute;
+  left:0;
+}
+.about-closing{text-align:center}
+nav a[aria-current="page"]{color:var(--red)}
+@media(max-width:760px){
+  .about-page{padding-top:72px}
+  .about-hero{min-height:auto;padding-top:3rem}
+  .about-hero-grid,.story-layout{grid-template-columns:1fr}
+  .about-photo{width:min(330px,82vw);margin:auto}
+  .about-intro{text-align:center}
+  .story-panel{position:static}
+}

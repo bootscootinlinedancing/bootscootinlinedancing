@@ -24,3 +24,12 @@ VERSION 11 UPDATE
 - Replaced nora.webp with the newly cropped portrait supplied by Nora.
 - The filename stayed the same, so no HTML or CSS changes were needed.
 - Uploading this version will automatically replace the old portrait on the About section.
+
+
+VERSION 12 UPDATE
+- Added a separate About page: about.html.
+- The About menu link now opens that page instead of jumping within the homepage.
+- Kept the homepage Nora section short.
+- Added Nora's full story and information about Boot Scootin' on the About page.
+- Fixed Low Places and Edgbaston booking links so they open Eventbrite instead of Linktree.
+- General booking buttons now open the Eventbrite organiser page.
