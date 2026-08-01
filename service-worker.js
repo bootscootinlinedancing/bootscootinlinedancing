@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v20";
+const CACHE_NAME = "boot-scootin-v23";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -16,7 +16,9 @@ const APP_SHELL = [
   "/app-icon-192.png",
   "/app-icon-512.png",
   "/nora.webp",
-  "/landing-poster.webp"
+  "/landing-poster.webp",
+  "/boot-stomp.wav",
+  "/boot-scootin-country-loop.wav"
 ];
 
 self.addEventListener("install", event => {

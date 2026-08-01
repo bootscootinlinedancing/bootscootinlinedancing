@@ -1,3 +1,62 @@
+
+const bootStompAudio = new Audio("boot-stomp.wav");
+bootStompAudio.preload = "auto";
+bootStompAudio.volume = 0.88;
+
+const countryMusic = new Audio("boot-scootin-country-loop.wav");
+countryMusic.preload = "auto";
+countryMusic.loop = true;
+countryMusic.volume = 0.18;
+
+let musicEnabled = localStorage.getItem("bootMusicEnabled") === "1";
+
+function updateMusicButton() {
+  const button = document.getElementById("musicToggle");
+  if (!button) return;
+  button.classList.toggle("playing", !countryMusic.paused);
+  button.setAttribute("aria-pressed", String(!countryMusic.paused));
+  button.innerHTML = countryMusic.paused
+    ? '<span>♫</span><b>Turn Music On</b>'
+    : '<span>♫</span><b>Music On</b>';
+}
+
+async function startCountryMusic() {
+  try {
+    await countryMusic.play();
+    musicEnabled = true;
+    localStorage.setItem("bootMusicEnabled", "1");
+  } catch (error) {
+    // Browsers can still require the visitor to tap the music button.
+  }
+  updateMusicButton();
+}
+
+function stopCountryMusic() {
+  countryMusic.pause();
+  musicEnabled = false;
+  localStorage.setItem("bootMusicEnabled", "0");
+  updateMusicButton();
+}
+
+function addMusicControl() {
+  if (document.getElementById("musicToggle")) return;
+  const button = document.createElement("button");
+  button.id = "musicToggle";
+  button.className = "music-toggle";
+  button.type = "button";
+  button.setAttribute("aria-label", "Turn background music on or off");
+  document.body.appendChild(button);
+
+  button.addEventListener("click", () => {
+    if (countryMusic.paused) startCountryMusic();
+    else stopCountryMusic();
+  });
+
+  updateMusicButton();
+}
+
+document.addEventListener("DOMContentLoaded", addMusicControl);
+
 const intro = document.getElementById('intro');
 const enter = document.getElementById('enterSite');
 const menuButton = document.getElementById('menuButton');
@@ -22,11 +81,17 @@ if (intro && enter) {
 
     intro.classList.add('stomping');
 
+    bootStompAudio.currentTime = 0;
+    bootStompAudio.play().catch(() => {});
+
     if ('vibrate' in navigator) {
       navigator.vibrate([35, 35, 85]);
     }
 
-    window.setTimeout(finishIntro, 920);
+    window.setTimeout(() => {
+      finishIntro();
+      startCountryMusic();
+    }, 920);
   });
 }
 
@@ -170,3 +235,14 @@ installGuideDone?.addEventListener("click", closeInstallGuide);
 installGuide?.addEventListener("click", event => {
   if (event.target === installGuide) closeInstallGuide();
 });
+
+
+// Returning visitors keep their preference. A first tap anywhere can resume
+// the loop because mobile browsers generally require a user gesture.
+if (musicEnabled) {
+  const resumeMusicOnce = () => {
+    startCountryMusic();
+    document.removeEventListener("pointerdown", resumeMusicOnce);
+  };
+  document.addEventListener("pointerdown", resumeMusicOnce, { once: true });
+}

@@ -1506,3 +1506,237 @@ button.calendar-day{cursor:pointer}
   .rewards-stamp-card span,.rewards-stamp-card strong{min-height:48px;font-size:1.25rem}
   .reward-progress-row{grid-template-columns:repeat(5,1fr)}
 }
+
+
+/* VERSION 23 — ORIGINAL STOMP SOUND & COUNTRY MUSIC */
+.music-toggle{
+  position:fixed;
+  z-index:1050;
+  right:18px;
+  bottom:max(18px,env(safe-area-inset-bottom));
+  min-height:48px;
+  border:1px solid #8f272b;
+  border-radius:999px;
+  background:rgba(13,9,8,.94);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  gap:.55rem;
+  padding:.65rem .9rem;
+  box-shadow:0 12px 34px rgba(0,0,0,.42);
+  backdrop-filter:blur(10px);
+  cursor:pointer;
+  font:inherit;
+}
+.music-toggle span{
+  width:29px;
+  height:29px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  border:1px solid #b52a30;
+  font-size:1rem;
+}
+.music-toggle b{
+  font-size:.78rem;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.music-toggle.playing{
+  background:#7f171c;
+  border-color:#db3a41;
+}
+.music-toggle.playing span{
+  animation:musicPulse 1.25s ease-in-out infinite;
+}
+@keyframes musicPulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.13)}
+}
+@media(max-width:560px){
+  .music-toggle{
+    right:12px;
+    bottom:max(12px,env(safe-area-inset-bottom));
+    padding:.55rem .7rem;
+  }
+  .music-toggle b{display:none}
+}
+
+
+/* VERSION 24 — PREMIUM MUSIC CARDS & MERCHANDISE */
+.music-section .section-title{max-width:900px}
+.premium-playlists{
+  align-items:stretch;
+}
+.premium-playlist-card{
+  overflow:hidden;
+  padding:0;
+  display:grid;
+  grid-template-rows:auto 1fr;
+  background:#fffaf3;
+}
+.playlist-cover{
+  width:100%;
+  aspect-ratio:1/1;
+  object-fit:cover;
+  display:block;
+}
+.playlist-card-copy{
+  display:flex;
+  flex-direction:column;
+  padding:1.5rem;
+}
+.playlist-card-copy h3{
+  font-size:clamp(2rem,4vw,3rem);
+  margin:.35rem 0 .8rem;
+}
+.playlist-card-copy p{
+  line-height:1.6;
+}
+.playlist-card-copy .button{
+  margin-top:auto;
+  width:max-content;
+}
+.playlist-placeholder-art{
+  aspect-ratio:1/1;
+  background:
+    linear-gradient(145deg,rgba(0,0,0,.15),rgba(0,0,0,.65)),
+    radial-gradient(circle at 50% 25%,#6a171b,#120a09 70%);
+  color:#fff;
+  display:grid;
+  place-content:center;
+  text-align:center;
+  padding:1rem;
+  border-bottom:1px solid #6d292c;
+}
+.playlist-placeholder-art .playlist-line{
+  font-family:Rye,serif;
+  color:#d42027;
+  font-size:clamp(1.5rem,4vw,2.3rem);
+}
+.playlist-placeholder-art strong{
+  font-family:Rye,serif;
+  font-size:clamp(2rem,5vw,3.5rem);
+  line-height:1;
+  margin:.45rem 0;
+}
+.playlist-placeholder-art small{
+  letter-spacing:.2em;
+  color:#d8c4b1;
+}
+.playlist-update-note{
+  text-align:center;
+  font-size:1.7rem;
+  margin:2rem auto 0;
+}
+
+.merchandise-section{
+  overflow:hidden;
+}
+.merch-coming-card{
+  width:min(1000px,94vw);
+  margin:2rem auto 0;
+  display:grid;
+  grid-template-columns:.9fr 1.1fr;
+  background:#110b09;
+  color:#fff;
+  border:1px solid #6e292c;
+  box-shadow:0 20px 55px rgba(40,20,12,.22);
+}
+.merch-shirt-art{
+  min-height:480px;
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(circle at 50% 40%,rgba(157,31,36,.3),transparent 45%),
+    linear-gradient(145deg,#1d100f,#090605);
+}
+.shirt-shape{
+  width:260px;
+  height:310px;
+  position:relative;
+  background:#171717;
+  clip-path:polygon(23% 0,38% 11%,62% 11%,77% 0,100% 14%,87% 36%,77% 31%,77% 100%,23% 100%,23% 31%,13% 36%,0 14%);
+  display:grid;
+  align-content:center;
+  text-align:center;
+  padding:1rem;
+  box-sizing:border-box;
+  filter:drop-shadow(0 18px 30px rgba(0,0,0,.45));
+}
+.shirt-shape span{
+  font-family:Rye,serif;
+  color:#d11f26;
+  font-size:1.6rem;
+}
+.shirt-shape small{
+  letter-spacing:.18em;
+  margin-top:.45rem;
+}
+.merch-coming-copy{
+  padding:clamp(1.5rem,4vw,3rem);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.merch-coming-copy h3{
+  font-size:clamp(2.3rem,5vw,4rem);
+  margin:.35rem 0 .9rem;
+}
+.merch-coming-copy p{line-height:1.65}
+.merch-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:.55rem;
+  margin:1rem 0 1.4rem;
+}
+.merch-tags span{
+  border:1px solid #6d3435;
+  padding:.45rem .7rem;
+  font-size:.78rem;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  color:#e5d0bd;
+}
+.merch-preview{
+  background:#0d0908;
+  color:#fff;
+}
+.merch-preview-inner{
+  width:min(1050px,94vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:2rem;
+  align-items:center;
+}
+.merch-preview-inner h2{
+  font-size:clamp(2rem,5vw,3.8rem);
+  margin:.35rem 0 1rem;
+}
+.mini-shirt-card{
+  min-height:300px;
+  background:
+    radial-gradient(circle at 50% 40%,rgba(157,31,36,.35),transparent 40%),
+    #160d0c;
+  border:1px solid #6b2a2d;
+  display:grid;
+  place-content:center;
+  text-align:center;
+  clip-path:polygon(14% 0,32% 10%,68% 10%,86% 0,100% 16%,86% 36%,78% 30%,78% 100%,22% 100%,22% 30%,14% 36%,0 16%);
+}
+.mini-shirt-card span{
+  font-family:Rye,serif;
+  color:#d11f26;
+  font-size:clamp(1.5rem,4vw,2.4rem);
+}
+.mini-shirt-card small{
+  letter-spacing:.18em;
+  margin-top:.5rem;
+}
+
+@media(max-width:780px){
+  .merch-coming-card,.merch-preview-inner{grid-template-columns:1fr}
+  .merch-shirt-art{min-height:380px}
+  .mini-shirt-card{min-height:280px}
+}

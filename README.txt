@@ -138,3 +138,26 @@ VERSION 22 UPDATE — BOOT SCOOTIN' REWARDS
 - Added Rewards to site navigation.
 - Added rewards reminders to class calendar tickets.
 - Added a sample stamp progress display.
+
+
+VERSION 23 UPDATE — SOUND & ORIGINAL COUNTRY MUSIC
+- Added a newly created boot-stomp sound effect to the Enter the Dance Floor button.
+- Added a newly created 24-second country-style instrumental loop.
+- The music is original website audio and is not Boot Scootin' Boogie or another commercial recording.
+- Music begins at low volume after the visitor taps Enter the Dance Floor.
+- Added a floating Music On/Off control on every page.
+- The website remembers the visitor's music preference.
+- Updated the service worker to cache both audio files for faster repeat visits.
+
+
+VERSION 24 UPDATE — MUSIC & MERCHANDISE
+- Removed the childish emoji-style Apple Music icons.
+- Added Nora's actual Country Bits playlist artwork.
+- Redesigned both Apple Music cards to feel more like premium album cards.
+- Updated the playlist copy to feel more personal.
+- Changed the active playlist button to Listen Now.
+- Added a note that playlists are updated regularly.
+- Added a full Merchandise Coming Soon section.
+- Added Boot Scootin' T-shirts as the first upcoming merchandise drop.
+- Added a merchandise teaser to the homepage.
+- Added Merch to the navigation.
