@@ -15,22 +15,48 @@
   <div class="intro" id="intro">
     <div class="floor"></div>
     <div class="boot-stage" aria-hidden="true">
-      <svg class="boot" viewBox="0 0 420 360">
-        <path class="boot-body" d="M91 26h166c10 0 16 7 15 17l-12 175c-1 17 7 31 22 40l92 52c12 7 15 21 8 32-5 9-14 13-25 13H126c-24 0-43-19-43-43V49c0-13 10-23 23-23z"/>
-        <path class="boot-foot" d="M84 267c45 9 91 8 132-2 42-9 80-1 119 24l42 25c12 7 15 19 9 29H120c-20 0-37-16-37-37z"/>
-        <path class="boot-line" d="M221 38l-7 185M88 264c45 10 88 10 130 0"/>
-        <text x="164" y="112" class="marker big">BOOT</text>
-        <text x="164" y="150" class="marker big">SCOOTIN'</text>
-        <text x="164" y="184" class="marker small">LINE DANCING</text>
-        <text x="235" y="304" class="marker small">LET'S DANCE!</text>
-        <path class="heart" d="M175 177c-18-18-44 4-16 29l16 14 16-14c28-25 2-47-16-29z"/>
-        <path class="star" d="M127 83l10 20 22 3-16 15 4 22-20-10-20 10 4-22-16-15 22-3z"/>
-        <path class="star red" d="M284 248l8 16 18 3-13 13 3 18-16-8-16 8 3-18-13-13 18-3z"/>
+      <svg class="boot" viewBox="0 0 520 460" role="img" aria-label="White western cowboy boot">
+        <defs>
+          <linearGradient id="leather" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="#fffaf1"/>
+            <stop offset=".48" stop-color="#efe1cc"/>
+            <stop offset="1" stop-color="#c9b294"/>
+          </linearGradient>
+          <linearGradient id="shadowLeather" x1="0" x2="1">
+            <stop offset="0" stop-color="#b99d7c"/>
+            <stop offset=".5" stop-color="#ead9c1"/>
+            <stop offset="1" stop-color="#a78866"/>
+          </linearGradient>
+          <filter id="bootShadow" x="-30%" y="-30%" width="160%" height="180%">
+            <feDropShadow dx="0" dy="18" stdDeviation="12" flood-color="#000" flood-opacity=".75"/>
+          </filter>
+        </defs>
+
+        <g filter="url(#bootShadow)">
+          <path class="sole" d="M93 379c74 18 173 15 254 4 47-6 89 1 126 21 18 10 20 30 6 43-7 6-15 9-26 9H124c-31 0-54-19-61-44z"/>
+          <path class="heel" d="M93 378h70l-5 68H94z"/>
+          <path class="boot-main" d="M114 26h205c13 0 21 9 20 22l-17 233c-2 24 9 46 31 58l116 65c16 9 20 29 9 43-7 9-16 13-29 13H127c-34 0-61-27-61-61V64c0-21 17-38 38-38z"/>
+          <path class="shaft-panel" d="M136 44h158l-15 228c-1 18 4 34 16 47-54 13-110 12-166-4z"/>
+          <path class="toe-panel" d="M290 324c52 11 99 31 151 61 14 8 22 17 24 27-60 13-122 15-186 8 15-23 19-55 11-96z"/>
+          <path class="piping" d="M86 332c67 20 135 19 204-2"/>
+          <path class="top-piping" d="M131 46h170"/>
+          <path class="seam" d="M245 51l-10 241M126 113c49 15 103 15 155 0M121 178c51 15 104 15 155 0"/>
+
+          <path class="embroidery" d="M153 92c24 36 41 37 64 0 23 37 41 36 64 0"/>
+          <path class="embroidery" d="M157 209c22-31 40-31 60 0 20-31 38-31 60 0"/>
+          <path class="embroidery accent" d="M167 139c18 22 32 22 49 0 17 22 31 22 49 0"/>
+
+          <path class="stitched-star" d="M178 238l12 25 28 4-20 19 5 27-25-13-25 13 5-27-20-19 28-4z"/>
+          <path class="stitched-heart" d="M257 248c-19-22-51 0-17 32l17 16 17-16c34-32 2-54-17-32z"/>
+
+          <text x="213" y="337" class="boot-script">BOOT SCOOTIN'</text>
+          <text x="330" y="386" class="boot-script small">LET'S DANCE</text>
+        </g>
       </svg>
     </div>
 
     <div class="intro-copy">
-      <img src="assets/logo.webp" alt="Boot Scootin' Line Dancing logo">
+      <img src="logo.webp" alt="Boot Scootin' Line Dancing logo">
       <button id="enterSite" class="enter-btn">Enter the dance floor</button>
     </div>
   </div>
@@ -79,7 +105,7 @@
     <section class="section paper" id="welcome">
       <div class="welcome-grid">
         <div class="portrait reveal">
-          <img src="assets/nora.webp" alt="Nora, founder and instructor of Boot Scootin' Line Dancing">
+          <img src="nora.webp" alt="Nora, founder and instructor of Boot Scootin' Line Dancing">
           <span>Hi, I'm Nora 🤠</span>
         </div>
         <div class="copy reveal">
@@ -100,15 +126,15 @@
       </div>
       <div class="moment-grid">
         <figure class="wide reveal">
-          <img src="assets/hall1.webp" alt="A Boot Scootin' line dancing class practising together">
+          <img src="hall1.webp" alt="A Boot Scootin' line dancing class practising together">
           <figcaption>Learn the steps together</figcaption>
         </figure>
         <figure class="tall reveal">
-          <img src="assets/party1.webp" alt="Line dancers enjoying a social night at Low Places">
+          <img src="party1.webp" alt="Line dancers enjoying a social night at Low Places">
           <figcaption>Then take them to the dance floor</figcaption>
         </figure>
         <figure class="tall reveal">
-          <img src="assets/class1.webp" alt="A friendly line dancing class in Birmingham">
+          <img src="class1.webp" alt="A friendly line dancing class in Birmingham">
           <figcaption>Friendly, relaxed and welcoming</figcaption>
         </figure>
       </div>
@@ -121,7 +147,7 @@
       </div>
       <div class="venue-grid">
         <article class="venue-card reveal">
-          <img src="assets/lowplaces.webp" alt="The entrance to Low Places honky tonk bar in Birmingham">
+          <img src="lowplaces.webp" alt="The entrance to Low Places honky tonk bar in Birmingham">
           <div>
             <p class="tag">Fortnightly Fridays</p>
             <h3>Low Places</h3>
@@ -141,7 +167,6 @@
           </div>
         </article>
       </div>
-      <p class="copyright-note">We have left out the Google-sourced venue screenshot. Add your own Edgbaston exterior photo later and we can replace this placeholder.</p>
     </section>
 
     <section class="section dark" id="gallery">
@@ -150,9 +175,9 @@
         <h2>Boot Scootin' moments</h2>
       </div>
       <div class="polaroids">
-        <figure class="reveal"><img src="assets/hall2.webp" alt="Line dancing class"><figcaption>Finding our feet</figcaption></figure>
-        <figure class="reveal"><img src="assets/party2.webp" alt="Line dancing social"><figcaption>Honky-tonk nights</figcaption></figure>
-        <figure class="reveal"><img src="assets/class2.webp" alt="Group line dancing together"><figcaption>One more dance</figcaption></figure>
+        <figure class="reveal"><img src="hall2.webp" alt="Line dancing class"><figcaption>Finding our feet</figcaption></figure>
+        <figure class="reveal"><img src="party2.webp" alt="Line dancing social"><figcaption>Honky-tonk nights</figcaption></figure>
+        <figure class="reveal"><img src="class2.webp" alt="Group line dancing together"><figcaption>One more dance</figcaption></figure>
       </div>
     </section>
 
@@ -171,7 +196,7 @@
   </main>
 
   <footer>
-    <img src="assets/logo.webp" alt="">
+    <img src="logo.webp" alt="">
     <p class="script">Grab your boots. Bring your smile. Let's dance. ♥</p>
     <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
   </footer>
