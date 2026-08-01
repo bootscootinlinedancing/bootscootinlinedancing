@@ -12,19 +12,18 @@ function finishIntro(){
 if(sessionStorage.getItem('bootIntroSeen') === '1'){
   intro.classList.add('hide');
   document.body.classList.remove('intro-open');
-} else {
-  window.setTimeout(() => intro.classList.add('poster-visible'), 3650);
 }
 
 enter.addEventListener('click', () => {
   if(intro.classList.contains('stomping')) return;
+
   intro.classList.add('stomping');
 
-  // Small vibration on devices that support it.
-  if('vibrate' in navigator) navigator.vibrate([35, 45, 90]);
+  if('vibrate' in navigator){
+    navigator.vibrate([35, 35, 85]);
+  }
 
-  // Let the visible stomp finish before entering the site.
-  window.setTimeout(finishIntro, 980);
+  window.setTimeout(finishIntro, 880);
 });
 
 menuButton.addEventListener('click', () => {
@@ -32,10 +31,12 @@ menuButton.addEventListener('click', () => {
   menuButton.setAttribute('aria-expanded', String(open));
 });
 
-nav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
-  nav.classList.remove('open');
-  menuButton.setAttribute('aria-expanded','false');
-}));
+nav.querySelectorAll('a').forEach(link => {
+  link.addEventListener('click', () => {
+    nav.classList.remove('open');
+    menuButton.setAttribute('aria-expanded','false');
+  });
+});
 
 const observer = new IntersectionObserver(entries => {
   entries.forEach(entry => {
