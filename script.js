@@ -13,16 +13,18 @@ if(sessionStorage.getItem('bootIntroSeen') === '1'){
   intro.classList.add('hide');
   document.body.classList.remove('intro-open');
 } else {
-  // Let the boot finish its walk, then crossfade cleanly to the complete artwork.
-  window.setTimeout(() => {
-    intro.classList.add('poster-visible');
-  }, 3650);
+  window.setTimeout(() => intro.classList.add('poster-visible'), 3650);
 }
 
 enter.addEventListener('click', () => {
   if(intro.classList.contains('stomping')) return;
   intro.classList.add('stomping');
-  window.setTimeout(finishIntro, 660);
+
+  // Small vibration on devices that support it.
+  if('vibrate' in navigator) navigator.vibrate([35, 45, 90]);
+
+  // Let the visible stomp finish before entering the site.
+  window.setTimeout(finishIntro, 980);
 });
 
 menuButton.addEventListener('click', () => {

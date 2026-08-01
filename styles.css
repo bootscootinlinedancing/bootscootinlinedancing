@@ -240,7 +240,9 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
 
 
 
-/* VERSION 7 — CLEAN WALK-IN, NO DOUBLE IMAGE */
+
+
+/* VERSION 8 — CLEAN BOOT + OBVIOUS STOMP */
 .intro-stage{
   position:relative;
   width:100%;
@@ -258,7 +260,7 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
     radial-gradient(circle at 60% 38%,rgba(125,13,18,.30),transparent 30%),
     linear-gradient(#020202,#080505 70%,#140b08);
   opacity:1;
-  transition:opacity .5s ease;
+  transition:opacity .55s ease;
 }
 .walk-glow{
   position:absolute;
@@ -271,8 +273,7 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   right:-20%;
   bottom:-11%;
   height:37%;
-  background:
-    repeating-linear-gradient(90deg,#21120c 0 2px,#140b08 2px 180px);
+  background:repeating-linear-gradient(90deg,#21120c 0 2px,#140b08 2px 180px);
   transform:perspective(700px) rotateX(55deg);
   box-shadow:inset 0 28px 70px #000;
 }
@@ -281,6 +282,7 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   transform:scale(.988);
   pointer-events:none;
   transition:opacity .65s ease,transform .65s ease;
+  transform-origin:50% 76%;
 }
 .poster-intro.poster-visible .walk-scene{
   opacity:0;
@@ -294,9 +296,9 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
 .walking-boot{
   position:absolute;
   z-index:4;
-  left:-76vw;
+  left:-78vw;
   bottom:6vh;
-  width:min(60vw,500px);
+  width:min(61vw,510px);
   height:auto;
   object-fit:contain;
   transform-origin:48% 92%;
@@ -305,24 +307,35 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   pointer-events:none;
 }
 .poster-intro.stomping .poster-shell{
-  animation:posterStomp .62s ease both;
+  animation:bigPosterStomp .92s cubic-bezier(.2,.8,.2,1) both;
+}
+.poster-intro.stomping::before{
+  content:"";
+  position:absolute;
+  z-index:7;
+  inset:0;
+  background:rgba(255,225,190,.08);
+  opacity:0;
+  animation:impactFlash .92s ease both;
+  pointer-events:none;
 }
 .poster-intro.stomping::after{
   content:"";
   position:absolute;
   z-index:8;
-  left:3%;
-  bottom:10%;
-  width:48%;
-  height:20%;
-  background:radial-gradient(ellipse at center,rgba(177,115,67,.48),rgba(99,56,31,.17) 45%,transparent 72%);
-  filter:blur(8px);
+  left:-2%;
+  bottom:12%;
+  width:58%;
+  height:24%;
+  background:
+    radial-gradient(ellipse at 30% 65%,rgba(190,126,74,.62),rgba(105,59,31,.25) 42%,transparent 72%);
+  filter:blur(7px);
   opacity:0;
-  animation:dustPuff .62s ease both;
+  animation:bigDustPuff .92s ease both;
   pointer-events:none;
 }
 @keyframes cleanBootWalk{
-  0%{left:-76vw;transform:rotate(-7deg) translateY(0)}
+  0%{left:-78vw;transform:rotate(-7deg) translateY(0)}
   18%{transform:rotate(4deg) translateY(-17px)}
   36%{transform:rotate(-4deg) translateY(0)}
   54%{transform:rotate(3deg) translateY(-14px)}
@@ -330,24 +343,30 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   87%{left:2vw;transform:rotate(1deg) translateY(-7px)}
   100%{left:1vw;transform:rotate(0) translateY(0)}
 }
-@keyframes posterStomp{
-  0%,100%{transform:translateY(0) scale(1)}
-  35%{transform:translateY(-10px) scale(1.004)}
-  68%{transform:translateY(5px) scale(.997)}
+@keyframes bigPosterStomp{
+  0%{transform:translateY(0) scale(1)}
+  28%{transform:translateY(-28px) scale(1.012)}
+  58%{transform:translateY(13px) scale(.992)}
+  72%{transform:translateY(-4px) scale(1.002)}
+  100%{transform:translateY(0) scale(1)}
 }
-@keyframes dustPuff{
-  0%{opacity:0;transform:scale(.55)}
-  55%{opacity:.95;transform:scale(1)}
-  100%{opacity:0;transform:scale(1.35)}
+@keyframes bigDustPuff{
+  0%,35%{opacity:0;transform:scale(.4) translateY(0)}
+  58%{opacity:1;transform:scale(1) translateY(-5px)}
+  100%{opacity:0;transform:scale(1.55) translateY(-20px)}
+}
+@keyframes impactFlash{
+  0%,48%,100%{opacity:0}
+  58%{opacity:1}
 }
 @media(max-width:650px){
   .walking-boot{
-    width:69vw;
-    left:-88vw;
+    width:70vw;
+    left:-90vw;
     bottom:9vh;
   }
   @keyframes cleanBootWalk{
-    0%{left:-88vw;transform:rotate(-7deg) translateY(0)}
+    0%{left:-90vw;transform:rotate(-7deg) translateY(0)}
     18%{transform:rotate(4deg) translateY(-14px)}
     36%{transform:rotate(-4deg) translateY(0)}
     54%{transform:rotate(3deg) translateY(-11px)}
