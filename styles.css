@@ -2229,3 +2229,20 @@ nav a{
   .businesses-preview-inner{grid-template-columns:1fr}
   .business-love-visual{min-height:260px}
 }
+
+
+/* VERSION 31 — MERCH FIX & IVORY SKY */
+.ivory-sky-visual{
+  background:linear-gradient(145deg,#efe4d5,#b88a67 48%,#4e2e25);
+  color:#24140f;
+}
+.merch-order-button{
+  margin-top:1rem;
+  width:100%;
+}
+.business-name-stack span{
+  display:block;
+}
+.business-name-stack span + span{
+  margin-top:.8rem;
+}

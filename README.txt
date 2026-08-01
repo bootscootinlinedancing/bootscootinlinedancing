@@ -217,3 +217,17 @@ VERSION 30 UPDATE
 - Added Businesses We Love previews to the homepage and Community Hub.
 - Kept the disliked synthetic stomp removed.
 - A real recorded boot sound must be selected and approved before adding it back.
+
+
+VERSION 31 UPDATE
+- Corrected the swapped merchandise images so each design now matches its description.
+- Updated merchandise ordering wording:
+  orders will be placed through Nora using a dedicated order link.
+- Added future order buttons for design and size selection.
+- Added Home By Sunday website:
+  https://www.homebysunday.com
+- Added Ivory Sky to Businesses We Love.
+- Added Ivory Sky website and Instagram links:
+  https://ivoryskyco.com/
+  https://www.instagram.com/ivorysky?igsh=MWUzandja3hvOG51NA==
+- Updated the homepage Businesses We Love preview to include cowboy boots.
