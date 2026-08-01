@@ -3,18 +3,29 @@ const enter = document.getElementById('enterSite');
 const menuButton = document.getElementById('menuButton');
 const nav = document.getElementById('nav');
 
-function closeIntro(){
+function finishIntro(){
   intro.classList.add('hide');
   document.body.classList.remove('intro-open');
   sessionStorage.setItem('bootIntroSeen','1');
 }
 
+function markReady(){
+  intro.classList.add('ready');
+}
+
 if(sessionStorage.getItem('bootIntroSeen') === '1'){
   intro.classList.add('hide');
   document.body.classList.remove('intro-open');
+} else {
+  window.setTimeout(markReady, 4200);
 }
 
-enter.addEventListener('click', closeIntro);
+enter.addEventListener('click', () => {
+  if(intro.classList.contains('stomping')) return;
+  intro.classList.remove('ready');
+  intro.classList.add('stomping');
+  window.setTimeout(finishIntro, 620);
+});
 
 menuButton.addEventListener('click', () => {
   const open = nav.classList.toggle('open');
