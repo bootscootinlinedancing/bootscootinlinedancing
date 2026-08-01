@@ -1,18 +1,23 @@
-BOOT SCOOTIN' WEBSITE — VERSION 3
+BOOT SCOOTIN' WEBSITE — VERSION 4
 
 WHAT CHANGED
-- Fixed all image paths for GitHub mobile uploads
-- Replaced the cartoon/doodle boot with a polished white western boot
-- Added leather shading, stitched embroidery, proper sole and heel
-- Removed the temporary Edgbaston copyright note
-- Kept all photographs in the repository root so Safari can load them
+- Removed the square logo from the opening screen
+- Added premium standalone western typography:
+  BOOT SCOOTIN'
+  LINE DANCING
+- Added the tagline:
+  Where Country Music Brings People Together
+- Kept the animated realistic white western boot
+- Replaced the square header logo with a simple round BS brand mark
+- Updated the footer to match
+- Refined the writing on the boot so it feels less handwritten and more professional
+- Kept all images working from the GitHub repository root
 
 UPLOAD TO GITHUB
-1. Open the bootscootinlinedancing repository.
-2. Add file > Upload files.
-3. Upload every file from this unzipped folder.
-4. Replace existing files.
-5. Commit directly to main.
-6. Wait about one minute for Cloudflare Pages to redeploy.
-
-You do not need to create an assets folder for this version.
+1. Download and unzip this folder.
+2. Open the bootscootinlinedancing repository.
+3. Add file > Upload files.
+4. Select every file in the unzipped folder.
+5. Replace existing files.
+6. Commit directly to main.
+7. Cloudflare Pages will automatically redeploy.
