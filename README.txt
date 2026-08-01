@@ -1,22 +1,21 @@
-BOOT SCOOTIN' WEBSITE — VERSION 6
+BOOT SCOOTIN' WEBSITE — VERSION 7
 
-WHAT CHANGED
-- The realistic boot now walks onto the screen before the finished landing artwork appears
-- The walk uses several natural step movements rather than sliding straight across
-- Pressing ENTER THE DANCE FLOOR makes the boot lift and stomp
-- The stomp creates a brief dust puff and a subtle screen jolt
-- The intro then fades into the main website
-- Reduced-motion users see the finished landing artwork without animation
+FIXED
+- Removed the stray title, slogan and button fragments from the walking boot image
+- Removed the moment where two boots and two buttons appeared at once
+- The opening now has two clean stages:
+  1. The isolated realistic boot walks onto a dark wooden floor
+  2. It crossfades completely into the finished landing design
+- Pressing ENTER THE DANCE FLOOR still creates the stomp, dust puff and subtle jolt
 
-UPLOAD TO GITHUB
-1. Download and unzip this folder.
-2. Open the bootscootinlinedancing repository.
-3. Choose Add file > Upload files.
-4. Upload every file, including walking-boot.webp.
+UPLOAD
+1. Download and unzip.
+2. Open the bootscootinlinedancing GitHub repository.
+3. Add file > Upload files.
+4. Upload every file, including the replacement walking-boot.webp.
 5. Replace existing files.
 6. Commit directly to main.
-7. Cloudflare Pages will redeploy automatically.
+7. Wait for Cloudflare Pages to redeploy.
 
-TESTING
-The full walk animation normally plays once per browser session.
-To replay it immediately, open the site in a Private Safari tab.
+TEST
+Use a Private Safari tab to replay the walk immediately.

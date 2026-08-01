@@ -238,7 +238,9 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
 }
 
 
-/* VERSION 6 — WALK-IN + STOMP ANIMATION */
+
+
+/* VERSION 7 — CLEAN WALK-IN, NO DOUBLE IMAGE */
 .intro-stage{
   position:relative;
   width:100%;
@@ -246,108 +248,115 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   display:grid;
   place-items:center;
   overflow:hidden;
+  background:#020202;
+}
+.walk-scene{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
   background:
     radial-gradient(circle at 60% 38%,rgba(125,13,18,.30),transparent 30%),
     linear-gradient(#020202,#080505 70%,#140b08);
+  opacity:1;
+  transition:opacity .5s ease;
+}
+.walk-glow{
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at 62% 44%,rgba(148,11,19,.25),transparent 29%);
+}
+.walk-floor{
+  position:absolute;
+  left:-20%;
+  right:-20%;
+  bottom:-11%;
+  height:37%;
+  background:
+    repeating-linear-gradient(90deg,#21120c 0 2px,#140b08 2px 180px);
+  transform:perspective(700px) rotateX(55deg);
+  box-shadow:inset 0 28px 70px #000;
 }
 .poster-shell{
   opacity:0;
-  transform:scale(.985);
-  animation:posterReveal .8s ease 3.65s forwards;
+  transform:scale(.988);
+  pointer-events:none;
+  transition:opacity .65s ease,transform .65s ease;
+}
+.poster-intro.poster-visible .walk-scene{
+  opacity:0;
+  pointer-events:none;
+}
+.poster-intro.poster-visible .poster-shell{
+  opacity:1;
+  transform:scale(1);
+  pointer-events:auto;
 }
 .walking-boot{
   position:absolute;
   z-index:4;
-  left:-78vw;
-  bottom:8vh;
-  width:min(62vw,520px);
+  left:-76vw;
+  bottom:6vh;
+  width:min(60vw,500px);
   height:auto;
   object-fit:contain;
   transform-origin:48% 92%;
-  filter:drop-shadow(0 18px 18px rgba(0,0,0,.75));
-  animation:bootWalkIn 3.8s cubic-bezier(.22,.75,.18,1) forwards;
+  filter:drop-shadow(0 18px 18px rgba(0,0,0,.78));
+  animation:cleanBootWalk 3.55s cubic-bezier(.22,.75,.18,1) forwards;
   pointer-events:none;
 }
-.intro-glow{
-  position:absolute;
-  inset:0;
-  background:radial-gradient(circle at 62% 45%,rgba(148,11,19,.22),transparent 28%);
-  opacity:.8;
-}
-.poster-intro.ready .walking-boot{
-  opacity:0;
-  transition:opacity .35s ease;
-}
-.poster-intro.stomping .walking-boot{
-  opacity:1;
-  animation:bootStomp .58s ease both;
-}
 .poster-intro.stomping .poster-shell{
-  animation:posterJolt .58s ease both;
+  animation:posterStomp .62s ease both;
 }
 .poster-intro.stomping::after{
   content:"";
   position:absolute;
-  left:5%;
+  z-index:8;
+  left:3%;
   bottom:10%;
-  width:52%;
-  height:22%;
-  background:radial-gradient(ellipse at center,rgba(177,115,67,.42),rgba(99,56,31,.16) 45%,transparent 72%);
+  width:48%;
+  height:20%;
+  background:radial-gradient(ellipse at center,rgba(177,115,67,.48),rgba(99,56,31,.17) 45%,transparent 72%);
   filter:blur(8px);
   opacity:0;
-  animation:dustPuff .58s ease both;
+  animation:dustPuff .62s ease both;
   pointer-events:none;
 }
-@keyframes bootWalkIn{
-  0%{left:-78vw;transform:rotate(-7deg) translateY(0)}
-  18%{transform:rotate(4deg) translateY(-16px)}
+@keyframes cleanBootWalk{
+  0%{left:-76vw;transform:rotate(-7deg) translateY(0)}
+  18%{transform:rotate(4deg) translateY(-17px)}
   36%{transform:rotate(-4deg) translateY(0)}
-  54%{transform:rotate(3deg) translateY(-13px)}
-  72%{left:4vw;transform:rotate(-2deg) translateY(0)}
-  86%{left:1vw;transform:rotate(1deg) translateY(-7px)}
-  100%{left:0;transform:rotate(0) translateY(0)}
+  54%{transform:rotate(3deg) translateY(-14px)}
+  73%{left:5vw;transform:rotate(-2deg) translateY(0)}
+  87%{left:2vw;transform:rotate(1deg) translateY(-7px)}
+  100%{left:1vw;transform:rotate(0) translateY(0)}
 }
-@keyframes posterReveal{
-  to{opacity:1;transform:scale(1)}
-}
-@keyframes bootStomp{
-  0%{left:0;bottom:8vh;transform:rotate(0) translateY(0) scale(1)}
-  35%{left:0;bottom:8vh;transform:rotate(-2deg) translateY(-28px) scale(1.01)}
-  68%{left:0;bottom:8vh;transform:rotate(1deg) translateY(5px) scale(1.015)}
-  100%{left:0;bottom:8vh;transform:rotate(0) translateY(0) scale(1)}
-}
-@keyframes posterJolt{
+@keyframes posterStomp{
   0%,100%{transform:translateY(0) scale(1)}
-  68%{transform:translateY(5px) scale(.998)}
+  35%{transform:translateY(-10px) scale(1.004)}
+  68%{transform:translateY(5px) scale(.997)}
 }
 @keyframes dustPuff{
   0%{opacity:0;transform:scale(.55)}
-  55%{opacity:.9;transform:scale(1)}
+  55%{opacity:.95;transform:scale(1)}
   100%{opacity:0;transform:scale(1.35)}
 }
 @media(max-width:650px){
   .walking-boot{
-    width:72vw;
+    width:69vw;
     left:-88vw;
-    bottom:10vh;
+    bottom:9vh;
   }
-  @keyframes bootWalkIn{
+  @keyframes cleanBootWalk{
     0%{left:-88vw;transform:rotate(-7deg) translateY(0)}
     18%{transform:rotate(4deg) translateY(-14px)}
     36%{transform:rotate(-4deg) translateY(0)}
     54%{transform:rotate(3deg) translateY(-11px)}
-    72%{left:-2vw;transform:rotate(-2deg) translateY(0)}
-    86%{left:-5vw;transform:rotate(1deg) translateY(-6px)}
-    100%{left:-6vw;transform:rotate(0) translateY(0)}
-  }
-  @keyframes bootStomp{
-    0%{left:-6vw;bottom:10vh;transform:rotate(0) translateY(0)}
-    35%{left:-6vw;bottom:10vh;transform:rotate(-2deg) translateY(-24px)}
-    68%{left:-6vw;bottom:10vh;transform:rotate(1deg) translateY(5px)}
-    100%{left:-6vw;bottom:10vh;transform:rotate(0) translateY(0)}
+    73%{left:-4vw;transform:rotate(-2deg) translateY(0)}
+    87%{left:-6vw;transform:rotate(1deg) translateY(-6px)}
+    100%{left:-7vw;transform:rotate(0) translateY(0)}
   }
 }
 @media(prefers-reduced-motion:reduce){
-  .walking-boot{display:none}
-  .poster-shell{opacity:1;transform:none;animation:none}
+  .walk-scene{display:none}
+  .poster-shell{opacity:1;transform:none;pointer-events:auto}
 }

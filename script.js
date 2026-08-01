@@ -9,22 +9,20 @@ function finishIntro(){
   sessionStorage.setItem('bootIntroSeen','1');
 }
 
-function markReady(){
-  intro.classList.add('ready');
-}
-
 if(sessionStorage.getItem('bootIntroSeen') === '1'){
   intro.classList.add('hide');
   document.body.classList.remove('intro-open');
 } else {
-  window.setTimeout(markReady, 4200);
+  // Let the boot finish its walk, then crossfade cleanly to the complete artwork.
+  window.setTimeout(() => {
+    intro.classList.add('poster-visible');
+  }, 3650);
 }
 
 enter.addEventListener('click', () => {
   if(intro.classList.contains('stomping')) return;
-  intro.classList.remove('ready');
   intro.classList.add('stomping');
-  window.setTimeout(finishIntro, 620);
+  window.setTimeout(finishIntro, 660);
 });
 
 menuButton.addEventListener('click', () => {
