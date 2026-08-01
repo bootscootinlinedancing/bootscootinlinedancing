@@ -203,3 +203,17 @@ VERSION 28 UPDATE — SIGNATURE SONG
 - Fixed the Brummie Cowgirl Instagram link:
   https://www.instagram.com/brummie_cowgirl?igsh=dmUwdHVueXE1dXN3&utm_source=qr
 - Updated the service-worker cache to remove the old stomp asset.
+
+
+VERSION 30 UPDATE
+- Added a new Businesses We Love page.
+- Added Threefives Country Apparel with website and Instagram links.
+- Added Home By Sunday with Instagram link.
+- Carefully avoided describing either business as an official partner.
+- Added an enquiry section for businesses interested in future features.
+- Added the two actual Boot Scootin' T-shirt mock-ups.
+- Clarified that Boot Scootin' merchandise must be ordered directly through Nora.
+- Described the T-shirts as created by Threefives Country Apparel.
+- Added Businesses We Love previews to the homepage and Community Hub.
+- Kept the disliked synthetic stomp removed.
+- A real recorded boot sound must be selected and approved before adding it back.
