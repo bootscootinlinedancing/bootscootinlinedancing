@@ -1,23 +1,20 @@
-BOOT SCOOTIN' WEBSITE — VERSION 4
+BOOT SCOOTIN' WEBSITE — VERSION 5
 
 WHAT CHANGED
-- Removed the square logo from the opening screen
-- Added premium standalone western typography:
-  BOOT SCOOTIN'
-  LINE DANCING
-- Added the tagline:
-  Where Country Music Brings People Together
-- Kept the animated realistic white western boot
-- Replaced the square header logo with a simple round BS brand mark
-- Updated the footer to match
-- Refined the writing on the boot so it feels less handwritten and more professional
-- Kept all images working from the GitHub repository root
+- Replaced the illustrated boot opening with the approved cinematic landing artwork
+- The realistic cream leather boot, dust, title, tagline and western sign are now one polished full-screen design
+- The “ENTER THE DANCE FLOOR” sign is fully clickable
+- The artwork scales cleanly on iPhone, tablet and desktop
+- The rest of the website remains unchanged
 
 UPLOAD TO GITHUB
 1. Download and unzip this folder.
 2. Open the bootscootinlinedancing repository.
-3. Add file > Upload files.
-4. Select every file in the unzipped folder.
+3. Choose Add file > Upload files.
+4. Upload every file in this folder, including landing-poster.webp.
 5. Replace existing files.
 6. Commit directly to main.
-7. Cloudflare Pages will automatically redeploy.
+7. Cloudflare Pages will redeploy automatically.
+
+IMPORTANT
+Do not delete landing-poster.webp. It is the new opening screen artwork.

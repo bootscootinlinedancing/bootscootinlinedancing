@@ -166,3 +166,73 @@ footer{text-align:center;padding:3rem 1rem;background:#050404;border-top:1px sol
   .intro-tagline{font-size:1.8rem}
   .round-mark{width:36px;height:36px;font-size:.75rem}
 }
+
+
+/* VERSION 5 — APPROVED CINEMATIC LANDING ARTWORK */
+.poster-intro{
+  position:fixed;
+  inset:0;
+  z-index:999;
+  background:#000;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  transition:opacity .8s ease,visibility .8s ease;
+}
+.poster-intro.hide{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+}
+.poster-shell{
+  position:relative;
+  height:100svh;
+  aspect-ratio:2/3;
+  max-width:100vw;
+  background:#000;
+  box-shadow:0 0 70px rgba(0,0,0,.9);
+}
+.landing-poster{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+.poster-enter{
+  position:absolute;
+  left:34.5%;
+  top:55%;
+  width:45.5%;
+  height:8%;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  border-radius:10px;
+}
+.poster-enter:focus-visible{
+  outline:3px solid #fff;
+  outline-offset:4px;
+  box-shadow:0 0 0 6px rgba(198,29,36,.65);
+}
+.poster-enter:hover{
+  background:rgba(255,255,255,.035);
+}
+.sr-only{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+@media (orientation:landscape){
+  .poster-shell{
+    height:100vh;
+    max-width:min(100vw,calc(100vh * .6667));
+  }
+}

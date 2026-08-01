@@ -12,56 +12,12 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="intro-open">
-  <div class="intro" id="intro">
-    <div class="floor"></div>
-    <div class="boot-stage" aria-hidden="true">
-      <svg class="boot" viewBox="0 0 520 460" role="img" aria-label="White western cowboy boot">
-        <defs>
-          <linearGradient id="leather" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0" stop-color="#fffaf1"/>
-            <stop offset=".48" stop-color="#efe1cc"/>
-            <stop offset="1" stop-color="#c9b294"/>
-          </linearGradient>
-          <linearGradient id="shadowLeather" x1="0" x2="1">
-            <stop offset="0" stop-color="#b99d7c"/>
-            <stop offset=".5" stop-color="#ead9c1"/>
-            <stop offset="1" stop-color="#a78866"/>
-          </linearGradient>
-          <filter id="bootShadow" x="-30%" y="-30%" width="160%" height="180%">
-            <feDropShadow dx="0" dy="18" stdDeviation="12" flood-color="#000" flood-opacity=".75"/>
-          </filter>
-        </defs>
-
-        <g filter="url(#bootShadow)">
-          <path class="sole" d="M93 379c74 18 173 15 254 4 47-6 89 1 126 21 18 10 20 30 6 43-7 6-15 9-26 9H124c-31 0-54-19-61-44z"/>
-          <path class="heel" d="M93 378h70l-5 68H94z"/>
-          <path class="boot-main" d="M114 26h205c13 0 21 9 20 22l-17 233c-2 24 9 46 31 58l116 65c16 9 20 29 9 43-7 9-16 13-29 13H127c-34 0-61-27-61-61V64c0-21 17-38 38-38z"/>
-          <path class="shaft-panel" d="M136 44h158l-15 228c-1 18 4 34 16 47-54 13-110 12-166-4z"/>
-          <path class="toe-panel" d="M290 324c52 11 99 31 151 61 14 8 22 17 24 27-60 13-122 15-186 8 15-23 19-55 11-96z"/>
-          <path class="piping" d="M86 332c67 20 135 19 204-2"/>
-          <path class="top-piping" d="M131 46h170"/>
-          <path class="seam" d="M245 51l-10 241M126 113c49 15 103 15 155 0M121 178c51 15 104 15 155 0"/>
-
-          <path class="embroidery" d="M153 92c24 36 41 37 64 0 23 37 41 36 64 0"/>
-          <path class="embroidery" d="M157 209c22-31 40-31 60 0 20-31 38-31 60 0"/>
-          <path class="embroidery accent" d="M167 139c18 22 32 22 49 0 17 22 31 22 49 0"/>
-
-          <path class="stitched-star" d="M178 238l12 25 28 4-20 19 5 27-25-13-25 13 5-27-20-19 28-4z"/>
-          <path class="stitched-heart" d="M257 248c-19-22-51 0-17 32l17 16 17-16c34-32 2-54-17-32z"/>
-
-          <path class="nameplate" d="M145 311c55-11 111-11 166 0l-6 48c-51 8-103 8-154 0z"/>
-          <text x="228" y="343" class="boot-script">BOOT SCOOTIN'</text>
-          <text x="336" y="391" class="boot-script small">LET'S DANCE</text>
-        </g>
-      </svg>
-    </div>
-
-    <div class="intro-copy">
-      <p class="intro-kicker">Birmingham</p>
-      <h1 class="intro-title">BOOT SCOOTIN'</h1>
-      <p class="intro-subtitle">LINE DANCING</p>
-      <p class="intro-tagline">Where Country Music<br>Brings People Together</p>
-      <button id="enterSite" class="enter-btn">Enter the dance floor</button>
+  <div class="intro poster-intro" id="intro">
+    <div class="poster-shell">
+      <img class="landing-poster" src="landing-poster.webp" alt="Boot Scootin' Line Dancing — Birmingham, UK. Where Country Music Brings People Together.">
+      <button id="enterSite" class="poster-enter" aria-label="Enter the dance floor">
+        <span class="sr-only">Enter the dance floor</span>
+      </button>
     </div>
   </div>
 
