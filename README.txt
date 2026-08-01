@@ -193,3 +193,13 @@ VERSION 27 UPDATE — STOMP FIX
 - The stomp now plays immediately when Enter the Dance Floor is tapped.
 - The stomp no longer depends on turning music on.
 - Updated the service worker cache so the new sound replaces the old version.
+
+
+VERSION 28 UPDATE — SIGNATURE SONG
+- Removed the generated stomp sound completely because it did not sound realistic.
+- Added the official Boot Scootin' Boogie YouTube embed to the homepage.
+- Added Apple Music and official YouTube buttons for the signature song.
+- Added the signature song to the Community music section.
+- Fixed the Brummie Cowgirl Instagram link:
+  https://www.instagram.com/brummie_cowgirl?igsh=dmUwdHVueXE1dXN3&utm_source=qr
+- Updated the service-worker cache to remove the old stomp asset.

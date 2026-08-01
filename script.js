@@ -1,15 +1,4 @@
 
-const bootStompAudio = new Audio("boot-stomp.wav");
-bootStompAudio.preload = "auto";
-bootStompAudio.volume = 1;
-
-function playBootStomp() {
-  bootStompAudio.currentTime = 0;
-  const playPromise = bootStompAudio.play();
-  if (playPromise && typeof playPromise.catch === "function") {
-    playPromise.catch(() => {});
-  }
-}
 
 const intro = document.getElementById('intro');
 const enter = document.getElementById('enterSite');
@@ -34,8 +23,6 @@ if (intro && enter) {
     if (intro.classList.contains('stomping')) return;
 
     intro.classList.add('stomping');
-
-    playBootStomp();
 
     if ('vibrate' in navigator) {
       navigator.vibrate([35, 35, 85]);
