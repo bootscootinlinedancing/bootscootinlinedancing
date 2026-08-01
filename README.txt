@@ -18,3 +18,9 @@ UPLOAD
 6. Test in a Private Safari tab.
 
 This version is deliberately stable. We can rebuild the walking animation later from a proper transparent boot asset without risking the live page again.
+
+
+VERSION 11 UPDATE
+- Replaced nora.webp with the newly cropped portrait supplied by Nora.
+- The filename stayed the same, so no HTML or CSS changes were needed.
+- Uploading this version will automatically replace the old portrait on the About section.
