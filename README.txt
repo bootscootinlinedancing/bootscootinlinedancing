@@ -33,3 +33,10 @@ VERSION 12 UPDATE
 - Added Nora's full story and information about Boot Scootin' on the About page.
 - Fixed Low Places and Edgbaston booking links so they open Eventbrite instead of Linktree.
 - General booking buttons now open the Eventbrite organiser page.
+
+
+VERSION 13 FIX
+- Fixed the blank About page.
+- The shared JavaScript was trying to control the homepage intro on about.html, where that intro does not exist.
+- Added safe checks so the homepage intro code only runs on the homepage.
+- About-page content and reveal animations now load normally.
