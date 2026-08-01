@@ -60,3 +60,17 @@ VERSION 15 UPDATE
 - Added parking, accessible toilet and address information.
 - Added Google Maps and Apple Maps links.
 - Added downloadable Apple Calendar files and Google Calendar links.
+
+
+VERSION 16 UPDATE
+- Added a full Community Hub page.
+- Added Boot Scootin' Memories using the current class and party photographs.
+- Added Wall of Boots, Student Spotlight, Song Requests, Country Countdown,
+  Birthday Boots, Coming Soon and Milestones sections.
+- Added two Apple Music playlist cards ready for Nora's links.
+- Added a mailing-list design ready to connect to a provider.
+- Added a searchable Dance Library with demo links and filters.
+- Added a dedicated Private Events page.
+- Added previews and navigation links across the website.
+- Database-dependent features are clearly shown as future/coming-soon features
+  rather than pretending to collect or save information.

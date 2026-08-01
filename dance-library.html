@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090606">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <meta name="description" content="Search the Boot Scootin' Dance Library and practise with demo videos.">
+  <title>Dance Library | Boot Scootin' Line Dancing</title>
+</head>
+<body>
+  <header class="header">
+    <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
+      <span class="round-mark">BS</span>
+      <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
+    </a>
+    <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
+    <nav id="nav">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <a href="calendar.html">Calendar</a>
+      <a href="dance-diary.html">Dance Diary</a>
+      <a href="dance-library.html" aria-current="page">Dance Library</a>
+      <a href="community.html">Community</a>
+      <a href="private-events.html">Private Events</a>
+    </nav>
+    <a class="button compact" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Reserve My Boots</a>
+  </header>
+  <main class="feature-page library-page">
+    <section class="feature-hero section dark">
+      <div class="section-title centre reveal">
+        <p class="kicker">Find it. Remember it. Dance it.</p>
+        <h1>Dance Library</h1>
+        <p>Search by dance, song or artist and open the demo whenever you need a quick refresher.</p>
+      </div>
+    </section>
+
+    <section class="section paper">
+      <div class="library-controls reveal">
+        <label for="danceSearch">Search the library</label>
+        <input id="danceSearch" type="search" placeholder="Try Ziggy, Luke Combs or Ella Langley…">
+        <div class="library-filters" aria-label="Filter dances">
+          <button type="button" class="active" data-filter="all">All</button>
+          <button type="button" data-filter="beginner">Beginner favourites</button>
+          <button type="button" data-filter="learning">Currently learning</button>
+        </div>
+      </div>
+
+      <div class="library-grid" id="libraryGrid">
+        <article class="library-item reveal" data-search="ziggy i wanna dance with somebody ziggy in the house" data-level="beginner">
+          <span class="library-icon">🎶</span><p class="kicker red">Beginner favourite</p>
+          <h2>Ziggy</h2><p>I Wanna Dance With Somebody — Ziggy in the House</p>
+          <p class="library-meta">Seen in the diary: 19 June · 10 July · 17 July · 31 July</p>
+          <a class="button" href="https://youtu.be/OcNtDuwiS2c?is=RNVDYswR_UEXLjL9" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="honky tonk highway luke combs" data-level="beginner">
+          <span class="library-icon">🤠</span><p class="kicker red">Country favourite</p>
+          <h2>Honky Tonk Highway</h2><p>Honky Tonk Highway — Luke Combs</p>
+          <p class="library-meta">Seen in the diary: 19 June · 17 July</p>
+          <a class="button" href="https://youtu.be/Ie3H31bWzlU?is=fdMgnAInopNFM6q6" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="rockin wagon wheel darius rucker" data-level="beginner">
+          <span class="library-icon">🎻</span><p class="kicker red">Class favourite</p>
+          <h2>Rockin’ The Wagon Wheel</h2><p>Wagon Wheel — Darius Rucker</p>
+          <p class="library-meta">Seen in the diary: 19 June · 17 July</p>
+          <a class="button" href="https://youtu.be/C2H63XKN5ps?is=fM-31vS6Q5-59UMg" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="cowgirl shaboozey" data-level="beginner">
+          <span class="library-icon">🤎</span><p class="kicker red">Feel-good favourite</p>
+          <h2>Cowgirl</h2><p>Cowgirl — Shaboozey</p>
+          <p class="library-meta">Seen in the diary: 19 June · 17 July · 31 July</p>
+          <a class="button" href="https://youtu.be/m0VecvBJHzg?is=iMjoLZ4hN7zQJjGo" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="22 you look like you love me ella langley riley green" data-level="learning">
+          <span class="library-icon">⭐</span><p class="kicker red">Learning journey</p>
+          <h2>22</h2><p>You Look Like You Love Me — Ella Langley & Riley Green</p>
+          <p class="library-meta">Started 19 June · continued 17 July</p>
+          <a class="button" href="https://youtu.be/luQb4IPTvMs?is=hM3yi2ewL8cXOhC1" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="the outlaw whiskey drinkin mikel knight" data-level="beginner">
+          <span class="library-icon">🥃</span><p class="kicker red">Recapped</p>
+          <h2>The Outlaw</h2><p>Whiskey Drinkin’ — Mikel Knight</p>
+          <p class="library-meta">Seen in the diary: 10 July</p>
+          <a class="button" href="https://youtu.be/eB16nk_g9lc?si=2G2GeLpHwupkM5TD" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="american kids kenny chesney" data-level="learning">
+          <span class="library-icon">🇺🇸</span><p class="kicker red">Started learning</p>
+          <h2>American Kids</h2><p>American Kids — Kenny Chesney</p>
+          <p class="library-meta">Seen in the diary: 10 July</p>
+          <a class="button" href="https://youtu.be/gscYyXoQDWM?is=cS3ZXJNO5wV4OQML" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="give me the shivers ed sheeran" data-level="beginner">
+          <span class="library-icon">✨</span><p class="kicker red">Dance-floor energy</p>
+          <h2>Give Me The Shivers</h2><p>Shivers — Ed Sheeran</p>
+          <p class="library-meta">Seen in the diary: 31 July</p>
+          <a class="button" href="https://youtu.be/MwuK6ixYpwQ?is=m7bk0BlgNBcKcDXc" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="boot scootin boogie brooks dunn" data-level="beginner">
+          <span class="library-icon">👢</span><p class="kicker red">Honky-tonk classic</p>
+          <h2>Boot Scootin’ Boogie</h2><p>Boot Scootin’ Boogie — Brooks & Dunn</p>
+          <p class="library-meta">Seen in the diary: 31 July</p>
+          <a class="button" href="https://youtu.be/sOa1cFM5VTE?is=gtydwsheisJ1yXy5" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="burn it to the ground nickelback" data-level="beginner">
+          <span class="library-icon">🔥</span><p class="kicker red">Big energy</p>
+          <h2>Burn It To The Ground</h2><p>Burn It To The Ground — Nickelback</p>
+          <p class="library-meta">Seen in the diary: 31 July</p>
+          <a class="button" href="https://youtu.be/hdKZK_VCns8?is=rUuZKxDbavgQvUpx" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="strumming bird one more james johnston" data-level="beginner">
+          <span class="library-icon">🎸</span><p class="kicker red">Modern country</p>
+          <h2>Strumming Bird</h2><p>One More — James Johnston</p>
+          <p class="library-meta">Seen in the diary: 31 July</p>
+          <a class="button" href="https://youtu.be/Epc6u8rZCho?is=3RJVfkgiifxYyMDy" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+        <article class="library-item reveal" data-search="choosin texas ella langley" data-level="learning">
+          <span class="library-icon">⭐</span><p class="kicker red">Currently learning</p>
+          <h2>Choosin’ Texas</h2><p>Choosin’ Texas — Ella Langley</p>
+          <p class="library-meta">Started 31 July</p>
+          <a class="button" href="https://youtu.be/yNGd8EEyvlQ?is=ICVsheCWP17dxqku" target="_blank" rel="noopener">Watch Demo</a>
+        </article>
+      </div>
+      <p class="library-empty" id="libraryEmpty" hidden>No dances matched that search — try another song, artist or title.</p>
+    </section>
+  </main>
+  <footer>
+    <div class="footer-lockup">
+      <span class="round-mark large">BS</span>
+      <div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div>
+    </div>
+    <p class="script">Leave with sore feet and a happy heart. ♥</p>
+    <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
+  </footer>
+  <script src="script.js"></script>
+  <script>
+    const search = document.getElementById('danceSearch');
+    const cards = [...document.querySelectorAll('.library-item')];
+    const filters = [...document.querySelectorAll('.library-filters button')];
+    const empty = document.getElementById('libraryEmpty');
+    let activeFilter = 'all';
+
+    function updateLibrary() {
+      const term = search.value.trim().toLowerCase();
+      let visible = 0;
+      cards.forEach(card => {
+        const matchesText = card.dataset.search.includes(term);
+        const matchesFilter = activeFilter === 'all' || card.dataset.level === activeFilter;
+        const show = matchesText && matchesFilter;
+        card.hidden = !show;
+        if (show) visible++;
+      });
+      empty.hidden = visible !== 0;
+    }
+    search.addEventListener('input', updateLibrary);
+    filters.forEach(button => button.addEventListener('click', () => {
+      filters.forEach(item => item.classList.remove('active'));
+      button.classList.add('active');
+      activeFilter = button.dataset.filter;
+      updateLibrary();
+    }));
+  </script>
+</body>
+</html>
