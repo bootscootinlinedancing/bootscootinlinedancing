@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#080808" />
+  <meta name="description" content="Boot Scootin' Line Dancing — fun, friendly line dancing classes in Birmingham." />
+  <title>Boot Scootin' Line Dancing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="intro" id="intro" aria-hidden="true">
+    <div class="intro-floor"></div>
+    <div class="walking-boot-wrap">
+      <svg class="walking-boot" viewBox="0 0 420 360" role="img" aria-label="White cowboy boot with Boot Scootin' writing">
+        <defs>
+          <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="15" stdDeviation="12" flood-color="#000" flood-opacity=".75"/>
+          </filter>
+        </defs>
+        <g filter="url(#shadow)">
+          <path d="M90 25h168c9 0 15 7 14 16l-12 177c-1 16 8 31 22 39l93 53c11 7 14 20 8 31-5 9-14 14-25 14H125c-23 0-42-19-42-42V49c0-13 10-24 23-24z"
+                fill="#f3eadc" stroke="#1b1b1b" stroke-width="8"/>
+          <path d="M85 266c41 10 86 9 131-1 41-9 79-1 118 24l43 26c10 6 13 18 8 28H120c-20 0-37-16-37-37z"
+                fill="#eadfcf" stroke="#1b1b1b" stroke-width="8"/>
+          <path d="M121 342h96l-15 15h-73z" fill="#191919"/>
+          <path d="M112 212c20 4 44 4 68-2" stroke="#9f978a" stroke-width="5" fill="none"/>
+          <path d="M221 35l-6 188" stroke="#9f978a" stroke-width="5"/>
+          <path d="M97 63h165" stroke="#9f978a" stroke-width="4"/>
+          <path d="M109 78c26 8 53 8 79 0" stroke="#9f978a" stroke-width="4" fill="none"/>
+
+          <g fill="none" stroke="#111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M125 105l10-20 10 20 22 3-16 15 4 22-20-10-20 10 4-22-16-15z"/>
+            <path d="M226 116l7-14 7 14 16 2-12 11 3 16-14-7-14 7 3-16-12-11z"/>
+            <path d="M119 230c18-20 38-29 61-29"/>
+            <path d="M287 273l9-18 9 18 20 3-14 14 3 20-18-9-18 9 3-20-14-14z"/>
+            <path d="M344 296c9-14 21-14 30 0-9 14-21 14-30 0z"/>
+          </g>
+
+          <g fill="#c9151e" stroke="#111" stroke-width="4">
+            <path d="M175 179c-18-18-44 4-16 29l16 14 16-14c28-25 2-47-16-29z"/>
+            <path d="M261 246l7-14 7 14 16 2-12 11 3 16-14-7-14 7 3-16-12-11z"/>
+          </g>
+
+          <g fill="#111" font-family="Caveat, cursive" font-weight="700" text-anchor="middle">
+            <text x="168" y="115" font-size="30" transform="rotate(-5 168 115)">BOOT</text>
+            <text x="168" y="151" font-size="30" transform="rotate(-5 168 151)">SCOOTIN'</text>
+            <text x="168" y="183" font-size="22" transform="rotate(-5 168 183)">LINE DANCING</text>
+            <text x="230" y="300" font-size="24" transform="rotate(-7 230 300)">LET'S DANCE!</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+    <div class="intro-brand">
+      <div class="intro-logo">BOOT SCOOTIN'</div>
+      <div class="intro-sub">LINE DANCING</div>
+      <button class="intro-enter" id="enterSite">ENTER THE DANCE FLOOR</button>
+    </div>
+  </div>
+
+  <header class="site-header" id="top">
+    <a class="brand" href="#top" aria-label="Boot Scootin' Line Dancing home">
+      <span>BOOT SCOOTIN'</span>
+      <small>LINE DANCING</small>
+    </a>
+    <button class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="siteNav">MENU</button>
+    <nav id="siteNav" class="site-nav" aria-label="Main navigation">
+      <a href="#about">About</a>
+      <a href="#classes">Classes</a>
+      <a href="#events">Private Events</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <a class="btn btn-small" href="#classes">Book a class</a>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-noise"></div>
+      <div class="hero-content">
+        <p class="eyebrow">Birmingham's feel-good line dancing classes</p>
+        <h1>Grab your boots.<br><span>Bring your smile.</span><br>Let's dance.</h1>
+        <p class="hero-copy">Fun, friendly and beginner-friendly line dancing with brilliant country music and an atmosphere that makes everyone feel welcome.</p>
+        <div class="hero-actions">
+          <a class="btn" href="#classes">Book your first class</a>
+          <a class="btn btn-ghost" href="#about">Meet Nora</a>
+        </div>
+        <button class="music-button" id="musicButton" type="button" aria-pressed="false">
+          <span class="music-icon">♪</span>
+          <span>
+            <strong>Turn music on</strong>
+            <small>Website ambience</small>
+          </span>
+        </button>
+      </div>
+
+      <div class="hero-boot-card" aria-hidden="true">
+        <div class="mini-boot">👢</div>
+        <p>Boot Scootin'<br>Line Dancing</p>
+      </div>
+    </section>
+
+    <section class="feature-strip" aria-label="Why people love Boot Scootin'">
+      <article><span>👢</span><h3>Beginner friendly</h3><p>No partner needed.</p></article>
+      <article><span>♫</span><h3>Great music</h3><p>Country favourites.</p></article>
+      <article><span>♥</span><h3>Fun & friendly</h3><p>Good vibes, great people.</p></article>
+      <article><span>★</span><h3>All ages</h3><p>Everyone is welcome.</p></article>
+      <article><span>⌖</span><h3>Local classes</h3><p>Birmingham venues.</p></article>
+    </section>
+
+    <section class="section cream" id="about">
+      <div class="section-heading">
+        <p class="eyebrow red">Meet your instructor</p>
+        <h2>Hi, I'm Nora.</h2>
+      </div>
+      <div class="about-grid">
+        <div class="about-copy">
+          <p>I started Boot Scootin' Line Dancing to bring people together through a love of country music, movement and genuinely good times.</p>
+          <p>Classes are relaxed, welcoming and designed to help you learn at your own pace — whether you're stepping onto the dance floor for the first time or already know your vines from your shuffles.</p>
+          <blockquote>“More than just a dance class — it's a community on the dance floor.”</blockquote>
+        </div>
+        <div class="polaroid portrait-placeholder">
+          <div class="placeholder-photo">YOUR PHOTO</div>
+          <p>Grab your boots and let's dance!</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark" id="classes">
+      <div class="section-heading centre">
+        <p class="eyebrow">Where we're dancing next</p>
+        <h2>Upcoming classes</h2>
+        <p>Friendly, beginner-focused sessions with plenty of time to practise, laugh and enjoy the music.</p>
+      </div>
+
+      <div class="cards">
+        <article class="class-card">
+          <div class="class-image ecc"><span>EDGBASTON</span></div>
+          <div class="class-body">
+            <div class="card-tag">Fridays</div>
+            <h3>Edgbaston Community Centre</h3>
+            <p>7:30pm–8:30pm · £6 per person</p>
+            <a class="btn" href="#" aria-label="Book Edgbaston class">Book now</a>
+          </div>
+        </article>
+
+        <article class="class-card">
+          <div class="class-image low-places"><span>LOW PLACES</span></div>
+          <div class="class-body">
+            <div class="card-tag">Fortnightly Fridays</div>
+            <h3>Low Places Bar, Birmingham</h3>
+            <p>7:15pm–9:00pm · £6 per person</p>
+            <a class="btn" href="#" aria-label="Book Low Places class">Book now</a>
+          </div>
+        </article>
+      </div>
+      <p class="tiny-note">Booking links will be connected to your Eventbrite pages before launch.</p>
+    </section>
+
+    <section class="section cream" id="events">
+      <div class="split">
+        <div>
+          <p class="eyebrow red">Bring Boot Scootin' to your event</p>
+          <h2>Private line dancing parties</h2>
+          <p>Make your celebration unforgettable with a fun, guided line dancing experience tailored to your group.</p>
+          <ul class="tick-list">
+            <li>Birthday parties</li>
+            <li>Hen parties</li>
+            <li>Corporate events</li>
+            <li>Weddings and celebrations</li>
+            <li>Community events and festivals</li>
+          </ul>
+          <a class="btn" href="#contact">Ask about your event</a>
+        </div>
+        <div class="photo-stack" aria-label="Private events photo placeholders">
+          <div class="polaroid p1"><div class="placeholder-photo">EVENT PHOTO</div></div>
+          <div class="polaroid p2"><div class="placeholder-photo">DANCE PHOTO</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark" id="gallery">
+      <div class="section-heading centre">
+        <p class="eyebrow">Good times on the dance floor</p>
+        <h2>Gallery</h2>
+      </div>
+      <div class="gallery-grid">
+        <div class="gallery-item"><span>PHOTO 1</span></div>
+        <div class="gallery-item"><span>PHOTO 2</span></div>
+        <div class="gallery-item"><span>PHOTO 3</span></div>
+        <div class="gallery-item"><span>PHOTO 4</span></div>
+        <div class="gallery-item"><span>PHOTO 5</span></div>
+        <div class="gallery-item"><span>PHOTO 6</span></div>
+      </div>
+    </section>
+
+    <section class="section cream contact" id="contact">
+      <div class="section-heading centre">
+        <p class="eyebrow red">Let's talk</p>
+        <h2>Ready to dance?</h2>
+        <p>For class questions, private event enquiries or collaborations, get in touch.</p>
+      </div>
+      <div class="contact-card">
+        <a href="mailto:hello@bootscootinlinedancing.co.uk">hello@bootscootinlinedancing.co.uk</a>
+        <p>Birmingham, United Kingdom</p>
+        <div class="socials">
+          <a href="#" aria-label="Instagram">Instagram</a>
+          <a href="#" aria-label="TikTok">TikTok</a>
+          <a href="#" aria-label="Facebook">Facebook</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="brand footer-brand"><span>BOOT SCOOTIN'</span><small>LINE DANCING</small></div>
+    <p class="footer-script">Grab your boots. Bring your smile. Let's dance. ♥</p>
+    <p>© 2026 Boot Scootin' Line Dancing.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
