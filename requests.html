@@ -12,6 +12,11 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Boot Scootin’">
 </head>
 <body>
   <header class="header">
@@ -26,6 +31,7 @@
       <a href="dance-diary.html">Dance Diary</a>
       <a href="dance-library.html">Dance Library</a>
       <a href="community.html">Community</a>
+      <a href="rewards.html">Rewards</a>
       <a href="requests.html" aria-current="page">Requests</a>
     </nav>
   </header>
@@ -145,5 +151,27 @@
       }
     });
   </script>
+
+  <aside class="install-app" id="installApp" hidden aria-label="Install Boot Scootin' on your phone">
+    <img src="brand-logo.png" alt="">
+    <div class="install-app-copy">
+      <strong>Add Boot Scootin’ to your Home Screen</strong>
+      <span>Open the calendar, Dance Diary and demos like an app.</span>
+    </div>
+    <button class="install-app-button" id="installAppButton" type="button">Add</button>
+    <button class="install-app-close" id="installAppClose" type="button" aria-label="Close">×</button>
+  </aside>
+
+  <div class="install-guide" id="installGuide" hidden role="dialog" aria-modal="true" aria-labelledby="installGuideTitle">
+    <div class="install-guide-card">
+      <button class="install-guide-close" id="installGuideClose" type="button" aria-label="Close">×</button>
+      <img src="brand-logo.png" alt="">
+      <p class="kicker red">Add to Home Screen</p>
+      <h2 id="installGuideTitle">Keep Boot Scootin’ one tap away.</h2>
+      <ol id="installGuideSteps"></ol>
+      <button class="button" id="installGuideDone" type="button">Got It</button>
+    </div>
+  </div>
+
 </body>
 </html>

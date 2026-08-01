@@ -12,6 +12,11 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Boot Scootin’">
 </head>
 <body>
   <header class="header">
@@ -31,6 +36,7 @@
       <a href="dance-library.html">Dance Library</a>
       <a href="community.html">Community</a>
       <a href="requests.html">Requests</a>
+      <a href="rewards.html">Rewards</a>
       <a href="private-events.html">Private Events</a>
     </nav>
     <a class="button compact" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Book a class</a>
@@ -251,6 +257,7 @@
 
           <div class="ticket-actions">
             <a class="button event-book" href="${event.booking}" target="_blank" rel="noopener">Reserve My Boots</a>
+            <p class="ticket-reward-note">🏆 Every paid class earns a stamp towards your free 10th class.</p>
             <a class="ticket-link" href="${event.googleMaps}" target="_blank" rel="noopener">Open in Google Maps</a>
             <a class="ticket-link" href="${event.appleMaps}" target="_blank" rel="noopener">Open in Apple Maps</a>
             <a class="ticket-link" href="${event.calendarFile}" download>Add to Apple Calendar</a>
@@ -283,5 +290,27 @@
 
     renderCalendar();
   </script>
+
+  <aside class="install-app" id="installApp" hidden aria-label="Install Boot Scootin' on your phone">
+    <img src="brand-logo.png" alt="">
+    <div class="install-app-copy">
+      <strong>Add Boot Scootin’ to your Home Screen</strong>
+      <span>Open the calendar, Dance Diary and demos like an app.</span>
+    </div>
+    <button class="install-app-button" id="installAppButton" type="button">Add</button>
+    <button class="install-app-close" id="installAppClose" type="button" aria-label="Close">×</button>
+  </aside>
+
+  <div class="install-guide" id="installGuide" hidden role="dialog" aria-modal="true" aria-labelledby="installGuideTitle">
+    <div class="install-guide-card">
+      <button class="install-guide-close" id="installGuideClose" type="button" aria-label="Close">×</button>
+      <img src="brand-logo.png" alt="">
+      <p class="kicker red">Add to Home Screen</p>
+      <h2 id="installGuideTitle">Keep Boot Scootin’ one tap away.</h2>
+      <ol id="installGuideSteps"></ol>
+      <button class="button" id="installGuideDone" type="button">Got It</button>
+    </div>
+  </div>
+
 </body>
 </html>

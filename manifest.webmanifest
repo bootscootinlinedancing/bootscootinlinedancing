@@ -1,0 +1,66 @@
+{
+  "id": "/",
+  "name": "Boot Scootin' Line Dancing",
+  "short_name": "Boot Scootin'",
+  "description": "Class calendar, Dance Diary, demo library and community hub for Boot Scootin' Line Dancing Birmingham.",
+  "start_url": "/index.html?source=homescreen",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#090606",
+  "theme_color": "#090606",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Class Calendar",
+      "short_name": "Calendar",
+      "url": "/calendar.html",
+      "icons": [
+        {
+          "src": "app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Dance Library",
+      "short_name": "Dances",
+      "url": "/dance-library.html",
+      "icons": [
+        {
+          "src": "app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Dance Diary",
+      "short_name": "Diary",
+      "url": "/dance-diary.html",
+      "icons": [
+        {
+          "src": "app-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

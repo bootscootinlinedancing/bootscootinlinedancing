@@ -12,32 +12,43 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Boot Scootin’">
 </head>
-<body class="intro-open home-v19">
+<body class="intro-open">
   <div class="intro poster-intro" id="intro">
     <div class="poster-shell" id="posterShell">
       <img class="landing-poster" src="landing-poster.webp"
            alt="Boot Scootin' Line Dancing — Birmingham, UK. Where Country Music Brings People Together.">
+
       <button id="enterSite" class="poster-enter" aria-label="Enter the dance floor">
         <span class="sr-only">Enter the dance floor</span>
       </button>
+
       <span class="impact-dust" aria-hidden="true"></span>
     </div>
   </div>
 
-  <header class="header v19-header">
+  <header class="header">
     <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
       <img class="brand-logo" src="brand-logo.png" alt="">
-      <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
+      <span class="wordmark">
+        <strong>BOOT SCOOTIN'</strong>
+        <span>LINE DANCING</span>
+      </span>
     </a>
     <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
     <nav id="nav">
-      <a href="index.html" aria-current="page">Home</a>
       <a href="about.html">About</a>
       <a href="calendar.html">Calendar</a>
       <a href="dance-diary.html">Dance Diary</a>
       <a href="dance-library.html">Dance Library</a>
       <a href="community.html">Community</a>
+      <a href="requests.html">Requests</a>
+      <a href="rewards.html">Rewards</a>
       <a href="private-events.html">Private Events</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -45,156 +56,157 @@
   </header>
 
   <main id="top">
-    <section class="v19-hero">
-      <div class="v19-hero-overlay"></div>
-      <div class="v19-hero-copy reveal">
+    <section class="hero">
+      <div class="hero-bg"></div>
+      <div class="hero-content reveal">
         <p class="kicker">Birmingham line dancing</p>
-        <h1>Life’s Better<br>in <em>Cowboy Boots.</em></h1>
-        <p>Learn to line dance in Birmingham. Fun, friendly, beginner-friendly and open to everyone.</p>
+        <h1>Life's better<br>in <em>cowboy boots.</em></h1>
+        <p>Fun, friendly and beginner-friendly classes. No partner needed — just bring yourself and get ready to dance.</p>
         <div class="actions">
-          <a class="button" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">👢 Book Your First Class</a>
-          <a class="button ghost" href="calendar.html">View Classes</a>
+          <a class="button" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Book your first class</a>
+          <a class="button ghost" href="about.html">Discover Boot Scootin'</a>
         </div>
-        <a class="music-link" href="community.html#music">♫ Nora’s Country Playlist</a>
+      </div>
+      <div class="hero-badge reveal">
+        <span>Beginner friendly</span>
+        <strong>No partner needed</strong>
       </div>
     </section>
 
-    <section class="v19-paper-section">
-      <div class="v19-main-grid">
-        <article class="v19-meet reveal">
-          <div class="meet-copy">
-            <p class="kicker red">Meet Nora</p>
-            <h2 class="script">Hi, I’m Nora!</h2>
-            <p>Healthcare professional by day and line-dance instructor by night.</p>
-            <p>I created Boot Scootin’ to bring people together through country music, good vibes and unforgettable nights.</p>
-            <a class="text-link" href="about.html">Read my story →</a>
+    <section class="quick-strip">
+      <div><b>👢</b><strong>Beginners welcome</strong><span>Learn at your own pace</span></div>
+      <div><b>♥</b><strong>Friendly atmosphere</strong><span>Come alone, leave smiling</span></div>
+      <div><b>♫</b><strong>Brilliant music</strong><span>Country and feel-good favourites</span></div>
+      <div><b>★</b><strong>Everyone welcome</strong><span>No experience required</span></div>
+    </section>
+
+    <section class="section paper" id="welcome">
+      <div class="welcome-grid">
+        <div class="portrait reveal">
+          <img src="nora.webp" alt="Nora, founder and instructor of Boot Scootin' Line Dancing">
+          <span>Hi, I'm Nora 🤠</span>
+        </div>
+        <div class="copy reveal">
+          <p class="kicker red">Meet your instructor</p>
+          <h2>Hi, I'm Nora 🤠</h2>
+          <p>I created Boot Scootin' Line Dancing to bring people together through country music, movement and genuinely good times.</p>
+          <blockquote>Come for the dancing. Stay for the people.</blockquote>
+          <a class="text-link" href="about.html">Read my story and learn about Boot Scootin' →</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark" id="classes">
+      <div class="section-title reveal">
+        <p class="kicker">What it really feels like</p>
+        <h2>Learn. Laugh. Dance.</h2>
+        <p>Real moments from our classes and social nights in Birmingham.</p>
+      </div>
+      <div class="moment-grid">
+        <figure class="wide reveal">
+          <img src="hall1.webp" alt="A Boot Scootin' line dancing class practising together">
+          <figcaption>Learn the steps together</figcaption>
+        </figure>
+        <figure class="tall reveal">
+          <img src="party1.webp" alt="Line dancers enjoying a social night at Low Places">
+          <figcaption>Then take them to the dance floor</figcaption>
+        </figure>
+        <figure class="tall reveal">
+          <img src="class1.webp" alt="A friendly line dancing class in Birmingham">
+          <figcaption>Friendly, relaxed and welcoming</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section paper" id="venues">
+      <div class="section-title centre reveal">
+        <p class="kicker red">Where we'll be dancing</p>
+        <h2>Our Birmingham venues</h2>
+      </div>
+      <div class="venue-grid">
+        <article class="venue-card reveal">
+          <img src="lowplaces.webp" alt="The entrance to Low Places honky tonk bar in Birmingham">
+          <div>
+            <p class="tag">Fortnightly Fridays</p>
+            <h3>Low Places</h3>
+            <p>Class, social dancing and a full honky-tonk atmosphere in Birmingham.</p>
+            <a class="text-link" href="https://www.eventbrite.co.uk/e/boot-scootin-line-dancing-launch-night-at-low-places-bar-tickets-1994513541694" target="_blank" rel="noopener">See dates and book →</a>
           </div>
-          <figure class="polaroid">
-            <img src="nora.webp" alt="Nora, founder of Boot Scootin' Line Dancing">
-            <figcaption>Grab your boots and let’s dance!</figcaption>
-          </figure>
         </article>
-
-        <section class="v19-classes reveal">
-          <div class="section-heading-inline">
-            <div>
-              <p class="kicker red">Upcoming Classes</p>
-              <h2>Choose your next dance floor.</h2>
-            </div>
-            <a class="text-link" href="calendar.html">View all classes →</a>
+        <article class="venue-card venue-placeholder reveal">
+          <div class="placeholder-art">
+            <span>ECC</span>
           </div>
-
-          <div class="class-card-row">
-            <article class="v19-class-card">
-              <img src="hall1.webp" alt="Edgbaston Community Centre">
-              <div class="class-card-body">
-                <span class="mini-label">Fridays</span>
-                <h3>Edgbaston Community Centre</h3>
-                <p>📍 Birmingham</p>
-                <p>🕢 7:30pm–8:30pm · £6</p>
-                <a class="button" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Book Now</a>
-              </div>
-            </article>
-
-            <article class="v19-class-card">
-              <img src="lowplaces.webp" alt="Low Places Bar in Birmingham">
-              <div class="class-card-body">
-                <span class="mini-label">Fortnightly Fridays</span>
-                <h3>Low Places Bar</h3>
-                <p>📍 Birmingham</p>
-                <p>🕢 7:15pm–9:00pm · £6</p>
-                <a class="button" href="https://www.eventbrite.co.uk/e/boot-scootin-line-dancing-launch-night-at-low-places-bar-tickets-1994513541694" target="_blank" rel="noopener">Book Now</a>
-              </div>
-            </article>
+          <div>
+            <p class="tag">Selected Fridays</p>
+            <h3>Edgbaston Community Centre</h3>
+            <p>A bright, relaxed hall that is perfect for learning at your own pace.</p>
+            <a class="text-link" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">See dates and book →</a>
           </div>
-        </section>
+        </article>
       </div>
     </section>
 
-    <section class="v19-benefits">
-      <div><span>👢</span><strong>Beginner Friendly</strong><small>We’ll guide you every step of the way.</small></div>
-      <div><span>🤝</span><strong>No Partner Needed</strong><small>Come on your own or with friends.</small></div>
-      <div><span>⭐</span><strong>All Ages Welcome</strong><small>It’s never too early or too late.</small></div>
-      <div><span>♫</span><strong>Great Music</strong><small>Country hits, old and new.</small></div>
-      <div><span>♡</span><strong>Friendly Atmosphere</strong><small>Good vibes, great people.</small></div>
-    </section>
-
-    <section class="v19-paper-section">
-      <div class="v19-lower-grid">
-        <section class="v19-gallery reveal">
-          <div class="section-heading-inline">
-            <div><p class="kicker red">Gallery</p><h2>Good times on the dance floor.</h2></div>
-            <a class="text-link" href="community.html#memories">View more →</a>
-          </div>
-          <div class="gallery-strip">
-            <img src="class1.webp" alt="Line dancing class">
-            <img src="party1.webp" alt="Social dancing at Low Places">
-            <img src="class2.webp" alt="Dancers practising together">
-            <img src="party2.webp" alt="Boot Scootin' social night">
-          </div>
-        </section>
-
-        <section class="v19-events reveal">
-          <div class="events-copy">
-            <p class="kicker red">Private Events</p>
-            <h2>Make your next event unforgettable.</h2>
-            <ul>
-              <li>Birthday parties</li>
-              <li>Hen parties</li>
-              <li>Corporate events</li>
-              <li>Community events</li>
-            </ul>
-            <a class="button ghost dark-ghost" href="private-events.html">Find Out More</a>
-          </div>
-          <div class="event-polaroids">
-            <img src="party1.webp" alt="Country dancing party">
-            <img src="party2.webp" alt="Line dancing event">
-          </div>
-        </section>
+    <section class="section dark" id="gallery">
+      <div class="section-title centre reveal">
+        <p class="kicker">Good times on the dance floor</p>
+        <h2>Boot Scootin' moments</h2>
+      </div>
+      <div class="polaroids">
+        <figure class="reveal"><img src="hall2.webp" alt="Line dancing class"><figcaption>Finding our feet</figcaption></figure>
+        <figure class="reveal"><img src="party2.webp" alt="Line dancing social"><figcaption>Honky-tonk nights</figcaption></figure>
+        <figure class="reveal"><img src="class2.webp" alt="Group line dancing together"><figcaption>One more dance</figcaption></figure>
       </div>
     </section>
 
-    <section class="v19-community-strip reveal">
-      <a href="dance-diary.html"><span>📖</span><strong>Dance Diary</strong><small>See what we danced each week.</small></a>
-      <a href="dance-library.html"><span>🎵</span><strong>Dance Library</strong><small>Practise with demo videos.</small></a>
-      <a href="community.html"><span>🤎</span><strong>Community Hub</strong><small>Memories, music and more.</small></a>
-      <a href="requests.html"><span>⭐</span><strong>Dance Requests</strong><small>Tell us what you want to learn.</small></a>
+    <section class="section paper contact" id="contact">
+      <div class="contact-box reveal">
+        <p class="kicker red">Ready to dance?</p>
+        <h2>Come and see what everyone's smiling about.</h2>
+        <p>Book your next class or follow Boot Scootin' for class dates, videos and updates.</p>
+        <div class="actions centre-actions">
+          <a class="button" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">View classes & book</a>
+          <a class="button dark-button" href="https://www.instagram.com/boot.scootin.linedancing" target="_blank" rel="noopener">Instagram</a>
+          <a class="button dark-button" href="https://www.facebook.com/share/1F4eZwUGRq/" target="_blank" rel="noopener">Facebook</a>
+        </div>
+      </div>
     </section>
   </main>
 
-  <footer id="contact" class="v19-footer">
-    <div class="footer-brand">
+  <footer>
+    <div class="footer-lockup">
       <img class="brand-logo footer-logo" src="brand-logo.png" alt="Boot Scootin’ Line Dancing logo">
-      <div>
-        <strong>BOOT SCOOTIN’</strong>
+      <div class="wordmark footer-wordmark">
+        <strong>BOOT SCOOTIN'</strong>
         <span>LINE DANCING</span>
-        <p class="script">More than a dance class — it’s a community.</p>
       </div>
     </div>
-
-    <div>
-      <h3>Let’s Connect</h3>
-      <div class="footer-socials">
-        <a href="https://www.instagram.com/boot.scootin.linedancing" target="_blank" rel="noopener">Instagram</a>
-        <a href="https://www.facebook.com/share/1FXohLtDyQ/?mibextid=wwXIfr" target="_blank" rel="noopener">Facebook</a>
-        <a href="https://www.tiktok.com/@boot.scootin.linedancing" target="_blank" rel="noopener">TikTok</a>
-      </div>
-    </div>
-
-    <div>
-      <h3>Explore</h3>
-      <a href="calendar.html">Class Calendar</a>
-      <a href="dance-library.html">Dance Library</a>
-      <a href="private-events.html">Private Events</a>
-    </div>
-
-    <div class="footer-slogan">
-      <p class="script">Grab your boots.<br>Bring your smile.<br>Let’s dance! ♥</p>
-    </div>
-
-    <p class="footer-copy">© 2026 Boot Scootin’ Line Dancing · Birmingham</p>
+    <p class="script">Grab your boots. Bring your smile. Let's dance. ♥</p>
+    <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
   </footer>
 
   <script src="script.js"></script>
+
+  <aside class="install-app" id="installApp" hidden aria-label="Install Boot Scootin' on your phone">
+    <img src="brand-logo.png" alt="">
+    <div class="install-app-copy">
+      <strong>Add Boot Scootin’ to your Home Screen</strong>
+      <span>Open the calendar, Dance Diary and demos like an app.</span>
+    </div>
+    <button class="install-app-button" id="installAppButton" type="button">Add</button>
+    <button class="install-app-close" id="installAppClose" type="button" aria-label="Close">×</button>
+  </aside>
+
+  <div class="install-guide" id="installGuide" hidden role="dialog" aria-modal="true" aria-labelledby="installGuideTitle">
+    <div class="install-guide-card">
+      <button class="install-guide-close" id="installGuideClose" type="button" aria-label="Close">×</button>
+      <img src="brand-logo.png" alt="">
+      <p class="kicker red">Add to Home Screen</p>
+      <h2 id="installGuideTitle">Keep Boot Scootin’ one tap away.</h2>
+      <ol id="installGuideSteps"></ol>
+      <button class="button" id="installGuideDone" type="button">Got It</button>
+    </div>
+  </div>
+
 </body>
 </html>

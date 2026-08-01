@@ -107,3 +107,34 @@ VERSION 19 UPDATE
 - Added quick links to Dance Diary, Dance Library, Community and Requests.
 - Added a redesigned footer with social links and key pages.
 - Preserved the existing cinematic intro and every previously built page.
+
+
+VERSION 20 UPDATE — INSTALLABLE WEB APP
+- Added a full web app manifest.
+- Added 192px and 512px app icons using the Boot Scootin' logo.
+- Added a service worker for faster loading and basic offline access.
+- Added an Android installation prompt using the browser's native install flow.
+- Added clear iPhone/iPad Safari instructions for Add to Home Screen.
+- Added standalone display mode so the site opens without normal browser controls.
+- Added app shortcuts for Calendar, Dance Library and Dance Diary.
+- Added a dismissible Add Boot Scootin' to your Home Screen banner.
+
+
+VERSION 21 UPDATE
+- Restored the preferred Version 18 homepage design.
+- Restored the original homepage photography layout.
+- Restored the short Meet Nora wording explaining why Boot Scootin' was created.
+- Removed the newer editorial homepage wording and layout.
+- Kept all newer pages and features.
+- Kept the installable iPhone/Android web-app functionality from Version 20.
+
+
+VERSION 22 UPDATE — BOOT SCOOTIN' REWARDS
+- Added a complete Rewards page.
+- Added the SumUp loyalty link: https://hi.sumup.com/p/r/maz4o06
+- Added a clean website QR code for the SumUp rewards programme.
+- Added the 9 stamps = free 10th class explanation.
+- Added a homepage Rewards preview.
+- Added Rewards to site navigation.
+- Added rewards reminders to class calendar tickets.
+- Added a sample stamp progress display.
