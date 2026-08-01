@@ -1508,61 +1508,6 @@ button.calendar-day{cursor:pointer}
 }
 
 
-/* VERSION 23 — ORIGINAL STOMP SOUND & COUNTRY MUSIC */
-.music-toggle{
-  position:fixed;
-  z-index:1050;
-  right:18px;
-  bottom:max(18px,env(safe-area-inset-bottom));
-  min-height:48px;
-  border:1px solid #8f272b;
-  border-radius:999px;
-  background:rgba(13,9,8,.94);
-  color:#fff;
-  display:flex;
-  align-items:center;
-  gap:.55rem;
-  padding:.65rem .9rem;
-  box-shadow:0 12px 34px rgba(0,0,0,.42);
-  backdrop-filter:blur(10px);
-  cursor:pointer;
-  font:inherit;
-}
-.music-toggle span{
-  width:29px;
-  height:29px;
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  border:1px solid #b52a30;
-  font-size:1rem;
-}
-.music-toggle b{
-  font-size:.78rem;
-  text-transform:uppercase;
-  letter-spacing:.06em;
-}
-.music-toggle.playing{
-  background:#7f171c;
-  border-color:#db3a41;
-}
-.music-toggle.playing span{
-  animation:musicPulse 1.25s ease-in-out infinite;
-}
-@keyframes musicPulse{
-  0%,100%{transform:scale(1)}
-  50%{transform:scale(1.13)}
-}
-@media(max-width:560px){
-  .music-toggle{
-    right:12px;
-    bottom:max(12px,env(safe-area-inset-bottom));
-    padding:.55rem .7rem;
-  }
-  .music-toggle b{display:none}
-}
-
-
 /* VERSION 24 — PREMIUM MUSIC CARDS & MERCHANDISE */
 .music-section .section-title{max-width:900px}
 .premium-playlists{
@@ -1739,4 +1684,360 @@ button.calendar-day{cursor:pointer}
   .merch-coming-card,.merch-preview-inner{grid-template-columns:1fr}
   .merch-shirt-art{min-height:380px}
   .mini-shirt-card{min-height:280px}
+}
+
+
+/* VERSION 25 — BRUMMIE COWGIRL & NORA'S COUNTRY CORNER */
+.beyond-section{overflow:hidden}
+.beyond-grid{
+  width:min(1180px,94vw);
+  margin:2rem auto 0;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1rem;
+}
+.beyond-card{
+  position:relative;
+  min-height:310px;
+  padding:1.5rem;
+  border:1px solid #4e2829;
+  background:#120b0a;
+  display:flex;
+  flex-direction:column;
+}
+.beyond-card.featured{
+  grid-column:span 2;
+  background:
+    linear-gradient(135deg,rgba(9,6,5,.98),rgba(64,16,18,.78)),
+    url("nora.webp") right center/42% auto no-repeat;
+  padding-right:44%;
+}
+.beyond-card h3{
+  font-size:clamp(1.8rem,4vw,2.7rem);
+  margin:.35rem 0 .8rem;
+}
+.beyond-card p{color:#d0bfb0;line-height:1.55}
+.beyond-card strong{margin-top:auto;color:#fff}
+.beyond-card:hover{border-color:#b42127;transform:translateY(-3px)}
+.beyond-number{
+  position:absolute;
+  right:1rem;
+  top:.8rem;
+  color:#6f3b3c;
+  font-family:Rye,serif;
+  font-size:2rem;
+}
+
+.brummie-about-card{
+  width:min(1050px,94vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:2rem;
+  align-items:center;
+  border:1px solid #55292b;
+  padding:clamp(1.5rem,4vw,3rem);
+  background:
+    radial-gradient(circle at 80% 30%,rgba(130,25,30,.25),transparent 40%),
+    #110a09;
+}
+.brummie-about-card h2{font-size:clamp(2.3rem,5vw,4rem)}
+.brummie-about-card blockquote{
+  margin:0;
+  padding:1.5rem;
+  border-left:3px solid #b41f25;
+  font-family:Caveat,cursive;
+  font-size:clamp(1.8rem,4vw,2.5rem);
+  color:#f0ddc7;
+}
+
+.country-corner-hero{
+  min-height:720px;
+  display:grid;
+  grid-template-columns:1.1fr .9fr;
+  align-items:stretch;
+  background:#0b0706;
+  color:#fff;
+}
+.country-corner-hero-copy{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:clamp(5rem,9vw,9rem) max(5vw,calc((100vw - 1200px)/2));
+  padding-right:4vw;
+}
+.country-corner-hero-copy h1{
+  font-family:Rye,serif;
+  font-size:clamp(3.4rem,7vw,7rem);
+  line-height:.95;
+  margin:.4rem 0 1rem;
+}
+.country-corner-hero-copy p{
+  max-width:620px;
+  font-size:1.15rem;
+  line-height:1.65;
+}
+.country-corner-hero-copy .button{width:max-content;margin-top:1rem}
+.country-corner-photo{
+  min-height:720px;
+  position:relative;
+  overflow:hidden;
+}
+.country-corner-photo::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,#0b0706 0%,transparent 28%);
+}
+.country-corner-photo img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.country-intro-grid{
+  width:min(1050px,94vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:.8fr 1.2fr;
+  gap:3rem;
+  align-items:start;
+}
+.country-intro-grid h2{font-size:clamp(2.3rem,5vw,4rem)}
+.country-intro-grid p{font-size:1.1rem;line-height:1.8}
+
+.country-editorial-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px;
+  background:#4b2627;
+  padding:1px;
+}
+.country-editorial-card{
+  min-height:360px;
+  background:#100908;
+  padding:clamp(1.5rem,4vw,3rem);
+  position:relative;
+  display:flex;
+  flex-direction:column;
+}
+.country-editorial-card h2{
+  font-size:clamp(2rem,5vw,3.5rem);
+  margin:.35rem 0 1rem;
+}
+.country-editorial-card p{color:#d0bfb0;line-height:1.6}
+.editorial-index{
+  position:absolute;
+  right:1.5rem;
+  top:1rem;
+  color:#633436;
+  font-family:Rye,serif;
+  font-size:2.4rem;
+}
+.country-editorial-card .status-chip{margin:auto 0 0}
+
+.country-social-card,
+.country-hub-preview-inner{
+  width:min(1000px,94vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:2rem;
+  align-items:center;
+  padding:2rem;
+  border:1px solid #d2b993;
+  background:#fffaf3;
+}
+.country-social-card h2{font-size:clamp(2rem,5vw,3.4rem)}
+.country-quote-section blockquote{
+  width:min(900px,92vw);
+  margin:auto;
+  text-align:center;
+  font-family:Caveat,cursive;
+  font-size:clamp(2.5rem,7vw,5.5rem);
+  color:#f3e2cd;
+}
+
+.country-hub-preview-inner{
+  background:#120b0a;
+  color:#fff;
+  border-color:#55292b;
+  grid-template-columns:1.15fr .85fr;
+}
+.country-hub-preview-inner h2{font-size:clamp(2.3rem,5vw,4rem)}
+.country-hub-preview-inner img{
+  width:100%;
+  max-height:380px;
+  object-fit:cover;
+  border:8px solid #f1e5d4;
+  transform:rotate(2deg);
+}
+
+@media(max-width:900px){
+  .beyond-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .beyond-card.featured{grid-column:span 2}
+  .country-corner-hero{grid-template-columns:1fr}
+  .country-corner-photo{min-height:520px}
+  .country-corner-photo::after{background:linear-gradient(180deg,#0b0706 0%,transparent 25%)}
+}
+@media(max-width:700px){
+  .beyond-grid,
+  .country-editorial-grid,
+  .country-intro-grid,
+  .brummie-about-card,
+  .country-social-card,
+  .country-hub-preview-inner{grid-template-columns:1fr}
+  .beyond-card.featured{
+    grid-column:auto;
+    padding-right:1.5rem;
+    background:
+      linear-gradient(180deg,rgba(9,6,5,.92),rgba(64,16,18,.84)),
+      url("nora.webp") center/cover no-repeat;
+  }
+  .country-social-card .button{width:100%}
+  .country-hub-preview-inner img{max-height:440px}
+}
+
+
+/* VERSION 26 — MOBILE OVERFLOW & TEXT FIT FIXES */
+html, body{
+  max-width:100%;
+  overflow-x:hidden;
+}
+*, *::before, *::after{
+  box-sizing:border-box;
+}
+img, video, iframe, svg{
+  max-width:100%;
+}
+main, section, article, aside, header, footer, nav, div{
+  min-width:0;
+}
+h1, h2, h3, p, a, button, label, span, strong, small, blockquote{
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+.button,
+.ticket-link,
+.text-link,
+.install-app-button{
+  white-space:normal;
+  text-align:center;
+  line-height:1.25;
+  max-width:100%;
+}
+.mailing-box{
+  width:min(1050px,100%);
+  max-width:100%;
+}
+.mailing-box > *,
+.mailing-preview,
+.mailing-preview label{
+  min-width:0;
+}
+.mailing-preview input[type="text"],
+.mailing-preview input[type="email"]{
+  width:100%;
+  max-width:100%;
+}
+.consent-preview{
+  width:100%;
+}
+.consent-preview input{
+  flex:0 0 auto;
+}
+.header{
+  max-width:100vw;
+}
+.brand-lockup{
+  min-width:0;
+}
+.wordmark{
+  min-width:0;
+}
+.wordmark strong,
+.wordmark span{
+  white-space:normal;
+}
+nav a{
+  overflow-wrap:normal;
+}
+.music-toggle{
+  max-width:calc(100vw - 24px);
+}
+
+@media(max-width:760px){
+  h1{
+    font-size:clamp(2.45rem,11vw,4.3rem);
+    line-height:1;
+  }
+  h2{
+    font-size:clamp(2rem,8.7vw,3.2rem);
+    line-height:1.05;
+  }
+  h3{
+    line-height:1.15;
+  }
+  .section{
+    padding-left:1rem;
+    padding-right:1rem;
+  }
+  .mailing-section{
+    padding-left:.75rem;
+    padding-right:.75rem;
+  }
+  .mailing-box{
+    grid-template-columns:1fr;
+    gap:1.4rem;
+    padding:1.15rem;
+  }
+  .mailing-box h2{
+    font-size:clamp(2rem,9vw,3rem);
+  }
+  .mailing-preview .button{
+    width:100%;
+    padding:.85rem .7rem;
+    font-size:.9rem;
+    letter-spacing:.035em;
+  }
+  .consent-preview{
+    grid-template-columns:24px minmax(0,1fr)!important;
+    gap:.6rem;
+    line-height:1.45;
+  }
+  .header{
+    padding-left:.65rem;
+    padding-right:.65rem;
+  }
+  .brand-logo{
+    flex:0 0 40px;
+    width:40px;
+    height:40px;
+  }
+  .wordmark strong{
+    font-size:clamp(1rem,5vw,1.45rem);
+  }
+  .wordmark span{
+    font-size:.72rem;
+    letter-spacing:.18em;
+  }
+  .menu{
+    flex:0 0 auto;
+    padding:.65rem .8rem;
+  }
+}
+
+@media(max-width:420px){
+  h2{
+    font-size:clamp(1.85rem,8.2vw,2.6rem);
+  }
+  .mailing-box{
+    padding:1rem .8rem;
+  }
+  .mailing-preview label{
+    font-size:.95rem;
+  }
+  .mailing-preview input[type="text"],
+  .mailing-preview input[type="email"]{
+    padding:.75rem;
+  }
 }

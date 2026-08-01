@@ -161,3 +161,35 @@ VERSION 24 UPDATE — MUSIC & MERCHANDISE
 - Added Boot Scootin' T-shirts as the first upcoming merchandise drop.
 - Added a merchandise teaser to the homepage.
 - Added Merch to the navigation.
+
+
+VERSION 25 UPDATE — BRUMMIE COWGIRL
+- Added Nora's Country Corner as a new full page.
+- Added Brummie Cowgirl to the About page.
+- Added a Beyond the Dance Floor section to the homepage.
+- Added Country Corner to site navigation.
+- Added a Country Corner feature to the Community Hub.
+- Connected the Brummie Cowgirl buttons to:
+  https://www.instagram.com/theofficial_missendowed
+- Added editorial spaces for music, outfits, concerts, festivals and a country bucket list.
+- Kept the main homepage focused on Boot Scootin' classes while introducing Nora's personal country brand more subtly.
+
+
+VERSION 26 UPDATE — MOBILE TEXT FIT
+- Fixed headings overflowing their cards on smaller phones.
+- Reduced responsive heading sizes on mobile.
+- Prevented horizontal page scrolling.
+- Added safer text wrapping for buttons, headings and labels.
+- Fixed mailing-list fields and consent text on narrow screens.
+- Made the mailing-list box fit fully inside the viewport.
+- Improved header/logo sizing on small phones.
+- Prevented the music control from extending outside the screen.
+
+
+VERSION 27 UPDATE — STOMP FIX
+- Removed the generated background music completely.
+- Removed the floating music control.
+- Rebuilt the boot-stomp sound to be louder and clearer on phone speakers.
+- The stomp now plays immediately when Enter the Dance Floor is tapped.
+- The stomp no longer depends on turning music on.
+- Updated the service worker cache so the new sound replaces the old version.
