@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v30";
+const CACHE_NAME = "boot-scootin-v33";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -9,6 +9,9 @@ const APP_SHELL = [
   "/community.html",
   "/private-events.html",
   "/requests.html",
+  "/journey.html",
+  "/moonshine.html",
+  "/country-map.html",
   "/styles.css",
   "/script.js",
   "/manifest.webmanifest",

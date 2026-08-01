@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090606">
+  <meta name="description" content="Preview My Boot Scootin' Journey — track dances, confidence and progress privately.">
+  <title>My Boot Scootin’ Journey | Boot Scootin' Line Dancing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+  <header class="header">
+    <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
+      <img class="brand-logo" src="brand-logo.png" alt="">
+      <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
+    </a>
+    <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
+    <nav id="nav">
+      <a href="index.html">Home</a>
+      <a href="dance-library.html">Dance Library</a>
+      <a href="dance-diary.html">Dance Diary</a>
+      <a href="journey.html" aria-current="page">My Journey</a>
+      <a href="moonshine.html">Moonshine</a>
+      <a href="community.html">Community</a>
+    </nav>
+  </header>
+
+  <main class="feature-page journey-page">
+    <section class="feature-hero section dark">
+      <div class="section-title centre reveal">
+        <p class="kicker">Your personal dance space</p>
+        <h1>My Boot Scootin’ Journey</h1>
+        <p>A secure future member area for tracking dances, confidence, support needs and milestones.</p>
+      </div>
+    </section>
+
+    <section class="section paper">
+      <div class="journey-status reveal">
+        <span class="status-chip">Secure accounts are not live yet</span>
+        <h2>Here is how your private dashboard will work.</h2>
+        <p>This page is a design preview only. It does not currently create accounts or store personal information.</p>
+      </div>
+
+      <div class="journey-dashboard reveal">
+        <aside class="journey-profile">
+          <div class="journey-photo-preview" id="journeyPhotoPreview" aria-label="Optional profile photo preview">
+            <span>NA</span>
+          </div>
+          <h3>Your Dance Journey</h3>
+          <p>Absolute Beginner</p>
+
+          <label class="profile-upload-preview">
+            Optional profile photo
+            <input id="profilePhotoDemo" type="file" accept="image/*">
+            <small>Only you can see it by default. You can separately choose whether Nora may see it.</small>
+          </label>
+
+          <label class="profile-visibility-row">
+            <input id="sharePhotoWithNora" type="checkbox">
+            <span>Allow Nora to see my profile photo</span>
+          </label>
+
+          <div class="journey-metrics">
+            <div><strong>12</strong><span>Dances</span></div>
+            <div><strong>6</strong><span>Classes</span></div>
+            <div><strong>3</strong><span>Milestones</span></div>
+          </div>
+          <button class="button muted-button" type="button" disabled>Create Account Coming Soon</button>
+        </aside>
+
+        <div class="journey-main">
+          <div class="journey-privacy">
+            <div>
+              <p class="kicker red">Privacy control</p>
+              <h3>Share progress with Nora</h3>
+              <p>Members will choose whether their progress stays private or is shared with Nora for support.</p>
+            </div>
+            <label class="demo-switch">
+              <input id="shareDemo" type="checkbox">
+              <span>Private</span>
+            </label>
+          </div>
+
+          <section class="birthday-settings-preview">
+            <div class="birthday-settings-heading">
+              <div>
+                <p class="kicker red">Boot Scootin’ Birthdays</p>
+                <h3>Choose how your birthday is shared.</h3>
+                <p>Birth year and age are never needed. Members can leave this section blank.</p>
+              </div>
+            </div>
+
+            <div class="birthday-options">
+              <label>
+                Birthday day
+                <select id="birthdayDay">
+                  <option value="">Prefer not to say</option>
+                  <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                  <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+                  <option>11</option><option>12</option><option>13</option><option>14</option><option>15</option>
+                  <option>16</option><option>17</option><option>18</option><option>19</option><option>20</option>
+                  <option>21</option><option>22</option><option>23</option><option>24</option><option>25</option>
+                  <option>26</option><option>27</option><option>28</option><option>29</option><option>30</option><option>31</option>
+                </select>
+              </label>
+
+              <label>
+                Birthday month
+                <select id="birthdayMonth">
+                  <option value="">Prefer not to say</option>
+                  <option>January</option><option>February</option><option>March</option><option>April</option>
+                  <option>May</option><option>June</option><option>July</option><option>August</option>
+                  <option>September</option><option>October</option><option>November</option><option>December</option>
+                </select>
+              </label>
+            </div>
+
+            <fieldset class="birthday-sharing">
+              <legend>How should it appear?</legend>
+              <label><input type="radio" name="birthdayShare" value="exact"> Show my day and month on Birthday Boots</label>
+              <label><input type="radio" name="birthdayShare" value="month"> Feature me in my birthday month only</label>
+              <label><input type="radio" name="birthdayShare" value="nora"> Tell Nora privately, but do not show me publicly</label>
+              <label><input type="radio" name="birthdayShare" value="private" checked> Keep my birthday private</label>
+            </fieldset>
+
+            <label class="profile-visibility-row birthday-photo-permission">
+              <input id="birthdayPhotoPermission" type="checkbox">
+              <span>Allow my profile photo to appear with my Birthday Boots feature</span>
+            </label>
+
+            <div class="birthday-preview-card" id="birthdayPreviewCard" aria-live="polite">
+              <p class="kicker red">Preview</p>
+              <h4>Birthday Boots is private</h4>
+              <p>Your birthday will not appear publicly.</p>
+            </div>
+          </section>
+
+          <div class="journey-dance-list">
+            <article>
+              <div><h3>Ziggy</h3><p>32 counts · 4 walls · Absolute Beginner</p></div>
+              <select aria-label="Confidence for Ziggy">
+                <option>I’ve got this</option>
+                <option selected>Comfortable</option>
+                <option>Needs practice</option>
+                <option>I’d like support</option>
+              </select>
+            </article>
+            <article>
+              <div><h3>Cowgirl</h3><p>32 counts · 2 walls · Beginner</p></div>
+              <select aria-label="Confidence for Cowgirl">
+                <option>I’ve got this</option>
+                <option>Comfortable</option>
+                <option selected>Needs practice</option>
+                <option>I’d like support</option>
+              </select>
+            </article>
+            <article>
+              <div><h3>Choosin’ Texas</h3><p>24 counts · 4 walls · Beginner</p></div>
+              <select aria-label="Confidence for Choosin’ Texas">
+                <option>I’ve got this</option>
+                <option>Comfortable</option>
+                <option>Needs practice</option>
+                <option selected>I’d like support</option>
+              </select>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark privacy-design-section">
+      <div class="privacy-design-grid reveal">
+        <article><span>🔒</span><h3>Private by default</h3><p>Only the member sees their progress unless they actively choose to share it.</p></article>
+        <article><span>🛡️</span><h3>Secure login</h3><p>Authentication, MFA and database permissions will be handled by a trusted backend service.</p></article>
+        <article><span>👁️</span><h3>Limited instructor view</h3><p>Nora only sees dances, confidence and notes a member has chosen to share.</p></article>
+        <article><span>💳</span><h3>No card storage</h3><p>Payments remain with SumUp or the booking provider, never inside member profiles.</p></article>
+      </div>
+    </section>
+
+    <section class="section paper account-settings-preview">
+      <div class="section-title reveal">
+        <p class="kicker red">Account Settings</p>
+        <h2>Members stay in control.</h2>
+      </div>
+
+      <div class="account-action-grid reveal">
+        <article>
+          <h3>Download my data</h3>
+          <p>Export dances, confidence ratings, notes and milestones.</p>
+          <button class="button muted-button" type="button" disabled>Download Preview</button>
+        </article>
+        <article>
+          <h3>Pause my account</h3>
+          <p>Hide the profile, stop sharing and sign out while keeping progress for later.</p>
+          <button class="button muted-button" type="button" disabled>Pause Preview</button>
+        </article>
+        <article class="danger-card">
+          <h3>Delete my account</h3>
+          <p>Permanently remove the profile, dance progress and notes after secure confirmation and a short cancellation period.</p>
+          <button class="button danger-button" id="deletePreview" type="button">Preview Deletion Steps</button>
+        </article>
+      </div>
+
+      <div class="deletion-preview" id="deletionPreview" hidden>
+        <p class="kicker red">Deletion preview</p>
+        <h3>Before an account is permanently deleted:</h3>
+        <ol>
+          <li>The member confirms by password or secure email link.</li>
+          <li>Sharing with Nora stops immediately.</li>
+          <li>All active sessions are revoked.</li>
+          <li>A seven-day cancellation period begins.</li>
+          <li>Profile, progress and notes are permanently removed.</li>
+        </ol>
+        <p>Mailing lists, WhatsApp, Eventbrite and SumUp remain separate and must be managed independently.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-lockup">
+      <img class="brand-logo footer-logo" src="brand-logo.png" alt="Boot Scootin’ Line Dancing logo">
+      <div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div>
+    </div>
+    <p class="script">Your progress. Your privacy. Your journey. ♥</p>
+    <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    const shareDemo = document.getElementById("shareDemo");
+    shareDemo.addEventListener("change", () => {
+      shareDemo.nextElementSibling.textContent = shareDemo.checked ? "Shared with Nora" : "Private";
+    });
+
+    document.getElementById("deletePreview").addEventListener("click", () => {
+      const panel = document.getElementById("deletionPreview");
+      panel.hidden = !panel.hidden;
+      if (!panel.hidden) panel.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+
+    const photoInput = document.getElementById("profilePhotoDemo");
+    const photoPreview = document.getElementById("journeyPhotoPreview");
+
+    photoInput?.addEventListener("change", () => {
+      const file = photoInput.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        photoPreview.innerHTML = `<img src="${reader.result}" alt="Selected profile photo preview">`;
+      });
+      reader.readAsDataURL(file);
+    });
+
+    const birthdayDay = document.getElementById("birthdayDay");
+    const birthdayMonth = document.getElementById("birthdayMonth");
+    const birthdayPreview = document.getElementById("birthdayPreviewCard");
+    const birthdayRadios = [...document.querySelectorAll('input[name="birthdayShare"]')];
+
+    function updateBirthdayPreview() {
+      const choice = birthdayRadios.find(radio => radio.checked)?.value || "private";
+      const day = birthdayDay.value;
+      const month = birthdayMonth.value;
+
+      if (choice === "exact") {
+        birthdayPreview.innerHTML = `
+          <p class="kicker red">Preview</p>
+          <h4>Birthday Boots</h4>
+          <p>${day && month ? `${day} ${month}` : "Add a day and month to show the exact celebration date."}</p>`;
+      } else if (choice === "month") {
+        birthdayPreview.innerHTML = `
+          <p class="kicker red">Preview</p>
+          <h4>${month ? `${month} Birthday Boots` : "Birthday Month"}</h4>
+          <p>Your exact birthday date will not be shown.</p>`;
+      } else if (choice === "nora") {
+        birthdayPreview.innerHTML = `
+          <p class="kicker red">Preview</p>
+          <h4>Shared privately with Nora</h4>
+          <p>Your birthday will not appear on the public page.</p>`;
+      } else {
+        birthdayPreview.innerHTML = `
+          <p class="kicker red">Preview</p>
+          <h4>Birthday Boots is private</h4>
+          <p>Your birthday will not appear publicly.</p>`;
+      }
+    }
+
+    birthdayDay?.addEventListener("change", updateBirthdayPreview);
+    birthdayMonth?.addEventListener("change", updateBirthdayPreview);
+    birthdayRadios.forEach(radio => radio.addEventListener("change", updateBirthdayPreview));
+
+  </script>
+</body>
+</html>

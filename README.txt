@@ -231,3 +231,34 @@ VERSION 31 UPDATE
   https://ivoryskyco.com/
   https://www.instagram.com/ivorysky?igsh=MWUzandja3hvOG51NA==
 - Updated the homepage Businesses We Love preview to include cowboy boots.
+
+
+VERSION 32 UPDATE — MAP, MOONSHINE & MEMBER JOURNEY
+- Added Nora's Country Map preview page.
+- Added interactive preview pins for Birmingham, The Long Road, Threefives and Home By Sunday.
+- Added Moonshine & Good Times story page.
+- Added future Long Road Festival Hub and contribution areas.
+- Added My Boot Scootin' Journey account-dashboard preview.
+- Added dance confidence tracking preview.
+- Added private/shared-with-Nora privacy control preview.
+- Added account settings previews for download, pause and permanent deletion.
+- Added clear deletion steps and seven-day cancellation concept.
+- Added security and privacy design explanations.
+- No real accounts or personal data are stored in this version.
+- Real login will require a secure backend such as Supabase, database rules, MFA and a privacy notice before registrations are enabled.
+
+
+VERSION 33 UPDATE — BIRTHDAY BOOTS & PROFILE PHOTOS
+- Added an optional profile photo preview to My Boot Scootin' Journey.
+- Added a separate permission for Nora to view the profile photo.
+- Added optional birthday day and month fields.
+- Birth year and age are not requested.
+- Added four birthday sharing choices:
+  1) exact day and month on Birthday Boots
+  2) birthday month only
+  3) tell Nora privately
+  4) keep birthday private
+- Added a separate permission for a profile photo to appear in Birthday Boots.
+- Added a live birthday privacy preview.
+- Added a public Birthday Boots preview section to the Community page.
+- No real profile photos or birthday information are uploaded or stored in this version.

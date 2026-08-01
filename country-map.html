@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090606">
+  <meta name="description" content="Nora's Country Map — discover country venues, events, shops and Boot Scootin' favourites around the UK.">
+  <title>Nora’s Country Map | Boot Scootin' Line Dancing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+</head>
+<body>
+  <header class="header">
+    <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
+      <img class="brand-logo" src="brand-logo.png" alt="">
+      <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
+    </a>
+    <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
+    <nav id="nav">
+      <a href="index.html">Home</a>
+      <a href="calendar.html">Calendar</a>
+      <a href="dance-diary.html">Dance Diary</a>
+      <a href="dance-library.html">Dance Library</a>
+      <a href="community.html">Community</a>
+      <a href="country-map.html" aria-current="page">Country Map</a>
+      <a href="moonshine.html">Moonshine</a>
+      <a href="journey.html">My Journey</a>
+      <a href="businesses.html">Businesses We Love</a>
+    </nav>
+  </header>
+
+  <main class="feature-page">
+    <section class="feature-hero section dark">
+      <div class="section-title centre reveal">
+        <p class="kicker">Discover the UK country scene</p>
+        <h1>Nora’s Country Map</h1>
+        <p>A growing guide to country bars, line dancing, festivals, western shops and places personally loved by Nora.</p>
+      </div>
+    </section>
+
+    <section class="section paper map-preview-section">
+      <div class="map-toolbar reveal">
+        <label for="mapCategory">Show me</label>
+        <select id="mapCategory">
+          <option value="all">Everything</option>
+          <option value="dance">Line dancing</option>
+          <option value="venue">Country bars & venues</option>
+          <option value="shop">Western shops & brands</option>
+          <option value="festival">Festivals & events</option>
+          <option value="recommended">Nora recommends</option>
+        </select>
+      </div>
+
+      <div class="country-map-layout reveal">
+        <div class="uk-map-card" role="img" aria-label="Stylised UK map preview showing featured country locations">
+          <div class="map-island map-gb">
+            <button class="map-pin pin-birmingham active" data-place="birmingham" aria-label="Birmingham">★</button>
+            <button class="map-pin pin-longroad" data-place="longroad" aria-label="The Long Road Festival">●</button>
+            <button class="map-pin pin-threefives" data-place="threefives" aria-label="Threefives Country Apparel">●</button>
+            <button class="map-pin pin-homebysunday" data-place="homebysunday" aria-label="Home By Sunday">●</button>
+          </div>
+          <p class="map-disclaimer">Preview map — exact pins and a full interactive UK directory will be added as the guide grows.</p>
+        </div>
+
+        <aside class="map-place-panel" id="mapPlacePanel" aria-live="polite">
+          <p class="kicker red">Birmingham</p>
+          <h2>Boot Scootin’ Home Ground</h2>
+          <div class="map-place-list">
+            <a href="calendar.html"><strong>Boot Scootin’ Line Dancing</strong><span>Classes and social dancing</span></a>
+            <a href="calendar.html"><strong>Low Places</strong><span>Honky-tonk venue and social nights</span></a>
+            <a href="calendar.html"><strong>Edgbaston Community Centre</strong><span>Beginner-friendly Friday classes</span></a>
+          </div>
+        </aside>
+      </div>
+
+      <div class="map-category-grid reveal">
+        <article><span>👢</span><h3>Boots & Western Wear</h3><p>Ivory Sky, Threefives and more favourites.</p></article>
+        <article><span>🤠</span><h3>Hats & Accessories</h3><p>Home By Sunday and other trusted makers.</p></article>
+        <article><span>💃</span><h3>Line Dancing</h3><p>Classes, socials and country dance nights.</p></article>
+        <article><span>🎪</span><h3>Festivals</h3><p>The Long Road and future country events.</p></article>
+      </div>
+    </section>
+
+    <section class="section dark map-submit-section">
+      <div class="business-invite-card reveal">
+        <div>
+          <p class="kicker">Help the map grow</p>
+          <h2>Know a brilliant country place?</h2>
+          <p>Visitors will eventually be able to suggest venues, events and businesses for Nora to review before they are added.</p>
+        </div>
+        <button class="button muted-button" type="button" disabled>Suggestion Form Coming Soon</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-lockup">
+      <img class="brand-logo footer-logo" src="brand-logo.png" alt="Boot Scootin’ Line Dancing logo">
+      <div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div>
+    </div>
+    <p class="script">Find your next country adventure. ♥</p>
+    <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    const places = {
+      birmingham: {
+        kicker: "Birmingham",
+        title: "Boot Scootin’ Home Ground",
+        items: [
+          ["Boot Scootin’ Line Dancing", "Classes and social dancing", "calendar.html"],
+          ["Low Places", "Honky-tonk venue and social nights", "calendar.html"],
+          ["Edgbaston Community Centre", "Beginner-friendly Friday classes", "calendar.html"]
+        ]
+      },
+      longroad: {
+        kicker: "Leicestershire",
+        title: "The Long Road Festival",
+        items: [
+          ["Festival Hub", "Moonshine meet-ups, planning and future guide", "moonshine.html"],
+          ["Long Road Guide", "The community handbook will be linked here", "moonshine.html"]
+        ]
+      },
+      threefives: {
+        kicker: "Country Apparel",
+        title: "Threefives Country Apparel",
+        items: [
+          ["Visit the recommendation", "Country clothing and Boot Scootin’ merchandise creators", "businesses.html"]
+        ]
+      },
+      homebysunday: {
+        kicker: "Western Hats",
+        title: "Home By Sunday",
+        items: [
+          ["Visit the recommendation", "Nora’s favourite statement hats", "businesses.html"]
+        ]
+      }
+    };
+
+    const panel = document.getElementById("mapPlacePanel");
+    document.querySelectorAll(".map-pin").forEach(pin => {
+      pin.addEventListener("click", () => {
+        document.querySelectorAll(".map-pin").forEach(item => item.classList.remove("active"));
+        pin.classList.add("active");
+        const place = places[pin.dataset.place];
+        panel.innerHTML = `
+          <p class="kicker red">${place.kicker}</p>
+          <h2>${place.title}</h2>
+          <div class="map-place-list">
+            ${place.items.map(item => `<a href="${item[2]}"><strong>${item[0]}</strong><span>${item[1]}</span></a>`).join("")}
+          </div>`;
+      });
+    });
+  </script>
+</body>
+</html>
