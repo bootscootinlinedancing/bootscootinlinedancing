@@ -1,70 +1,35 @@
-const body = document.body;
-const intro = document.getElementById("intro");
-const enterSite = document.getElementById("enterSite");
-const menuToggle = document.getElementById("menuToggle");
-const siteNav = document.getElementById("siteNav");
-const musicButton = document.getElementById("musicButton");
+const intro = document.getElementById('intro');
+const enter = document.getElementById('enterSite');
+const menuButton = document.getElementById('menuButton');
+const nav = document.getElementById('nav');
 
-body.classList.add("intro-open");
-
-function closeIntro() {
-  intro.classList.add("hidden");
-  body.classList.remove("intro-open");
-  sessionStorage.setItem("bootIntroSeen", "1");
+function closeIntro(){
+  intro.classList.add('hide');
+  document.body.classList.remove('intro-open');
+  sessionStorage.setItem('bootIntroSeen','1');
 }
 
-if (sessionStorage.getItem("bootIntroSeen") === "1") {
-  intro.classList.add("hidden");
-  body.classList.remove("intro-open");
+if(sessionStorage.getItem('bootIntroSeen') === '1'){
+  intro.classList.add('hide');
+  document.body.classList.remove('intro-open');
 }
 
-enterSite.addEventListener("click", closeIntro);
+enter.addEventListener('click', closeIntro);
 
-// Allow the intro to be skipped after the logo appears.
-setTimeout(() => {
-  intro.addEventListener("click", (event) => {
-    if (event.target === intro) closeIntro();
+menuButton.addEventListener('click', () => {
+  const open = nav.classList.toggle('open');
+  menuButton.setAttribute('aria-expanded', String(open));
+});
+
+nav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+  nav.classList.remove('open');
+  menuButton.setAttribute('aria-expanded','false');
+}));
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting) entry.target.classList.add('visible');
   });
-}, 4500);
+},{threshold:.12});
 
-menuToggle.addEventListener("click", () => {
-  const isOpen = siteNav.classList.toggle("open");
-  menuToggle.setAttribute("aria-expanded", String(isOpen));
-});
-
-siteNav.querySelectorAll("a").forEach((link) => {
-  link.addEventListener("click", () => {
-    siteNav.classList.remove("open");
-    menuToggle.setAttribute("aria-expanded", "false");
-  });
-});
-
-/*
-  Music is intentionally not bundled yet.
-  Browsers require a user click before audio can play.
-  When you choose a licensed/royalty-free audio file, place it in /assets
-  and update the source below.
-*/
-let audio;
-musicButton.addEventListener("click", () => {
-  if (!audio) {
-    audio = new Audio("assets/website-ambience.mp3");
-    audio.loop = true;
-    audio.volume = 0.35;
-  }
-
-  if (audio.paused) {
-    audio.play()
-      .then(() => {
-        musicButton.setAttribute("aria-pressed", "true");
-        musicButton.querySelector("strong").textContent = "Turn music off";
-      })
-      .catch(() => {
-        alert("The music file will be added before launch.");
-      });
-  } else {
-    audio.pause();
-    musicButton.setAttribute("aria-pressed", "false");
-    musicButton.querySelector("strong").textContent = "Turn music on";
-  }
-});
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));

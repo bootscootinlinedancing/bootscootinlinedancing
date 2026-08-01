@@ -1,26 +1,22 @@
-BOOT SCOOTIN' LINE DANCING — STARTER WEBSITE
+BOOT SCOOTIN' WEBSITE — VERSION 2
 
-FILES
-- index.html     Main website content
-- styles.css     Colours, layout and animation
-- script.js      Intro, mobile menu and music control
-- assets/        Add real photos, logo, video and audio here
+This version includes:
+- Animated handwritten white boot intro
+- Real Boot Scootin' logo
+- Nora portrait
+- Real class and Low Places images
+- Mobile-responsive black, red and cream design
+- Links to Linktree, Instagram and Facebook
+- Placeholder for Edgbaston exterior photo
 
-HOW TO UPLOAD TO CLOUDFLARE
-1. In Cloudflare, choose "Upload your static files".
-2. Upload the ZIP file supplied.
-3. Name the project something simple, e.g. boot-scootin-line-dancing.
-4. Deploy.
-5. Cloudflare will give you a temporary workers.dev/pages.dev address.
-6. Preview it before connecting your real domain.
-
-BEFORE LAUNCH
-- Replace PHOTO placeholders with Nora's real class/event photos.
-- Add Eventbrite links to both "Book now" buttons.
-- Add Instagram, TikTok and Facebook URLs.
-- Confirm email address after iCloud custom-domain setup.
-- Add a licensed or royalty-free website ambience file as:
-  assets/website-ambience.mp3
+TO UPDATE GITHUB
+1. Open the bootscootinlinedancing repository.
+2. Add file > Upload files.
+3. Upload index.html, styles.css, script.js and the entire assets folder.
+4. Replace existing files when GitHub asks.
+5. Commit directly to main.
+6. Cloudflare Pages will automatically redeploy.
 
 IMPORTANT
-Do not upload copyrighted commercial music directly to the website unless you have permission/licensing.
+The Google-sourced Edgbaston venue screenshot was not included because it may be copyrighted.
+Use your own photo of the venue exterior later.
