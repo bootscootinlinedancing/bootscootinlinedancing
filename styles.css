@@ -572,3 +572,123 @@ button.calendar-day{cursor:pointer}
   .calendar-day{min-height:45px;font-size:.92rem}
   .calendar-day.has-event::after{bottom:5px;width:5px;height:5px}
 }
+
+
+/* VERSION 15 — WESTERN TICKETS, VENUE INFO & DANCE DIARY */
+.western-ticket{
+  position:relative;
+  border:1px dashed #b88a54;
+  padding:1.4rem;
+  background:linear-gradient(145deg,#1a100d,#0c0807);
+}
+.western-ticket::before,.western-ticket::after{
+  content:"";
+  position:absolute;
+  top:44%;
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:var(--cream);
+}
+.western-ticket::before{left:-11px}
+.western-ticket::after{right:-11px}
+.ticket-eyebrow{
+  color:#d5b27e;
+  text-transform:uppercase;
+  letter-spacing:.22em;
+  font-size:.75rem;
+  margin:0;
+}
+.ticket-actions{display:grid;gap:.65rem;margin-top:1.2rem}
+.ticket-link{
+  display:block;
+  padding:.72rem .9rem;
+  border:1px solid rgba(255,255,255,.18);
+  text-align:center;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  font-size:.9rem;
+}
+.ticket-link:hover{border-color:var(--red);color:#fff;background:#281012}
+
+.diary-page{padding-top:78px}
+.diary-hero h1{
+  font-family:Rye,serif;
+  font-size:clamp(3rem,7vw,6rem);
+  margin:.3rem 0 1rem;
+}
+.diary-list{
+  width:min(1100px,94vw);
+  margin:auto;
+  display:grid;
+  gap:1.3rem;
+}
+.diary-entry{
+  background:#fffaf3;
+  border:1px solid #d2b993;
+  box-shadow:0 18px 40px rgba(40,24,14,.14);
+}
+.diary-entry summary{
+  cursor:pointer;
+  list-style:none;
+  display:flex;
+  justify-content:space-between;
+  gap:1rem;
+  align-items:center;
+  padding:1.3rem 1.5rem;
+  background:#120b09;
+  color:#fff;
+}
+.diary-entry summary::-webkit-details-marker{display:none}
+.diary-entry summary::after{
+  content:"+";
+  font-size:2rem;
+  color:var(--red);
+}
+.diary-entry[open] summary::after{content:"−"}
+.diary-date{font-family:Rye,serif;font-size:clamp(1.2rem,3vw,1.8rem)}
+.diary-venue{color:#d7c4aa;text-align:right}
+.diary-content{padding:1.5rem}
+.diary-intro{font-family:Caveat,cursive;font-size:1.8rem;color:var(--red)}
+.dance-cards{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1rem;
+}
+.dance-card{
+  display:flex;
+  flex-direction:column;
+  gap:.45rem;
+  min-height:190px;
+  padding:1.1rem;
+  background:#160d0b;
+  color:#fff;
+  border:1px solid #3b2220;
+}
+.dance-card span{font-size:1.8rem}
+.dance-card strong{font-size:1.3rem}
+.dance-card small{color:#d4c3b5;line-height:1.4}
+.dance-card b{
+  margin-top:auto;
+  color:#ff535b;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.dance-card:hover{border-color:var(--red);transform:translateY(-2px)}
+.learning-card{
+  margin:1.4rem 0;
+  padding:1.4rem;
+  border:2px dashed #b88a54;
+  text-align:center;
+  background:#f3e7d4;
+}
+.learning-card h3{font-family:Rye,serif;font-size:2rem;margin:.4rem 0}
+@media(max-width:800px){
+  .diary-page{padding-top:70px}
+  .dance-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:540px){
+  .diary-entry summary{align-items:flex-start}
+  .diary-venue{font-size:.85rem}
+  .dance-cards{grid-template-columns:1fr}
+}

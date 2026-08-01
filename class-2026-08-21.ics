@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Boot Scootin Line Dancing//Class Calendar//EN
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:2026-08-21-ecc@bootscootinlinedancing.co.uk
+DTSTAMP:20260801T210000Z
+DTSTART;TZID=Europe/London:20260821T193000
+DTEND;TZID=Europe/London:20260821T203000
+SUMMARY:Boot Scootin' Line Dancing — Edgbaston Community Centre
+LOCATION:40 Woodview Drive, Edgbaston, Birmingham B15 2HU
+DESCRIPTION:Beginner-friendly line dancing class. Book here: https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703
+URL:https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703
+END:VEVENT
+END:VCALENDAR

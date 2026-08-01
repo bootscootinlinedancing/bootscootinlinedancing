@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Boot Scootin Line Dancing//Class Calendar//EN
+CALSCALE:GREGORIAN
+BEGIN:VEVENT
+UID:2026-08-14-low@bootscootinlinedancing.co.uk
+DTSTAMP:20260801T210000Z
+DTSTART;TZID=Europe/London:20260814T191500
+DTEND;TZID=Europe/London:20260814T210000
+SUMMARY:Boot Scootin' Line Dancing — Low Places
+LOCATION:60–64 Heath Mill Lane, Digbeth, Birmingham B9 4AR
+DESCRIPTION:Beginner-friendly line dancing class. Book here: https://www.eventbrite.co.uk/e/boot-scootin-line-dancing-launch-night-at-low-places-bar-tickets-1994513541694
+URL:https://www.eventbrite.co.uk/e/boot-scootin-line-dancing-launch-night-at-low-places-bar-tickets-1994513541694
+END:VEVENT
+END:VCALENDAR

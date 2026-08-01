@@ -48,3 +48,15 @@ VERSION 14 UPDATE
 - Visitors can move between months and tap highlighted class dates.
 - Each class date shows venue, time, price, details and a booking button.
 - Added confirmed August 2026 dates for Edgbaston Community Centre and Low Places.
+
+
+VERSION 15 UPDATE
+- Corrected the latest Dance Diary date to Friday 31st July 2026.
+- Added a new Dance Diary page with expandable past-class entries.
+- Added demo links, not tutorials.
+- Added Friday 17th July as a previous diary entry.
+- Upgraded class details into Western ticket-style cards.
+- Changed booking wording to Reserve My Boots.
+- Added parking, accessible toilet and address information.
+- Added Google Maps and Apple Maps links.
+- Added downloadable Apple Calendar files and Google Calendar links.

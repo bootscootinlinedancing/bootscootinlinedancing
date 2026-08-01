@@ -26,6 +26,7 @@
       <a href="about.html">About</a>
       <a href="index.html#classes">Classes</a>
       <a href="calendar.html" aria-current="page">Calendar</a>
+      <a href="dance-diary.html">Dance Diary</a>
       <a href="index.html#venues">Venues</a>
       <a href="index.html#gallery">Gallery</a>
       <a href="index.html#contact">Contact</a>
@@ -98,7 +99,13 @@
         time: "7:30pm–8:30pm",
         price: "£6 per person",
         note: "Beginner-friendly Friday class.",
-        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703"
+        address: "40 Woodview Drive, Edgbaston, Birmingham B15 2HU",
+        parking: "Free onsite parking, including disabled bays.",
+        facilities: "Standard and accessible toilets available.",
+        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703",
+        googleMaps: "https://www.google.com/maps/search/?api=1&query=Edgbaston%20Community%20Centre%2C%2040%20Woodview%20Drive%2C%20Birmingham%20B15%202HU",
+        appleMaps: "https://maps.apple.com/?q=Edgbaston%20Community%20Centre&address=40%20Woodview%20Drive%2C%20Birmingham%20B15%202HU",
+        calendarFile: "class-2026-08-07.ics"
       },
       {
         date: "2026-08-14",
@@ -107,7 +114,13 @@
         time: "7:15pm–9:00pm",
         price: "£6 per person",
         note: "Warm-up, class and social dancing afterwards.",
-        booking: "https://www.eventbrite.co.uk/e/boot-scootin-line-dancing-launch-night-at-low-places-bar-tickets-1994513541694"
+        address: "60–64 Heath Mill Lane, Digbeth, Birmingham B9 4AR",
+        parking: "Paid parking is available opposite the venue.",
+        facilities: "Standard and accessible toilets available.",
+        booking: "https://www.eventbrite.co.uk/e/boot-scootin-line-dancing-launch-night-at-low-places-bar-tickets-1994513541694",
+        googleMaps: "https://www.google.com/maps/search/?api=1&query=Low%20Places%2C%2060-64%20Heath%20Mill%20Lane%2C%20Birmingham%20B9%204AR",
+        appleMaps: "https://maps.apple.com/?q=Low%20Places&address=60-64%20Heath%20Mill%20Lane%2C%20Birmingham%20B9%204AR",
+        calendarFile: "class-2026-08-14.ics"
       },
       {
         date: "2026-08-21",
@@ -116,7 +129,13 @@
         time: "7:30pm–8:30pm",
         price: "£6 per person",
         note: "Beginner-friendly Friday class.",
-        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703"
+        address: "40 Woodview Drive, Edgbaston, Birmingham B15 2HU",
+        parking: "Free onsite parking, including disabled bays.",
+        facilities: "Standard and accessible toilets available.",
+        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703",
+        googleMaps: "https://www.google.com/maps/search/?api=1&query=Edgbaston%20Community%20Centre%2C%2040%20Woodview%20Drive%2C%20Birmingham%20B15%202HU",
+        appleMaps: "https://maps.apple.com/?q=Edgbaston%20Community%20Centre&address=40%20Woodview%20Drive%2C%20Birmingham%20B15%202HU",
+        calendarFile: "class-2026-08-21.ics"
       },
       {
         date: "2026-08-26",
@@ -125,7 +144,13 @@
         time: "7:15pm–9:00pm",
         price: "£6 per person",
         note: "Midweek class and social dancing.",
-        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703"
+        address: "60–64 Heath Mill Lane, Digbeth, Birmingham B9 4AR",
+        parking: "Paid parking is available opposite the venue.",
+        facilities: "Standard and accessible toilets available.",
+        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703",
+        googleMaps: "https://www.google.com/maps/search/?api=1&query=Low%20Places%2C%2060-64%20Heath%20Mill%20Lane%2C%20Birmingham%20B9%204AR",
+        appleMaps: "https://maps.apple.com/?q=Low%20Places&address=60-64%20Heath%20Mill%20Lane%2C%20Birmingham%20B9%204AR",
+        calendarFile: "class-2026-08-26.ics"
       }
     ];
 
@@ -178,6 +203,27 @@
       }
     }
 
+    function googleCalendarUrl(event) {
+      const start = event.date.replaceAll("-", "") + "T" + event.time.split("–")[0].replace("pm", "").replace("am", "").replace(":", "") + "00";
+      const end = event.date.replaceAll("-", "") + "T" + event.time.split("–")[1].replace("pm", "").replace("am", "").replace(":", "") + "00";
+      const startHour = Number(event.time.split("–")[0].split(":")[0]);
+      const endHour = Number(event.time.split("–")[1].split(":")[0]);
+      const startMinutes = event.time.split("–")[0].split(":")[1].slice(0,2);
+      const endMinutes = event.time.split("–")[1].split(":")[1].slice(0,2);
+      const sHour = startHour < 12 ? startHour + 12 : startHour;
+      const eHour = endHour < 12 ? endHour + 12 : endHour;
+      const dateOnly = event.date.replaceAll("-", "");
+      const dates = `${dateOnly}T${String(sHour).padStart(2,"0")}${startMinutes}00/${dateOnly}T${String(eHour).padStart(2,"0")}${endMinutes}00`;
+      const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: `Boot Scootin' Line Dancing — ${event.venue}`,
+        dates,
+        location: event.address,
+        details: `${event.note} Book here: ${event.booking}`
+      });
+      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    }
+
     function showEvent(event) {
       const date = new Date(`${event.date}T12:00:00`);
       const formatted = date.toLocaleDateString("en-GB", {
@@ -188,15 +234,27 @@
       });
 
       panel.innerHTML = `
-        <p class="kicker red">Where we're dancing</p>
-        <p class="event-date">${formatted}</p>
-        <h2>${event.venue}</h2>
-        <dl class="event-details">
-          <div><dt>Time</dt><dd>${event.time}</dd></div>
-          <div><dt>Price</dt><dd>${event.price}</dd></div>
-          <div><dt>Details</dt><dd>${event.note}</dd></div>
-        </dl>
-        <a class="button event-book" href="${event.booking}" target="_blank" rel="noopener">Book this class</a>
+        <div class="western-ticket">
+          <p class="ticket-eyebrow">Admit one dancer</p>
+          <p class="event-date">${formatted}</p>
+          <h2>${event.venue}</h2>
+          <dl class="event-details">
+            <div><dt>Time</dt><dd>${event.time}</dd></div>
+            <div><dt>Price</dt><dd>${event.price}</dd></div>
+            <div><dt>Address</dt><dd>${event.address}</dd></div>
+            <div><dt>Parking</dt><dd>${event.parking}</dd></div>
+            <div><dt>Facilities</dt><dd>${event.facilities}</dd></div>
+            <div><dt>Details</dt><dd>${event.note}</dd></div>
+          </dl>
+
+          <div class="ticket-actions">
+            <a class="button event-book" href="${event.booking}" target="_blank" rel="noopener">Reserve My Boots</a>
+            <a class="ticket-link" href="${event.googleMaps}" target="_blank" rel="noopener">Open in Google Maps</a>
+            <a class="ticket-link" href="${event.appleMaps}" target="_blank" rel="noopener">Open in Apple Maps</a>
+            <a class="ticket-link" href="${event.calendarFile}" download>Add to Apple Calendar</a>
+            <a class="ticket-link" href="${googleCalendarUrl(event)}" target="_blank" rel="noopener">Add to Google Calendar</a>
+          </div>
+        </div>
       `;
     }
 
