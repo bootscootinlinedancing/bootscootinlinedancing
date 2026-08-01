@@ -74,3 +74,36 @@ VERSION 16 UPDATE
 - Added previews and navigation links across the website.
 - Database-dependent features are clearly shown as future/coming-soon features
   rather than pretending to collect or save information.
+
+
+VERSION 17 UPDATE
+- Added the real circular Boot Scootin' logo to headers and footers.
+- Added favicon and Apple home-screen icon.
+- Expanded every Dance Library card with counts, walls, level and choreographer.
+- Added level filters for Absolute Beginner, Beginner and Improver.
+- Linked choreographer names to the corresponding CopperKnob stepsheet.
+- Corrected the Burn It To The Ground demo link.
+- Added a fully usable Requests page with two choices:
+  1) dance to learn in class
+  2) dance/song for the Low Places social.
+- Request forms create a formatted message that visitors can copy and send by Instagram.
+- Added request links to the Community page and calendar tickets.
+
+
+VERSION 18 UPDATE
+- Connected Nora's Country Favourites card to the supplied Apple Music playlist:
+  Country Bits.
+- The Open in Apple Music button now works.
+- The Boot Scootin' Dance Floor playlist remains marked as coming soon until its link is supplied.
+
+
+VERSION 19 UPDATE
+- Completely redesigned the homepage to match the premium black, cream and red visual direction selected by Nora.
+- Added a large editorial hero with Life's Better in Cowboy Boots.
+- Added a compact Meet Nora section with portrait card.
+- Added polished upcoming class cards for Edgbaston and Low Places.
+- Added the Why You'll Love It feature strip.
+- Added gallery and private-events previews.
+- Added quick links to Dance Diary, Dance Library, Community and Requests.
+- Added a redesigned footer with social links and key pages.
+- Preserved the existing cinematic intro and every previously built page.

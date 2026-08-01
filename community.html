@@ -8,13 +8,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="description" content="The Boot Scootin' community hub — memories, music, milestones and ways to get involved.">
   <title>Community | Boot Scootin' Line Dancing</title>
 </head>
 <body>
   <header class="header">
     <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
-      <span class="round-mark">BS</span>
+      <img class="brand-logo" src="brand-logo.png" alt="">
       <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
     </a>
     <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
@@ -25,6 +27,7 @@
       <a href="dance-diary.html">Dance Diary</a>
       <a href="dance-library.html">Dance Library</a>
       <a href="community.html" aria-current="page">Community</a>
+      <a href="requests.html">Requests</a>
       <a href="private-events.html">Private Events</a>
     </nav>
     <a class="button compact" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Reserve My Boots</a>
@@ -78,7 +81,7 @@
           <span class="playlist-icon">🍎</span><p class="kicker red">Apple Music</p>
           <h3>Nora’s Country Favourites</h3>
           <p>The songs on repeat, old favourites and new discoveries.</p>
-          <button class="button muted-button" type="button" disabled>Playlist link coming soon</button>
+          <a class="button apple-music-button" href="https://music.apple.com/gb/playlist/country-bits/pl.u-BNA66YeI1XdqPM5" target="_blank" rel="noopener">Open in Apple Music</a>
         </article>
         <article class="playlist-card">
           <span class="playlist-icon">💃</span><p class="kicker red">Apple Music</p>
@@ -94,7 +97,8 @@
         <article class="community-feature reveal">
           <p class="kicker">Song Requests</p><h2>What should we dance to next?</h2>
           <p>A request box will let dancers suggest songs. Requests can later be marked as Looking for choreography, Coming Soon or Added to Class.</p>
-          <span class="status-chip">Request form connection coming soon</span>
+          <a class="button" href="requests.html?type=learn">Request a Dance to Learn</a>
+          <a class="text-link light-link" href="requests.html?type=social">Request for the Low Places social →</a>
         </article>
         <article class="community-feature reveal">
           <p class="kicker">Country Countdown</p><h2>Vote for your favourites.</h2>
@@ -145,7 +149,7 @@
   </main>
   <footer>
     <div class="footer-lockup">
-      <span class="round-mark large">BS</span>
+      <img class="brand-logo footer-logo" src="brand-logo.png" alt="Boot Scootin’ Line Dancing logo">
       <div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div>
     </div>
     <p class="script">Leave with sore feet and a happy heart. ♥</p>

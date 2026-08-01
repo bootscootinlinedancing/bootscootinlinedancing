@@ -10,11 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
 </head>
 <body>
   <header class="header">
     <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
-      <span class="round-mark">BS</span>
+      <img class="brand-logo" src="brand-logo.png" alt="">
       <span class="wordmark">
         <strong>BOOT SCOOTIN'</strong>
         <span>LINE DANCING</span>
@@ -28,6 +30,7 @@
       <a href="dance-diary.html">Dance Diary</a>
       <a href="dance-library.html">Dance Library</a>
       <a href="community.html">Community</a>
+      <a href="requests.html">Requests</a>
       <a href="private-events.html">Private Events</a>
     </nav>
     <a class="button compact" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Book a class</a>
@@ -78,7 +81,7 @@
 
   <footer>
     <div class="footer-lockup">
-      <span class="round-mark large">BS</span>
+      <img class="brand-logo footer-logo" src="brand-logo.png" alt="Boot Scootin’ Line Dancing logo">
       <div class="wordmark footer-wordmark">
         <strong>BOOT SCOOTIN'</strong>
         <span>LINE DANCING</span>
@@ -252,6 +255,9 @@
             <a class="ticket-link" href="${event.appleMaps}" target="_blank" rel="noopener">Open in Apple Maps</a>
             <a class="ticket-link" href="${event.calendarFile}" download>Add to Apple Calendar</a>
             <a class="ticket-link" href="${googleCalendarUrl(event)}" target="_blank" rel="noopener">Add to Google Calendar</a>
+            <a class="ticket-link request-ticket-link" href="${event.type === 'low' ? 'requests.html?type=social' : 'requests.html?type=learn'}">
+              ${event.type === 'low' ? 'Request a Social Dance' : 'Request a Dance to Learn'}
+            </a>
           </div>
         </div>
       `;

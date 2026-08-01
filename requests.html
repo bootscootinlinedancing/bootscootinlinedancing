@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090606">
+  <meta name="description" content="Request a dance to learn in class or to hear during the Low Places social.">
+  <title>Dance Requests | Boot Scootin' Line Dancing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+  <header class="header">
+    <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
+      <img class="brand-logo" src="brand-logo.png" alt="">
+      <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
+    </a>
+    <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
+    <nav id="nav">
+      <a href="index.html">Home</a>
+      <a href="calendar.html">Calendar</a>
+      <a href="dance-diary.html">Dance Diary</a>
+      <a href="dance-library.html">Dance Library</a>
+      <a href="community.html">Community</a>
+      <a href="requests.html" aria-current="page">Requests</a>
+    </nav>
+  </header>
+
+  <main class="feature-page requests-page">
+    <section class="feature-hero section dark">
+      <div class="section-title centre reveal">
+        <p class="kicker">You choose the music</p>
+        <h1>Dance Requests</h1>
+        <p>Tell Nora what you’d love to learn in class or what you want played during the Low Places social.</p>
+      </div>
+    </section>
+
+    <section class="section paper">
+      <div class="request-choice reveal">
+        <button type="button" class="request-type active" data-type="learn">
+          <span>👢</span><strong>Learn in Class</strong>
+          <small>Suggest a dance you’d like Nora to teach.</small>
+        </button>
+        <button type="button" class="request-type" data-type="social">
+          <span>🎶</span><strong>Low Places Social</strong>
+          <small>Request a dance or song for the social dancing section.</small>
+        </button>
+      </div>
+
+      <div class="request-form-wrap reveal">
+        <form id="requestForm" class="request-form">
+          <input type="hidden" id="requestKind" value="learn">
+          <label>Your name
+            <input id="requestName" type="text" placeholder="First name is fine" required>
+          </label>
+          <label>Dance name
+            <input id="danceName" type="text" placeholder="For example: Electric Slide" required>
+          </label>
+          <label>Song and artist
+            <input id="songArtist" type="text" placeholder="For example: Man! I Feel Like a Woman — Shania Twain">
+          </label>
+          <label>Demo or choreography link <span>(optional)</span>
+            <input id="requestLink" type="url" placeholder="YouTube, CopperKnob or another link">
+          </label>
+          <label>Anything else Nora should know? <span>(optional)</span>
+            <textarea id="requestNotes" rows="4" placeholder="Tell us why you love it, or where you danced it before."></textarea>
+          </label>
+          <button class="button" type="submit">Create My Request</button>
+        </form>
+
+        <div class="request-result" id="requestResult" hidden aria-live="polite">
+          <p class="kicker red">Your request is ready</p>
+          <h2>Send this message to Boot Scootin’</h2>
+          <pre id="requestMessage"></pre>
+          <div class="request-result-actions">
+            <button class="button" type="button" id="copyRequest">Copy Request</button>
+            <a class="button ghost dark-ghost" href="https://www.instagram.com/boot.scootin.linedancing" target="_blank" rel="noopener">Message Us on Instagram</a>
+          </div>
+          <p class="request-help" id="copyStatus">Copy the message, then paste it into your Instagram message.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-lockup">
+      <img class="brand-logo footer-logo" src="brand-logo.png" alt="Boot Scootin’ Line Dancing logo">
+      <div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div>
+    </div>
+    <p class="script">Your request might be the next dance-floor favourite. ♥</p>
+    <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    const typeButtons = [...document.querySelectorAll('.request-type')];
+    const kind = document.getElementById('requestKind');
+    const form = document.getElementById('requestForm');
+    const result = document.getElementById('requestResult');
+    const message = document.getElementById('requestMessage');
+    const copyButton = document.getElementById('copyRequest');
+    const copyStatus = document.getElementById('copyStatus');
+
+    function chooseType(value) {
+      kind.value = value;
+      typeButtons.forEach(button => button.classList.toggle('active', button.dataset.type === value));
+    }
+
+    const initialType = new URLSearchParams(window.location.search).get('type');
+    if (initialType === 'social') chooseType('social');
+
+    typeButtons.forEach(button => button.addEventListener('click', () => chooseType(button.dataset.type)));
+
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const requestLabel = kind.value === 'social'
+        ? 'LOW PLACES SOCIAL REQUEST'
+        : 'DANCE TO LEARN IN CLASS';
+
+      const lines = [
+        `🤠 BOOT SCOOTIN’ ${requestLabel}`,
+        ``,
+        `Name: ${document.getElementById('requestName').value.trim()}`,
+        `Dance: ${document.getElementById('danceName').value.trim()}`,
+        `Song/artist: ${document.getElementById('songArtist').value.trim() || 'Not supplied'}`,
+        `Link: ${document.getElementById('requestLink').value.trim() || 'Not supplied'}`,
+        `Notes: ${document.getElementById('requestNotes').value.trim() || 'None'}`
+      ];
+
+      message.textContent = lines.join('\n');
+      result.hidden = false;
+      result.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(message.textContent);
+        copyStatus.textContent = 'Copied! Now tap “Message Us on Instagram” and paste it into the chat.';
+      } catch (error) {
+        copyStatus.textContent = 'Press and hold the message above to copy it, then send it through Instagram.';
+      }
+    });
+  </script>
+</body>
+</html>
