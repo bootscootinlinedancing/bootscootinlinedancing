@@ -185,6 +185,71 @@ async function ensureBookingSchema(env) {
       id INTEGER PRIMARY KEY AUTOINCREMENT, inquiry_id TEXT NOT NULL REFERENCES private_event_inquiries(id) ON DELETE CASCADE,
       actor_type TEXT NOT NULL, actor_label TEXT, action TEXT NOT NULL, details_json TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+
+    `CREATE TABLE IF NOT EXISTS member_profiles (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+      display_name TEXT,
+      trail_rank TEXT NOT NULL DEFAULT 'First Steps',
+      boot_points INTEGER NOT NULL DEFAULT 0 CHECK(boot_points >= 0),
+      classes_attended INTEGER NOT NULL DEFAULT 0 CHECK(classes_attended >= 0),
+      current_streak INTEGER NOT NULL DEFAULT 0 CHECK(current_streak >= 0),
+      whos_going_opt_in INTEGER NOT NULL DEFAULT 0,
+      profile_visibility TEXT NOT NULL DEFAULT 'private' CHECK(profile_visibility IN ('private','nora_only','members')),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS points_ledger (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL REFERENCES member_profiles(id) ON DELETE CASCADE,
+      points INTEGER NOT NULL,
+      reason_code TEXT NOT NULL,
+      description TEXT,
+      source_type TEXT,
+      source_id TEXT,
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS achievements (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      icon TEXT,
+      category TEXT NOT NULL DEFAULT 'general',
+      points_bonus INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1
+    )`,
+    `CREATE TABLE IF NOT EXISTS member_achievements (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL REFERENCES member_profiles(id) ON DELETE CASCADE,
+      achievement_id TEXT NOT NULL REFERENCES achievements(id),
+      earned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      source_type TEXT,
+      source_id TEXT,
+      UNIQUE(member_id,achievement_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS reward_catalog (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      points_cost INTEGER NOT NULL CHECK(points_cost > 0),
+      stock_limit INTEGER,
+      active INTEGER NOT NULL DEFAULT 1,
+      reward_type TEXT NOT NULL DEFAULT 'perk'
+    )`,
+    `CREATE TABLE IF NOT EXISTS reward_redemptions (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL REFERENCES member_profiles(id) ON DELETE CASCADE,
+      reward_id TEXT NOT NULL REFERENCES reward_catalog(id),
+      points_spent INTEGER NOT NULL CHECK(points_spent > 0),
+      status TEXT NOT NULL DEFAULT 'REQUESTED' CHECK(status IN ('REQUESTED','APPROVED','FULFILLED','CANCELLED')),
+      requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      fulfilled_at TEXT
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_points_member_created ON points_ledger(member_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_member_achievements_member ON member_achievements(member_id,earned_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_reward_redemptions_member ON reward_redemptions(member_id,requested_at)`,
+
     `CREATE INDEX IF NOT EXISTS idx_holds_class_expiry ON booking_holds(class_id, expires_at)`,
     `CREATE INDEX IF NOT EXISTS idx_bookings_class_status ON bookings(class_id,status)`,
     `CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(customer_email)`,
@@ -203,6 +268,24 @@ async function ensureBookingSchema(env) {
     ('low-2026-08-14','Class & Social Dancing','Low Places','Birmingham','2026-08-14T19:15:00+01:00','2026-08-14T21:00:00+01:00',600,50,0,'open','Beginner friendly','Warm-up from 7:15pm, class 7:30–8:30pm and social requests until 9pm.'),
     ('ecc-2026-08-21','Beginner Line Dancing','Edgbaston Community Centre','Birmingham','2026-08-21T19:30:00+01:00','2026-08-21T20:30:00+01:00',600,20,0,'open','Beginner friendly','No partner needed. Come alone and leave smiling.'),
     ('low-2026-08-26','Boot Scootin’ Special','Low Places','Birmingham','2026-08-26T19:15:00+01:00','2026-08-26T21:00:00+01:00',600,50,0,'open','All levels','A special midweek class and social dancing session.')`).run();
+
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO achievements(id,title,description,icon,category,points_bonus) VALUES
+    ('first-class','Hay Bale Hopper','Attend your first Boot Scootin’ class','🌾','attendance',0),
+    ('five-classes','Rookie Cowgirl','Attend five classes','🤠','attendance',0),
+    ('ten-classes','Trail Rider','Attend ten classes','🌵','attendance',0),
+    ('fireball-survivor','Fireball Survivor','Complete Fireball without stopping','🔥','dance',0),
+    ('festival-friend','Festival Friend','Join a Boot Scootin’ festival meetup','🎪','community',0),
+    ('butterfly-season','Butterfly Season','Complete the Spring Steps challenge','🦋','seasonal',0)
+  `).run();
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO reward_catalog(id,title,description,points_cost,reward_type) VALUES
+    ('dance-vote','Dance Request Vote','Vote in a future class dance poll',50,'vote'),
+    ('class-credit-5','£5 Class Credit','£5 credit towards a standard class',100,'credit'),
+    ('free-class','Free Standard Class','One standard class place, subject to availability',120,'class'),
+    ('mystery-reward','Mystery Trail Reward','A surprise Boot Scootin’ perk',150,'physical'),
+    ('bring-friend','Bring a Friend','Bring one new friend to a standard class',400,'class'),
+    ('legend-reward','Boot Scootin’ Legend Reward','Hall of Fame recognition and a special celebration perk',1000,'milestone')
+  `).run();
+
   const row = await env.BOOKINGS_DB.prepare("SELECT COUNT(*) AS tables FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").first();
   return Number(row?.tables || 0);
 }

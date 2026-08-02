@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=76">
+  <link rel="stylesheet" href="styles.css?v=77">
 </head>
 <body class="ranch-body">
   <div class="ranch-app">
@@ -21,8 +21,8 @@
         <button data-view="bookings">Class Bookings</button>
         <button data-view="private-events">Private Events</button>
         <button data-view="media">Media</button>
-        <button data-view="members" disabled>Members <small>Coming next</small></button>
-        <button data-view="rewards" disabled>Rewards <small>Coming next</small></button>
+        <button data-view="trail">Trail & Rewards</button>
+        <button data-view="members" disabled>Members <small>After login setup</small></button>
         <button data-view="health">System Health</button>
         <button data-view="settings">Settings</button>
       </nav>
@@ -121,6 +121,39 @@
           </section>
         </div>
       </section>
+
+      
+      <section class="ranch-view" data-view-panel="trail">
+        <div class="ranch-panel-head">
+          <div>
+            <p class="kicker red">The Boot Scootin’ Trail</p>
+            <h2>Points, badges and rewards</h2>
+            <p>The database foundation is prepared now. Member points will remain disabled until secure member login is connected.</p>
+          </div>
+          <a class="button secondary compact" href="passport.html" target="_blank" rel="noopener">View public preview</a>
+        </div>
+
+        <div class="trail-hq-summary">
+          <article><span>Class attendance</span><strong>+10 points</strong></article>
+          <article><span>Bring a friend</span><strong>+20 points</strong></article>
+          <article><span>Free class reward</span><strong>120 points</strong></article>
+          <article><span>Legend milestone</span><strong>1,000 points</strong></article>
+        </div>
+
+        <div class="ranch-panel">
+          <p class="kicker red">Launch safety</p>
+          <h3>Trail controls prepared for later</h3>
+          <ul class="ranch-checklist">
+            <li>No points are awarded until attendance is confirmed.</li>
+            <li>Cancelled or refunded bookings can automatically reverse points.</li>
+            <li>Members cannot edit their own point balance.</li>
+            <li>Reward redemptions create an audit record.</li>
+            <li>“Who’s Going?” is opt-in and never displays contact information.</li>
+            <li>There is no public leaderboard.</li>
+          </ul>
+        </div>
+      </section>
+
 
       <section class="ranch-view" data-view-panel="health">
         <div class="ranch-panel">
