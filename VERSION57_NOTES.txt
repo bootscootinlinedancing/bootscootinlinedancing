@@ -1,0 +1,11 @@
+Boot Scootin' Website Version 57
+
+DIRT ROAD DANCING / BUCKIN' BOOTS SUMMER STOMP
+- Added Nora's photo with Troy and Elise from Dirt Road Dancing.
+- Cropped the photograph from the supplied Instagram screenshot so no social-media interface appears on the website.
+- Expanded Nora's Dirt Road Dancing inspiration story.
+- Added a dedicated Buckin' Boots Summer Stomp feature.
+- Added sections covering what Nora learned, what she is bringing into Boot Scootin' classes, and why the experience mattered.
+- Retained the official Dirt Road Dancing website and YouTube links.
+- Added fully responsive mobile styling.
+- Refreshed service-worker and asset cache versions.
