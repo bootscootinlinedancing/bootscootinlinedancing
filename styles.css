@@ -4702,3 +4702,56 @@ nav a{
     color:#d64046!important;
   }
 }
+
+
+/* VERSION 49 — COMPLETE EXPLORE ACTIVE-LINK REPAIR */
+@media(max-width:950px){
+  #nav.menu45-overlay a[aria-current="page"]::before{
+    content:none!important;
+    display:none!important;
+    position:static!important;
+    width:0!important;
+    height:0!important;
+    margin:0!important;
+    padding:0!important;
+  }
+
+  #menu45 > .menu45-first{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 22px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  #menu45 > .menu45-first > span,
+  #menu45 .menu45-submenu > a > span{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    white-space:normal!important;
+  }
+
+  #menu45 .menu45-submenu > a{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 20px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  #menu45 .menu45-submenu > a[aria-current="page"]{
+    color:#fff!important;
+    background:rgba(207,41,47,.08)!important;
+    border-left:3px solid #d64046!important;
+    padding-left:12px!important;
+  }
+
+  #menu45 .menu45-submenu > a[aria-current="page"] > span::before{
+    content:none!important;
+    display:none!important;
+  }
+}

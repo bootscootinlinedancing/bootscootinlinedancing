@@ -455,3 +455,19 @@ ACTIVE SUBMENU REPAIR
 - Forced all submenu wording to remain horizontal and full width.
 - No visual redesign: the approved Version 47 menu and community-request updates remain.
 - Reset browser/service-worker cache for the repaired files.
+
+
+Boot Scootin' Website Version 49
+
+COMPLETE EXPLORE ACTIVE-LINK FIX
+- Fixed the Book Your First Class feature collapsing into a thin vertical column.
+- Removed aria-current from that feature CTA because it is a call to action,
+  not a current-navigation indicator.
+- Neutralised the older global active-link pseudo-element throughout the entire
+  Explore overlay.
+- Fixed both featured links and submenu links rather than patching individual pages.
+- Active submenu pages now use a subtle red left border and background.
+- All menu text is explicitly forced to remain horizontal and full width.
+- Retains the Version 47/48 menu design, descriptions and private community
+  access-request process.
+- Clears all old service-worker caches.
