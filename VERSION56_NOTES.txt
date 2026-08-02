@@ -1,0 +1,9 @@
+Boot Scootin Website Version 56
+
+- Replaced coloured category gradients with a consistent premium dark tile design.
+- Fixed Food & Drink so it contains only PBR and KAH Reposado.
+- Moved Ivory Sky and Home By Sunday into Western Fashion.
+- Added Megan Moroney and Morgan Wallen to Music Nora Loves.
+- Added a dedicated Dirt Road Dancing inspiration/story section with official website and YouTube links.
+- Added My Inspirations as a main guide category.
+- Refreshed service-worker and CSS cache versions.

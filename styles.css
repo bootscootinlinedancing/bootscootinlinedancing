@@ -5002,3 +5002,94 @@ nav a{
 .nora-recommends-grid{width:min(1120px,94vw);margin:2rem auto 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.nora-recommend-card{min-height:260px;padding:1.4rem;border:1px solid #5d3032;background:#120a09;color:#fff}.nora-recommend-card h3{font-size:clamp(1.7rem,3vw,2.5rem);margin:.9rem 0 .65rem}.nora-recommend-card p{color:#cdbdaf;line-height:1.55}.recommend-badge{color:#d8b48d}.guide-transparency-card{width:min(1000px,94vw);margin:auto;display:grid;grid-template-columns:.8fr 1.2fr;gap:2rem;align-items:center;padding:2rem;border-left:4px solid #9b1c22;background:#f2e2cf}.guide-transparency-card h2{font-size:clamp(2rem,4vw,3.4rem);margin:.2rem 0}.guide-transparency-card p{line-height:1.7}
 @media(max-width:850px){.country-guide-mag-hero,.featured-venue-card,.country-guide-gateway-card,.guide-transparency-card{grid-template-columns:1fr}.country-guide-mag-copy{padding:6rem 1rem 2.5rem}.country-guide-mag-photo{height:480px}.guide-category-grid,.nora-recommends-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.festival-hub-grid{grid-template-columns:1fr}.festival-hub-card.featured{grid-column:auto}.country-guide-gateway-list{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.guide-category-grid,.nora-recommends-grid{grid-template-columns:1fr}.country-guide-mag-photo{height:420px}.festival-hub-card{min-height:280px}.featured-venue-image img{min-height:300px}.country-guide-gateway-list{grid-template-columns:1fr}}
+
+
+/* VERSION 56 — COUNTRY GUIDE STRUCTURE + INSPIRATION */
+.guide-category-grid{
+  gap:14px!important;
+}
+.guide-category-tile,
+.guide-category-tile.music,
+.guide-category-tile.fashion,
+.guide-category-tile.festivals,
+.guide-category-tile.food,
+.guide-category-tile.places,
+.guide-category-tile.entertainment{
+  position:relative;
+  min-height:220px!important;
+  justify-content:center!important;
+  overflow:hidden;
+  padding:1.55rem!important;
+  border:1px solid #603033!important;
+  border-radius:0!important;
+  background:
+    linear-gradient(135deg,rgba(151,28,34,.13),transparent 42%),
+    #100a09!important;
+  box-shadow:none!important;
+}
+.guide-category-tile::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:4px;
+  background:#a41f25;
+  transform:scaleY(.25);
+  transform-origin:center;
+  transition:transform .2s ease;
+}
+.guide-category-tile:hover::before,
+.guide-category-tile:focus-visible::before{transform:scaleY(1)}
+.guide-category-tile:hover{transform:translateY(-3px)!important;background:#17100e!important}
+.guide-category-tile span{position:relative;font-size:clamp(1.7rem,3vw,2.35rem)!important}
+.guide-category-tile small{position:relative;max-width:27ch;color:#bfae9e!important;font:400 .92rem/1.5 Oswald,sans-serif!important}
+.guide-category-tile b{position:relative;margin-top:1.2rem;color:#d4474c;font:700 .74rem/1 Oswald,sans-serif;text-transform:uppercase;letter-spacing:.12em}
+
+.guide-editorial-list{
+  width:min(1040px,92vw);
+  margin:2rem auto 0;
+  display:grid;
+  gap:0;
+  border-top:1px solid #53272a;
+}
+.guide-editorial-item{
+  display:grid;
+  grid-template-columns:70px minmax(0,1fr);
+  gap:1.2rem;
+  padding:2rem 0;
+  border-bottom:1px solid #53272a;
+  color:#fff;
+}
+.guide-item-number{color:#7b3a3d;font:700 2rem/1 Oswald,sans-serif}
+.guide-editorial-item h3{margin:.25rem 0 .65rem;font-size:clamp(2rem,4vw,3.5rem)}
+.guide-editorial-item p{max-width:68ch;color:#c9b9ab;line-height:1.65}
+.light-list{border-color:#d4bea2}
+.light-list .guide-editorial-item{color:#241515;border-color:#d4bea2}
+.light-list .guide-editorial-item p{color:#6d594d}
+.light-list .guide-item-number{color:#a23b40}
+
+.dirt-road-story{
+  width:min(1080px,92vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr);
+  border:1px solid #cbb394;
+  background:#fff8ed;
+}
+.dirt-road-story-copy{padding:clamp(1.6rem,4vw,3.4rem)}
+.dirt-road-story-copy h2{font-size:clamp(3rem,7vw,6rem);margin:.2rem 0 1rem}
+.dirt-road-story-copy p{max-width:65ch;line-height:1.75;color:#59483f}
+.dirt-road-lead{font-size:1.13rem!important;color:#2d1a17!important}
+.dirt-road-story-copy blockquote{margin:1.6rem 0;padding:1.2rem 1.35rem;border-left:4px solid #a51f25;background:#f0e1cf;font-family:Rye,serif;line-height:1.55}
+.dirt-road-story-note{display:flex;flex-direction:column;justify-content:flex-end;padding:2rem;background:#100a09;color:#fff;border-left:1px solid #5a2b2e}
+.dirt-road-story-note span{color:#d4474c;font:700 .75rem/1 Oswald,sans-serif;text-transform:uppercase;letter-spacing:.13em}
+.dirt-road-story-note strong{margin:.75rem 0;font:400 clamp(2rem,4vw,3.5rem)/1.08 Rye,serif}
+.dirt-road-story-note p{color:#bfae9e;line-height:1.55}
+
+@media(max-width:720px){
+  .guide-editorial-item{grid-template-columns:44px minmax(0,1fr);gap:.75rem;padding:1.5rem 0}
+  .guide-item-number{font-size:1.35rem}
+  .dirt-road-story{grid-template-columns:1fr}
+  .dirt-road-story-note{border-left:0;border-top:1px solid #5a2b2e;min-height:230px}
+}

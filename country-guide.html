@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="stylesheet" href="styles.css?v=56">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -192,7 +192,7 @@
         <p>Helping you discover country festivals, venues, western businesses and experiences across the UK — with honest recommendations and official links.</p>
         <div class="actions">
           <a class="button" href="#festivals">Explore Festivals</a>
-          <a class="button ghost" href="#recommends">Nora Recommends</a>
+          <a class="button ghost" href="#music">Nora Recommends</a>
         </div>
       </div>
       <div class="country-guide-mag-photo reveal">
@@ -207,12 +207,12 @@
         <p>This guide will keep growing as Nora discovers more places, events and businesses worth sharing.</p>
       </div>
       <div class="guide-category-grid">
-        <a class="guide-category-tile music" href="country-corner.html"><span>Music</span><small>Artists, playlists and concerts</small></a>
-        <a class="guide-category-tile fashion" href="businesses.html"><span>Western Fashion</span><small>Boots, hats and businesses</small></a>
-        <a class="guide-category-tile festivals" href="#festivals"><span>Festivals</span><small>Official UK festival links</small></a>
-        <a class="guide-category-tile food" href="#recommends"><span>Food & Drink</span><small>Nora’s personal favourites</small></a>
-        <a class="guide-category-tile places" href="#venue"><span>Places</span><small>Country venues and dance floors</small></a>
-        <a class="guide-category-tile entertainment" href="country-corner.html"><span>Entertainment</span><small>Country inspiration and stories</small></a>
+        <a class="guide-category-tile" href="#music"><span>Music</span><small>Artists, songs and concerts Nora loves</small><b aria-hidden="true">Explore →</b></a>
+        <a class="guide-category-tile" href="#fashion"><span>Western Fashion</span><small>Boots, hats and businesses Nora genuinely uses</small><b aria-hidden="true">Explore →</b></a>
+        <a class="guide-category-tile" href="#festivals"><span>Festivals</span><small>Official UK festival links and Nora’s guides</small><b aria-hidden="true">Explore →</b></a>
+        <a class="guide-category-tile" href="#food-drink"><span>Food &amp; Drink</span><small>PBR, tequila and future country food discoveries</small><b aria-hidden="true">Explore →</b></a>
+        <a class="guide-category-tile" href="#venue"><span>Places</span><small>Country venues, bars and dance floors</small><b aria-hidden="true">Explore →</b></a>
+        <a class="guide-category-tile" href="#inspiration"><span>My Inspirations</span><small>The people who shaped Nora’s dancing journey</small><b aria-hidden="true">Explore →</b></a>
       </div>
     </section>
 
@@ -248,19 +248,78 @@
       </div>
     </section>
 
-    <section class="section dark nora-recommends-section" id="recommends">
+    <section class="section dark guide-music-section" id="music">
       <div class="section-title centre reveal">
-        <p class="kicker">Real favourites</p>
-        <h2>Nora Recommends</h2>
-        <p>A curated starting collection based on Nora’s own tastes, purchases and country experiences.</p>
+        <p class="kicker">On Nora’s playlist</p>
+        <h2>Music Nora Loves</h2>
+        <p>Artists whose music, songwriting and live shows are part of Nora’s country world.</p>
       </div>
-      <div class="nora-recommends-grid">
-        <article class="nora-recommend-card reveal"><span class="recommend-badge">Personally Owned</span><h3>Ivory Sky Boots</h3><p>Western boots Nora genuinely owns and wears as part of her country wardrobe.</p><a class="text-link light-link" href="https://ivoryskyco.com/" target="_blank" rel="noopener">Visit Ivory Sky →</a></article>
-        <article class="nora-recommend-card reveal"><span class="recommend-badge">Boot Scootin’ Approved</span><h3>Home By Sunday</h3><p>Statement western hats and accessories that are already part of Nora’s personal collection.</p><a class="text-link light-link" href="https://www.homebysunday.com" target="_blank" rel="noopener">Visit Home By Sunday →</a></article>
-        <article class="nora-recommend-card reveal"><span class="recommend-badge">Festival Favourite</span><h3>The Long Road</h3><p>A festival closely connected to Nora’s Moonshine community plans and handbook.</p><a class="text-link light-link" href="long-road-handbook.html">Open the Handbook Preview →</a></article>
-        <article class="nora-recommend-card reveal"><span class="recommend-badge">Artist Nora Loves</span><h3>Megan Moroney</h3><p>An artist whose music and songwriting hold a special place in Nora’s country world.</p><span class="status-chip">Personal feature coming soon</span></article>
-        <article class="nora-recommend-card reveal"><span class="recommend-badge">Nora’s Drink</span><h3>PBR</h3><p>Nora’s go-to beer for country festivals and good-time country nights.</p></article>
-        <article class="nora-recommend-card reveal"><span class="recommend-badge">Nora’s Drink</span><h3>KAH Reposado Tequila</h3><p>Nora’s preferred reposado tequila for celebrations and country nights out.</p></article>
+      <div class="guide-editorial-list">
+        <article class="guide-editorial-item reveal">
+          <span class="guide-item-number">01</span>
+          <div><p class="kicker">Artist Nora Loves</p><h3>Megan Moroney</h3><p>Honest songwriting, emotional storytelling and songs that have become deeply connected to Nora’s own memories.</p></div>
+        </article>
+        <article class="guide-editorial-item reveal">
+          <span class="guide-item-number">02</span>
+          <div><p class="kicker">Artist Nora Loves</p><h3>Morgan Wallen</h3><p>A permanent part of Nora’s country soundtrack and an essential name in her personal music guide.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section paper guide-fashion-section" id="fashion">
+      <div class="section-title centre reveal">
+        <p class="kicker red">Personally owned</p>
+        <h2>Western Fashion</h2>
+        <p>These belong here — separate from Food &amp; Drink — because they are part of Nora’s real western wardrobe.</p>
+      </div>
+      <div class="guide-editorial-list light-list">
+        <article class="guide-editorial-item reveal">
+          <span class="guide-item-number">01</span>
+          <div><p class="kicker red">Personally Owned</p><h3>Ivory Sky Boots</h3><p>Western boots Nora genuinely owns and wears as part of her country wardrobe.</p><a class="text-link" href="https://ivoryskyco.com/" target="_blank" rel="noopener">Visit Ivory Sky →</a></div>
+        </article>
+        <article class="guide-editorial-item reveal">
+          <span class="guide-item-number">02</span>
+          <div><p class="kicker red">Boot Scootin’ Approved</p><h3>Home By Sunday</h3><p>Statement western hats and accessories already featured in Nora’s personal collection.</p><a class="text-link" href="https://www.homebysunday.com" target="_blank" rel="noopener">Visit Home By Sunday →</a></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section dark guide-food-section" id="food-drink">
+      <div class="section-title centre reveal">
+        <p class="kicker">Nora’s personal favourites</p>
+        <h2>Food &amp; Drink</h2>
+        <p>This area now contains only food and drink recommendations — no fashion businesses.</p>
+      </div>
+      <div class="guide-editorial-list">
+        <article class="guide-editorial-item reveal">
+          <span class="guide-item-number">01</span>
+          <div><p class="kicker">Nora’s Drink</p><h3>PBR</h3><p>Nora’s go-to beer for country festivals and good-time country nights.</p></div>
+        </article>
+        <article class="guide-editorial-item reveal">
+          <span class="guide-item-number">02</span>
+          <div><p class="kicker">Nora’s Drink</p><h3>KAH Reposado Tequila</h3><p>Nora’s preferred reposado tequila for celebrations and country nights out.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section paper dirt-road-inspiration" id="inspiration">
+      <div class="dirt-road-story reveal">
+        <div class="dirt-road-story-copy">
+          <p class="kicker red">My Inspiration</p>
+          <h2>Dirt Road Dancing</h2>
+          <p class="dirt-road-lead">Before Nora taught classes of her own, she spent months learning dance after dance from Troy and Elise through their YouTube videos.</p>
+          <p>Meeting them and dancing alongside them turned something she had imagined from her living room into a real memory. Their passion, teaching and worldwide dance community are an important part of Nora’s own Boot Scootin’ story.</p>
+          <blockquote>“Sometimes the people who inspire you from a screen become memories you’ll treasure for a lifetime.”</blockquote>
+          <div class="actions">
+            <a class="button" href="https://www.dirtroaddancing.com" target="_blank" rel="noopener">Visit Dirt Road Dancing</a>
+            <a class="button ghost dark-ghost" href="https://youtube.com/@dirtroaddancing?si=yOtcBTuSHAeYVYP4" target="_blank" rel="noopener">Watch on YouTube</a>
+          </div>
+        </div>
+        <aside class="dirt-road-story-note">
+          <span>From the living room</span>
+          <strong>to dancing with her idols.</strong>
+          <p>A defining chapter in Nora’s line-dancing journey.</p>
+        </aside>
       </div>
     </section>
 
@@ -278,7 +337,7 @@
     <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
   </footer>
 
-  <script src="script.js?v=55"></script>
+  <script src="script.js?v=56"></script>
 
 
 
