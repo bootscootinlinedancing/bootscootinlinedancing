@@ -1,21 +1,16 @@
-# Platform roadmap
+# Boot Scootin' Platform Roadmap
 
-## Current foundation
+## Current: Version 65
+- Public website
+- Secure booking foundation
+- Boot Scootin' Ranch admin dashboard
+- Class create/edit/close/cancel controls
+- Paid booking registers
+- Cloudflare Access protection design
 
-- Static public website preserved
-- Reusable global styling and navigation scripts
-- Cloudflare Pages Functions for booking APIs
-- D1 schema for classes, seat holds and bookings
-- Protected admin register endpoint scaffold
-- GitHub validation on every update
-
-## Next build order
-
-1. Configure Cloudflare D1 and load test classes.
-2. Connect SumUp hosted checkout in sandbox/test mode.
-3. Add verified payment callback handling.
-4. Add transactional booking-confirmation email.
-5. Protect the admin area with Cloudflare Access and MFA.
-6. Run security, capacity and refund tests.
-7. Enable live payments only after all tests pass.
-8. Add member accounts after the booking engine is stable.
+## Next
+1. Configure Cloudflare D1 and seed current classes.
+2. Protect Ranch with Cloudflare Access.
+3. Connect SumUp Sandbox Hosted Checkout.
+4. Test bookings, holds, failures and refunds.
+5. Add member accounts, attendance, rewards and Passport stamps.

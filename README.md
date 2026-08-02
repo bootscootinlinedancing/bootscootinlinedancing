@@ -44,3 +44,6 @@ Run `migrations/0001_booking_schema.sql` against the D1 database before enabling
 Never place SumUp credentials, D1 credentials, customer exports, or `.dev.vars` in GitHub.
 
 See `BOOKING_SYSTEM_SETUP.md` for the detailed launch checklist.
+
+## Version 65 — Boot Scootin' Ranch
+Open `ranch.html` after protecting it with Cloudflare Access. The Ranch manages classes, capacities, statuses and paid registers through D1. It remains safe in setup mode until D1 and SumUp Sandbox are connected.
