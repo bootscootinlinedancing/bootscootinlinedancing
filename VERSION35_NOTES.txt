@@ -1,0 +1,13 @@
+Boot Scootin' Website Version 35
+
+Main changes
+- Grouped and fully scrollable mobile menu
+- Moonshine & Good Times Gang full name
+- Nora's Country Guide replacing the inaccurate map
+- Boot Scootin' Boogie Apple Music and YouTube links
+- Improved Businesses We Love brand panels
+- Mobile navigation and layout polish
+
+Important
+- The business panels use styled brand names rather than copied logo artwork.
+  Official logo files can be added later if the businesses provide or approve them.

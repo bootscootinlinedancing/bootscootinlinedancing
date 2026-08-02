@@ -33,17 +33,32 @@ if (intro && enter) {
 }
 
 // Menu works on every page.
+const navClose = document.getElementById('navClose');
+
+function setMenuOpen(open) {
+  if (!nav || !menuButton) return;
+  nav.classList.toggle('open', open);
+  menuButton.setAttribute('aria-expanded', String(open));
+  document.body.classList.toggle('menu-open', open);
+}
+
 if (menuButton && nav) {
   menuButton.addEventListener('click', () => {
-    const open = nav.classList.toggle('open');
-    menuButton.setAttribute('aria-expanded', String(open));
+    setMenuOpen(!nav.classList.contains('open'));
   });
 
+  navClose?.addEventListener('click', () => setMenuOpen(false));
+
   nav.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => {
-      nav.classList.remove('open');
-      menuButton.setAttribute('aria-expanded','false');
-    });
+    link.addEventListener('click', () => setMenuOpen(false));
+  });
+
+  nav.addEventListener('click', event => {
+    if (event.target === nav) setMenuOpen(false);
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') setMenuOpen(false);
   });
 }
 

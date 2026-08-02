@@ -262,3 +262,18 @@ VERSION 33 UPDATE — BIRTHDAY BOOTS & PROFILE PHOTOS
 - Added a live birthday privacy preview.
 - Added a public Birthday Boots preview section to the Community page.
 - No real profile photos or birthday information are uploaded or stored in this version.
+
+
+VERSION 35 UPDATE — NAVIGATION, COUNTRY GUIDE & SIGNATURE SONG
+- Rebuilt the mobile navigation into grouped, scrollable sections.
+- Restored access to every website page on small screens.
+- Added a dedicated close button, Escape-key support and body scroll locking.
+- Renamed Moonshine consistently to Moonshine & Good Times Gang.
+- Replaced the inaccurate illustrated UK map with Nora's Country Guide.
+- Added filterable recommendation cards for Boot Scootin', Low Places, The Long Road, Threefives, Home By Sunday and Ivory Sky.
+- Added future spaces for C2C, Black Deer, Country Club Festival and more.
+- Added Boot Scootin' Boogie Apple Music and official YouTube links prominently to Nora's Country Corner.
+- Kept the official YouTube embed so visitors can choose to play the signature song.
+- Polished the Businesses We Love brand panels.
+- Added a stable Birthday Boots menu anchor.
+- Updated the service worker cache to Version 35.

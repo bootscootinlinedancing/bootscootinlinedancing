@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090606">
-  <meta name="description" content="Nora's Country Map — discover country venues, events, shops and Boot Scootin' favourites around the UK.">
-  <title>Nora’s Country Map | Boot Scootin' Line Dancing</title>
+  <meta name="description" content="Nora's Country Guide — country venues, line dancing, festivals and western businesses recommended by Boot Scootin' Line Dancing.">
+  <title>Nora’s Country Guide | Boot Scootin' Line Dancing</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
@@ -21,77 +21,197 @@
       <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
     </a>
     <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
-    <nav id="nav">
-      <a href="index.html">Home</a>
-      <a href="calendar.html">Calendar</a>
-      <a href="dance-diary.html">Dance Diary</a>
-      <a href="dance-library.html">Dance Library</a>
-      <a href="community.html">Community</a>
-      <a href="country-map.html" aria-current="page">Country Map</a>
-      <a href="moonshine.html">Moonshine &amp; Good Times Gang</a>
-      <a href="journey.html">My Journey</a>
-      <a href="businesses.html">Businesses We Love</a>
+<nav id="nav" aria-label="Main navigation">
+      <div class="nav-mobile-head">
+        <span>Explore Boot Scootin’</span>
+        <button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button>
+      </div>
+
+      <div class="nav-groups">
+        <section class="nav-group">
+          <p>Home</p>
+          <a href="index.html">Home</a>
+          <a href="about.html">About Boot Scootin’</a>
+          <a href="private-events.html">Private Events</a>
+        </section>
+
+        <section class="nav-group">
+          <p>Classes &amp; Dancing</p>
+          <a href="calendar.html">Calendar &amp; Bookings</a>
+          <a href="dance-library.html">Dance Library</a>
+          <a href="dance-diary.html">Dance Diary</a>
+          <a href="requests.html">Dance Requests</a>
+        </section>
+
+        <section class="nav-group">
+          <p>Community</p>
+          <a href="community.html">Community Hub</a>
+          <a href="moonshine.html">Moonshine &amp; Good Times Gang</a>
+          <a href="journey.html">My Boot Scootin’ Journey</a>
+          <a href="community.html#birthday-boots">Birthday Boots</a>
+        </section>
+
+        <section class="nav-group">
+          <p>Country Guide</p>
+          <a href="country-map.html" aria-current="page">Nora’s Country Guide</a>
+          <a href="country-corner.html">Nora’s Country Corner</a>
+          <a href="businesses.html">Businesses We Love</a>
+        </section>
+
+        <section class="nav-group">
+          <p>Shop &amp; Rewards</p>
+          <a href="community.html#merchandise">Official Merchandise</a>
+          <a href="rewards.html">Boot Scootin’ Rewards</a>
+        </section>
+
+        <section class="nav-group">
+          <p>Contact</p>
+          <a href="index.html#contact">Contact &amp; Socials</a>
+          <a href="community.html#music">Music &amp; Playlists</a>
+        </section>
+      </div>
     </nav>
   </header>
 
-  <main class="feature-page">
-    <section class="feature-hero section dark">
+  <main class="feature-page country-guide-page">
+    <section class="country-guide-hero">
       <div class="section-title centre reveal">
-        <p class="kicker">Discover the UK country scene</p>
-        <h1>Nora’s Country Map</h1>
-        <p>A growing guide to country bars, line dancing, festivals, western shops and places personally loved by Nora.</p>
+        <p class="kicker">The UK country scene, Nora’s way</p>
+        <h1>Nora’s Country Guide</h1>
+        <p>A growing collection of country venues, line-dancing destinations, festivals and western businesses worth discovering.</p>
       </div>
     </section>
 
-    <section class="section paper map-preview-section">
-      <div class="map-toolbar reveal">
-        <label for="mapCategory">Show me</label>
-        <select id="mapCategory">
-          <option value="all">Everything</option>
-          <option value="dance">Line dancing</option>
-          <option value="venue">Country bars & venues</option>
-          <option value="shop">Western shops & brands</option>
-          <option value="festival">Festivals & events</option>
-          <option value="recommended">Nora recommends</option>
-        </select>
-      </div>
-
-      <div class="country-map-layout reveal">
-        <div class="uk-map-card" role="img" aria-label="Stylised UK map preview showing featured country locations">
-          <div class="map-island map-gb">
-            <button class="map-pin pin-birmingham active" data-place="birmingham" aria-label="Birmingham">★</button>
-            <button class="map-pin pin-longroad" data-place="longroad" aria-label="The Long Road Festival">●</button>
-            <button class="map-pin pin-threefives" data-place="threefives" aria-label="Threefives Country Apparel">●</button>
-            <button class="map-pin pin-homebysunday" data-place="homebysunday" aria-label="Home By Sunday">●</button>
-          </div>
-          <p class="map-disclaimer">Preview map — exact pins and a full interactive UK directory will be added as the guide grows.</p>
+    <section class="section paper country-guide-section">
+      <div class="country-guide-toolbar reveal">
+        <div>
+          <p class="kicker red">Explore the guide</p>
+          <h2>Where would you like to go?</h2>
         </div>
+        <label>
+          Filter by category
+          <select id="guideFilter">
+            <option value="all">Show everything</option>
+            <option value="dance">Line dancing</option>
+            <option value="venue">Country venues</option>
+            <option value="festival">Festivals &amp; events</option>
+            <option value="shop">Western shopping</option>
+            <option value="community">Community guides</option>
+          </select>
+        </label>
+      </div>
 
-        <aside class="map-place-panel" id="mapPlacePanel" aria-live="polite">
-          <p class="kicker red">Birmingham</p>
-          <h2>Boot Scootin’ Home Ground</h2>
-          <div class="map-place-list">
-            <a href="calendar.html"><strong>Boot Scootin’ Line Dancing</strong><span>Classes and social dancing</span></a>
-            <a href="calendar.html"><strong>Low Places</strong><span>Honky-tonk venue and social nights</span></a>
-            <a href="calendar.html"><strong>Edgbaston Community Centre</strong><span>Beginner-friendly Friday classes</span></a>
+      <div class="country-guide-grid" id="countryGuideGrid">
+        <article class="country-guide-card featured reveal" data-category="dance venue">
+          <div class="guide-card-art birmingham-art">
+            <span class="guide-location">Birmingham</span>
+            <strong>BOOT SCOOTIN’</strong>
           </div>
-        </aside>
+          <div class="guide-card-copy">
+            <p class="kicker red">Line Dancing</p>
+            <h3>Boot Scootin’ Line Dancing</h3>
+            <p>Fun, friendly and beginner-friendly classes with no partner needed. This is the heart of Nora’s country community.</p>
+            <div class="guide-tags"><span>Classes</span><span>Beginner Friendly</span><span>Nora’s Home Ground</span></div>
+            <div class="actions">
+              <a class="button" href="calendar.html">View Classes</a>
+              <a class="button ghost dark-ghost" href="about.html">Read Our Story</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="country-guide-card reveal" data-category="venue dance">
+          <div class="guide-card-art low-places-art">
+            <span class="guide-location">Birmingham</span>
+            <strong>LOW PLACES</strong>
+          </div>
+          <div class="guide-card-copy">
+            <p class="kicker red">Country Venue</p>
+            <h3>Low Places</h3>
+            <p>A honky-tonk home for Boot Scootin’ classes, social dancing and unforgettable country nights.</p>
+            <div class="guide-tags"><span>Bar</span><span>Social Dancing</span><span>Accessible Toilets</span></div>
+            <a class="button" href="calendar.html">See Upcoming Dates</a>
+          </div>
+        </article>
+
+        <article class="country-guide-card reveal" data-category="community festival">
+          <div class="guide-card-art long-road-art">
+            <span class="guide-location">Leicestershire</span>
+            <strong>THE LONG ROAD</strong>
+          </div>
+          <div class="guide-card-copy">
+            <p class="kicker red">Festival</p>
+            <h3>The Long Road Festival</h3>
+            <p>Home of the future Moonshine &amp; Good Times Gang festival hub, handbook, meet-ups and community memories.</p>
+            <div class="guide-tags"><span>Festival</span><span>Camping</span><span>Moonshine Hub</span></div>
+            <a class="button" href="moonshine.html">Open Festival Hub</a>
+          </div>
+        </article>
+
+        <article class="country-guide-card reveal" data-category="shop">
+          <div class="guide-card-art threefives-art">
+            <span class="guide-location">Country Apparel</span>
+            <strong>THREEFIVES</strong>
+          </div>
+          <div class="guide-card-copy">
+            <p class="kicker red">Country Clothing</p>
+            <h3>Threefives Country Apparel</h3>
+            <p>Country-inspired clothing from Lucy and Warren, who are also creating the first official Boot Scootin’ T-shirts.</p>
+            <div class="guide-tags"><span>Clothing</span><span>Merch Creators</span><span>Nora Recommends</span></div>
+            <a class="button" href="https://www.threefives.co.uk" target="_blank" rel="noopener">Visit Website</a>
+          </div>
+        </article>
+
+        <article class="country-guide-card reveal" data-category="shop">
+          <div class="guide-card-art home-sunday-art">
+            <span class="guide-location">Western Hats</span>
+            <strong>HOME BY SUNDAY</strong>
+          </div>
+          <div class="guide-card-copy">
+            <p class="kicker red">Hats &amp; Accessories</p>
+            <h3>Home By Sunday</h3>
+            <p>Beautiful statement hats and western accessories with the attention to detail Nora loves.</p>
+            <div class="guide-tags"><span>Hats</span><span>Accessories</span><span>Nora Recommends</span></div>
+            <a class="button" href="https://www.homebysunday.com" target="_blank" rel="noopener">Visit Website</a>
+          </div>
+        </article>
+
+        <article class="country-guide-card reveal" data-category="shop">
+          <div class="guide-card-art ivory-sky-art">
+            <span class="guide-location">Cowboy Boots</span>
+            <strong>IVORY SKY</strong>
+          </div>
+          <div class="guide-card-copy">
+            <p class="kicker red">Western Footwear</p>
+            <h3>Ivory Sky</h3>
+            <p>Bold, beautiful cowboy boots and one of Nora’s favourite places to browse for statement footwear.</p>
+            <div class="guide-tags"><span>Boots</span><span>Western Style</span><span>Nora Recommends</span></div>
+            <a class="button" href="https://ivoryskyco.com/" target="_blank" rel="noopener">Visit Website</a>
+          </div>
+        </article>
+
+        <article class="country-guide-card coming-guide reveal" data-category="festival">
+          <div class="guide-card-art future-art">
+            <span class="guide-location">UK Country Calendar</span>
+            <strong>MORE COMING</strong>
+          </div>
+          <div class="guide-card-copy">
+            <p class="kicker red">Growing Soon</p>
+            <h3>Festivals, bars and country events</h3>
+            <p>C2C, Black Deer, Country Club Festival and more will be added once Nora’s recommendations and visitor details are ready.</p>
+            <div class="guide-tags"><span>Coming Soon</span><span>UK Wide</span></div>
+          </div>
+        </article>
       </div>
 
-      <div class="map-category-grid reveal">
-        <article><span>👢</span><h3>Boots & Western Wear</h3><p>Ivory Sky, Threefives and more favourites.</p></article>
-        <article><span>🤠</span><h3>Hats & Accessories</h3><p>Home By Sunday and other trusted makers.</p></article>
-        <article><span>💃</span><h3>Line Dancing</h3><p>Classes, socials and country dance nights.</p></article>
-        <article><span>🎪</span><h3>Festivals</h3><p>The Long Road and future country events.</p></article>
-      </div>
+      <p class="guide-empty" id="guideEmpty" hidden>No recommendations are available in this category yet.</p>
     </section>
 
-    <section class="section dark map-submit-section">
+    <section class="section dark">
       <div class="business-invite-card reveal">
         <div>
-          <p class="kicker">Help the map grow</p>
-          <h2>Know a brilliant country place?</h2>
-          <p>Visitors will eventually be able to suggest venues, events and businesses for Nora to review before they are added.</p>
+          <p class="kicker">Help the guide grow</p>
+          <h2>Know somewhere country fans would love?</h2>
+          <p>A recommendation form will be added later. Nora will personally review every suggestion before it appears in the guide.</p>
         </div>
         <button class="button muted-button" type="button" disabled>Suggestion Form Coming Soon</button>
       </div>
@@ -109,53 +229,19 @@
 
   <script src="script.js"></script>
   <script>
-    const places = {
-      birmingham: {
-        kicker: "Birmingham",
-        title: "Boot Scootin’ Home Ground",
-        items: [
-          ["Boot Scootin’ Line Dancing", "Classes and social dancing", "calendar.html"],
-          ["Low Places", "Honky-tonk venue and social nights", "calendar.html"],
-          ["Edgbaston Community Centre", "Beginner-friendly Friday classes", "calendar.html"]
-        ]
-      },
-      longroad: {
-        kicker: "Leicestershire",
-        title: "The Long Road Festival",
-        items: [
-          ["Festival Hub", "Moonshine meet-ups, planning and future guide", "moonshine.html"],
-          ["Long Road Guide", "The community handbook will be linked here", "moonshine.html"]
-        ]
-      },
-      threefives: {
-        kicker: "Country Apparel",
-        title: "Threefives Country Apparel",
-        items: [
-          ["Visit the recommendation", "Country clothing and Boot Scootin’ merchandise creators", "businesses.html"]
-        ]
-      },
-      homebysunday: {
-        kicker: "Western Hats",
-        title: "Home By Sunday",
-        items: [
-          ["Visit the recommendation", "Nora’s favourite statement hats", "businesses.html"]
-        ]
-      }
-    };
+    const filter = document.getElementById("guideFilter");
+    const cards = [...document.querySelectorAll(".country-guide-card")];
+    const empty = document.getElementById("guideEmpty");
 
-    const panel = document.getElementById("mapPlacePanel");
-    document.querySelectorAll(".map-pin").forEach(pin => {
-      pin.addEventListener("click", () => {
-        document.querySelectorAll(".map-pin").forEach(item => item.classList.remove("active"));
-        pin.classList.add("active");
-        const place = places[pin.dataset.place];
-        panel.innerHTML = `
-          <p class="kicker red">${place.kicker}</p>
-          <h2>${place.title}</h2>
-          <div class="map-place-list">
-            ${place.items.map(item => `<a href="${item[2]}"><strong>${item[0]}</strong><span>${item[1]}</span></a>`).join("")}
-          </div>`;
+    filter.addEventListener("change", () => {
+      const category = filter.value;
+      let visible = 0;
+      cards.forEach(card => {
+        const matches = category === "all" || card.dataset.category.split(" ").includes(category);
+        card.hidden = !matches;
+        if (matches) visible += 1;
       });
+      empty.hidden = visible !== 0;
     });
   </script>
 </body>
