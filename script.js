@@ -9,27 +9,59 @@ function finishIntro(){
   if (!intro) return;
   intro.classList.add('hide');
   document.body.classList.remove('intro-open');
-  sessionStorage.setItem('bootIntroSeen','1');
+  try {
+    sessionStorage.setItem('bootIntroSeen','1');
+  } catch (_) {}
+}
+
+function enterWebsite(event){
+  if (!intro || intro.classList.contains('hide') || intro.dataset.entering === '1') return;
+
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  intro.dataset.entering = '1';
+  intro.classList.add('stomping');
+
+  if ('vibrate' in navigator) {
+    try { navigator.vibrate([28, 24, 60]); } catch (_) {}
+  }
+
+  // Let the stomp register, but do not make visitors wait or tap twice.
+  window.setTimeout(finishIntro, 520);
 }
 
 // The intro only exists on the homepage.
-if (intro && enter) {
-  if (sessionStorage.getItem('bootIntroSeen') === '1') {
+if (intro) {
+  let alreadySeen = false;
+  try {
+    alreadySeen = sessionStorage.getItem('bootIntroSeen') === '1';
+  } catch (_) {}
+
+  if (alreadySeen) {
     intro.classList.add('hide');
     document.body.classList.remove('intro-open');
+  } else {
+    // The designed Enter area remains a real button.
+    enter?.addEventListener('click', enterWebsite, { passive:false });
+
+    // Tapping anywhere on the opening poster also enters reliably.
+    intro.addEventListener('click', enterWebsite, { passive:false });
+
+    // Pointer events make entry respond immediately on iPhone.
+    intro.addEventListener('pointerup', (event) => {
+      if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+        enterWebsite(event);
+      }
+    }, { passive:false });
+
+    // Keyboard accessibility.
+    intro.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') enterWebsite(event);
+    });
   }
-
-  enter.addEventListener('click', () => {
-    if (intro.classList.contains('stomping')) return;
-
-    intro.classList.add('stomping');
-
-    if ('vibrate' in navigator) {
-      navigator.vibrate([35, 35, 85]);
-    }
-
-    window.setTimeout(finishIntro, 920);
-  });
 }
 
 // Menu works on every page.
@@ -193,3 +225,19 @@ installGuide?.addEventListener("click", event => {
 
 
 
+
+
+// Explore menu: open/close the full row and keep only one section open.
+document.querySelectorAll("#menu45 details.menu45-section").forEach((section) => {
+  section.addEventListener("toggle", () => {
+    if (!section.open) return;
+
+    document.querySelectorAll("#menu45 details.menu45-section").forEach((other) => {
+      if (other !== section) other.open = false;
+    });
+
+    section.classList.remove("menu45-opening");
+    void section.offsetWidth;
+    section.classList.add("menu45-opening");
+  });
+});

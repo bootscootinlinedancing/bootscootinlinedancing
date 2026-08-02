@@ -4329,3 +4329,111 @@ nav a{
   }
   #v42Menu .v42-submenu>a .v42-chevron{display:none!important}
 }
+
+
+/* VERSION 46 — EXPLORE MENU POLISH + RELIABLE LANDING ENTRY */
+
+/* The whole opening poster is now intentionally tappable. */
+.poster-intro{
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.poster-intro[data-entering="1"]{
+  pointer-events:none;
+}
+.poster-enter{
+  /* A more forgiving hit area around the printed Enter button. */
+  left:27%!important;
+  top:46%!important;
+  width:59%!important;
+  height:15%!important;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.poster-intro.hide{
+  transition-duration:.48s!important;
+}
+
+/* Menu wording and submenu hierarchy */
+@media(max-width:950px){
+  #menu45 .menu45-head h2{
+    font-size:31px!important;
+  }
+
+  #menu45 details.menu45-section>summary{
+    /* The entire row is the tap target, not just the plus sign. */
+    width:100%!important;
+    -webkit-tap-highlight-color:transparent!important;
+    touch-action:manipulation!important;
+  }
+
+  #menu45 details.menu45-section>summary>span{
+    text-decoration-thickness:2px!important;
+    text-underline-offset:9px!important;
+  }
+
+  #menu45 details.menu45-section[open]>summary>span{
+    text-decoration-color:#d64046!important;
+  }
+
+  #menu45 .menu45-submenu{
+    position:relative!important;
+    margin:2px 0 9px 7px!important;
+    padding:4px 0 8px 22px!important;
+    border-left:2px solid #7d3034!important;
+  }
+
+  #menu45 .menu45-submenu>a{
+    min-height:45px!important;
+    padding:10px 6px 10px 0!important;
+    color:#d9c9ba!important;
+    font-size:15px!important;
+    border-bottom:1px solid #302022!important;
+  }
+
+  #menu45 .menu45-submenu>a:hover,
+  #menu45 .menu45-submenu>a:focus-visible{
+    color:#fff!important;
+  }
+
+  #menu45 details.menu45-opening .menu45-submenu{
+    animation:menu46Reveal .24s ease both;
+    transform-origin:top;
+  }
+
+  @keyframes menu46Reveal{
+    from{opacity:0;transform:translateY(-7px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+
+  #menu45 .menu45-home{
+    margin-top:28px!important;
+    padding-bottom:13px!important;
+  }
+
+  #menu45 .menu45-footer-brand{
+    display:grid!important;
+    gap:4px!important;
+    padding:3px 0 7px!important;
+    color:#8f7c6e!important;
+  }
+
+  #menu45 .menu45-footer-brand strong{
+    color:#c8b3a1!important;
+    font:600 13px/1.2 Oswald,sans-serif!important;
+    letter-spacing:.04em!important;
+  }
+
+  #menu45 .menu45-footer-brand span{
+    font:400 12px/1.2 Oswald,sans-serif!important;
+    letter-spacing:.08em!important;
+    text-transform:uppercase!important;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  #menu45 details.menu45-opening .menu45-submenu{
+    animation:none!important;
+  }
+}

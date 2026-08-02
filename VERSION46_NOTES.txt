@@ -1,0 +1,20 @@
+Boot Scootin' Website Version 46
+
+EXPLORE MENU
+- Renamed the menu heading from Menu to Explore.
+- Kept the approved underlined main-menu structure.
+- The whole heading row opens and closes each submenu.
+- Only one submenu remains open at a time.
+- Submenu links are indented beneath the heading.
+- Added a slim vertical guide line and softer cream submenu text.
+- Added a smooth opening animation.
+- Added Boot Scootin' Line Dancing / Birmingham, UK beneath Return Home.
+
+OPENING PAGE
+- Fixed the Enter interaction that sometimes required several taps.
+- The entire opening poster is now a reliable tap target.
+- Enlarged the invisible Enter button hit area.
+- Added immediate touch/pointer handling for iPhone.
+- Shortened the stomp-to-entry delay while preserving the effect.
+- Added duplicate-tap protection.
+- Reset the service-worker cache to prevent older scripts being mixed in.
