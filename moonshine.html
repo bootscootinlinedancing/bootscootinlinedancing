@@ -22,56 +22,97 @@
     </a>
     <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
     <nav id="nav" aria-label="Main navigation">
-  <div class="menu-v40">
-    <div class="menu-v40-head">
-      <div><small>BOOT SCOOTIN’</small><h2>Explore</h2></div>
-      <button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button>
-    </div>
+      <div id="bsAccordionMenu" class="bs-accordion-menu">
+        <div class="bs-menu-top">
+          <div>
+            <span>BOOT SCOOTIN’</span>
+            <h2>Explore</h2>
+          </div>
+          <button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button>
+        </div>
 
-    <a class="menu-v40-feature" href="calendar.html">
-      <span>⭐</span><div><small>NEW HERE?</small><strong>Book Your First Class</strong><em>Beginner friendly · No partner needed</em></div><b>›</b>
-    </a>
+        <a class="bs-new-card" href="calendar.html">
+          <span class="bs-tile-icon">⭐</span>
+          <span class="bs-new-copy">
+            <small>NEW HERE?</small>
+            <strong>Book Your First Class</strong>
+            <em>Beginner friendly · No partner needed · Everyone welcome</em>
+          </span>
+          <b>›</b>
+        </a>
 
-    <section class="menu-v40-card">
-      <header><span>💃</span><div><h3>Classes &amp; Dancing</h3><p>Learn, practise and request dances</p></div></header>
-      <a href="calendar.html">Classes &amp; Bookings <b>›</b></a>
-      <a href="dance-library.html">Dance Library <b>›</b></a>
-      <a href="dance-diary.html">Dance Diary <b>›</b></a>
-      <a href="requests.html">Dance Requests <b>›</b></a>
-    </section>
+        <div class="bs-menu-accordions">
+          <details class="bs-menu-section">
+            <summary>
+              <span class="bs-tile-icon">💃</span>
+              <span><strong>Classes &amp; Dancing</strong><small>Learn, practise and request dances</small></span>
+              <b>+</b>
+            </summary>
+            <div class="bs-menu-rows">
+              <a href="calendar.html"><span>Classes &amp; Bookings</span><b>›</b></a>
+              <a href="dance-library.html"><span>Dance Library</span><b>›</b></a>
+              <a href="dance-diary.html"><span>Dance Diary</span><b>›</b></a>
+              <a href="requests.html"><span>Dance Requests</span><b>›</b></a>
+            </div>
+          </details>
 
-    <section class="menu-v40-card">
-      <header><span>🌙</span><div><h3>Community</h3><p>Find your people</p></div></header>
-      <a href="moonshine.html" aria-current="page">Moonshine &amp; Good Times Gang <b>›</b></a>
-      <a href="long-road-handbook.html">Long Road Handbook <b>›</b></a>
-      <a href="journey.html">My Journey <b>›</b></a>
-      <a href="passport.html">Boot Scootin’ Passport <b>›</b></a>
-    </section>
+          <details class="bs-menu-section">
+            <summary>
+              <span class="bs-tile-icon">🌙</span>
+              <span><strong>Community</strong><small>Find your people</small></span>
+              <b>+</b>
+            </summary>
+            <div class="bs-menu-rows">
+              <a href="moonshine.html" aria-current="page"><span>Moonshine &amp; Good Times Gang</span><b>›</b></a>
+              <a href="long-road-handbook.html"><span>Long Road Handbook</span><b>›</b></a>
+              <a href="journey.html"><span>My Journey</span><b>›</b></a>
+              <a href="passport.html"><span>Boot Scootin’ Passport</span><b>›</b></a>
+            </div>
+          </details>
 
-    <section class="menu-v40-card">
-      <header><span>🎸</span><div><h3>Country Lifestyle</h3><p>Music, places and businesses</p></div></header>
-      <a href="country-map.html">Nora’s Country Guide <b>›</b></a>
-      <a href="country-corner.html">Nora’s Country Corner <b>›</b></a>
-      <a href="businesses.html">Businesses We Love <b>›</b></a>
-    </section>
+          <details class="bs-menu-section">
+            <summary>
+              <span class="bs-tile-icon">🎸</span>
+              <span><strong>Country Lifestyle</strong><small>Music, places and businesses</small></span>
+              <b>+</b>
+            </summary>
+            <div class="bs-menu-rows">
+              <a href="country-map.html"><span>Nora’s Country Guide</span><b>›</b></a>
+              <a href="country-corner.html"><span>Nora’s Country Corner</span><b>›</b></a>
+              <a href="businesses.html"><span>Businesses We Love</span><b>›</b></a>
+            </div>
+          </details>
 
-    <section class="menu-v40-card">
-      <header><span>🛍️</span><div><h3>Shop &amp; Rewards</h3><p>Merchandise and loyalty</p></div></header>
-      <a href="community.html#merchandise">Official Merchandise <b>›</b></a>
-      <a href="rewards.html">Boot Scootin’ Rewards <b>›</b></a>
-    </section>
+          <details class="bs-menu-section">
+            <summary>
+              <span class="bs-tile-icon">🛍️</span>
+              <span><strong>Shop &amp; Rewards</strong><small>Merchandise and loyalty</small></span>
+              <b>+</b>
+            </summary>
+            <div class="bs-menu-rows">
+              <a href="community.html#merchandise"><span>Official Merchandise</span><b>›</b></a>
+              <a href="rewards.html"><span>Boot Scootin’ Rewards</span><b>›</b></a>
+            </div>
+          </details>
 
-    <section class="menu-v40-card">
-      <header><span>❤️</span><div><h3>Help &amp; Contact</h3><p>Questions, events and socials</p></div></header>
-      <a href="ask-nora.html">Ask Nora <b>›</b></a>
-      <a href="private-events.html">Private Events <b>›</b></a>
-      <a href="about.html">About Boot Scootin’ <b>›</b></a>
-      <a href="index.html#contact">Contact &amp; Socials <b>›</b></a>
-    </section>
+          <details class="bs-menu-section">
+            <summary>
+              <span class="bs-tile-icon">❤️</span>
+              <span><strong>Help &amp; Contact</strong><small>Questions, events and socials</small></span>
+              <b>+</b>
+            </summary>
+            <div class="bs-menu-rows">
+              <a href="ask-nora.html"><span>Ask Nora</span><b>›</b></a>
+              <a href="private-events.html"><span>Private Events</span><b>›</b></a>
+              <a href="about.html"><span>About Boot Scootin’</span><b>›</b></a>
+              <a href="index.html#contact"><span>Contact &amp; Socials</span><b>›</b></a>
+            </div>
+          </details>
+        </div>
 
-    <a class="menu-v40-home" href="index.html">Return Home</a>
-  </div>
-</nav>
+        <a class="bs-return-home" href="index.html">Return Home</a>
+      </div>
+    </nav>
   </header>
 
   <main class="feature-page moonshine-page">

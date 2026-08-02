@@ -189,3 +189,14 @@ installGuide?.addEventListener("click", event => {
 });
 
 
+
+
+// Boot Scootin' mobile accordion menu: keep only one category open at a time.
+document.querySelectorAll("#bsAccordionMenu details.bs-menu-section").forEach((section) => {
+  section.addEventListener("toggle", () => {
+    if (!section.open) return;
+    document.querySelectorAll("#bsAccordionMenu details.bs-menu-section").forEach((other) => {
+      if (other !== section) other.open = false;
+    });
+  });
+});

@@ -337,3 +337,15 @@ MENU REDESIGN — OPTION 3
 - Added subtle entrance animation and a blurred dark background.
 - Secondary links now sit inside clearly separated cards rather than one long block.
 - Kept Home and Community Hub as small footer links.
+
+
+Boot Scootin' Website Version 41
+
+FINAL ACCORDION MENU
+- Menu now begins with six large, clearly separated choices.
+- Only one category opens at a time.
+- Closed categories stay compact, avoiding a long overwhelming page.
+- Every submenu link appears on its own full-width row.
+- Each row has its own arrow and divider.
+- Book Your First Class remains a prominent red feature card.
+- Strong unique CSS prevents older menu styling from merging the items together.
