@@ -53,6 +53,135 @@ function requireAdmin(request, env) {
   return { response: null, state };
 }
 
+
+async function ensureBookingSchema(env) {
+  if (!env.BOOKINGS_DB) throw new Error('BOOKINGS_DB binding is missing.');
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS venues (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      location TEXT NOT NULL,
+      capacity INTEGER NOT NULL CHECK(capacity > 0),
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS classes (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      venue TEXT NOT NULL,
+      location TEXT NOT NULL,
+      starts_at TEXT NOT NULL,
+      ends_at TEXT,
+      price_pence INTEGER NOT NULL CHECK(price_pence >= 0),
+      capacity INTEGER NOT NULL CHECK(capacity > 0),
+      sold INTEGER NOT NULL DEFAULT 0 CHECK(sold >= 0),
+      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('draft','open','closed','cancelled')),
+      level TEXT NOT NULL DEFAULT 'Beginner friendly',
+      public_notes TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS customers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      phone TEXT,
+      marketing_consent INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS booking_holds (
+      id TEXT PRIMARY KEY,
+      class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+      quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 10),
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS bookings (
+      id TEXT PRIMARY KEY,
+      reference TEXT NOT NULL UNIQUE,
+      class_id TEXT NOT NULL REFERENCES classes(id),
+      hold_id TEXT REFERENCES booking_holds(id),
+      customer_id TEXT REFERENCES customers(id),
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NOT NULL,
+      customer_phone TEXT,
+      quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 10),
+      amount_pence INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'GBP',
+      status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','PAID','FAILED','CANCELLED','REFUNDED','WAITLISTED')),
+      payment_provider TEXT NOT NULL DEFAULT 'SUMUP',
+      provider_checkout_id TEXT,
+      provider_transaction_id TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      paid_at TEXT,
+      retention_delete_after TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS waiting_list (
+      id TEXT PRIMARY KEY,
+      class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'WAITING' CHECK(status IN ('WAITING','OFFERED','CONVERTED','CANCELLED')),
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS attendance (
+      id TEXT PRIMARY KEY,
+      booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+      checked_in_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      checked_in_by TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS payments (
+      id TEXT PRIMARY KEY,
+      booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL DEFAULT 'SUMUP',
+      provider_reference TEXT,
+      amount_pence INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'GBP',
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      actor TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id TEXT,
+      metadata_json TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_holds_class_expiry ON booking_holds(class_id, expires_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_bookings_class_status ON bookings(class_id,status)`,
+    `CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(customer_email)`,
+    `CREATE INDEX IF NOT EXISTS idx_waiting_class_status ON waiting_list(class_id,status)`
+  ];
+  for (const statement of statements) await env.BOOKINGS_DB.prepare(statement).run();
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO venues(id,name,location,capacity) VALUES
+    ('ecc','Edgbaston Community Centre','Birmingham',20),
+    ('low-places','Low Places','Birmingham',50)`).run();
+  const row = await env.BOOKINGS_DB.prepare("SELECT COUNT(*) AS tables FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").first();
+  return Number(row?.tables || 0);
+}
+
+async function publicClasses(env) {
+  if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
+  try {
+    await ensureBookingSchema(env);
+    const now = new Date().toISOString();
+    const { results } = await env.BOOKINGS_DB.prepare(`
+      SELECT c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,c.sold,c.status,c.level,c.public_notes,
+      MAX(0,c.capacity-c.sold-COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)) AS spaces_remaining
+      FROM classes c WHERE c.status='open' AND c.starts_at>? ORDER BY c.starts_at
+    `).bind(now,now).all();
+    return json(results.map(row => ({ ...row, price: row.price_pence / 100 })));
+  } catch (error) {
+    return json({ error: 'The booking database could not be prepared.', detail: error.message }, 500);
+  }
+}
+
 async function health(request, env) {
   const admin = adminState(request, env);
   const services = {
@@ -69,10 +198,10 @@ async function health(request, env) {
 
   if (env.BOOKINGS_DB) {
     try {
-      await env.BOOKINGS_DB.prepare('SELECT 1 AS ok').first();
-      services.database = { status: 'ready', message: 'Cloudflare D1 is connected and responding.' };
+      const tableCount = await ensureBookingSchema(env);
+      services.database = { status: 'ready', message: `Cloudflare D1 is connected, responding and prepared with ${tableCount} booking tables.` };
     } catch (error) {
-      services.database = { status: 'attention', message: `D1 is bound, but its test query failed: ${error.message}` };
+      services.database = { status: 'attention', message: `D1 is bound, but database setup failed: ${error.message}` };
     }
   }
   if (env.MEDIA_BUCKET) {
@@ -92,7 +221,7 @@ async function health(request, env) {
   if (env.EMAIL_API_KEY && env.EMAIL_FROM) services.email = { status: 'ready', message: 'Email credentials are configured. A delivery test is still required.' };
   if (env.BACKUP_LAST_TESTED) services.backups = { status: 'ready', message: `Last restore test recorded: ${String(env.BACKUP_LAST_TESTED).slice(0, 30)}` };
 
-  return json({ mode: 'free-pilot', version: 73, checked_at: new Date().toISOString(), services });
+  return json({ mode: 'free-pilot', version: 74, checked_at: new Date().toISOString(), services });
 }
 
 async function mediaStatus(request, env) {
@@ -120,7 +249,7 @@ async function mediaStatus(request, env) {
       : !checks.adminEmail.ready
         ? 'Cloudflare Access is active, but this email is not authorised.'
         : '';
-  return json({ ready, authorised: admin.authorised, checks, error, version: 73 });
+  return json({ ready, authorised: admin.authorised, checks, error, version: 74 });
 }
 
 async function mediaCollection(request, env) {
@@ -199,6 +328,7 @@ export default {
     const path = url.pathname;
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
+      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
       if (path === '/api/admin/media-status' && request.method === 'GET') return mediaStatus(request, env);
       if (path === '/api/admin/media') return mediaCollection(request, env);
       if (path.startsWith('/media/')) return serveMedia(request, env, path);
