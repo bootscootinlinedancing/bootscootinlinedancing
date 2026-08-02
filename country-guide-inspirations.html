@@ -189,6 +189,18 @@
 
   <main class="feature-page country-guide-subpage">
 <section class="guide-subhero"><div><p class="kicker">People who shaped the journey</p><h1>My Inspirations</h1><p>The instructors and communities who helped shape Nora’s dancing and teaching.</p></div></section><nav class="guide-page-nav" aria-label="Country Guide navigation"><a href="country-guide.html">← Country Guide Home</a><a href="country-guide-music.html">Music</a><a href="country-guide-line-dancing.html">Line Dancing</a><a href="country-guide-fashion.html">Fashion</a><a href="country-guide-festivals.html">Festivals</a><a href="country-guide-food-drink.html">Food &amp; Drink</a><a href="country-guide-places.html">Places</a><a href="country-guide-inspirations.html">Inspirations</a><a href="country-guide-adventures.html">Adventures</a></nav><section class="section paper"><div class="inspiration-profile"><div><p class="kicker red">My idols</p><h2>Dirt Road Dancing — Troy & Elise</h2><p>For nearly two years Nora learned from their YouTube videos at home. Meeting them, learning from them and dancing alongside them became one of the most meaningful moments in her dance journey.</p><div class="actions"><a class="button" href="https://www.dirtroaddancing.com" target="_blank" rel="noopener">Official Website</a><a class="button ghost dark-ghost" href="https://youtube.com/@dirtroaddancing?si=yOtcBTuSHAeYVYP4" target="_blank" rel="noopener">YouTube Channel</a></div></div><img src="summer-stomp-troy-elise.webp" alt="Nora with Troy and Elise from Dirt Road Dancing"></div></section>
+
+<section class="section dark summer-video-section" id="summerStompVideoSection" hidden>
+  <div class="content-narrow">
+    <p class="kicker red">Watch my experience</p>
+    <h2>Summer Stomp through my eyes</h2>
+    <p>A glimpse into the workshops, dancing and atmosphere that made the weekend so special.</p>
+    <video id="summerStompVideo" class="summer-stomp-video" controls playsinline preload="metadata" poster="summer-stomp-floor-1.webp">
+      <source src="summer-stomp.mp4" type="video/mp4">
+    </video>
+  </div>
+</section>
+
 </main>
 <footer>
     <div class="footer-lockup">
@@ -200,6 +212,20 @@
   </footer>
 
   <script src="script.js?v=63"></script>
+
+
+<a class="admin-login-link" href="/ranch" aria-label="Administrator login">🔒 Admin Login</a>
+
+
+<script>
+(() => {
+  const video = document.getElementById('summerStompVideo');
+  const section = document.getElementById('summerStompVideoSection');
+  if (!video || !section) return;
+  video.addEventListener('loadedmetadata', () => { section.hidden = false; }, { once: true });
+  video.addEventListener('error', () => { section.hidden = true; }, { once: true });
+})();
+</script>
 
 </body>
 </html>

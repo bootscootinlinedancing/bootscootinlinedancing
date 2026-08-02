@@ -47,3 +47,11 @@ See `BOOKING_SYSTEM_SETUP.md` for the detailed launch checklist.
 
 ## Version 65 — Boot Scootin' Ranch
 Open `ranch.html` after protecting it with Cloudflare Access. The Ranch manages classes, capacities, statuses and paid registers through D1. It remains safe in setup mode until D1 and SumUp Sandbox are connected.
+
+
+## V66
+- Added a subtle Admin Login link throughout the public website.
+- Prepared `/ranch` for Cloudflare Access protection.
+- Restored the Nora, Troy and Elise photo.
+- Added a safe self-hosted Summer Stomp video player that stays hidden until `summer-stomp.mp4` exists.
+- See `CLOUDFLARE_ACCESS_SETUP.md`.
