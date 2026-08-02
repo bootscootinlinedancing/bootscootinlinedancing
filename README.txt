@@ -442,3 +442,16 @@ MOONSHINE & GOOD TIMES GANG
 - Added a direct Instagram-message alternative.
 - Updated Ask Nora to explain that community invitations are approved privately.
 - Updated Long Road calls to action to say Request Community Access.
+
+
+Boot Scootin' Website Version 48
+
+ACTIVE SUBMENU REPAIR
+- Fixed the active/current submenu link collapsing into a narrow vertical column.
+- The problem came from an older global navigation rule inserting an extra
+  pseudo-element before the active link.
+- Removed that conflicting pseudo-element specifically inside the Explore menu.
+- Preserved the small red active-page dot without letting it become a grid column.
+- Forced all submenu wording to remain horizontal and full width.
+- No visual redesign: the approved Version 47 menu and community-request updates remain.
+- Reset browser/service-worker cache for the repaired files.

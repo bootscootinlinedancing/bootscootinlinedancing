@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=47">
+  <link rel="stylesheet" href="styles.css?v=48">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -56,6 +56,42 @@
 }
 @media(max-width:420px){#menu45{padding-inline:18px!important}#menu45 .menu45-first strong{font-size:19px!important}#menu45 details.menu45-section>summary>span{font-size:19px!important}}
 </style>
+
+<style id="menu48-active-link-fix">
+@media(max-width:950px){
+  /* An older global rule added a pseudo-element before the current page.
+     Inside the submenu grid, that became an unwanted third grid item and
+     squeezed the link wording into a narrow vertical column. */
+  #menu45 .menu45-submenu > a[aria-current="page"]::before{
+    content:none!important;
+    display:none!important;
+  }
+
+  #menu45 .menu45-submenu > a{
+    grid-template-columns:minmax(0,1fr) 20px!important;
+  }
+
+  #menu45 .menu45-submenu > a > span{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    white-space:normal!important;
+  }
+
+  #menu45 .menu45-submenu > a[aria-current="page"] > span::before{
+    content:"•"!important;
+    display:inline!important;
+    margin-right:8px!important;
+    color:#d64046!important;
+  }
+}
+</style>
+
 </head>
 <body>
   <header class="header">
@@ -270,7 +306,7 @@
     <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
   </footer>
 
-  <script src="script.js?v=47"></script>
+  <script src="script.js?v=48"></script>
   
 
 <script>

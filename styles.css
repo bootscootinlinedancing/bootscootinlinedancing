@@ -4670,3 +4670,35 @@ nav a{
     animation:none!important;
   }
 }
+
+
+/* VERSION 48 — ACTIVE SUBMENU LAYOUT FIX */
+@media(max-width:950px){
+  #menu45 .menu45-submenu > a[aria-current="page"]::before{
+    content:none!important;
+    display:none!important;
+  }
+
+  #menu45 .menu45-submenu > a{
+    grid-template-columns:minmax(0,1fr) 20px!important;
+  }
+
+  #menu45 .menu45-submenu > a > span{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    white-space:normal!important;
+  }
+
+  #menu45 .menu45-submenu > a[aria-current="page"] > span::before{
+    content:"•"!important;
+    display:inline!important;
+    margin-right:8px!important;
+    color:#d64046!important;
+  }
+}
