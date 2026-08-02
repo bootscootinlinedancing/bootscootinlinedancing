@@ -18,7 +18,8 @@
       <nav class="ranch-nav" aria-label="HQ sections">
         <button class="active" data-view="overview">HQ Home</button>
         <button data-view="classes">Classes</button>
-        <button data-view="bookings">Bookings</button>
+        <button data-view="bookings">Class Bookings</button>
+        <button data-view="private-events">Private Events</button>
         <button data-view="media">Media</button>
         <button data-view="members" disabled>Members <small>Coming next</small></button>
         <button data-view="rewards" disabled>Rewards <small>Coming next</small></button>
@@ -84,6 +85,15 @@
         <div class="ranch-panel">
           <div class="ranch-panel-head"><div><p class="kicker red">Registers</p><h2>Paid bookings</h2><p>Only confirmed paid bookings appear here once SumUp is connected.</p></div><button class="button secondary compact" id="refreshBookings">Refresh</button></div>
           <div id="ranchBookings">Loading…</div>
+        </div>
+      </section>
+
+
+      <section class="ranch-view" data-view-panel="private-events">
+        <div class="ranch-panel">
+          <div class="ranch-panel-head"><div><p class="kicker red">Inquiries & proposals</p><h2>Private Events</h2><p>Review requests, update their status and prepare an itemised proposal. Customer details stay hidden until Cloudflare Access protects HQ.</p></div><button class="button secondary compact" id="refreshPrivateEvents">Refresh</button></div>
+          <div class="travel-policy"><strong>Default travel policy</strong><span>15 miles each way from B5 included. Beyond that, add an agreed travel fee. Journeys over 30 miles each way should be quoted individually.</span></div>
+          <div id="ranchPrivateEvents" class="private-event-admin-list">Loading…</div>
         </div>
       </section>
 
@@ -161,6 +171,20 @@
       <button class="button booking-submit" type="submit">Save class</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=73" defer></script>
+
+  <dialog class="ranch-dialog" id="privateQuoteDialog">
+    <form id="privateQuoteForm" method="dialog">
+      <button type="button" class="dialog-close" id="closePrivateQuote" aria-label="Close">×</button>
+      <p class="kicker red">Private event proposal</p><h2 id="privateQuoteTitle">Prepare quote</h2>
+      <input type="hidden" name="inquiry_id" id="privateInquiryId"><input type="hidden" name="action" value="QUOTE">
+      <div class="ranch-form-grid">
+        <label>Agreed date<input name="agreed_date" type="date" required></label><label>Start time<input name="agreed_start_time" type="time"></label><label>Finish time<input name="agreed_end_time" type="time"></label>
+        <label class="wide">Venue<input name="agreed_venue" required></label><label class="wide">Full address<textarea name="agreed_address" rows="2"></textarea></label><label class="wide">Package description<textarea name="package_description" rows="4" placeholder="For example: 90-minute beginner line-dancing session plus 30 minutes social dancing."></textarea></label>
+        <label>Base fee (£)<input name="base_fee" type="number" min="0" step="0.01" required></label><label>Travel fee (£)<input name="travel_fee" type="number" min="0" step="0.01" value="0"></label><label>Equipment fee (£)<input name="equipment_fee" type="number" min="0" step="0.01" value="0"></label><label>Other fee (£)<input name="extra_fee" type="number" min="0" step="0.01" value="0"></label><label>Discount (£)<input name="discount" type="number" min="0" step="0.01" value="0"></label><label>Deposit required (£)<input name="deposit" type="number" min="0" step="0.01" required></label>
+        <label>Balance due date<input name="balance_due_date" type="date"></label><label>Quote expires<input name="quote_expires_at" type="datetime-local"></label><label class="wide">Cancellation terms<textarea name="cancellation_terms" rows="4">The booking is confirmed only after the agreed payment is received. Deposits and cancellation terms will be confirmed in writing before payment.</textarea></label><label class="wide">Message visible to customer<textarea name="customer_notes" rows="3"></textarea></label><label class="wide">Private internal notes<textarea name="internal_notes" rows="3"></textarea></label>
+      </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
+    </form>
+  </dialog>
+  <script src="ranch.js?v=75" defer></script>
 </body>
 </html>

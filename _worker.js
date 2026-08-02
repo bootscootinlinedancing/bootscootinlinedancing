@@ -153,10 +153,45 @@ async function ensureBookingSchema(env) {
       metadata_json TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS private_event_inquiries (
+      id TEXT PRIMARY KEY, reference TEXT NOT NULL UNIQUE, secure_token TEXT NOT NULL UNIQUE,
+      customer_name TEXT NOT NULL, customer_email TEXT NOT NULL, customer_phone TEXT,
+      event_type TEXT NOT NULL, event_type_other TEXT, preferred_date TEXT NOT NULL, alternative_date TEXT,
+      start_time TEXT, end_time TEXT, venue_name TEXT, venue_address TEXT NOT NULL, venue_postcode TEXT NOT NULL,
+      guest_count INTEGER NOT NULL CHECK(guest_count > 0), age_range TEXT, experience_level TEXT, session_length TEXT,
+      format_requested TEXT, music_requests TEXT, sound_system_provided INTEGER NOT NULL DEFAULT 0,
+      microphone_provided INTEGER NOT NULL DEFAULT 0, dance_floor_confirmed INTEGER NOT NULL DEFAULT 0,
+      power_available INTEGER NOT NULL DEFAULT 0, parking_loading_available INTEGER NOT NULL DEFAULT 0,
+      equipment_notes TEXT, accessibility_notes TEXT, additional_notes TEXT, status TEXT NOT NULL DEFAULT 'NEW_INQUIRY',
+      customer_change_request TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS private_event_quotes (
+      id TEXT PRIMARY KEY, inquiry_id TEXT NOT NULL REFERENCES private_event_inquiries(id) ON DELETE CASCADE,
+      version INTEGER NOT NULL DEFAULT 1, agreed_date TEXT, agreed_start_time TEXT, agreed_end_time TEXT,
+      agreed_venue TEXT, agreed_address TEXT, package_description TEXT, base_fee_pence INTEGER NOT NULL DEFAULT 0,
+      travel_fee_pence INTEGER NOT NULL DEFAULT 0, equipment_fee_pence INTEGER NOT NULL DEFAULT 0,
+      extra_fee_pence INTEGER NOT NULL DEFAULT 0, discount_pence INTEGER NOT NULL DEFAULT 0, total_pence INTEGER NOT NULL DEFAULT 0,
+      deposit_pence INTEGER NOT NULL DEFAULT 0, balance_due_pence INTEGER NOT NULL DEFAULT 0, balance_due_date TEXT,
+      quote_expires_at TEXT, cancellation_terms TEXT, customer_notes TEXT, internal_notes TEXT,
+      status TEXT NOT NULL DEFAULT 'DRAFT', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS private_event_payments (
+      id TEXT PRIMARY KEY, inquiry_id TEXT NOT NULL REFERENCES private_event_inquiries(id) ON DELETE CASCADE,
+      quote_id TEXT REFERENCES private_event_quotes(id) ON DELETE SET NULL, payment_kind TEXT NOT NULL, amount_pence INTEGER NOT NULL,
+      provider TEXT NOT NULL DEFAULT 'SUMUP', provider_reference TEXT, status TEXT NOT NULL DEFAULT 'PENDING',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, paid_at TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS private_event_timeline (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, inquiry_id TEXT NOT NULL REFERENCES private_event_inquiries(id) ON DELETE CASCADE,
+      actor_type TEXT NOT NULL, actor_label TEXT, action TEXT NOT NULL, details_json TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE INDEX IF NOT EXISTS idx_holds_class_expiry ON booking_holds(class_id, expires_at)`,
     `CREATE INDEX IF NOT EXISTS idx_bookings_class_status ON bookings(class_id,status)`,
     `CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(customer_email)`,
-    `CREATE INDEX IF NOT EXISTS idx_waiting_class_status ON waiting_list(class_id,status)`
+    `CREATE INDEX IF NOT EXISTS idx_waiting_class_status ON waiting_list(class_id,status)`,
+    `CREATE INDEX IF NOT EXISTS idx_private_event_status ON private_event_inquiries(status,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_private_event_token ON private_event_inquiries(secure_token)`,
+    `CREATE INDEX IF NOT EXISTS idx_private_quote_inquiry ON private_event_quotes(inquiry_id,version)`
   ];
   for (const statement of statements) await env.BOOKINGS_DB.prepare(statement).run();
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO venues(id,name,location,capacity) VALUES
@@ -180,6 +215,131 @@ async function publicClasses(env) {
   } catch (error) {
     return json({ error: 'The booking database could not be prepared.', detail: error.message }, 500);
   }
+}
+
+
+const clean = (value, max = 500) => String(value ?? '').trim().slice(0, max);
+const emailOk = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+const dateOk = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+const privateStatuses = new Set(['NEW_INQUIRY','REVIEWING','CHANGES_REQUESTED','AWAITING_CUSTOMER','QUOTE_SENT','QUOTE_ACCEPTED','AWAITING_DEPOSIT','CONFIRMED_DEPOSIT','CONFIRMED_PAID','BALANCE_DUE','COMPLETED','CANCELLED','DECLINED','EXPIRED']);
+
+function requireAccessAdmin(request, env) {
+  const state = adminState(request, env);
+  if (!state.email) return { response: json({ error: 'Boot Scootin’ HQ must be protected with Cloudflare Access before private customer details can be viewed.', code: 'ACCESS_REQUIRED' }, 401), state };
+  if (!state.authorised) return { response: json({ error: 'This email is not authorised to use Boot Scootin’ HQ.', code: 'ADMIN_NOT_AUTHORISED' }, 403), state };
+  if (!env.BOOKINGS_DB) return { response: json({ error: 'BOOKINGS_DB is not connected.', code: 'DATABASE_MISSING' }, 503), state };
+  return { response: null, state };
+}
+
+async function createClassReservation(request, env) {
+  if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
+  await ensureBookingSchema(env);
+  const body = await request.json().catch(() => null);
+  if (!body) return json({ error: 'The booking request could not be read.' }, 400);
+  const name = clean(body.name, 100), email = clean(body.email, 160).toLowerCase(), phone = clean(body.phone, 30);
+  const classId = clean(body.classId, 120), quantity = Math.max(1, Math.min(10, Number(body.quantity) || 1));
+  if (!name || !emailOk(email) || !classId) return json({ error: 'Please enter your name, a valid email address and choose a class.' }, 400);
+  const row = await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=? AND status='open'`).bind(classId).first();
+  if (!row) return json({ error: 'This class is no longer open for booking.' }, 404);
+  const spaces = Math.max(0, Number(row.capacity) - Number(row.sold || 0));
+  const id = crypto.randomUUID();
+  const reference = `BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
+  if (spaces < quantity) {
+    await env.BOOKINGS_DB.prepare(`INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status) VALUES(?,?,?,?,?,'WAITING')`).bind(id,classId,name,email,quantity).run();
+    return json({ ok:true, waitlisted:true, reference, message:'The class is full, so you have been added to the waiting list. No payment has been taken.' }, 201);
+  }
+  const amount = Number(row.price_pence) * quantity;
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`INSERT INTO bookings(id,reference,class_id,customer_name,customer_email,customer_phone,quantity,amount_pence,status,payment_provider,retention_delete_after) VALUES(?,?,?,?,?,?,?,?, 'PENDING','TEST',datetime('now','+24 months'))`).bind(id,reference,classId,name,email,phone,quantity,amount),
+    env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(quantity,classId,quantity),
+    env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(email,'TEST_RESERVATION_CREATED','booking',id,JSON.stringify({reference,quantity}))
+  ]);
+  return json({ ok:true, reference, status:'PENDING', payment_enabled:false, message:'Your place has been recorded in pilot mode. No payment has been taken and the booking is not final until Nora confirms it.' }, 201);
+}
+
+async function privateEventInquiry(request, env) {
+  if (!env.BOOKINGS_DB) return json({ error:'The inquiry service is temporarily unavailable.' },503);
+  await ensureBookingSchema(env);
+  const b = await request.json().catch(()=>null);
+  if (!b) return json({ error:'The inquiry could not be read.' },400);
+  if (clean(b.website,80)) return json({ ok:true, reference:'BS-PRIVATE' },201);
+  const name=clean(b.customer_name,100), email=clean(b.customer_email,160).toLowerCase(), phone=clean(b.customer_phone,30);
+  const type=clean(b.event_type,60), preferred=clean(b.preferred_date,10), address=clean(b.venue_address,300), postcode=clean(b.venue_postcode,16).toUpperCase();
+  const guests=Math.max(1,Math.min(5000,Number(b.guest_count)||0));
+  if(!name||!emailOk(email)||!type||!dateOk(preferred)||!address||!postcode||!guests) return json({error:'Please complete your contact details, event type, preferred date, venue address, postcode and guest number.'},400);
+  const id=crypto.randomUUID(), token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const reference=`PE-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,5).toUpperCase()}`;
+  const values=[id,reference,token,name,email,phone,type,clean(b.event_type_other,80),preferred,clean(b.alternative_date,10),clean(b.start_time,8),clean(b.end_time,8),clean(b.venue_name,160),address,postcode,guests,clean(b.age_range,120),clean(b.experience_level,80),clean(b.session_length,80),clean(b.format_requested,120),clean(b.music_requests,600),Number(Boolean(b.sound_system_provided)),Number(Boolean(b.microphone_provided)),Number(Boolean(b.dance_floor_confirmed)),Number(Boolean(b.power_available)),Number(Boolean(b.parking_loading_available)),clean(b.equipment_notes,600),clean(b.accessibility_notes,600),clean(b.additional_notes,1200)];
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`INSERT INTO private_event_inquiries(id,reference,secure_token,customer_name,customer_email,customer_phone,event_type,event_type_other,preferred_date,alternative_date,start_time,end_time,venue_name,venue_address,venue_postcode,guest_count,age_range,experience_level,session_length,format_requested,music_requests,sound_system_provided,microphone_provided,dance_floor_confirmed,power_available,parking_loading_available,equipment_notes,accessibility_notes,additional_notes) VALUES(${Array(29).fill('?').join(',')})`).bind(...values),
+    env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'CUSTOMER',email,'INQUIRY_SUBMITTED',JSON.stringify({preferred_date:preferred,postcode}))
+  ]);
+  return json({ok:true,reference,status_url:`/private-quote.html?token=${encodeURIComponent(token)}`,message:'Your inquiry has been sent. This is not a confirmed booking.'},201);
+}
+
+async function publicPrivateQuote(request, env, url) {
+  if (!env.BOOKINGS_DB) return json({error:'The private booking service is unavailable.'},503);
+  await ensureBookingSchema(env);
+  const token=clean(url.searchParams.get('token'),120);
+  const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE secure_token=?`).bind(token).first();
+  if(!inquiry) return json({error:'This private booking link is invalid or has expired.'},404);
+  const quote=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE inquiry_id=? ORDER BY version DESC LIMIT 1`).bind(inquiry.id).first();
+  const safeInquiry={reference:inquiry.reference,event_type:inquiry.event_type,preferred_date:inquiry.preferred_date,start_time:inquiry.start_time,end_time:inquiry.end_time,venue_name:inquiry.venue_name,venue_address:inquiry.venue_address,guest_count:inquiry.guest_count,status:inquiry.status};
+  return json({inquiry:safeInquiry,quote,payments_enabled:Boolean(env.SUMUP_API_KEY&&env.SUMUP_MERCHANT_CODE)});
+}
+
+async function privateEventRespond(request, env) {
+  if(!env.BOOKINGS_DB) return json({error:'The private booking service is unavailable.'},503);
+  await ensureBookingSchema(env);
+  const b=await request.json().catch(()=>null); if(!b) return json({error:'Request could not be read.'},400);
+  const token=clean(b.token,120), action=clean(b.action,40), message=clean(b.message,1200);
+  const inquiry=await env.BOOKINGS_DB.prepare(`SELECT id FROM private_event_inquiries WHERE secure_token=?`).bind(token).first();
+  if(!inquiry) return json({error:'This private booking link is invalid.'},404);
+  if(action==='REQUEST_CHANGES'){
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status='CHANGES_REQUESTED',customer_change_request=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(message,inquiry.id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'CUSTOMER','secure link','CHANGES_REQUESTED',JSON.stringify({message}))
+    ]);
+    return json({ok:true});
+  }
+  return json({error:'That action is not available yet.'},400);
+}
+
+async function adminClasses(request, env) {
+  const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
+  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes ORDER BY starts_at`).all();return json(results);}
+  const b=await request.json().catch(()=>null); if(!b)return json({error:'Invalid class request.'},400);
+  if(request.method==='DELETE'){await env.BOOKINGS_DB.prepare(`DELETE FROM classes WHERE id=?`).bind(clean(b.id,120)).run();return json({ok:true});}
+  const id=clean(b.id,120)||crypto.randomUUID(); const vals=[clean(b.title,160),clean(b.venue,160),clean(b.location,240),new Date(b.starts_at).toISOString(),b.ends_at?new Date(b.ends_at).toISOString():null,Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),clean(b.status,20)||'draft',clean(b.level,80)||'Beginner friendly',clean(b.public_notes,600)];
+  if(request.method==='POST'){await env.BOOKINGS_DB.prepare(`INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(id,...vals).run();return json({ok:true,id},201);}
+  if(request.method==='PATCH'){await env.BOOKINGS_DB.prepare(`UPDATE classes SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(...vals,id).run();return json({ok:true,id});}
+  return json({error:'Method not allowed.'},405);
+}
+
+async function adminBookings(request, env) {
+  const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
+  const {results}=await env.BOOKINGS_DB.prepare(`SELECT c.id,c.title,c.starts_at,c.venue,b.id booking_id,b.customer_name name,b.customer_email email,b.quantity,b.reference,b.status FROM classes c LEFT JOIN bookings b ON b.class_id=c.id AND b.status IN ('PENDING','PAID') ORDER BY c.starts_at,b.created_at`).all();
+  const map=new Map(); for(const r of results){if(!map.has(r.id))map.set(r.id,{id:r.id,title:r.title,starts_at:r.starts_at,venue:r.venue,bookings:[]});if(r.booking_id)map.get(r.id).bookings.push({id:r.booking_id,name:r.name,email:r.email,quantity:r.quantity,reference:r.reference,status:r.status});}
+  return json({classes:[...map.values()],stats:{guests:results.filter(r=>r.booking_id).reduce((n,r)=>n+Number(r.quantity||0),0)}});
+}
+
+async function adminPrivateEvents(request, env) {
+  const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
+  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,q.id quote_id,q.total_pence,q.deposit_pence,q.status quote_status,q.quote_expires_at FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) ORDER BY i.created_at DESC`).all();return json({items:results});}
+  const b=await request.json().catch(()=>null);if(!b)return json({error:'Invalid private event request.'},400);
+  if(request.method==='PATCH'&&b.action==='STATUS'){const status=clean(b.status,40);if(!privateStatuses.has(status))return json({error:'Invalid status.'},400);await env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,clean(b.id,120)).run();return json({ok:true});}
+  if(request.method==='POST'&&b.action==='QUOTE'){
+    const inquiryId=clean(b.inquiry_id,120);const current=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(MAX(version),0) v FROM private_event_quotes WHERE inquiry_id=?`).bind(inquiryId).first();const version=Number(current?.v||0)+1;
+    const base=Math.max(0,Number(b.base_fee_pence)||0),travel=Math.max(0,Number(b.travel_fee_pence)||0),equipment=Math.max(0,Number(b.equipment_fee_pence)||0),extra=Math.max(0,Number(b.extra_fee_pence)||0),discount=Math.max(0,Number(b.discount_pence)||0),total=Math.max(0,base+travel+equipment+extra-discount),deposit=Math.min(total,Math.max(0,Number(b.deposit_pence)||0));
+    const quoteId=crypto.randomUUID();
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_quotes(id,inquiry_id,version,agreed_date,agreed_start_time,agreed_end_time,agreed_venue,agreed_address,package_description,base_fee_pence,travel_fee_pence,equipment_fee_pence,extra_fee_pence,discount_pence,total_pence,deposit_pence,balance_due_pence,balance_due_date,quote_expires_at,cancellation_terms,customer_notes,internal_notes,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'QUOTE_SENT')`).bind(quoteId,inquiryId,version,clean(b.agreed_date,10),clean(b.agreed_start_time,8),clean(b.agreed_end_time,8),clean(b.agreed_venue,160),clean(b.agreed_address,300),clean(b.package_description,1000),base,travel,equipment,extra,discount,total,deposit,total-deposit,clean(b.balance_due_date,10),clean(b.quote_expires_at,30),clean(b.cancellation_terms,1200),clean(b.customer_notes,1200),clean(b.internal_notes,1200)),
+      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status='QUOTE_SENT',updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(inquiryId),
+      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiryId,'ADMIN',check.state.email,'QUOTE_SENT',JSON.stringify({quote_id:quoteId,total_pence:total,deposit_pence:deposit}))
+    ]);
+    return json({ok:true,quote_id:quoteId});
+  }
+  return json({error:'Method not allowed.'},405);
 }
 
 async function health(request, env) {
@@ -221,7 +381,7 @@ async function health(request, env) {
   if (env.EMAIL_API_KEY && env.EMAIL_FROM) services.email = { status: 'ready', message: 'Email credentials are configured. A delivery test is still required.' };
   if (env.BACKUP_LAST_TESTED) services.backups = { status: 'ready', message: `Last restore test recorded: ${String(env.BACKUP_LAST_TESTED).slice(0, 30)}` };
 
-  return json({ mode: 'free-pilot', version: 74, checked_at: new Date().toISOString(), services });
+  return json({ mode: 'free-pilot', version: 75, checked_at: new Date().toISOString(), services });
 }
 
 async function mediaStatus(request, env) {
@@ -249,7 +409,7 @@ async function mediaStatus(request, env) {
       : !checks.adminEmail.ready
         ? 'Cloudflare Access is active, but this email is not authorised.'
         : '';
-  return json({ ready, authorised: admin.authorised, checks, error, version: 74 });
+  return json({ ready, authorised: admin.authorised, checks, error, version: 75 });
 }
 
 async function mediaCollection(request, env) {
@@ -329,6 +489,13 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
+      if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
+      if (path === '/api/private-events/inquiries' && request.method === 'POST') return privateEventInquiry(request, env);
+      if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
+      if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);
+      if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/bookings' && request.method === 'GET') return adminBookings(request, env);
+      if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);
       if (path === '/api/admin/media-status' && request.method === 'GET') return mediaStatus(request, env);
       if (path === '/api/admin/media') return mediaCollection(request, env);
       if (path.startsWith('/media/')) return serveMedia(request, env, path);

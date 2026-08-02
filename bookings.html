@@ -25,11 +25,11 @@
   <main class="booking-page">
     <section class="booking-hero">
       <div class="booking-shell">
-        <p class="kicker">Direct booking · Secure payment</p>
+        <p class="kicker">Direct booking pilot · No payment taken</p>
         <h1>Book your next class</h1>
-        <p class="booking-lead">Choose a class, reserve your place and pay securely through SumUp. Boot Scootin’ never stores your card details.</p>
+        <p class="booking-lead">Choose a class and request your place. During the pilot, no payment is taken and Nora will confirm the booking separately.</p>
         <div class="security-strip" aria-label="Booking security information">
-          <span>🔒 Secure SumUp checkout</span><span>✓ Live capacity</span><span>✓ Instant confirmation</span>
+          <span>✓ Live capacity</span><span>✓ Waiting list when full</span><span>✓ No card details collected</span>
         </div>
       </div>
     </section>
@@ -64,8 +64,8 @@
           <label>Number of places<select name="quantity" id="quantity" required><option value="1">1 place</option><option value="2">2 places</option><option value="3">3 places</option><option value="4">4 places</option></select></label>
         </div>
         <label class="check-row"><input type="checkbox" name="terms" required><span>I agree to the booking terms, cancellation policy and privacy notice.</span></label>
-        <p class="privacy-note">Do not enter medical details or card information here. Card payment is handled only by SumUp.</p>
-        <button class="button booking-submit" type="submit">Continue to secure payment</button>
+        <p class="privacy-note">Do not enter medical details or card information here. This pilot records your request only; payment is not yet taken.</p>
+        <button class="button booking-submit" type="submit">Request My Place</button>
         <p id="formMessage" class="form-message" role="alert"></p>
       </form>
     </dialog>
@@ -79,7 +79,7 @@
     </section>
   </main>
   <script src="script.js?v=69"></script>
-  <script src="bookings.js?v=63" defer></script>
+  <script src="bookings.js?v=75" defer></script>
 
 <a class="admin-login-link" href="/admin-login" aria-label="Administrator login">🔒 Admin Login</a>
 
