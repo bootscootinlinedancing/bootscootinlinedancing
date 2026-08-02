@@ -307,3 +307,20 @@ LONG ROAD HANDBOOK
 - Added links from the Moonshine & Good Times Gang page.
 - The full 33-page PDF is NOT included anywhere in the website or ZIP.
 - Full access remains private for confirmed community members until secure accounts are live.
+
+
+Boot Scootin' Website Version 38
+
+MENU
+- Replaced the crowded mobile menu with eight large, clearly separated buttons.
+- Each main option now has an icon, title and arrow so it is obvious that it is clickable.
+- Secondary pages are kept inside one simple “More pages” section.
+- Removed duplicated headings and long lines of links.
+
+LONG ROAD HANDBOOK
+- Moved all preview images into the main website folder.
+- This prevents the cover and preview pages from appearing broken when uploading through GitHub.
+- Repaired the mobile handbook title so it no longer runs off the screen.
+- Improved the mobile hero layout and preview image sizing.
+
+The full handbook PDF is still not included.
