@@ -471,3 +471,17 @@ COMPLETE EXPLORE ACTIVE-LINK FIX
 - Retains the Version 47/48 menu design, descriptions and private community
   access-request process.
 - Clears all old service-worker caches.
+
+
+Boot Scootin' Website Version 50
+
+DANCE LIBRARY PROGRESS HUB
+- Upgraded the existing 12-dance library without changing verified dance details.
+- Added persistent Learned and Favourite controls to every dance card.
+- Added personal confidence tracking: Not started, Learning, Nearly there, Dance-floor ready.
+- Added filters for My Favourites and Learned dances.
+- Added sorting by recently taught, dance name and difficulty.
+- Added live visible-results count.
+- Improved mobile layout and active learned/favourite card styling.
+- Progress is saved privately in the visitor's browser until secure accounts launch.
+- Retains Version 49's repaired Explore menu and private community vetting flow.

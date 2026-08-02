@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=49">
+  <link rel="stylesheet" href="styles.css?v=50">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -195,7 +195,7 @@
       <div class="section-title centre reveal">
         <p class="kicker red">Dance Library 2.0</p>
         <h2>Your dances, all in one place.</h2>
-        <p>Filter by level, mark favourites and preview how members will track learned dances. Demo links are for practice, not tutorials.</p>
+        <p>Search, filter and save your progress. Mark dances as learned, add favourites and record how confident you feel. Demo links are for practice and refreshers, not full tutorials.</p>
       </div>
       <div class="library-progress-preview reveal">
         <div><strong id="learnedCount">0</strong><span>Marked learned</span></div>
@@ -214,11 +214,23 @@
           <button type="button" data-filter="absolute-beginner">Absolute Beginner</button>
           <button type="button" data-filter="beginner">Beginner</button>
           <button type="button" data-filter="improver">Improver</button>
+          <button type="button" data-filter="favourites">My Favourites</button>
+          <button type="button" data-filter="learned">Learned</button>
+        </div>
+        <div class="library-toolbar">
+          <p id="libraryResultCount" aria-live="polite">12 dances</p>
+          <label for="librarySort">Sort by
+            <select id="librarySort">
+              <option value="recent">Recently taught</option>
+              <option value="title">Dance name A–Z</option>
+              <option value="level">Difficulty</option>
+            </select>
+          </label>
         </div>
       </div>
 
       <div class="library-grid" id="libraryGrid">
-        <article class="library-item reveal" data-search="ziggy i wanna dance with somebody ziggy in tha house gary lafferty" data-level="absolute-beginner">
+        <article class="library-item reveal" data-title="ziggy" data-order="1" data-dance-id="ziggy" data-search="ziggy i wanna dance with somebody ziggy in tha house gary lafferty" data-level="absolute-beginner">
           <div class="library-card-top">
             <span class="library-icon">🎶</span>
             <span class="level-badge level-absolute-beginner">Absolute Beginner</span>
@@ -235,8 +247,22 @@
             <a class="button" href="https://youtu.be/OcNtDuwiS2c?is=RNVDYswR_UEXLjL9" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/YTPDD72/ziggy" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="ziggy">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="honky tonk highway luke combs maggie shipley" data-level="absolute-beginner">
+        <article class="library-item reveal" data-title="honky tonk highway" data-order="2" data-dance-id="honky-tonk-highway" data-search="honky tonk highway luke combs maggie shipley" data-level="absolute-beginner">
           <div class="library-card-top">
             <span class="library-icon">🤠</span>
             <span class="level-badge level-absolute-beginner">Absolute Beginner</span>
@@ -253,8 +279,22 @@
             <a class="button" href="https://youtu.be/Ie3H31bWzlU?is=fdMgnAInopNFM6q6" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/CB8VKHC/that-honky-tonk-highway" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="honky-tonk-highway">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="rockin wagon wheel darius rucker jamie marshall" data-level="beginner">
+        <article class="library-item reveal" data-title="rockin’ the wagon wheel" data-order="3" data-dance-id="rockin-the-wagon-wheel" data-search="rockin wagon wheel darius rucker jamie marshall" data-level="beginner">
           <div class="library-card-top">
             <span class="library-icon">🎻</span>
             <span class="level-badge level-beginner">Beginner</span>
@@ -271,8 +311,22 @@
             <a class="button" href="https://youtu.be/C2H63XKN5ps?is=fM-31vS6Q5-59UMg" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/7VDKHS2/rockin-the-wagon-wheel" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="rockin-the-wagon-wheel">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="cowgirl shaboozey sara honey delong" data-level="beginner">
+        <article class="library-item reveal" data-title="cowgirl" data-order="4" data-dance-id="cowgirl" data-search="cowgirl shaboozey sara honey delong" data-level="beginner">
           <div class="library-card-top">
             <span class="library-icon">🤎</span>
             <span class="level-badge level-beginner">Beginner</span>
@@ -289,8 +343,22 @@
             <a class="button" href="https://youtu.be/m0VecvBJHzg?is=iMjoLZ4hN7zQJjGo" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/NK5CJH5/cowgirl" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="cowgirl">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="twenty two 22 you look like you love me ella langley riley green michelle risley" data-level="absolute-beginner">
+        <article class="library-item reveal" data-title="twenty two (22)" data-order="5" data-dance-id="twenty-two-22" data-search="twenty two 22 you look like you love me ella langley riley green michelle risley" data-level="absolute-beginner">
           <div class="library-card-top">
             <span class="library-icon">⭐</span>
             <span class="level-badge level-absolute-beginner">Absolute Beginner</span>
@@ -307,8 +375,22 @@
             <a class="button" href="https://youtu.be/luQb4IPTvMs?is=hM3yi2ewL8cXOhC1" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/C8646RR/twenty-two-22" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="twenty-two-22">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="the outlaw whiskey drinkin mikel knight suzanne wilson" data-level="beginner">
+        <article class="library-item reveal" data-title="the outlaw" data-order="6" data-dance-id="the-outlaw" data-search="the outlaw whiskey drinkin mikel knight suzanne wilson" data-level="beginner">
           <div class="library-card-top">
             <span class="library-icon">🥃</span>
             <span class="level-badge level-beginner">Beginner</span>
@@ -325,8 +407,22 @@
             <a class="button" href="https://youtu.be/eB16nk_g9lc?si=2G2GeLpHwupkM5TD" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/3C7ZC9J/the-outlaw" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="the-outlaw">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="american kids kenny chesney randy pelletier" data-level="beginner">
+        <article class="library-item reveal" data-title="american kids" data-order="7" data-dance-id="american-kids" data-search="american kids kenny chesney randy pelletier" data-level="beginner">
           <div class="library-card-top">
             <span class="library-icon">🇺🇸</span>
             <span class="level-badge level-beginner">Beginner</span>
@@ -343,8 +439,22 @@
             <a class="button" href="https://youtu.be/gscYyXoQDWM?is=cS3ZXJNO5wV4OQML" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/ZYQMHP5/american-kids" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="american-kids">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="gives me shivers shivers ed sheeran brandon zahorsky" data-level="improver">
+        <article class="library-item reveal" data-title="gives me shivers" data-order="8" data-dance-id="gives-me-shivers" data-search="gives me shivers shivers ed sheeran brandon zahorsky" data-level="improver">
           <div class="library-card-top">
             <span class="library-icon">✨</span>
             <span class="level-badge level-improver">Improver</span>
@@ -361,8 +471,22 @@
             <a class="button" href="https://youtu.be/MwuK6ixYpwQ?is=m7bk0BlgNBcKcDXc" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/QLFNPD9/gives-me-shivers" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="gives-me-shivers">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="boot scootin boogie brooks dunn bill bader" data-level="beginner">
+        <article class="library-item reveal" data-title="boot scootin’ boogie" data-order="9" data-dance-id="boot-scootin-boogie" data-search="boot scootin boogie brooks dunn bill bader" data-level="beginner">
           <div class="library-card-top">
             <span class="library-icon">👢</span>
             <span class="level-badge level-beginner">Beginner</span>
@@ -379,8 +503,22 @@
             <a class="button" href="https://youtu.be/sOa1cFM5VTE?is=gtydwsheisJ1yXy5" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/QGCF4T9/boot-scootin-boogie" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="boot-scootin-boogie">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="burn it to the ground nickelback unknown improver" data-level="improver">
+        <article class="library-item reveal" data-title="burn it to the ground" data-order="10" data-dance-id="burn-it-to-the-ground" data-search="burn it to the ground nickelback unknown improver" data-level="improver">
           <div class="library-card-top">
             <span class="library-icon">🔥</span>
             <span class="level-badge level-improver">Improver</span>
@@ -397,8 +535,22 @@
             <a class="button" href="https://youtu.be/HVO3VZq2Jq4" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/KTDN6CM/burn-it-to-the-ground" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="burn-it-to-the-ground">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="strummingbird one more james johnston maddison glover" data-level="absolute-beginner">
+        <article class="library-item reveal" data-title="strummingbird" data-order="11" data-dance-id="strummingbird" data-search="strummingbird one more james johnston maddison glover" data-level="absolute-beginner">
           <div class="library-card-top">
             <span class="library-icon">🎸</span>
             <span class="level-badge level-absolute-beginner">Absolute Beginner</span>
@@ -415,8 +567,22 @@
             <a class="button" href="https://youtu.be/Epc6u8rZCho?is=3RJVfkgiifxYyMDy" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/Q29FPC4/strummingbird" target="_blank" rel="noopener">View stepsheet & choreographer</a>
           </div>
+          <div class="dance-card-member-tools" data-dance-id="strummingbird">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
+          </div>
         </article>
-        <article class="library-item reveal" data-search="choosin texas ella langley nidhi risi" data-level="beginner">
+        <article class="library-item reveal" data-title="choosin’ texas" data-order="12" data-dance-id="choosin-texas" data-search="choosin texas ella langley nidhi risi" data-level="beginner">
           <div class="library-card-top">
             <span class="library-icon">⭐</span>
             <span class="level-badge level-beginner">Beginner</span>
@@ -432,6 +598,20 @@
           <div class="library-actions">
             <a class="button" href="https://youtu.be/yNGd8EEyvlQ?is=ICVsheCWP17dxqku" target="_blank" rel="noopener">Watch Demo</a>
             <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/LRV9X25/choosin-texas" target="_blank" rel="noopener">View stepsheet & choreographer</a>
+          </div>
+          <div class="dance-card-member-tools" data-dance-id="choosin-texas">
+            <div class="dance-progress-buttons">
+              <button type="button" class="learned-tool" aria-pressed="false">Mark as learned</button>
+              <button type="button" class="favourite-tool" aria-pressed="false">☆ Favourite</button>
+            </div>
+            <label>My confidence
+              <select class="dance-confidence">
+                <option>Not started</option>
+                <option>Learning</option>
+                <option>Nearly there</option>
+                <option>Dance-floor ready</option>
+              </select>
+            </label>
           </div>
         </article>
       </div>
@@ -450,34 +630,8 @@
     <p class="script">Leave with sore feet and a happy heart. ♥</p>
     <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
   </footer>
-  <script src="script.js?v=49"></script>
-  <script>
-    const search = document.getElementById('danceSearch');
-    const cards = [...document.querySelectorAll('.library-item')];
-    const filters = [...document.querySelectorAll('.library-filters button')];
-    const empty = document.getElementById('libraryEmpty');
-    let activeFilter = 'all';
+  <script src="script.js?v=50"></script>
 
-    function updateLibrary() {
-      const term = search.value.trim().toLowerCase();
-      let visible = 0;
-      cards.forEach(card => {
-        const matchesText = card.dataset.search.includes(term);
-        const matchesFilter = activeFilter === 'all' || card.dataset.level === activeFilter;
-        const show = matchesText && matchesFilter;
-        card.hidden = !show;
-        if (show) visible++;
-      });
-      empty.hidden = visible !== 0;
-    }
-    search.addEventListener('input', updateLibrary);
-    filters.forEach(button => button.addEventListener('click', () => {
-      filters.forEach(item => item.classList.remove('active'));
-      button.classList.add('active');
-      activeFilter = button.dataset.filter;
-      updateLibrary();
-    }));
-  </script>
 
   <aside class="install-app" id="installApp" hidden aria-label="Install Boot Scootin' on your phone">
     <img src="brand-logo.png" alt="">
@@ -500,59 +654,7 @@
     </div>
   </div>
 
-<script>
-    const storageKey = "bootScootinDancePreview";
-    let danceState = {};
-    try { danceState = JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch (error) {}
 
-    function saveDanceState() {
-      localStorage.setItem(storageKey, JSON.stringify(danceState));
-      updateDanceCounts();
-    }
-
-    function updateDanceCounts() {
-      const values = Object.values(danceState);
-      const learned = values.filter(item => item.learned).length;
-      const favourites = values.filter(item => item.favourite).length;
-      const learnedCount = document.getElementById("learnedCount");
-      const favouriteCount = document.getElementById("favouriteCount");
-      if (learnedCount) learnedCount.textContent = learned;
-      if (favouriteCount) favouriteCount.textContent = favourites;
-    }
-
-    document.querySelectorAll(".dance-card-member-tools").forEach(toolbox => {
-      const id = toolbox.dataset.danceId;
-      danceState[id] ||= { learned:false, favourite:false, confidence:"Not started" };
-
-      const learnedButton = toolbox.querySelector(".learned-tool");
-      const favouriteButton = toolbox.querySelector(".favourite-tool");
-      const confidence = toolbox.querySelector(".dance-confidence");
-
-      function render() {
-        learnedButton.setAttribute("aria-pressed", String(danceState[id].learned));
-        learnedButton.textContent = danceState[id].learned ? "✓ Learned" : "Mark as learned";
-        favouriteButton.setAttribute("aria-pressed", String(danceState[id].favourite));
-        favouriteButton.textContent = danceState[id].favourite ? "★ Favourite" : "☆ Favourite";
-        confidence.value = danceState[id].confidence;
-      }
-
-      learnedButton.addEventListener("click", () => {
-        danceState[id].learned = !danceState[id].learned;
-        render(); saveDanceState();
-      });
-      favouriteButton.addEventListener("click", () => {
-        danceState[id].favourite = !danceState[id].favourite;
-        render(); saveDanceState();
-      });
-      confidence.addEventListener("change", () => {
-        danceState[id].confidence = confidence.value;
-        saveDanceState();
-      });
-      render();
-    });
-
-    updateDanceCounts();
-  </script>
 
 
 
@@ -567,5 +669,104 @@ document.querySelectorAll("#menu45 details.menu45-section").forEach(function(sec
  });
 });
 </script>
+
+<script id="dance-library-v50-script">
+(() => {
+  const storageKey = "bootScootinDanceLibrary";
+  const search = document.getElementById("danceSearch");
+  const grid = document.getElementById("libraryGrid");
+  const cards = [...document.querySelectorAll(".library-item")];
+  const filters = [...document.querySelectorAll(".library-filters button")];
+  const sort = document.getElementById("librarySort");
+  const empty = document.getElementById("libraryEmpty");
+  const resultCount = document.getElementById("libraryResultCount");
+  let activeFilter = "all";
+  let danceState = {};
+
+  try { danceState = JSON.parse(localStorage.getItem(storageKey) || "{}"); } catch (_) {}
+
+  function stateFor(id) {
+    danceState[id] ||= { learned:false, favourite:false, confidence:"Not started" };
+    return danceState[id];
+  }
+
+  function saveState() {
+    try { localStorage.setItem(storageKey, JSON.stringify(danceState)); } catch (_) {}
+    updateCounts();
+    updateLibrary();
+  }
+
+  function updateCounts() {
+    const values = Object.values(danceState);
+    document.getElementById("learnedCount").textContent = values.filter(x => x.learned).length;
+    document.getElementById("favouriteCount").textContent = values.filter(x => x.favourite).length;
+  }
+
+  cards.forEach(card => {
+    const id = card.dataset.danceId;
+    const state = stateFor(id);
+    const tools = card.querySelector(".dance-card-member-tools");
+    const learned = tools.querySelector(".learned-tool");
+    const favourite = tools.querySelector(".favourite-tool");
+    const confidence = tools.querySelector(".dance-confidence");
+
+    function render() {
+      learned.setAttribute("aria-pressed", String(state.learned));
+      learned.textContent = state.learned ? "✓ Learned" : "Mark as learned";
+      favourite.setAttribute("aria-pressed", String(state.favourite));
+      favourite.textContent = state.favourite ? "★ Favourite" : "☆ Favourite";
+      confidence.value = state.confidence;
+      card.classList.toggle("is-learned", state.learned);
+      card.classList.toggle("is-favourite", state.favourite);
+    }
+
+    learned.addEventListener("click", () => { state.learned = !state.learned; render(); saveState(); });
+    favourite.addEventListener("click", () => { state.favourite = !state.favourite; render(); saveState(); });
+    confidence.addEventListener("change", () => { state.confidence = confidence.value; saveState(); });
+    render();
+  });
+
+  function sortCards() {
+    const mode = sort.value;
+    const rank = {"absolute-beginner":1, beginner:2, improver:3};
+    cards.sort((a,b) => {
+      if (mode === "title") return a.dataset.title.localeCompare(b.dataset.title);
+      if (mode === "level") return (rank[a.dataset.level] - rank[b.dataset.level]) || a.dataset.title.localeCompare(b.dataset.title);
+      return Number(a.dataset.order) - Number(b.dataset.order);
+    }).forEach(card => grid.appendChild(card));
+  }
+
+  function updateLibrary() {
+    const term = search.value.trim().toLowerCase();
+    let visible = 0;
+    cards.forEach(card => {
+      const state = stateFor(card.dataset.danceId);
+      const matchesText = card.dataset.search.includes(term);
+      let matchesFilter = activeFilter === "all" || card.dataset.level === activeFilter;
+      if (activeFilter === "favourites") matchesFilter = state.favourite;
+      if (activeFilter === "learned") matchesFilter = state.learned;
+      const show = matchesText && matchesFilter;
+      card.hidden = !show;
+      if (show) visible++;
+    });
+    empty.hidden = visible !== 0;
+    resultCount.textContent = `${visible} ${visible === 1 ? "dance" : "dances"}`;
+  }
+
+  search.addEventListener("input", updateLibrary);
+  filters.forEach(button => button.addEventListener("click", () => {
+    filters.forEach(item => item.classList.remove("active"));
+    button.classList.add("active");
+    activeFilter = button.dataset.filter;
+    updateLibrary();
+  }));
+  sort.addEventListener("change", () => { sortCards(); updateLibrary(); });
+
+  sortCards();
+  updateCounts();
+  updateLibrary();
+})();
+</script>
+
 </body>
 </html>

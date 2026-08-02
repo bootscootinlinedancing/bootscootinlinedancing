@@ -1,19 +1,4 @@
-const CACHE_NAME = "boot-scootin-v49";
-
-self.addEventListener("install", event => self.skipWaiting());
-
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.map(key => caches.delete(key))))
-      .then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", event => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(
-    fetch(event.request, { cache: "no-store" })
-      .catch(() => caches.match(event.request))
-  );
-});
+const CACHE_NAME = "boot-scootin-v50";
+self.addEventListener("install",e=>self.skipWaiting());
+self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
+self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request,{cache:"no-store"}).catch(()=>caches.match(e.request)));});
