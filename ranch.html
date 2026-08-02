@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=67">
+  <link rel="stylesheet" href="styles.css?v=69">
 </head>
 <body class="ranch-body">
   <div class="ranch-app">
@@ -22,9 +22,11 @@
         <button data-view="media">Media</button>
         <button data-view="members" disabled>Members <small>Coming next</small></button>
         <button data-view="rewards" disabled>Rewards <small>Coming next</small></button>
+        <button data-view="health">System Health</button>
         <button data-view="settings">Settings</button>
       </nav>
       <a class="ranch-site-link" href="index.html">Return to website</a>
+      <a class="ranch-site-link ranch-signout-link" href="/cdn-cgi/access/logout">Sign out of HQ</a>
     </aside>
 
     <main class="ranch-main">
@@ -38,7 +40,7 @@
       </header>
 
       <div id="ranchNotice" class="ranch-notice">
-        This is the private Boot Scootin’ management area. Access must be protected by Cloudflare Access before real customer data is used.
+        Free pilot mode: keep this area private and use test data only until database, media storage and SumUp sandbox checks are complete.
       </div>
 
       <section class="ranch-view active" data-view-panel="overview">
@@ -48,6 +50,10 @@
           <article><span>Revenue</span><strong>—</strong></article>
           <article><span>Media files</span><strong id="ranchMediaCount">—</strong></article>
         </div>
+        <section class="ranch-panel hq-health-summary" id="hqHealthSummary">
+          <div class="ranch-panel-head"><div><p class="kicker red">System health</p><h2>Free pilot status</h2><p>Live checks show which services are ready, in test mode or still need setup.</p></div><button class="button secondary compact" id="refreshHealthSummary">Run checks</button></div>
+          <div class="hq-health-mini" id="hqHealthMini"><span class="health-dot checking"></span> Checking your setup…</div>
+        </section>
         <div class="ranch-grid-2">
           <section class="ranch-panel">
             <div class="ranch-panel-head"><div><p class="kicker red">Schedule</p><h2>Next classes</h2></div><button class="button compact" data-open-class>Add class</button></div>
@@ -87,7 +93,7 @@
           <section class="ranch-panel">
             <div class="ranch-panel-head"><div><p class="kicker red">Media Manager</p><h2>Upload a file</h2><p>Upload photos, videos and PDFs without adding them to GitHub.</p></div></div>
             <form id="mediaUploadForm" class="ranch-media-form">
-              <label>Choose file<input id="mediaFile" name="file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,application/pdf" required></label>
+              <label>Choose file<input id="mediaFile" name="file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov,application/pdf" required></label>
               <label>Display name<input name="title" type="text" required placeholder="Summer Stomp video"></label>
               <label>Use on the website<select name="placement"><option value="library">Media library only</option><option value="summer-stomp-story">Summer Stomp story video</option><option value="country-guide">Country Guide</option><option value="homepage">Homepage</option><option value="dance-library">Dance Library</option></select></label>
               <label>Alternative text / description<textarea name="description" rows="3" placeholder="Describe the image or video for accessibility."></textarea></label>
@@ -95,7 +101,7 @@
               <div class="ranch-upload-progress" id="mediaUploadProgress" hidden><span></span></div>
               <p id="mediaUploadMessage" class="form-message" aria-live="polite"></p>
               <button class="button booking-submit" type="submit">Upload to HQ</button>
-              <p class="ranch-media-help">Supported: JPG, PNG, WebP, MP4, WebM and PDF. Maximum 80 MB per upload. Videos remain on your own website and never open iCloud.</p>
+              <p class="ranch-media-help">Supported: JPG, PNG, WebP, MP4, WebM, MOV and PDF. Maximum 80 MB per upload. MP4 is recommended for reliable playback on every device. Videos remain on your own website and never open iCloud.</p>
             </form>
           </section>
           <section class="ranch-panel">
@@ -105,9 +111,28 @@
         </div>
       </section>
 
+      <section class="ranch-view" data-view-panel="health">
+        <div class="ranch-panel">
+          <div class="ranch-panel-head"><div><p class="kicker red">Live checks</p><h2>System Health</h2><p>This page never displays secret keys. It only confirms whether each free-pilot service is configured and responding.</p></div><button class="button secondary compact" id="refreshHealth">Run checks</button></div>
+          <div class="hq-health-grid" id="hqHealthGrid">
+            <article class="hq-health-card"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>Please wait.</small></div></article>
+          </div>
+          <div class="hq-pilot-rules">
+            <h3>Free pilot safeguards</h3>
+            <ul>
+              <li>Collect only name, email, class, quantity and payment status.</li>
+              <li>Do not collect medical details or sensitive free-text notes.</li>
+              <li>Keep payments in SumUp sandbox until all tests pass.</li>
+              <li>Do not invite public member sign-ups during the owner-only alpha.</li>
+              <li>Use Cloudflare Access for HQ and never commit secrets to GitHub.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <section class="ranch-view" data-view-panel="settings">
         <div class="ranch-grid-2">
-          <section class="ranch-panel"><p class="kicker red">Security</p><h2>Launch checklist</h2><ul class="ranch-checklist"><li>Protect Ranch pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Test every booking and capacity rule</li><li>Connect SumUp Sandbox before live payments</li></ul></section>
+          <section class="ranch-panel"><p class="kicker red">Free pilot</p><h2>Low-cost launch checklist</h2><ul class="ranch-checklist"><li>Protect HQ pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Use test data and test every booking and capacity rule</li><li>Connect SumUp Sandbox before any live payments</li><li>Review ICO fee status before public member accounts launch</li></ul></section>
           <section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Not connected yet. This is safe: no card details are collected and no live booking is confirmed.</p><div class="ranch-connection"><span></span> Awaiting sandbox connection</div></section>
         </div>
       </section>
@@ -136,6 +161,6 @@
       <button class="button booking-submit" type="submit">Save class</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=67" defer></script>
+  <script src="ranch.js?v=69" defer></script>
 </body>
 </html>

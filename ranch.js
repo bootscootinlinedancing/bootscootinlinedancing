@@ -1,5 +1,5 @@
 (() => {
-  const state={classes:[],bookings:null,media:[]};
+  const state={classes:[],bookings:null,media:[],health:null};
   const money=p=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(p)||0)/100);
   const fmt=s=>s?new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(s)):'—';
   const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -7,6 +7,20 @@
   function show(view){panels.forEach(p=>p.classList.toggle('active',p.dataset.viewPanel===view));nav.forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.getElementById('ranchTitle').textContent=nav.find(b=>b.dataset.view===view)?.textContent.trim()||'Boot Scootin’ HQ';document.getElementById('ranchSidebar').classList.remove('open');}
   nav.forEach(b=>b.onclick=()=>show(b.dataset.view));
   document.getElementById('ranchMenuButton').onclick=()=>document.getElementById('ranchSidebar').classList.toggle('open');
+
+
+  const healthLabels={
+    website:['Website','Public site and HQ frontend are responding.'],
+    database:['Database','Cloudflare D1 class and booking storage.'],
+    media:['Media storage','Cloudflare R2 photos, videos and PDFs.'],
+    payments:['Payments','SumUp connection and operating mode.'],
+    email:['Email confirmations','Transactional email provider.'],
+    access:['Admin protection','Cloudflare Access identity header.'],
+    backups:['Backups','Pilot backup and export readiness.']
+  };
+  function healthCard(key,item){const [title,desc]=healthLabels[key]||[key,''];const status=item?.status||'unknown';return `<article class="hq-health-card ${esc(status)}"><span class="health-dot ${esc(status)}"></span><div><strong>${esc(title)}</strong><small>${esc(item?.message||desc)}</small></div><b>${esc(status.replaceAll('_',' '))}</b></article>`;}
+  function renderHealth(){const grid=document.getElementById('hqHealthGrid'),mini=document.getElementById('hqHealthMini'),h=state.health;if(!h)return;const keys=['website','access','database','media','payments','email','backups'];if(grid)grid.innerHTML=keys.map(k=>healthCard(k,h.services?.[k])).join('');const ready=keys.filter(k=>['ready','online','protected'].includes(h.services?.[k]?.status)).length;const attention=keys.length-ready;if(mini)mini.innerHTML=`<span class="health-dot ${attention?'attention':'ready'}"></span><strong>${ready} ready</strong><span> · ${attention} ${attention===1?'item needs':'items need'} attention</span><a href="#" data-open-health>View details</a>`;document.querySelectorAll('[data-open-health]').forEach(a=>a.onclick=e=>{e.preventDefault();show('health');});}
+  async function loadHealth(){const grid=document.getElementById('hqHealthGrid'),mini=document.getElementById('hqHealthMini');if(grid)grid.innerHTML='<article class="hq-health-card"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>Please wait.</small></div></article>';if(mini)mini.innerHTML='<span class="health-dot checking"></span> Checking your setup…';try{state.health=await jsonFetch('/api/admin/health');renderHealth();}catch(e){state.health={services:{website:{status:'online',message:'This page loaded successfully.'},access:{status:'attention',message:e.message},database:{status:'attention',message:'Could not run the protected health check.'},media:{status:'attention',message:'Could not run the protected health check.'},payments:{status:'setup',message:'Not connected to SumUp sandbox yet.'},email:{status:'setup',message:'Not connected yet.'},backups:{status:'setup',message:'Export and restore test not completed yet.'}}};renderHealth();}}
 
   async function jsonFetch(url,options){const r=await fetch(url,{headers:{Accept:'application/json','Content-Type':'application/json',...(options?.headers||{})},...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'The Ranch backend is not configured yet.');return d;}
   async function loadClasses(){try{state.classes=await jsonFetch('/api/admin/classes');document.getElementById('ranchNotice').hidden=true;}catch(e){state.classes=[];document.getElementById('ranchNotice').hidden=false;document.getElementById('ranchNotice').textContent=e.message+' The dashboard is showing setup mode until Cloudflare D1 and Access are connected.';}renderClasses();renderOverview();}
@@ -35,7 +49,9 @@
   document.getElementById('refreshRanch').onclick=loadClasses;
   document.getElementById('refreshBookings').onclick=loadBookings;
   document.getElementById('refreshMedia')?.addEventListener('click',loadMedia);
+  document.getElementById('refreshHealth')?.addEventListener('click',loadHealth);
+  document.getElementById('refreshHealthSummary')?.addEventListener('click',loadHealth);
   document.getElementById('ranchMedia')?.addEventListener('click',async e=>{const copy=e.target.closest('[data-copy-media]'),del=e.target.closest('[data-delete-media]');if(copy){await navigator.clipboard.writeText(`${location.origin}/media/${copy.dataset.copyMedia}`);copy.textContent='Copied';setTimeout(()=>copy.textContent='Copy link',1200);}if(del&&confirm('Delete this media file? Any page using it will stop displaying it.')){try{await jsonFetch('/api/admin/media',{method:'DELETE',body:JSON.stringify({id:del.dataset.deleteMedia})});await loadMedia();}catch(err){alert(err.message);}}});
   document.getElementById('mediaUploadForm')?.addEventListener('submit',async e=>{e.preventDefault();const formEl=e.currentTarget,msg=document.getElementById('mediaUploadMessage'),button=formEl.querySelector('button[type="submit"]'),file=formEl.elements.file.files[0];if(!file)return;if(file.size>80*1024*1024){msg.textContent='This file is larger than 80 MB. Please compress it before uploading.';return;}const data=new FormData(formEl);button.disabled=true;msg.textContent='Uploading securely… Please keep this page open.';try{const r=await fetch('/api/admin/media',{method:'POST',body:data,headers:{Accept:'application/json'}});const out=await r.json().catch(()=>({}));if(!r.ok)throw new Error(out.error||'Upload failed.');formEl.reset();msg.textContent='Upload complete.';await loadMedia();}catch(err){msg.textContent=err.message;}finally{button.disabled=false;}});
-  loadClasses();loadBookings();loadMedia();
+  loadClasses();loadBookings();loadMedia();loadHealth();
 })();
