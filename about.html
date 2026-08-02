@@ -29,37 +29,94 @@
     </a>
     <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
     <nav id="nav" aria-label="Main navigation">
-      <div class="nav-mobile-head">
-        <span>Menu</span>
-        <button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button>
-      </div>
-
-      <div class="simple-mobile-menu">
-        <a href="index.html"><span>🏠</span><strong>Home</strong><b>›</b></a>
-        <a href="calendar.html"><span>📅</span><strong>Classes &amp; Bookings</strong><b>›</b></a>
-        <a href="dance-library.html"><span>💃</span><strong>Dance Library</strong><b>›</b></a>
-        <a href="journey.html"><span>👤</span><strong>My Boot Scootin’ Journey</strong><b>›</b></a>
-        <a href="moonshine.html"><span>🌙</span><strong>Moonshine &amp; Good Times Gang</strong><b>›</b></a>
-        <a href="country-map.html"><span>🤠</span><strong>Nora’s Country Guide</strong><b>›</b></a>
-        <a href="community.html#merchandise"><span>🛍️</span><strong>Shop &amp; Rewards</strong><b>›</b></a>
-        <a href="ask-nora.html"><span>❓</span><strong>Ask Nora</strong><b>›</b></a>
-
-        <details class="more-pages">
-          <summary><span>More pages</span><b>+</b></summary>
+      <div class="premium-menu-shell">
+        <div class="premium-menu-head">
           <div>
-            <a href="about.html">About Boot Scootin’</a>
-            <a href="private-events.html">Private Events</a>
-            <a href="dance-diary.html">Dance Diary</a>
-            <a href="requests.html">Dance Requests</a>
-            <a href="community.html">Community Hub</a>
-            <a href="long-road-handbook.html">Long Road Handbook Preview</a>
-            <a href="passport.html">Boot Scootin’ Passport</a>
-            <a href="country-corner.html">Nora’s Country Corner</a>
-            <a href="businesses.html">Businesses We Love</a>
-            <a href="rewards.html">Boot Scootin’ Rewards</a>
-            <a href="index.html#contact">Contact &amp; Socials</a>
+            <p class="premium-menu-kicker">Explore Boot Scootin’</p>
+            <h2>Where would you like to go?</h2>
           </div>
-        </details>
+          <button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button>
+        </div>
+
+        <div class="premium-menu-groups">
+          <section class="premium-menu-group first-time">
+            <a href="calendar.html">
+              <span class="premium-menu-icon">⭐</span>
+              <span class="premium-menu-copy">
+                <small>First time here?</small>
+                <strong>Book your first class</strong>
+                <em>Beginner friendly · No partner needed</em>
+              </span>
+              <b>›</b>
+            </a>
+          </section>
+
+          <section class="premium-menu-group">
+            <div class="premium-menu-group-title">
+              <span>💃</span>
+              <div><small>I’m here to dance</small><strong>Learn &amp; practise</strong></div>
+            </div>
+            <div class="premium-menu-links">
+              <a href="dance-library.html">Dance Library</a>
+              <a href="dance-diary.html">Dance Diary</a>
+              <a href="requests.html">Dance Requests</a>
+            </div>
+          </section>
+
+          <section class="premium-menu-group">
+            <div class="premium-menu-group-title">
+              <span>🌙</span>
+              <div><small>Find your people</small><strong>Community</strong></div>
+            </div>
+            <div class="premium-menu-links">
+              <a href="moonshine.html">Moonshine &amp; Good Times Gang</a>
+              <a href="long-road-handbook.html">Long Road Handbook</a>
+              <a href="journey.html">My Journey</a>
+              <a href="passport.html">Boot Scootin’ Passport</a>
+            </div>
+          </section>
+
+          <section class="premium-menu-group">
+            <div class="premium-menu-group-title">
+              <span>🎸</span>
+              <div><small>Music, places &amp; style</small><strong>Country Lifestyle</strong></div>
+            </div>
+            <div class="premium-menu-links">
+              <a href="country-map.html">Nora’s Country Guide</a>
+              <a href="country-corner.html">Nora’s Country Corner</a>
+              <a href="businesses.html">Businesses We Love</a>
+            </div>
+          </section>
+
+          <section class="premium-menu-group">
+            <div class="premium-menu-group-title">
+              <span>🛍️</span>
+              <div><small>Merchandise &amp; loyalty</small><strong>Shop</strong></div>
+            </div>
+            <div class="premium-menu-links">
+              <a href="community.html#merchandise">Official Merchandise</a>
+              <a href="rewards.html">Boot Scootin’ Rewards</a>
+            </div>
+          </section>
+
+          <section class="premium-menu-group">
+            <div class="premium-menu-group-title">
+              <span>❤️</span>
+              <div><small>Need a little help?</small><strong>Help &amp; Contact</strong></div>
+            </div>
+            <div class="premium-menu-links">
+              <a href="ask-nora.html">Ask Nora</a>
+              <a href="index.html#contact">Contact &amp; Socials</a>
+              <a href="about.html" aria-current="page">About Boot Scootin’</a>
+              <a href="private-events.html">Private Events</a>
+            </div>
+          </section>
+        </div>
+
+        <div class="premium-menu-footer">
+          <a href="index.html">Home</a>
+          <a href="community.html">Community Hub</a>
+        </div>
       </div>
     </nav>
     <a class="button compact" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Book a class</a>

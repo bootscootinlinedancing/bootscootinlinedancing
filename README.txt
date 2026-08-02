@@ -324,3 +324,16 @@ LONG ROAD HANDBOOK
 - Improved the mobile hero layout and preview image sizing.
 
 The full handbook PDF is still not included.
+
+
+Boot Scootin' Website Version 39
+
+MENU REDESIGN — OPTION 3
+- Replaced the long menu list with a premium full-screen overlay.
+- Added six clear purpose-led sections:
+  First Time Here, Dance, Community, Country Lifestyle, Shop, and Help.
+- Added short descriptions so visitors know what each section contains.
+- Added a highlighted first-class booking card.
+- Added subtle entrance animation and a blurred dark background.
+- Secondary links now sit inside clearly separated cards rather than one long block.
+- Kept Home and Community Hub as small footer links.
