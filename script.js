@@ -191,12 +191,14 @@ installGuide?.addEventListener("click", event => {
 
 
 
-// Boot Scootin' mobile accordion menu: keep only one category open at a time.
-document.querySelectorAll("#bsAccordionMenu details.bs-menu-section").forEach((section) => {
-  section.addEventListener("toggle", () => {
-    if (!section.open) return;
-    document.querySelectorAll("#bsAccordionMenu details.bs-menu-section").forEach((other) => {
-      if (other !== section) other.open = false;
+
+
+// Version 42 menu: only one category can be expanded at a time.
+document.querySelectorAll("#v42Menu details.v42-card").forEach((card) => {
+  card.addEventListener("toggle", () => {
+    if (!card.open) return;
+    document.querySelectorAll("#v42Menu details.v42-card").forEach((other) => {
+      if (other !== card) other.open = false;
     });
   });
 });

@@ -349,3 +349,16 @@ FINAL ACCORDION MENU
 - Each row has its own arrow and divider.
 - Book Your First Class remains a prominent red feature card.
 - Strong unique CSS prevents older menu styling from merging the items together.
+
+
+Boot Scootin' Website Version 42
+
+PROFESSIONAL MENU REDESIGN
+- Removed all emojis from the navigation.
+- Added custom professional line-style SVG icons.
+- Every main category is now a clearly bordered card.
+- Category title and description appear on separate lines.
+- Only one category opens at a time.
+- Every submenu item appears as a separate light-coloured button row.
+- Clear chevrons show which rows are clickable.
+- Strong unique styling prevents previous menu CSS from merging the layout.
