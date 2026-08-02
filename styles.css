@@ -5381,3 +5381,15 @@ nav a{
   background:#000;
   object-fit:contain;
 }
+
+
+/* VERSION 62 — COUNTRY GUIDE AS SEPARATE PAGES */
+.guide-subhero{min-height:420px;display:flex;align-items:flex-end;padding:clamp(5rem,10vw,8rem) max(4vw,calc((100vw - 1120px)/2));background:linear-gradient(145deg,#090606,#2b0d0f);color:#fff}
+.guide-subhero>div{max-width:850px}.guide-subhero h1{font-size:clamp(3.4rem,9vw,7rem);margin:.25rem 0 .7rem}.guide-subhero p:last-child{max-width:680px;color:#d9c6b5;font-size:1.1rem;line-height:1.65}
+.guide-page-nav{position:sticky;top:0;z-index:80;display:flex;gap:.45rem;overflow-x:auto;padding:.75rem max(3vw,calc((100vw - 1120px)/2));background:#0b0707;border-bottom:1px solid #52272a;-webkit-overflow-scrolling:touch}
+.guide-page-nav a{flex:0 0 auto;padding:.65rem .85rem;color:#f5e9db;text-decoration:none;border:1px solid #5f3033;font:600 .78rem/1 Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.guide-page-nav a:first-child{background:#b81c24;border-color:#d33b42}
+.inspiration-profile{width:min(1100px,94vw);margin:auto;display:grid;grid-template-columns:1.15fr .85fr;gap:2rem;align-items:center;padding:2rem;border:1px solid #d1b797;background:#fff8ed}.inspiration-profile img{width:100%;max-height:620px;object-fit:cover;object-position:center}
+.country-guide-subpage .summer-stomp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0}.country-guide-subpage .summer-stomp-grid section{min-width:0;overflow:hidden}.country-guide-subpage .summer-stomp-grid h3,.country-guide-subpage .summer-stomp-grid p{overflow-wrap:anywhere}
+.country-guide-subpage .summer-stomp-hero>img{object-fit:cover}.country-guide-subpage .summer-stomp-gallery img{object-fit:cover}
+@media(max-width:760px){.inspiration-profile{grid-template-columns:1fr}.guide-subhero{min-height:330px}.country-guide-subpage .summer-stomp-grid{grid-template-columns:1fr}.guide-page-nav{top:0}}

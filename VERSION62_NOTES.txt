@@ -1,0 +1,6 @@
+Boot Scootin Website Version 62
+- Country Guide categories are now separate HTML pages.
+- Menu links open the selected category rather than scrolling through one long page.
+- Rebuilt Nora’s Adventures page to remove malformed/glitching markup.
+- Contained Summer Stomp text and images for mobile.
+- Removed the empty video player until a real MP4 is supplied.
