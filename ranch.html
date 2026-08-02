@@ -4,21 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>Boot Scootin' Ranch</title>
+  <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=66">
+  <link rel="stylesheet" href="styles.css?v=67">
 </head>
 <body class="ranch-body">
   <div class="ranch-app">
     <aside class="ranch-sidebar" id="ranchSidebar">
       <div class="ranch-brand">
         <img src="brand-logo-v60.webp" alt="Boot Scootin' Line Dancing">
-        <div><span>Boot Scootin'</span><strong>Ranch</strong></div>
+        <div><span>Boot Scootin'</span><strong>HQ</strong></div>
       </div>
-      <nav class="ranch-nav" aria-label="Ranch sections">
-        <button class="active" data-view="overview">Ranch Home</button>
+      <nav class="ranch-nav" aria-label="HQ sections">
+        <button class="active" data-view="overview">HQ Home</button>
         <button data-view="classes">Classes</button>
         <button data-view="bookings">Bookings</button>
+        <button data-view="media">Media</button>
         <button data-view="members" disabled>Members <small>Coming next</small></button>
         <button data-view="rewards" disabled>Rewards <small>Coming next</small></button>
         <button data-view="settings">Settings</button>
@@ -28,10 +29,10 @@
 
     <main class="ranch-main">
       <header class="ranch-topbar">
-        <button class="ranch-menu-button" id="ranchMenuButton" aria-label="Open Ranch menu">☰</button>
+        <button class="ranch-menu-button" id="ranchMenuButton" aria-label="Open HQ menu">☰</button>
         <div>
           <p class="kicker red">Private management area</p>
-          <h1 id="ranchTitle">Ranch Home</h1>
+          <h1 id="ranchTitle">HQ Home</h1>
         </div>
         <div class="ranch-status"><span></span> Secure admin area</div>
       </header>
@@ -45,7 +46,7 @@
           <article><span>Upcoming classes</span><strong>—</strong></article>
           <article><span>Places booked</span><strong>—</strong></article>
           <article><span>Revenue</span><strong>—</strong></article>
-          <article><span>Members</span><strong>Coming soon</strong></article>
+          <article><span>Media files</span><strong id="ranchMediaCount">—</strong></article>
         </div>
         <div class="ranch-grid-2">
           <section class="ranch-panel">
@@ -80,9 +81,33 @@
         </div>
       </section>
 
+
+      <section class="ranch-view" data-view-panel="media">
+        <div class="ranch-grid-2 ranch-media-layout">
+          <section class="ranch-panel">
+            <div class="ranch-panel-head"><div><p class="kicker red">Media Manager</p><h2>Upload a file</h2><p>Upload photos, videos and PDFs without adding them to GitHub.</p></div></div>
+            <form id="mediaUploadForm" class="ranch-media-form">
+              <label>Choose file<input id="mediaFile" name="file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,application/pdf" required></label>
+              <label>Display name<input name="title" type="text" required placeholder="Summer Stomp video"></label>
+              <label>Use on the website<select name="placement"><option value="library">Media library only</option><option value="summer-stomp-story">Summer Stomp story video</option><option value="country-guide">Country Guide</option><option value="homepage">Homepage</option><option value="dance-library">Dance Library</option></select></label>
+              <label>Alternative text / description<textarea name="description" rows="3" placeholder="Describe the image or video for accessibility."></textarea></label>
+              <label class="community-rules-check"><input name="published" type="checkbox" value="1" checked><span>Publish this file for use on the website</span></label>
+              <div class="ranch-upload-progress" id="mediaUploadProgress" hidden><span></span></div>
+              <p id="mediaUploadMessage" class="form-message" aria-live="polite"></p>
+              <button class="button booking-submit" type="submit">Upload to HQ</button>
+              <p class="ranch-media-help">Supported: JPG, PNG, WebP, MP4, WebM and PDF. Maximum 80 MB per upload. Videos remain on your own website and never open iCloud.</p>
+            </form>
+          </section>
+          <section class="ranch-panel">
+            <div class="ranch-panel-head"><div><p class="kicker red">Library</p><h2>Your media</h2><p>Copy a file link, change its placement or remove it.</p></div><button class="button secondary compact" id="refreshMedia">Refresh</button></div>
+            <div id="ranchMedia" class="ranch-media-list">Loading…</div>
+          </section>
+        </div>
+      </section>
+
       <section class="ranch-view" data-view-panel="settings">
         <div class="ranch-grid-2">
-          <section class="ranch-panel"><p class="kicker red">Security</p><h2>Launch checklist</h2><ul class="ranch-checklist"><li>Protect Ranch pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Test every booking and capacity rule</li><li>Connect SumUp Sandbox before live payments</li></ul></section>
+          <section class="ranch-panel"><p class="kicker red">Security</p><h2>Launch checklist</h2><ul class="ranch-checklist"><li>Protect Ranch pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Test every booking and capacity rule</li><li>Connect SumUp Sandbox before live payments</li></ul></section>
           <section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Not connected yet. This is safe: no card details are collected and no live booking is confirmed.</p><div class="ranch-connection"><span></span> Awaiting sandbox connection</div></section>
         </div>
       </section>
@@ -97,12 +122,12 @@
       <input type="hidden" name="id" id="ranchClassId">
       <div class="ranch-form-grid">
         <label>Class title<input name="title" required placeholder="Beginner Line Dancing"></label>
-        <label>Venue<input name="venue" required placeholder="Low Places"></label>
-        <label class="wide">Full location<input name="location" required placeholder="Birmingham"></label>
+        <label>Venue<select name="venue" id="ranchVenue" required><option value="">Choose venue</option><option value="Edgbaston Community Centre">Edgbaston Community Centre</option><option value="Low Places">Low Places</option><option value="Custom venue">Custom venue</option></select></label>
+        <label class="wide">Full location<input name="location" id="ranchLocation" required placeholder="Birmingham"></label>
         <label>Starts<input name="starts_at" type="datetime-local" required></label>
         <label>Ends<input name="ends_at" type="datetime-local"></label>
         <label>Price per person (£)<input name="price" type="number" min="0" step="0.01" value="6.00" required></label>
-        <label>Capacity<input name="capacity" type="number" min="1" max="500" value="20" required></label>
+        <label>Capacity<input name="capacity" id="ranchCapacity" type="number" min="1" max="500" value="20" required><small id="capacityHint">ECC defaults to 20; Low Places defaults to 50.</small></label>
         <label>Status<select name="status"><option value="draft">Draft</option><option value="open">Open for booking</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label>
         <label>Level<select name="level"><option>Beginner friendly</option><option>Improver</option><option>All levels</option><option>Private event</option></select></label>
         <label class="wide">Customer notes<textarea name="public_notes" rows="4" placeholder="No partner needed. Please arrive 10 minutes early."></textarea></label>
@@ -111,6 +136,6 @@
       <button class="button booking-submit" type="submit">Save class</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=66" defer></script>
+  <script src="ranch.js?v=67" defer></script>
 </body>
 </html>

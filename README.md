@@ -55,3 +55,11 @@ Open `ranch.html` after protecting it with Cloudflare Access. The Ranch manages 
 - Restored the Nora, Troy and Elise photo.
 - Added a safe self-hosted Summer Stomp video player that stays hidden until `summer-stomp.mp4` exists.
 - See `CLOUDFLARE_ACCESS_SETUP.md`.
+
+
+## V67 — Boot Scootin' HQ
+- Renamed the private dashboard to Boot Scootin' HQ.
+- ECC capacity defaults to 20.
+- Low Places capacity defaults to 50.
+- Added an R2-backed Media Manager for images, videos and PDFs.
+- Added dynamic Summer Stomp video placement.
