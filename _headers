@@ -1,0 +1,6 @@
+/ranch.html
+  Cache-Control: no-store, no-cache, must-revalidate
+/ranch.js
+  Cache-Control: no-store, no-cache, must-revalidate
+/api/*
+  Cache-Control: no-store, no-cache, must-revalidate
