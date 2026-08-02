@@ -5455,3 +5455,29 @@ nav a{
 @media(max-width:700px){.private-event-form .form-grid,.equipment-grid,.quote-details,.quote-actions{grid-template-columns:1fr}.quote-actions .ghost{grid-column:auto}.private-event-form fieldset{padding:1rem}}
 .private-event-admin-list{display:grid;gap:1rem;margin-top:1rem}.private-admin-card{border:1px solid #d7bea0;padding:1rem;background:#fffaf1;color:#231412}.private-admin-card header{display:flex;justify-content:space-between;gap:1rem;align-items:start}.private-admin-card h3{margin:.2rem 0}.private-admin-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin:1rem 0}.private-admin-meta span{display:grid;border-top:1px solid #d7bea0;padding-top:.5rem}.private-admin-actions{display:flex;flex-wrap:wrap;gap:.5rem}.private-admin-actions button{font-family:Oswald,sans-serif;padding:.55rem .8rem;border:1px solid #8e6d55;background:#fff;cursor:pointer}.private-admin-actions .primary{background:#b62027;color:#fff}.private-admin-notes{white-space:pre-wrap;background:#f2e4d0;padding:.75rem}.private-status{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:#a42228}.private-secure-lock{padding:1.5rem;border-left:5px solid #b62027;background:#fff4df;color:#241311}
 @media(max-width:700px){.private-admin-card header{display:grid}.private-admin-meta{grid-template-columns:1fr}}
+
+
+/* VERSION 76 — booking restoration, private-event dashboard and Backroad Boots spotlight */
+.backroad-feature{grid-column:1/-1}
+.backroad-visual{position:relative;display:grid;place-items:center;min-height:330px;padding:34px;background:radial-gradient(circle at 50% 35%,#6f1249 0,#240d20 42%,#080606 76%);overflow:hidden}
+.backroad-visual::before{content:"";position:absolute;inset:20px;border:1px solid rgba(255,255,255,.22);border-radius:50%}
+.backroad-visual img{position:relative;width:min(240px,75%);aspect-ratio:1;border-radius:50%;object-fit:cover;border:4px solid #b11e27;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.partner-badge{position:relative;margin-top:22px;padding:9px 14px;border:1px solid #bd3037;color:#fff;background:#130909;font:700 .78rem/1 Oswald,sans-serif;letter-spacing:2px;text-align:center}
+.business-note{padding:15px 17px;border-left:4px solid #bd2028;background:#f4eadc}
+.backroad-links{display:flex;flex-wrap:wrap;gap:10px}
+.backroad-links .button{min-width:135px;text-align:center}
+.backroad-guide-spotlight{padding-block:58px}
+.backroad-guide-inner{width:min(1120px,92%);margin:auto;display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:28px;align-items:center;padding:30px;border:1px solid #6c2b2f;background:#120909}
+.backroad-guide-inner img{width:150px;aspect-ratio:1;object-fit:cover;border-radius:50%;border:3px solid #b7202a}
+.backroad-guide-inner h2{margin:.2rem 0 .6rem;color:#fff}
+.backroad-guide-inner p{color:#d9c8b8}
+.private-dashboard-flow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 22px;padding:15px 18px;border-left:5px solid #bb2028;background:#f4eadc;color:#2b1714;font:700 .88rem/1.3 Oswald,sans-serif;letter-spacing:.4px}
+.private-dashboard-flow b{color:#b7202a;font-size:1.3rem}
+@media(max-width:780px){
+ .backroad-guide-inner{grid-template-columns:1fr;text-align:center}
+ .backroad-guide-inner img{margin:auto}
+ .backroad-guide-inner .button{width:100%}
+ .backroad-links .button{width:100%}
+ .private-dashboard-flow{display:grid;grid-template-columns:1fr;gap:6px}
+ .private-dashboard-flow b{display:none}
+}

@@ -197,6 +197,12 @@ async function ensureBookingSchema(env) {
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO venues(id,name,location,capacity) VALUES
     ('ecc','Edgbaston Community Centre','Birmingham',20),
     ('low-places','Low Places','Birmingham',50)`).run();
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO classes
+    (id,title,venue,location,starts_at,ends_at,price_pence,capacity,sold,status,level,public_notes) VALUES
+    ('ecc-2026-08-07','Beginner Line Dancing','Edgbaston Community Centre','Birmingham','2026-08-07T19:30:00+01:00','2026-08-07T20:30:00+01:00',600,20,0,'open','Beginner friendly','No partner needed. Comfortable footwear recommended.'),
+    ('low-2026-08-14','Class & Social Dancing','Low Places','Birmingham','2026-08-14T19:15:00+01:00','2026-08-14T21:00:00+01:00',600,50,0,'open','Beginner friendly','Warm-up from 7:15pm, class 7:30–8:30pm and social requests until 9pm.'),
+    ('ecc-2026-08-21','Beginner Line Dancing','Edgbaston Community Centre','Birmingham','2026-08-21T19:30:00+01:00','2026-08-21T20:30:00+01:00',600,20,0,'open','Beginner friendly','No partner needed. Come alone and leave smiling.'),
+    ('low-2026-08-26','Boot Scootin’ Special','Low Places','Birmingham','2026-08-26T19:15:00+01:00','2026-08-26T21:00:00+01:00',600,50,0,'open','All levels','A special midweek class and social dancing session.')`).run();
   const row = await env.BOOKINGS_DB.prepare("SELECT COUNT(*) AS tables FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").first();
   return Number(row?.tables || 0);
 }

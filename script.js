@@ -75,9 +75,17 @@ function setMenuOpen(open) {
 }
 
 if (menuButton && nav) {
-  menuButton.addEventListener('click', () => {
+  let lastMenuToggle=0;
+  const toggleMenu = event => {
+    const now=Date.now(); if(now-lastMenuToggle<350)return; lastMenuToggle=now;
+    event?.preventDefault();
+    event?.stopPropagation();
     setMenuOpen(!nav.classList.contains('open'));
-  });
+  };
+  menuButton.addEventListener('click', toggleMenu);
+  menuButton.addEventListener('pointerup', event => {
+    if (event.pointerType === 'touch' || event.pointerType === 'pen') toggleMenu(event);
+  }, {passive:false});
 
   navClose?.addEventListener('click', () => setMenuOpen(false));
 
@@ -263,3 +271,12 @@ installGuide?.addEventListener("click", event => {
     });
   });
 })();
+
+
+// Always reset overlay state when Safari restores a page from its back/forward cache.
+window.addEventListener('pageshow', () => {
+  if (nav && menuButton && !nav.classList.contains('open')) {
+    document.body.classList.remove('menu-open');
+    menuButton.setAttribute('aria-expanded','false');
+  }
+});

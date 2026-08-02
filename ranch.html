@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=69">
+  <link rel="stylesheet" href="styles.css?v=76">
 </head>
 <body class="ranch-body">
   <div class="ranch-app">
@@ -91,7 +91,8 @@
 
       <section class="ranch-view" data-view-panel="private-events">
         <div class="ranch-panel">
-          <div class="ranch-panel-head"><div><p class="kicker red">Inquiries & proposals</p><h2>Private Events</h2><p>Review requests, update their status and prepare an itemised proposal. Customer details stay hidden until Cloudflare Access protects HQ.</p></div><button class="button secondary compact" id="refreshPrivateEvents">Refresh</button></div>
+          <div class="ranch-panel-head"><div><p class="kicker red">Inquiries, quotes & confirmed events</p><h2>Private Event Dashboard</h2><p>Review each request, negotiate details, prepare an itemised quote and track deposit, balance and confirmation status. Customer details stay hidden until Cloudflare Access protects HQ.</p></div><button class="button secondary compact" id="refreshPrivateEvents">Refresh</button></div>
+          <div class="private-dashboard-flow" aria-label="Private event workflow"><span>1. Inquiry</span><b>›</b><span>2. Review</span><b>›</b><span>3. Quote</span><b>›</b><span>4. Deposit or Full Payment</span><b>›</b><span>5. Confirmed</span></div>
           <div class="travel-policy"><strong>Default travel policy</strong><span>15 miles each way from B5 included. Beyond that, add an agreed travel fee. Journeys over 30 miles each way should be quoted individually.</span></div>
           <div id="ranchPrivateEvents" class="private-event-admin-list">Loading…</div>
         </div>
@@ -185,6 +186,6 @@
       </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=75" defer></script>
+  <script src="ranch.js?v=76" defer></script>
 </body>
 </html>
