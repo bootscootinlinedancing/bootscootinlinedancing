@@ -1,0 +1,5 @@
+Version34
+- Renamed Moonshine page/menu to Moonshine & Good Times Gang
+- Added Signature Song links placeholder in Country Corner
+- Prepared cache bump v34
+- Ready for next stage: menu redesign and country guide overhaul.
