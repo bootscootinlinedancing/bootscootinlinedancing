@@ -1,0 +1,7 @@
+Boot Scootin Website Version 40
+
+- Rebuilt the mobile menu as genuinely separate visual cards.
+- Every link is now on its own full-width row with a divider and arrow.
+- Category heading, description and links no longer run together.
+- Reduced the title to a compact Explore heading.
+- Added a prominent New Here booking card.
