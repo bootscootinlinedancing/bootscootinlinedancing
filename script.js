@@ -193,12 +193,3 @@ installGuide?.addEventListener("click", event => {
 
 
 
-// Version 42 menu: only one category can be expanded at a time.
-document.querySelectorAll("#v42Menu details.v42-card").forEach((card) => {
-  card.addEventListener("toggle", () => {
-    if (!card.open) return;
-    document.querySelectorAll("#v42Menu details.v42-card").forEach((other) => {
-      if (other !== card) other.open = false;
-    });
-  });
-});

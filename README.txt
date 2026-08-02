@@ -362,3 +362,17 @@ PROFESSIONAL MENU REDESIGN
 - Every submenu item appears as a separate light-coloured button row.
 - Clear chevrons show which rows are clickable.
 - Strong unique styling prevents previous menu CSS from merging the layout.
+
+
+Boot Scootin' Website Version 43
+
+MENU RESET
+- Removed all SVG icons and oversized black shapes.
+- Rebuilt the menu using text-only professional cards.
+- Main categories are clearly separated.
+- Titles and descriptions sit on separate lines.
+- Each submenu link is an individual cream button.
+- Only one submenu opens at a time.
+- Added inline isolated menu styling so older CSS cannot merge with it.
+- Added cache-busting to styles.css and script.js.
+- Repaired the service worker and made HTML/CSS/JS network-first.

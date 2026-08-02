@@ -1,40 +1,18 @@
-const CACHE_NAME = "boot-scootin-v42";
+const CACHE_NAME = "boot-scootin-v43";
 const APP_SHELL = [
   "/",
   "/index.html",
-  "/about.html",
-  "/calendar.html",
-  "/dance-diary.html",
-  "/dance-library.html",
-  "/community.html",
-  "/private-events.html",
-  "/requests.html",
-  "/journey.html",
-  "/ask-nora.html",
-  "/passport.html",
-  "/moonshine.html",
-  "/long-road-handbook.html",
-  "/country-map.html",
-  "/styles.css",
-  "/script.js",
-  "/manifest.webmanifest",
+  "/styles.css?v=43",
+  "/script.js?v=43",
   "/brand-logo.png",
   "/app-icon-192.png",
-  "/app-icon-512.png",
-  "/nora.webp",
-  "/landing-poster.webp"
-  "/handbook-cover-preview.webp",
-  "/handbook-welcome-preview.webp",
-  "/handbook-contents-preview.webp",
-  "/handbook-lineup-preview.webp",
-  "/handbook-rain-preview.webp",
-  "/handbook-members-only-preview.webp",
+  "/app-icon-512.png"
 ];
 
 self.addEventListener("install", event => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
+    caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).catch(() => undefined)
   );
 });
 
@@ -48,15 +26,15 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
-  const requestURL = new URL(event.request.url);
-  if (requestURL.origin !== self.location.origin) return;
-
+  const isCode = url.pathname.endsWith(".css") || url.pathname.endsWith(".js");
   const acceptsHTML = event.request.headers.get("accept")?.includes("text/html");
 
-  if (acceptsHTML) {
+  if (acceptsHTML || isCode) {
     event.respondWith(
-      fetch(event.request)
+      fetch(event.request, { cache: "no-store" })
         .then(response => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
@@ -68,15 +46,6 @@ self.addEventListener("fetch", event => {
   }
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        }
-        return response;
-      });
-    })
+    caches.match(event.request).then(cached => cached || fetch(event.request))
   );
 });
