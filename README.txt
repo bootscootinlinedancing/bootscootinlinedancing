@@ -376,3 +376,25 @@ MENU RESET
 - Added inline isolated menu styling so older CSS cannot merge with it.
 - Added cache-busting to styles.css and script.js.
 - Repaired the service worker and made HTML/CSS/JS network-first.
+
+
+Boot Scootin' Website Version 44
+
+STRUCTURAL MENU FIX
+- The menu has been moved outside the sticky website header.
+- It now opens as a genuine full-screen overlay.
+- The homepage can no longer show through underneath the menu.
+- Kept the clear text-only accordion cards and separate submenu buttons.
+- Removed the broken icon experiment.
+- Cleared previous service-worker caches and forced fresh HTML/CSS/JS.
+
+
+Boot Scootin' Website Version 45
+
+UNDERLINED ACCORDION MENU
+- Main menu headings are clean, underlined text rows.
+- Tapping a heading opens its submenu directly below.
+- Tapping the heading again closes it.
+- Opening another heading closes the previous one.
+- Submenu links appear vertically, one per line, with subtle dividers.
+- Removed cards and icons for a cleaner western editorial look.

@@ -1,0 +1,9 @@
+Boot Scootin' Website Version 44
+
+STRUCTURAL MENU FIX
+- The menu has been moved outside the sticky website header.
+- It now opens as a genuine full-screen overlay.
+- The homepage can no longer show through underneath the menu.
+- Kept the clear text-only accordion cards and separate submenu buttons.
+- Removed the broken icon experiment.
+- Cleared previous service-worker caches and forced fresh HTML/CSS/JS.

@@ -1,0 +1,9 @@
+Boot Scootin' Website Version 45
+
+UNDERLINED ACCORDION MENU
+- Main menu headings are clean, underlined text rows.
+- Tapping a heading opens its submenu directly below.
+- Tapping the heading again closes it.
+- Opening another heading closes the previous one.
+- Submenu links appear vertically, one per line, with subtle dividers.
+- Removed cards and icons for a cleaner western editorial look.
