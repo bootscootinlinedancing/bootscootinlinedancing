@@ -1,0 +1,13 @@
+Boot Scootin' Website Version 36
+
+New:
+• My Journey dashboard preview
+• Dance Library learned/favourite/confidence tools
+• Boot Scootin' Passport
+• Ask Nora FAQ assistant
+• Achievement badges and privacy settings
+• Homepage member-experience feature cards
+
+Important:
+The dashboard is a visual interactive preview. It does not create accounts or upload personal information.
+Dance Library selections use local browser storage only and are not visible to Nora.

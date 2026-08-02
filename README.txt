@@ -277,3 +277,16 @@ VERSION 35 UPDATE — NAVIGATION, COUNTRY GUIDE & SIGNATURE SONG
 - Polished the Businesses We Love brand panels.
 - Added a stable Birthday Boots menu anchor.
 - Updated the service worker cache to Version 35.
+
+
+VERSION 36 — MEMBER EXPERIENCE PREVIEW
+- Rebuilt My Boot Scootin' Journey into a multi-section dashboard preview.
+- Added overview statistics, next class, confidence tracking and support sharing.
+- Added achievement badges and account/privacy settings.
+- Upgraded Dance Library cards with local learned, favourite and confidence controls.
+- Dance Library preview choices are stored only in the visitor's own browser.
+- Added the Boot Scootin' Passport page and milestone stamps.
+- Added Ask Nora, a scripted FAQ assistant using approved website information.
+- Added homepage links to My Journey, Passport and Ask Nora.
+- Real secure accounts, shared data, attendance and automated rewards are NOT live yet.
+- A secure backend, authentication, privacy notice and consent testing are still required before real member registrations.

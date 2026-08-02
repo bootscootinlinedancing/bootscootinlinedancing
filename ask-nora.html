@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090606">
+  <meta name="description" content="Ask Nora — quick answers about Boot Scootin' classes, venues and what to expect.">
+  <title>Ask Nora | Boot Scootin' Line Dancing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css"><link rel="icon" href="favicon.png">
+</head>
+<body>
+  <header class="header">
+    <a class="brand-lockup" href="index.html"><img class="brand-logo" src="brand-logo.png" alt=""><span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span></a>
+    <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
+    <nav id="nav" aria-label="Main navigation">
+      <div class="nav-mobile-head"><span>Explore Boot Scootin’</span><button class="nav-close" id="navClose" type="button">×</button></div>
+      <div class="nav-groups">
+        <section class="nav-group"><p>Home</p><a href="index.html">Home</a><a href="about.html">About</a></section>
+        <section class="nav-group"><p>Classes</p><a href="calendar.html">Calendar &amp; Bookings</a><a href="dance-library.html">Dance Library</a></section>
+        <section class="nav-group"><p>Community</p><a href="community.html">Community Hub</a><a href="moonshine.html">Moonshine &amp; Good Times Gang</a><a href="journey.html">My Journey</a></section>
+        <section class="nav-group"><p>Help</p><a href="ask-nora.html" aria-current="page">Ask Nora</a><a href="private-events.html">Private Events</a></section>
+      </div>
+    </nav>
+  </header>
+
+  <main class="ask-nora-page">
+    <section class="ask-nora-hero">
+      <div>
+        <p class="kicker">Quick answers before you dance</p>
+        <h1>Ask Nora</h1>
+        <p>This helpful preview answers common questions using information already on the website. It is not a live AI service yet.</p>
+      </div>
+      <img src="nora.webp" alt="Nora wearing a red cowboy hat">
+    </section>
+
+    <section class="section paper">
+      <div class="ask-nora-app reveal">
+        <div class="chat-window" id="chatWindow" aria-live="polite">
+          <div class="chat-message nora-message"><strong>Nora:</strong> Hey cowgirl! What would you like to know about classes?</div>
+        </div>
+
+        <div class="suggested-questions">
+          <button type="button">Can complete beginners come?</button>
+          <button type="button">Do I need a partner?</button>
+          <button type="button">What should I wear?</button>
+          <button type="button">Where can I park?</button>
+          <button type="button">How do I book?</button>
+          <button type="button">What is Moonshine &amp; Good Times Gang?</button>
+        </div>
+
+        <div class="chat-input-row">
+          <label for="askInput">Your question</label>
+          <div><input id="askInput" type="text" placeholder="Type a question…"><button class="button" id="askButton" type="button">Ask</button></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="footer-lockup"><img class="brand-logo footer-logo" src="brand-logo.png" alt=""><div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div></div><p class="script">No question is too small before your first class. ♥</p><p>© 2026 Boot Scootin' Line Dancing · Birmingham</p></footer>
+
+  <script src="script.js"></script>
+  <script>
+    const answers = [
+      { words:["beginner","never danced","first time"], answer:"Absolutely. Classes are designed to be welcoming and beginner-friendly, and you do not need previous dance experience." },
+      { words:["partner","alone","own"], answer:"You do not need a partner. Line dancing is danced together in rows, and lots of people come on their own." },
+      { words:["wear","shoes","boots"], answer:"Wear something comfortable that you can move in. Cowboy boots are welcome, but trainers or supportive flat shoes are perfectly fine." },
+      { words:["park","parking"], answer:"Edgbaston Community Centre has free parking. Low Places has paid parking available opposite the venue." },
+      { words:["book","booking","ticket"], answer:"Open the Calendar & Bookings page, choose your class date and tap Reserve My Boots to reach the correct booking link." },
+      { words:["moonshine","good times","community"], answer:"Moonshine & Good Times Gang is Nora’s friendly UK country community for music, events, festivals, outfits and genuine friendships beyond class." },
+      { words:["toilet","accessible"], answer:"Toilets and accessible toilets are available at both Edgbaston Community Centre and Low Places." },
+      { words:["price","cost"], answer:"Regular class pricing and the correct booking fee are shown on each event before you reserve your place." }
+    ];
+
+    const chat = document.getElementById("chatWindow");
+    const input = document.getElementById("askInput");
+
+    function respond(question) {
+      const text = question.trim();
+      if (!text) return;
+      chat.insertAdjacentHTML("beforeend", `<div class="chat-message user-message"><strong>You:</strong> ${text.replace(/[<>]/g,"")}</div>`);
+      const lower = text.toLowerCase();
+      const match = answers.find(item => item.words.some(word => lower.includes(word)));
+      const answer = match?.answer || "I don’t have that answer in this preview yet. The live version will use approved website information and direct visitors to Nora when needed.";
+      chat.insertAdjacentHTML("beforeend", `<div class="chat-message nora-message"><strong>Nora:</strong> ${answer}</div>`);
+      chat.scrollTop = chat.scrollHeight;
+      input.value = "";
+    }
+
+    document.getElementById("askButton").addEventListener("click", () => respond(input.value));
+    input.addEventListener("keydown", event => { if (event.key === "Enter") respond(input.value); });
+    document.querySelectorAll(".suggested-questions button").forEach(button => button.addEventListener("click", () => respond(button.textContent)));
+  </script>
+</body>
+</html>
