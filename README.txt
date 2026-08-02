@@ -559,3 +559,19 @@ COUNTRY GUIDE
 - Added a Businesses I Love gateway section.
 - Added a stable Nora's Adventures anchor to the Buckin' Boots Summer Stomp feature.
 - Preserved the Summer Stomp gallery, iCloud video, Troy & Elise story and all Version 58 content.
+
+
+Boot Scootin' Website Version 61
+
+FIXES
+- Removed the broken 00:00 video player and all upload/instruction text from the live page.
+- The Summer Stomp video section now stays completely hidden unless a real summer-stomp.mp4 file is present and playable.
+- Separated Meet Nora from The Boot Scootin' Story with genuinely different content and visual sections.
+- Fixed Explore menu jumping: opening/closing a submenu preserves the menu's scroll position.
+- Removed duplicate accordion scripts that could fight each other.
+- Refreshed styles, scripts and service-worker cache to version 61.
+
+VIDEO FILE
+To show the Summer Stomp video inside the page, add the actual MP4 file to the website root with this exact name:
+summer-stomp.mp4
+The page will reveal the player automatically. Until then, visitors see no broken player or technical message.

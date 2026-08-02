@@ -5329,3 +5329,55 @@ nav a{
 @media(max-width:700px){
   .summer-stomp-video-player video{aspect-ratio:9/16;max-height:72vh}
 }
+
+
+/* VERSION 61 — MENU STABILITY, DISTINCT STORIES, CLEAN VIDEO FALLBACK */
+@media(max-width:950px){
+  #nav.menu45-overlay,
+  #menu45,
+  #menu45 details.menu45-section,
+  #menu45 .menu45-submenu{
+    overflow-anchor:none!important;
+  }
+  #menu45 details.menu45-section>summary{
+    scroll-margin:0!important;
+  }
+}
+
+.meet-nora-section{
+  background:#f4ead8;
+}
+.boot-story-section{
+  background:linear-gradient(145deg,#110909,#210d0d);
+}
+.boot-story-section .story-copy,
+.boot-story-section .story-panel{
+  color:#f4eadf;
+}
+.boot-story-section .story-copy p,
+.boot-story-section .story-panel li{
+  color:#dbc8b7;
+}
+.boot-story-section .story-panel{
+  border-color:rgba(210,61,68,.45);
+  background:rgba(255,255,255,.035);
+}
+.summer-stomp-video[hidden]{display:none!important}
+.summer-stomp-video-card{
+  max-width:960px;
+  margin:auto;
+  padding:clamp(1.2rem,4vw,2.4rem);
+  border-left:5px solid var(--red);
+  background:#190b0b;
+  color:#fff;
+}
+.summer-stomp-video-card h2{color:#f7eadc}
+.summer-stomp-video-card>p:not(.kicker){color:#decbbc}
+.summer-stomp-player{
+  display:block;
+  width:100%;
+  max-height:75vh;
+  margin-top:1.25rem;
+  background:#000;
+  object-fit:contain;
+}

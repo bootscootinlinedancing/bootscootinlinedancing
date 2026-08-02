@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=60">
+  <link rel="stylesheet" href="styles.css?v=61">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -205,34 +205,53 @@
       </div>
     </section>
 
-    <section class="section paper" id="boot-scootin-story">
+    <section class="section paper meet-nora-section" aria-labelledby="meetNoraHeading">
       <div class="story-layout">
         <article class="story-copy reveal">
-          <p class="kicker red">My story</p>
-          <h2>Dancing has always been part of who I am.</h2>
-
-          <p>I've been dancing for as long as I can remember, with 12 years of Ballroom and Latin experience, as well as Street Dance training. Movement, music and bringing people together have always been a huge part of my life.</p>
-
-          <p>By day, I work as a healthcare professional, so creating a safe, welcoming and inclusive environment comes naturally to me. Whether it's your very first class or you've been line dancing for years, my aim is to make everyone feel comfortable from the moment they walk through the door.</p>
-
-          <p>Country music and line dancing found me again at a time when I needed something that brought me joy. After someone encouraged me to start teaching, I decided to take the leap — and I'm so glad I did.</p>
-
-          <p>Today, <strong>Boot Scootin' Line Dancing</strong> is about much more than learning steps. It's about confidence, laughter, friendships and creating a place where people can switch off for an hour and simply enjoy themselves.</p>
-
-          <p>Whether you come on your own or with friends, you'll always be welcomed onto the dance floor.</p>
-
-          <blockquote>So grab your boots, bring your smile, and let's dance! 🤠</blockquote>
+          <p class="kicker red">Meet Nora</p>
+          <h2 id="meetNoraHeading">The woman behind the boots.</h2>
+          <p>I've been dancing for as long as I can remember, with 12 years of Ballroom and Latin experience as well as Street Dance training. Movement and music have always been a huge part of who I am.</p>
+          <p>By day, I work as a healthcare professional. That background has shaped the way I teach: calmly, clearly and with genuine care for the person in front of me.</p>
+          <p>I'm also a mum, a country-music lover and the Brummie Cowgirl. Outside class, you'll usually find me at a concert, planning a festival outfit, discovering a new dance or bringing country fans together through the Moonshine &amp; Good Times community.</p>
+          <p>My favourite part of teaching is watching someone arrive feeling nervous and leave smiling because they did something they did not think they could do.</p>
         </article>
 
         <aside class="story-panel reveal">
-          <p class="kicker red">About Boot Scootin'</p>
-          <h3>What you can expect</h3>
+          <p class="kicker red">A little more about me</p>
+          <h3>What matters to me</h3>
           <ul class="about-list">
-            <li>Beginner-friendly teaching</li>
-            <li>No partner needed</li>
-            <li>A warm and inclusive atmosphere</li>
-            <li>Modern and classic country favourites</li>
-            <li>Plenty of laughter and good company</li>
+            <li>Kind, patient and inclusive teaching</li>
+            <li>Confidence before perfection</li>
+            <li>Country music, community and connection</li>
+            <li>Making beginners feel genuinely welcome</li>
+            <li>Creating memories beyond the dance floor</li>
+          </ul>
+          <a class="button" href="https://www.instagram.com/brummie_cowgirl" target="_blank" rel="noopener">Follow the Brummie Cowgirl</a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section dark boot-story-section" id="boot-scootin-story" aria-labelledby="bootStoryHeading">
+      <div class="story-layout">
+        <article class="story-copy reveal">
+          <p class="kicker">The Boot Scootin' Story</p>
+          <h2 id="bootStoryHeading">How a love of dancing became a community.</h2>
+          <p>Country music and line dancing found me again at a time when I needed something that brought me joy. After being encouraged to teach, I took the leap and created Boot Scootin' Line Dancing in Birmingham.</p>
+          <p>From the beginning, I wanted it to feel different from a formal dance school. There would be no pressure, no partner required and no expectation that anyone should already know what they were doing.</p>
+          <p>Boot Scootin' grew around a simple idea: people learn best when they feel safe, supported and able to laugh at themselves. The classes are beginner-friendly, but the heart of the business is the friendships and confidence that grow alongside the steps.</p>
+          <p>Today, Boot Scootin' is more than a weekly class. It connects dancing, private events, country experiences and the Moonshine &amp; Good Times community — all built around the belief that country music brings people together.</p>
+          <blockquote>Come for the dancing. Stay for the people.</blockquote>
+        </article>
+
+        <aside class="story-panel reveal">
+          <p class="kicker">What Boot Scootin' stands for</p>
+          <h3>Your place on the dance floor.</h3>
+          <ul class="about-list">
+            <li>Beginner-friendly step-by-step teaching</li>
+            <li>No partner and no special boots needed</li>
+            <li>A warm, welcoming atmosphere</li>
+            <li>Modern country favourites and crowd classics</li>
+            <li>Community over competition</li>
           </ul>
           <a class="button" href="https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703" target="_blank" rel="noopener">Find your next class</a>
         </aside>
@@ -280,7 +299,7 @@
     <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
   </footer>
 
-  <script src="script.js?v=60"></script>
+  <script src="script.js?v=61"></script>
 
   <aside class="install-app" id="installApp" hidden aria-label="Install Boot Scootin' on your phone">
     <img src="brand-logo-v60.webp" onerror="this.onerror=null;this.src='logo.webp'" alt="">
@@ -302,20 +321,5 @@
       <button class="button" id="installGuideDone" type="button">Got It</button>
     </div>
   </div>
-
-
-
-
-
-
-
-<script id="menu45-script">
-document.querySelectorAll("#menu45 details.menu45-section").forEach(function(section){
- section.addEventListener("toggle",function(){
-  if(!section.open)return;
-  document.querySelectorAll("#menu45 details.menu45-section").forEach(function(other){if(other!==section)other.open=false;});
- });
-});
-</script>
 </body>
 </html>

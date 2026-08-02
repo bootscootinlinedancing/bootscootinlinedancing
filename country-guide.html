@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=60">
+  <link rel="stylesheet" href="styles.css?v=61">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -351,67 +351,17 @@
     </section>
 
     <span class="country-anchor" id="adventures" aria-hidden="true"></span>
-    <section class="section paper summer-stomp-story" id="inspiration">
-      <div class="summer-stomp-hero reveal">
-        <img src="summer-stomp-group.webp" alt="Buckin’ Boots Summer Stomp 2026 group photo with instructors and dancers">
-        <div class="summer-stomp-hero-copy">
-          <p class="kicker red">A Boot Scootin’ Journey</p>
-          <h2>Buckin’ Boots Summer Stomp 2026</h2>
-          <p>One unforgettable weekend that changed my confidence, my teaching and my line dancing journey.</p>
-        </div>
+    
+    <section class="section paper summer-stomp-video" id="summer-stomp-video" hidden>
+      <div class="summer-stomp-video-card reveal">
+        <p class="kicker red">Watch my experience</p>
+        <h2>Summer Stomp through my eyes</h2>
+        <p>A little glimpse into the atmosphere, the workshops and the dancing that made this weekend so special.</p>
+        <video id="summerStompVideo" class="summer-stomp-player" controls playsinline preload="metadata" poster="summer-stomp-floor-1.webp">
+          <source src="summer-stomp.mp4" type="video/mp4">
+        </video>
       </div>
-
-      <div class="summer-stomp-intro reveal">
-        <img src="summer-stomp-logo.webp" alt="Buckin’ Boots Line Dancing Summer Stomp 2026 neon logo">
-        <div>
-          <p class="kicker red">18–19 July 2026</p>
-          <h2>A weekend I’ll never forget</h2>
-          <p>Summer Stomp brought together dancers from across the UK for workshops, social dancing and a weekend full of encouragement, energy and community. It became one of the most inspiring experiences of my line dancing journey.</p>
-        </div>
-      </div>
-
-      <article class="summer-stomp-video reveal" id="summer-stomp-video">
-        <div class="summer-stomp-video-copy">
-          <p class="kicker red">Watch my experience</p>
-          <h2>Summer Stomp through my eyes</h2>
-          <p>A little glimpse into the atmosphere, the workshops and the dancing that made this weekend so special.</p>
-          <small>The video plays directly on this website and does not open iCloud or another service.</small>
-        </div>
-        <div class="summer-stomp-video-player">
-          <video controls playsinline preload="metadata" poster="summer-stomp-floor-1.webp" aria-label="Nora's Buckin’ Boots Summer Stomp experience video">
-            <source src="summer-stomp.mp4" type="video/mp4">
-            Your browser does not support embedded video.
-          </video>
-          <p class="video-upload-note">Upload <strong>summer-stomp.mp4</strong> to the website’s main folder to activate this player.</p>
-        </div>
-      </article>
-
-      <div class="dirt-road-story reveal">
-        <div class="dirt-road-story-copy">
-          <p class="kicker red">Meeting my idols</p>
-          <h2>Troy &amp; Elise — Dirt Road Dancing</h2>
-          <p class="dirt-road-lead">For around 18 months, I learned dance after dance from Troy and Elise’s YouTube videos in my living room.</p>
-          <p>Meeting them, learning from them and dancing alongside them was one of those moments that honestly did not feel real. Their warmth, clarity and passion for building confidence have had a huge influence on my own journey.</p>
-          <blockquote>“Sometimes the people who inspire you from a screen become memories you’ll treasure for a lifetime.”</blockquote>
-          <div class="actions">
-            <a class="button" href="https://www.dirtroaddancing.com" target="_blank" rel="noopener">Visit Dirt Road Dancing</a>
-            <a class="button ghost dark-ghost" href="https://youtube.com/@dirtroaddancing?si=yOtcBTuSHAeYVYP4" target="_blank" rel="noopener">Watch on YouTube</a>
-          </div>
-        </div>
-        <figure class="dirt-road-story-photo">
-          <img src="dirt-road-summer-stomp.webp" alt="Nora with Troy and Elise from Dirt Road Dancing at Buckin’ Boots Summer Stomp">
-          <figcaption>Meeting Troy and Elise at Summer Stomp.</figcaption>
-        </figure>
-      </div>
-
-      <article class="summer-stomp-learning reveal">
-        <div class="summer-stomp-heading">
-          <p class="kicker red">What I brought home</p>
-          <h2>How the weekend will shape my classes</h2>
-          <p>I did not just come home with new dances. I came home with fresh ideas about how to help people learn, relax and believe in themselves.</p>
-        </div>
-        <div class="summer-stomp-grid">
-          <section><span class="summer-stomp-number">01</span><h3>Clearer breakdowns</h3><p>Breaking dances into smaller, manageable sections so every dancer can understand the movement before adding speed.</p></section>
+    </section>
           <section><span class="summer-stomp-number">02</span><h3>Confidence before perfection</h3><p>Giving dancers permission to practise, make variations and build confidence without feeling rushed or judged.</p></section>
           <section><span class="summer-stomp-number">03</span><h3>Purposeful repetition</h3><p>Repeating the parts that need it while keeping the class positive, musical and enjoyable.</p></section>
           <section><span class="summer-stomp-number">04</span><h3>Community first</h3><p>Creating the same welcoming feeling I experienced: nobody left behind, plenty of encouragement and lots of laughter.</p></section>
@@ -446,20 +396,21 @@
     <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
   </footer>
 
-  <script src="script.js?v=60"></script>
+  <script src="script.js?v=61"></script>
 
-
-
-
-
-
-<script id="menu45-script">
-document.querySelectorAll("#menu45 details.menu45-section").forEach(function(section){
- section.addEventListener("toggle",function(){
-  if(!section.open)return;
-  document.querySelectorAll("#menu45 details.menu45-section").forEach(function(other){if(other!==section)other.open=false;});
- });
-});
+<script id="summer-stomp-video-script">
+(function(){
+  var section=document.getElementById('summer-stomp-video');
+  var video=document.getElementById('summerStompVideo');
+  if(!section||!video)return;
+  function show(){section.hidden=false;}
+  function hide(){section.hidden=true;}
+  video.addEventListener('loadedmetadata',show,{once:true});
+  video.addEventListener('canplay',show,{once:true});
+  video.addEventListener('error',hide);
+  window.setTimeout(function(){if(video.readyState>0)show();},500);
+})();
 </script>
+
 </body>
 </html>

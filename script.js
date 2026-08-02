@@ -221,35 +221,45 @@ installGuide?.addEventListener("click", event => {
 });
 
 
+// VERSION 61 — STABLE EXPLORE MENU
+// Only one submenu opens at a time, while the menu keeps the visitor's exact scroll position.
+(function(){
+  const menu = document.getElementById('menu45');
+  const overlay = document.getElementById('nav');
+  if (!menu || !overlay) return;
 
+  const sections = Array.from(menu.querySelectorAll('details.menu45-section'));
+  let savedScrollTop = 0;
 
+  sections.forEach(section => {
+    const summary = section.querySelector(':scope > summary');
 
+    summary?.addEventListener('pointerdown', () => {
+      savedScrollTop = overlay.scrollTop;
+    }, {passive:true});
 
-
-
-// Explore menu: open/close the full row and keep only one section open.
-document.querySelectorAll("#menu45 details.menu45-section").forEach((section) => {
-  section.addEventListener("toggle", () => {
-    if (!section.open) return;
-
-    document.querySelectorAll("#menu45 details.menu45-section").forEach((other) => {
-      if (other !== section) other.open = false;
+    summary?.addEventListener('click', () => {
+      savedScrollTop = overlay.scrollTop;
     });
 
-    section.classList.remove("menu45-opening");
-    void section.offsetWidth;
-    section.classList.add("menu45-opening");
-  });
-});
+    section.addEventListener('toggle', () => {
+      const keep = savedScrollTop || overlay.scrollTop;
 
+      if (section.open) {
+        sections.forEach(other => {
+          if (other !== section && other.open) other.open = false;
+        });
+        section.classList.remove('menu45-opening');
+        void section.offsetWidth;
+        section.classList.add('menu45-opening');
+      }
 
-// Version 47 Explore accordion: only one submenu stays open.
-document.querySelectorAll("#menu45 details.menu45-section").forEach((section) => {
-  section.addEventListener("toggle", () => {
-    if (!section.open) return;
-
-    document.querySelectorAll("#menu45 details.menu45-section").forEach((other) => {
-      if (other !== section) other.open = false;
+      // Native <details> can move the scroller when content above collapses.
+      // Restore it after layout settles so opening one section never jumps into the next.
+      requestAnimationFrame(() => {
+        overlay.scrollTop = keep;
+        requestAnimationFrame(() => { overlay.scrollTop = keep; });
+      });
     });
   });
-});
+})();
