@@ -485,3 +485,45 @@ DANCE LIBRARY PROGRESS HUB
 - Improved mobile layout and active learned/favourite card styling.
 - Progress is saved privately in the visitor's browser until secure accounts launch.
 - Retains Version 49's repaired Explore menu and private community vetting flow.
+
+
+Boot Scootin' Website Version 51
+
+DANCE LIBRARY
+- Added To My Future by Emily Ann Roberts.
+- Clearly marked as an original choreography by Nora Alexandra.
+- Added a Nora's Originals filter.
+- Featured the original at the top of the library.
+- Counts, walls, demo and stepsheet are honestly marked as coming soon.
+- Added direct dance-card anchors for future linking.
+- Supports opening a specific dance using ?dance=dance-name.
+
+DANCE DIARY
+- Upgraded the diary into a searchable class archive.
+- Added class, dance and month statistics.
+- Added search by date, venue, dance, song or artist.
+- Added Open All Classes and Close All Classes controls.
+- Added links from class recaps into the full Dance Library.
+
+
+Boot Scootin' Website Version 52
+
+MY FUTURE (FEELS LIKE MINE)
+- Updated the official dance title.
+- Song: My Future by Emily Ann Roberts.
+- Choreographer: Nora Godollei (Nora Alexandra).
+- Added verified details: 32 counts, 4 walls, Beginner.
+- Added live CopperKnob stepsheet link.
+- Added live BootStepper stepsheet link.
+- Kept the dance in Nora's Originals while also allowing it to appear under Beginner.
+- Demo remains honestly marked as coming soon.
+
+
+Boot Scootin' Website Version 53
+
+YOUTUBE
+- Added the live YouTube demo for My Future (Feels Like Mine).
+- Replaced Demo Coming Soon with Watch Nora's Demo.
+- Added Nora's official Boot Scootin' Line Dancing YouTube channel.
+- Added a YouTube call-to-action near the top of the Dance Library.
+- Added a second channel link directly within Nora's original choreography card.

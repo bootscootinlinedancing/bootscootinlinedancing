@@ -1,0 +1,8 @@
+Boot Scootin' Website Version 53
+
+YOUTUBE
+- Added the live YouTube demo for My Future (Feels Like Mine).
+- Replaced Demo Coming Soon with Watch Nora's Demo.
+- Added Nora's official Boot Scootin' Line Dancing YouTube channel.
+- Added a YouTube call-to-action near the top of the Dance Library.
+- Added a second channel link directly within Nora's original choreography card.

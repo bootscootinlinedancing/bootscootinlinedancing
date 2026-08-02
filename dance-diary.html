@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=50">
+  <link rel="stylesheet" href="styles.css?v=53">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -197,9 +197,26 @@
     </section>
 
     <section class="section paper">
-      <div class="diary-list">
+      
+      <div class="diary-archive-tools reveal">
+        <div class="diary-archive-stats">
+          <div><strong id="diaryClassCount">2</strong><span>Class recaps</span></div>
+          <div><strong>9</strong><span>Different dances</span></div>
+          <div><strong>2</strong><span>July evenings</span></div>
+        </div>
+        <label for="diarySearch">Search the diary
+          <input id="diarySearch" type="search" placeholder="Try Ziggy, Cowgirl or 31 July…">
+        </label>
+        <div class="diary-archive-actions">
+          <button type="button" id="diaryOpenAll">Open all classes</button>
+          <button type="button" id="diaryCloseAll">Close all classes</button>
+        </div>
+        <p id="diarySearchStatus" class="diary-search-status" aria-live="polite">Showing 2 class recaps</p>
+      </div>
 
-        <details class="diary-entry reveal" open>
+      <div class="diary-list" id="diaryList">
+
+        <details class="diary-entry reveal" open data-search="friday 31 july 2026 edgbaston community centre ziggy cowgirl gives me shivers shivers boot scootin boogie burn it to the ground strumming bird choosin texas ella langley">
           <summary>
             <span class="diary-date">Friday 31st July 2026</span>
             <span class="diary-venue">Edgbaston Community Centre</span>
@@ -235,11 +252,14 @@
               <a class="button" href="https://youtu.be/yNGd8EEyvlQ?is=ICVsheCWP17dxqku" target="_blank" rel="noopener">Watch Demo</a>
             </div>
 
+            <div class="diary-library-link">
+              <a class="text-link" href="dance-library.html">Open the full Dance Library and save your progress →</a>
+            </div>
             <blockquote>Every single one of you is improving week by week, and I’m so proud of how much confidence you’re all gaining. Keep showing up, enjoying yourselves and trusting the process. 🤍</blockquote>
           </div>
         </details>
 
-        <details class="diary-entry reveal">
+        <details class="diary-entry reveal" data-search="friday 17 july 2026 edgbaston community centre ziggy honky tonk highway rockin the wagon wheel luke combs darius rucker">
           <summary>
             <span class="diary-date">Friday 17th July 2026</span>
             <span class="diary-venue">Edgbaston Community Centre</span>
@@ -256,6 +276,9 @@
               <a class="dance-card" href="https://youtu.be/C2H63XKN5ps?is=fM-31" target="_blank" rel="noopener">
                 <span>🎻</span><strong>Rockin’ The Wagon Wheel</strong><small>Wagon Wheel — Darius Rucker</small><b>Watch Demo</b>
               </a>
+            </div>
+            <div class="diary-library-link">
+              <a class="text-link" href="dance-library.html">Open the full Dance Library and save your progress →</a>
             </div>
           </div>
         </details>
@@ -276,7 +299,7 @@
     <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
   </footer>
 
-  <script src="script.js?v=50"></script>
+  <script src="script.js?v=53"></script>
 
   <aside class="install-app" id="installApp" hidden aria-label="Install Boot Scootin' on your phone">
     <img src="brand-logo.png" alt="">
@@ -313,5 +336,39 @@ document.querySelectorAll("#menu45 details.menu45-section").forEach(function(sec
  });
 });
 </script>
+
+<script id="dance-diary-v51-script">
+(() => {
+  const search = document.getElementById("diarySearch");
+  const entries = [...document.querySelectorAll(".diary-entry")];
+  const status = document.getElementById("diarySearchStatus");
+  const classCount = document.getElementById("diaryClassCount");
+
+  function updateDiary() {
+    const term = search.value.trim().toLowerCase();
+    let visible = 0;
+
+    entries.forEach(entry => {
+      const show = entry.dataset.search.includes(term);
+      entry.hidden = !show;
+      if (show) visible++;
+    });
+
+    classCount.textContent = visible;
+    status.textContent = `Showing ${visible} ${visible === 1 ? "class recap" : "class recaps"}`;
+  }
+
+  search?.addEventListener("input", updateDiary);
+  document.getElementById("diaryOpenAll")?.addEventListener("click", () => {
+    entries.filter(entry => !entry.hidden).forEach(entry => entry.open = true);
+  });
+  document.getElementById("diaryCloseAll")?.addEventListener("click", () => {
+    entries.forEach(entry => entry.open = false);
+  });
+
+  updateDiary();
+})();
+</script>
+
 </body>
 </html>

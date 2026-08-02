@@ -1,0 +1,17 @@
+Boot Scootin' Website Version 51
+
+DANCE LIBRARY
+- Added To My Future by Emily Ann Roberts.
+- Clearly marked as an original choreography by Nora Alexandra.
+- Added a Nora's Originals filter.
+- Featured the original at the top of the library.
+- Counts, walls, demo and stepsheet are honestly marked as coming soon.
+- Added direct dance-card anchors for future linking.
+- Supports opening a specific dance using ?dance=dance-name.
+
+DANCE DIARY
+- Upgraded the diary into a searchable class archive.
+- Added class, dance and month statistics.
+- Added search by date, venue, dance, song or artist.
+- Added Open All Classes and Close All Classes controls.
+- Added links from class recaps into the full Dance Library.
