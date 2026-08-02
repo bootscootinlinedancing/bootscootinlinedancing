@@ -1,0 +1,8 @@
+Boot Scootin' Website Version 60
+
+- Replaced the missing header/footer logo reference with a new robust WEBP asset.
+- Added an automatic fallback to logo.webp if the primary logo cannot load.
+- Removed the iCloud share link from the Summer Stomp section for privacy.
+- Added a self-hosted HTML5 video player that stays on the website.
+- The player expects a file named summer-stomp.mp4 in the website root folder.
+- Added mobile video styling and refreshed cache version.
