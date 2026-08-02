@@ -539,3 +539,23 @@ ACTUAL COUNTRY GUIDE UPDATE
 - Added Nora Recommends cards for Ivory Sky, Home By Sunday, The Long Road, Megan Moroney, PBR and KAH Reposado Tequila.
 - Updated every Explore menu link so Nora's Country Guide opens country-guide.html.
 - Updated styles and cache version to V55.
+
+
+Boot Scootin Website Version 59
+
+MENU
+- Added About Boot Scootin' as the first main menu section.
+- Added Meet Nora and The Boot Scootin' Story as separate top-level submenu links.
+- Added stable anchors to the About page.
+- Renamed Country Lifestyle to Country Corner.
+- Expanded Country Corner with direct links to Music, Line Dancing, Western Fashion, Festivals, Food & Drink, Places, Businesses I Love, My Inspirations and Nora's Adventures.
+- Added My Choreography under Classes & Dancing.
+- Simplified Help & Contact to Contact.
+
+COUNTRY GUIDE
+- Added a dedicated Line Dancing category tile and full Line Dancing section.
+- Added direct cards for the Dance Library, My Future (Feels Like Mine) and My Inspirations.
+- Added Businesses I Love and Nora's Adventures category tiles.
+- Added a Businesses I Love gateway section.
+- Added a stable Nora's Adventures anchor to the Buckin' Boots Summer Stomp feature.
+- Preserved the Summer Stomp gallery, iCloud video, Troy & Elise story and all Version 58 content.

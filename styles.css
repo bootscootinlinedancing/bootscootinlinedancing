@@ -5219,3 +5219,82 @@ nav a{
  .summer-stomp-gallery img{height:300px}
  .summer-stomp-video-poster,.summer-stomp-video-poster img{min-height:240px}
 }
+
+
+/* VERSION 59 — MENU HIERARCHY & COUNTRY CORNER EXPANSION */
+.country-anchor{
+  display:block;
+  position:relative;
+  top:-90px;
+  visibility:hidden;
+}
+.guide-line-dancing-grid{
+  width:min(1100px,94vw);
+  margin:2rem auto 0;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1rem;
+}
+.guide-line-card{
+  position:relative;
+  min-height:250px;
+  padding:1.5rem;
+  border:1px solid #cfb89a;
+  background:#fffaf3;
+  box-shadow:0 14px 30px rgba(54,27,20,.09);
+}
+.guide-line-card>span{
+  display:block;
+  margin-bottom:1rem;
+  color:#a32026;
+  font:700 .8rem/1 Oswald,sans-serif;
+  letter-spacing:.14em;
+}
+.guide-line-card h3{
+  margin:.1rem 0 .7rem;
+  font-size:clamp(1.6rem,3vw,2.35rem);
+}
+.guide-line-card p{
+  color:#675247;
+  line-height:1.6;
+}
+.guide-line-card .text-link{
+  position:absolute;
+  left:1.5rem;
+  right:1.5rem;
+  bottom:1.4rem;
+}
+.guide-businesses-love{
+  border-top:1px solid #4f2729;
+  border-bottom:1px solid #4f2729;
+}
+.guide-businesses-love-inner{
+  width:min(1100px,94vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:2rem;
+  align-items:center;
+}
+.guide-businesses-love-inner h2{
+  margin:.2rem 0 .55rem;
+  font-size:clamp(2rem,5vw,4rem);
+}
+.guide-businesses-love-inner p:last-child{
+  max-width:65ch;
+  color:#cdbbaa;
+}
+@media(max-width:760px){
+  .guide-line-dancing-grid,
+  .guide-businesses-love-inner{
+    grid-template-columns:1fr;
+  }
+  .guide-line-card{
+    min-height:235px;
+  }
+  .guide-businesses-love-inner .button{
+    width:100%;
+    box-sizing:border-box;
+    text-align:center;
+  }
+}
