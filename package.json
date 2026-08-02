@@ -1,0 +1,10 @@
+{
+  "name": "boot-scootin-platform",
+  "private": true,
+  "version": "64.0.0",
+  "description": "Boot Scootin' Line Dancing website and secure booking foundation",
+  "scripts": {
+    "validate": "node tools/validate.mjs",
+    "serve": "python3 -m http.server 8788"
+  }
+}

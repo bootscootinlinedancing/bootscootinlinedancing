@@ -1,16 +1,46 @@
-## Hi there 👋
+# Boot Scootin' Platform — V64
 
-<!--
-**bootscootinlinedancing/bootscootinlinedancing** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+This repository is the maintainable source for the Boot Scootin' website and its secure booking foundation.
 
-Here are some ideas to get you started:
+## Why this version is different
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+- Old release-note files and redundant assets were removed, leaving fewer than 100 repository files.
+- GitHub can upload the complete project in one web upload.
+- Shared Cloudflare Pages Functions hold all private booking logic.
+- Card details are never collected or stored by the website.
+- A validation workflow checks every update before deployment.
+
+## Upload to GitHub from iPhone
+
+1. Unzip this package in the Files app.
+2. In the repository, choose **Add file → Upload files**.
+3. Select every item inside the unzipped folder, not the outer folder itself.
+4. Commit directly to `main`.
+5. Confirm the **Actions** tab shows “Validate website” passing.
+
+This package contains fewer than 100 files, so GitHub's mobile web uploader should accept it in one upload.
+
+## Cloudflare Pages
+
+Use the existing GitHub repository as the Pages source.
+
+- Framework preset: **None**
+- Build command: leave blank
+- Build output directory: `/`
+
+Pages Functions are in `functions/`.
+
+## Booking setup
+
+The booking pages are safe to deploy as a foundation, but live payment remains disabled until the following are configured privately in Cloudflare:
+
+- D1 binding: `BOOKINGS_DB`
+- secret: `SUMUP_ACCESS_TOKEN`
+- variable/secret: `SUMUP_MERCHANT_CODE`
+- variable: `ADMIN_EMAIL`
+
+Run `migrations/0001_booking_schema.sql` against the D1 database before enabling bookings.
+
+Never place SumUp credentials, D1 credentials, customer exports, or `.dev.vars` in GitHub.
+
+See `BOOKING_SYSTEM_SETUP.md` for the detailed launch checklist.

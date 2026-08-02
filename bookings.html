@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090606">
+  <meta name="description" content="Book Boot Scootin' Line Dancing classes directly and securely.">
+  <title>Book a Class | Boot Scootin' Line Dancing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=63">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+</head>
+<body>
+  <header class="header">
+    <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
+      <img class="brand-logo" src="brand-logo-v60.webp" onerror="this.onerror=null;this.src='logo.webp'" alt="Boot Scootin' Line Dancing">
+      <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
+    </a>
+    <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
+  </header>
+
+  <main class="booking-page">
+    <section class="booking-hero">
+      <div class="booking-shell">
+        <p class="kicker">Direct booking · Secure payment</p>
+        <h1>Book your next class</h1>
+        <p class="booking-lead">Choose a class, reserve your place and pay securely through SumUp. Boot Scootin’ never stores your card details.</p>
+        <div class="security-strip" aria-label="Booking security information">
+          <span>🔒 Secure SumUp checkout</span><span>✓ Live capacity</span><span>✓ Instant confirmation</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="booking-shell booking-content">
+      <div id="bookingStatus" class="booking-alert" hidden></div>
+      <div class="booking-toolbar">
+        <div>
+          <p class="kicker red">Upcoming classes</p>
+          <h2>Choose your date</h2>
+        </div>
+        <label class="booking-filter">Venue
+          <select id="venueFilter"><option value="all">All venues</option></select>
+        </label>
+      </div>
+      <div id="classGrid" class="booking-grid" aria-live="polite">
+        <div class="booking-loading">Loading available classes…</div>
+      </div>
+    </section>
+
+    <dialog id="bookingDialog" class="booking-dialog">
+      <form id="bookingForm" method="dialog" novalidate>
+        <button class="dialog-close" type="button" id="closeBooking" aria-label="Close">×</button>
+        <p class="kicker red">Reserve your place</p>
+        <h2 id="selectedClassName">Class booking</h2>
+        <p id="selectedClassMeta" class="dialog-meta"></p>
+        <input type="hidden" id="classId" name="classId">
+        <div class="form-grid">
+          <label>Full name<input name="name" autocomplete="name" maxlength="100" required></label>
+          <label>Email address<input name="email" type="email" autocomplete="email" maxlength="160" required></label>
+          <label>Mobile number <small>(optional)</small><input name="phone" type="tel" autocomplete="tel" maxlength="30"></label>
+          <label>Number of places<select name="quantity" id="quantity" required><option value="1">1 place</option><option value="2">2 places</option><option value="3">3 places</option><option value="4">4 places</option></select></label>
+        </div>
+        <label class="check-row"><input type="checkbox" name="terms" required><span>I agree to the booking terms, cancellation policy and privacy notice.</span></label>
+        <p class="privacy-note">Do not enter medical details or card information here. Card payment is handled only by SumUp.</p>
+        <button class="button booking-submit" type="submit">Continue to secure payment</button>
+        <p id="formMessage" class="form-message" role="alert"></p>
+      </form>
+    </dialog>
+
+    <section class="booking-help">
+      <div class="booking-shell help-grid">
+        <article><h3>New to line dancing?</h3><p>Every class is beginner friendly, no partner is needed, and you can learn at your own pace.</p></article>
+        <article><h3>What to wear</h3><p>Comfortable clothing and secure footwear are perfect. Cowboy boots are welcome but never required.</p></article>
+        <article><h3>Need help?</h3><p><a href="ask-nora.html">Contact Nora</a> before booking if you have a question about access, venues or class suitability.</p></article>
+      </div>
+    </section>
+  </main>
+  <script src="script.js?v=63"></script>
+  <script src="bookings.js?v=63" defer></script>
+</body>
+</html>
