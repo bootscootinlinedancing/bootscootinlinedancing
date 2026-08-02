@@ -91,7 +91,7 @@
       <section class="ranch-view" data-view-panel="media">
         <div class="ranch-grid-2 ranch-media-layout">
           <section class="ranch-panel">
-            <div class="ranch-panel-head"><div><p class="kicker red">Media Manager</p><h2>Upload a file</h2><p>Upload photos, videos and PDFs without adding them to GitHub.</p></div></div>
+            <div class="ranch-panel-head"><div><p class="kicker red">Media Manager</p><h2>Upload a file</h2><p>Upload photos, videos and PDFs without adding them to GitHub.</p></div><button class="button secondary compact" id="checkMediaBackend" type="button">Check connection</button></div><div id="mediaBackendStatus" class="hq-backend-status" aria-live="polite"><strong>Checking media connection…</strong><span>HQ will show exactly what needs configuring.</span></div>
             <form id="mediaUploadForm" class="ranch-media-form">
               <label>Choose file<input id="mediaFile" name="file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov,application/pdf" required></label>
               <label>Display name<input name="title" type="text" required placeholder="Summer Stomp video"></label>
@@ -161,6 +161,6 @@
       <button class="button booking-submit" type="submit">Save class</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=69" defer></script>
+  <script src="ranch.js?v=70" defer></script>
 </body>
 </html>
