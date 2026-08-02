@@ -1,37 +1,297 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Nora's Country Guide | Boot Scootin'</title><link rel="stylesheet" href="styles.css?v=54"></head><body>
-<header class="hero-guide"><div class="guide-overlay"><p class="kicker">BOOT SCOOTIN'</p><h1>Nora's Country Guide</h1><p class="lead">Helping you discover the very best of country music, festivals, fashion, food and hidden gems across the UK... and beyond.</p><div class="cta-row"><a class="button" href="#recommends">❤️ Nora Recommends</a><a class="button button-secondary" href="#categories">🗺 Explore the Guide</a><a class="button button-secondary" href="#moonshine">🌙 Moonshine Favourites</a></div></div></header>
-<main class="country-guide-main">
-<section id="categories"><h2>Explore the Guide</h2><div class="guide-grid">
-<a class="guide-card" href="#"><h3>🎵 Music</h3><p>Artists, playlists & concerts</p></a>
-<a class="guide-card" href="#"><h3>👢 Fashion</h3><p>Boots, hats & outfits</p></a>
-<a class="guide-card" href="#"><h3>🎪 Festivals</h3><p>Your next country adventure</p></a>
-<a class="guide-card" href="#"><h3>🍔 Food & Drink</h3><p>BBQ, pubs & hidden gems</p></a>
-<a class="guide-card" href="country-map.html"><h3>🗺 Places</h3><p>Bars, venues & shops</p></a>
-<a class="guide-card" href="#"><h3>🎬 Entertainment</h3><p>Films, TV & podcasts</p></a>
-</div></section>
-<section id="recommends"><h2>❤️ Nora Recommends</h2><p>This section is ready for your genuine recommendations in the next update.</p></section>
-<section id="moonshine"><h2>🌙 Moonshine Favourites</h2><p>Community favourites coming in Version 54.2.</p></section>
-</main>
-<section class="festival-hub">
-<h2>Featured Festivals</h2>
-<div class="festival-grid">
-<div class="festival-card"><h3>The Long Road</h3><p>The UK's premier country & Americana festival.</p><a href="https://thelongroad.com" target="_blank">Official Website</a></div>
-<div class="festival-card"><h3>C2C: Country to Country</h3><p>The UK's biggest indoor country music festival.</p><a href="https://c2c-countrytocountry.com" target="_blank">Official Website</a></div>
-<div class="festival-card"><h3>Country Calling</h3><p>Three days of country music, camping and western lifestyle.</p><a href="https://www.country-calling.com" target="_blank">Official Website</a></div>
-<div class="festival-card"><h3>State Fayre</h3><p>Country festival with music, food and entertainment.</p><a href="https://www.statefayre.com" target="_blank">Official Website</a></div>
-<div class="festival-card"><h3>Rockin' The Country</h3><p>Country music festival celebrating live artists.</p><a href="https://www.rockinthecountry.co.uk" target="_blank">Official Website</a></div>
-<div class="festival-card"><h3>Low Places Birmingham</h3><p>Home of Boot Scootin' Friday nights.</p><a href="https://www.low-places.co.uk" target="_blank">Official Website</a></div>
-</div></section>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090606">
+  <meta name="description" content="Nora's Country Guide — curated UK country festivals, venues, businesses and recommendations from Boot Scootin' Line Dancing.">
+  <title>Nora’s Country Guide | Boot Scootin' Line Dancing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Boot Scootin’">
 
-<section class="nora-recommends">
-<h2>Nora Recommends</h2>
-<ul>
-<li>👢 Ivory Sky Boots</li>
-<li>🤠 Home By Sunday</li>
-<li>🎪 The Long Road Festival</li>
-<li>🎤 Megan Moroney</li>
-<li>🍺 PBR</li>
-<li>🥃 KAH Reposado Tequila</li>
-</ul>
-</section>
-</body></html>
+
+
+
+
+
+<style id="menu45-style">
+.menu45-overlay{display:none}
+@media(max-width:950px){
+ body.menu-open{overflow:hidden!important}
+ nav#nav.menu45-overlay{display:block!important;position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;z-index:2147483000!important;overflow-y:auto!important;padding:0!important;margin:0!important;background:#080505!important;opacity:0!important;visibility:hidden!important;transform:none!important;transition:opacity .18s ease,visibility .18s ease!important}
+ nav#nav.menu45-overlay.open{opacity:1!important;visibility:visible!important}
+ #menu45{display:block!important;width:min(620px,100%)!important;min-height:100dvh!important;margin:0 auto!important;padding:0 22px 40px!important;box-sizing:border-box!important}
+ #menu45 .menu45-head{position:sticky!important;top:0!important;z-index:4!important;display:flex!important;align-items:center!important;justify-content:space-between!important;min-height:90px!important;padding:14px 0!important;margin:0 0 10px!important;background:linear-gradient(#080505 82%,rgba(8,5,5,0))!important}
+ #menu45 .menu45-head small{display:block!important;margin-bottom:5px!important;color:#b99a78!important;font:700 10px/1 Oswald,sans-serif!important;letter-spacing:2px!important}
+ #menu45 .menu45-head h2{margin:0!important;color:#fff!important;font:400 29px/1 Rye,serif!important}
+ #menu45 .nav-close{display:grid!important;place-items:center!important;width:48px!important;height:48px!important;min-width:48px!important;padding:0!important;border:1px solid #743236!important;border-radius:50%!important;background:#170c0b!important;color:#fff!important;font:400 27px/1 Arial,sans-serif!important}
+ #menu45 .menu45-first{display:grid!important;grid-template-columns:minmax(0,1fr) 22px!important;align-items:center!important;gap:12px!important;width:100%!important;min-height:94px!important;margin:0 0 22px!important;padding:16px 0 18px!important;box-sizing:border-box!important;border:0!important;border-bottom:2px solid #b8232a!important;background:transparent!important;color:#fff!important;text-decoration:none!important;text-transform:none!important;letter-spacing:0!important}
+ #menu45 .menu45-first span{display:block!important;min-width:0!important}
+ #menu45 .menu45-first small{display:block!important;margin-bottom:5px!important;color:#d3484d!important;font:700 11px/1 Oswald,sans-serif!important;letter-spacing:1.5px!important}
+ #menu45 .menu45-first strong{display:block!important;margin-bottom:6px!important;color:#fff!important;font:700 21px/1.15 Oswald,sans-serif!important;text-decoration:underline!important;text-decoration-color:#b8232a!important;text-decoration-thickness:2px!important;text-underline-offset:7px!important}
+ #menu45 .menu45-first em{display:block!important;color:#cdbcae!important;font:400 13px/1.3 Oswald,sans-serif!important;margin-top:10px!important}
+ #menu45 .menu45-first>b{color:#d64046!important;font:400 28px/1 Arial,sans-serif!important;text-align:right!important}
+ #menu45 .menu45-sections{display:block!important}
+ #menu45 details.menu45-section{display:block!important;width:100%!important;margin:0!important;border:0!important;border-bottom:1px solid #4d2a2c!important;background:transparent!important}
+ #menu45 details.menu45-section>summary{display:grid!important;grid-template-columns:minmax(0,1fr) 32px!important;align-items:center!important;gap:12px!important;min-height:70px!important;padding:19px 0 15px!important;box-sizing:border-box!important;list-style:none!important;background:transparent!important;color:#fff!important;cursor:pointer!important}
+ #menu45 details.menu45-section>summary::-webkit-details-marker{display:none!important}
+ #menu45 details.menu45-section>summary>span{display:block!important;color:#fff!important;font:700 20px/1.2 Oswald,sans-serif!important;text-decoration:underline!important;text-decoration-color:#7d3034!important;text-decoration-thickness:2px!important;text-underline-offset:8px!important}
+ #menu45 details.menu45-section>summary>b{position:relative!important;display:block!important;width:30px!important;height:30px!important}
+ #menu45 details.menu45-section>summary>b:before,#menu45 details.menu45-section>summary>b:after{content:""!important;position:absolute!important;top:50%!important;left:50%!important;width:14px!important;height:2px!important;background:#d64046!important;transform:translate(-50%,-50%)!important;transition:transform .18s ease!important}
+ #menu45 details.menu45-section>summary>b:after{transform:translate(-50%,-50%) rotate(90deg)!important}
+ #menu45 details.menu45-section[open]>summary>b:after{transform:translate(-50%,-50%)!important}
+ #menu45 details.menu45-section[open]>summary{padding-bottom:12px!important}
+ #menu45 .menu45-submenu{display:block!important;width:100%!important;padding:0 0 15px 14px!important;box-sizing:border-box!important;background:transparent!important}
+ #menu45 .menu45-submenu>a{display:grid!important;grid-template-columns:minmax(0,1fr) 20px!important;align-items:center!important;gap:10px!important;width:100%!important;min-height:48px!important;margin:0!important;padding:11px 0!important;box-sizing:border-box!important;border:0!important;border-bottom:1px solid #2f1d1e!important;background:transparent!important;color:#e8d9cb!important;text-decoration:none!important;text-transform:none!important;letter-spacing:0!important;white-space:normal!important;font:500 16px/1.25 Oswald,sans-serif!important}
+ #menu45 .menu45-submenu>a:last-child{border-bottom:0!important}
+ #menu45 .menu45-submenu>a b{color:#9e363b!important;font:400 22px/1 Arial,sans-serif!important;text-align:right!important}
+ #menu45 .menu45-submenu>a[aria-current="page"]{color:#fff!important;font-weight:700!important}
+ #menu45 .menu45-submenu>a[aria-current="page"] span:before{content:"•";color:#d64046;margin-right:8px}
+ #menu45 .menu45-home{display:block!important;width:100%!important;margin-top:26px!important;padding:15px 0!important;box-sizing:border-box!important;border:0!important;border-top:1px solid #4d2a2c!important;background:transparent!important;color:#d64046!important;text-align:left!important;text-decoration:none!important;text-transform:uppercase!important;letter-spacing:1.2px!important;font:600 14px/1 Oswald,sans-serif!important}
+}
+@media(max-width:420px){#menu45{padding-inline:18px!important}#menu45 .menu45-first strong{font-size:19px!important}#menu45 details.menu45-section>summary>span{font-size:19px!important}}
+</style>
+
+
+
+
+<style id="menu49-complete-active-fix">
+@media(max-width:950px){
+  /*
+   * Fully neutralise the old global:
+   *   #nav a[aria-current="page"]::before { content:"— "; }
+   * It was creating an extra grid item and squeezing active links vertically.
+   */
+  #nav.menu45-overlay a[aria-current="page"]::before{
+    content:none!important;
+    display:none!important;
+    position:static!important;
+    width:0!important;
+    height:0!important;
+    margin:0!important;
+    padding:0!important;
+  }
+
+  /* The featured booking link must always remain a two-column row. */
+  #menu45 > .menu45-first{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 22px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  #menu45 > .menu45-first > span{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    white-space:normal!important;
+  }
+
+  /* Every submenu link uses exactly two columns: wording + arrow. */
+  #menu45 .menu45-submenu > a{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 20px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  #menu45 .menu45-submenu > a > span{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    white-space:normal!important;
+  }
+
+  /* Show the current submenu page through colour, not generated grid content. */
+  #menu45 .menu45-submenu > a[aria-current="page"]{
+    color:#fff!important;
+    background:rgba(207,41,47,.08)!important;
+    border-left:3px solid #d64046!important;
+    padding-left:12px!important;
+  }
+
+  #menu45 .menu45-submenu > a[aria-current="page"] > span::before{
+    content:none!important;
+    display:none!important;
+  }
+}
+</style>
+
+</head>
+<body>
+  <header class="header">
+    <a class="brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
+      <img class="brand-logo" src="brand-logo.png" alt="">
+      <span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
+    </a>
+    <button class="menu" id="menuButton" aria-expanded="false">Menu</button>
+    
+    <a class="button compact" href="https://www.instagram.com/brummie_cowgirl?igsh=dmUwdHVueXE1dXN3&utm_source=qr" target="_blank" rel="noopener">Follow Nora</a>
+  </header>
+<nav id="nav" class="menu45-overlay" aria-label="Main navigation">
+      <div id="menu45" class="menu45-panel">
+        <div class="menu45-head">
+          <div><small>BOOT SCOOTIN’</small><h2>Explore</h2></div>
+          <button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button>
+        </div>
+
+        <a class="menu45-first" href="calendar.html">
+          <span><small>NEW HERE?</small><strong>Book Your First Class</strong><em>Beginner friendly · No partner needed</em></span>
+          <b aria-hidden="true">›</b>
+        </a>
+
+        <div class="menu45-sections"><details class="menu45-section">
+      <summary><span class="menu45-summary-copy"><strong>Classes & Dancing</strong><small>Learn, practise & book classes</small></span><b aria-hidden="true"></b></summary>
+      <div class="menu45-submenu"><a href="calendar.html"><span>Classes & Bookings</span><b aria-hidden="true">›</b></a><a href="dance-library.html"><span>Dance Library</span><b aria-hidden="true">›</b></a><a href="dance-diary.html"><span>Dance Diary</span><b aria-hidden="true">›</b></a><a href="requests.html"><span>Dance Requests</span><b aria-hidden="true">›</b></a></div>
+    </details><details class="menu45-section">
+      <summary><span class="menu45-summary-copy"><strong>Community</strong><small>Join the gang & discover events</small></span><b aria-hidden="true"></b></summary>
+      <div class="menu45-submenu"><a href="moonshine.html"><span>Moonshine & Good Times Gang</span><b aria-hidden="true">›</b></a><a href="long-road-handbook.html"><span>Long Road Handbook</span><b aria-hidden="true">›</b></a><a href="journey.html"><span>My Boot Scootin’ Journey</span><b aria-hidden="true">›</b></a><a href="passport.html"><span>Boot Scootin’ Passport</span><b aria-hidden="true">›</b></a></div>
+    </details><details class="menu45-section">
+      <summary><span class="menu45-summary-copy"><strong>Country Lifestyle</strong><small>Guides, recommendations & inspiration</small></span><b aria-hidden="true"></b></summary>
+      <div class="menu45-submenu"><a href="country-guide.html" aria-current="page"><span>Nora’s Country Guide</span><b aria-hidden="true">›</b></a><a href="country-corner.html"><span>Nora’s Country Corner</span><b aria-hidden="true">›</b></a><a href="businesses.html"><span>Businesses We Love</span><b aria-hidden="true">›</b></a></div>
+    </details><details class="menu45-section">
+      <summary><span class="menu45-summary-copy"><strong>Shop & Rewards</strong><small>Merchandise & loyalty programme</small></span><b aria-hidden="true"></b></summary>
+      <div class="menu45-submenu"><a href="community.html#merchandise"><span>Official Merchandise</span><b aria-hidden="true">›</b></a><a href="rewards.html"><span>Boot Scootin’ Rewards</span><b aria-hidden="true">›</b></a></div>
+    </details><details class="menu45-section">
+      <summary><span class="menu45-summary-copy"><strong>Help & Contact</strong><small>Questions, socials & private events</small></span><b aria-hidden="true"></b></summary>
+      <div class="menu45-submenu"><a href="ask-nora.html"><span>Ask Nora</span><b aria-hidden="true">›</b></a><a href="private-events.html"><span>Private Events</span><b aria-hidden="true">›</b></a><a href="about.html"><span>About Boot Scootin’</span><b aria-hidden="true">›</b></a><a href="index.html#contact"><span>Contact & Socials</span><b aria-hidden="true">›</b></a></div>
+    </details></div>
+        <a class="menu45-home" href="index.html">Return Home</a>
+        <div class="menu45-footer-brand">
+          <strong>Boot Scootin’ Line Dancing</strong>
+          <span>Birmingham, UK</span>
+        </div>
+      </div>
+    </nav>
+
+
+  <main class="feature-page country-guide-magazine">
+    <section class="country-guide-mag-hero">
+      <div class="country-guide-mag-copy reveal">
+        <p class="kicker">Curated by the Brummie Cowgirl</p>
+        <h1>Nora’s Country Guide</h1>
+        <p>Helping you discover country festivals, venues, western businesses and experiences across the UK — with honest recommendations and official links.</p>
+        <div class="actions">
+          <a class="button" href="#festivals">Explore Festivals</a>
+          <a class="button ghost" href="#recommends">Nora Recommends</a>
+        </div>
+      </div>
+      <div class="country-guide-mag-photo reveal">
+        <img src="nora.webp" alt="Nora wearing her red cowboy hat">
+      </div>
+    </section>
+
+    <section class="section paper guide-category-section">
+      <div class="section-title centre reveal">
+        <p class="kicker red">Choose your trail</p>
+        <h2>Explore the country world</h2>
+        <p>This guide will keep growing as Nora discovers more places, events and businesses worth sharing.</p>
+      </div>
+      <div class="guide-category-grid">
+        <a class="guide-category-tile music" href="country-corner.html"><span>Music</span><small>Artists, playlists and concerts</small></a>
+        <a class="guide-category-tile fashion" href="businesses.html"><span>Western Fashion</span><small>Boots, hats and businesses</small></a>
+        <a class="guide-category-tile festivals" href="#festivals"><span>Festivals</span><small>Official UK festival links</small></a>
+        <a class="guide-category-tile food" href="#recommends"><span>Food & Drink</span><small>Nora’s personal favourites</small></a>
+        <a class="guide-category-tile places" href="#venue"><span>Places</span><small>Country venues and dance floors</small></a>
+        <a class="guide-category-tile entertainment" href="country-corner.html"><span>Entertainment</span><small>Country inspiration and stories</small></a>
+      </div>
+    </section>
+
+    <section class="section dark guide-festival-section" id="festivals">
+      <div class="section-title centre reveal">
+        <p class="kicker">UK country calendar</p>
+        <h2>Featured festivals</h2>
+        <p>Official festival websites collected in one place. Dedicated Nora guides can be added as her first-hand content grows.</p>
+      </div>
+      <div class="festival-hub-grid">
+        <article class="festival-hub-card featured reveal">
+          <div class="festival-card-number">01</div>
+          <div><p class="kicker">Featured Festival</p><h3>The Long Road</h3><p>A cornerstone of Nora’s country calendar and home of the exclusive Moonshine & Good Times Gang handbook preview.</p></div>
+          <div class="festival-card-actions"><a class="button" href="https://thelongroad.com" target="_blank" rel="noopener">Official Website</a><a class="text-link light-link" href="long-road-handbook.html">Preview Nora’s Handbook →</a></div>
+        </article>
+        <article class="festival-hub-card reveal"><div class="festival-card-number">02</div><div><p class="kicker">Arena Festival</p><h3>C2C: Country to Country</h3><p>Major country music festival weekends with an official site for line-ups, locations and ticket information.</p></div><a class="button ghost" href="https://c2c-countrytocountry.com" target="_blank" rel="noopener">Official Website</a></article>
+        <article class="festival-hub-card reveal"><div class="festival-card-number">03</div><div><p class="kicker">Country Weekend</p><h3>Country Calling</h3><p>Visit the official website for current festival details, announcements and booking information.</p></div><a class="button ghost" href="https://www.country-calling.com/" target="_blank" rel="noopener">Official Website</a></article>
+        <article class="festival-hub-card reveal"><div class="festival-card-number">04</div><div><p class="kicker">Festival</p><h3>State Fayre</h3><p>Official information, announcements and tickets for State Fayre.</p></div><a class="button ghost" href="https://www.statefayre.com" target="_blank" rel="noopener">Official Website</a></article>
+        <article class="festival-hub-card reveal"><div class="festival-card-number">05</div><div><p class="kicker">Festival</p><h3>Rockin’ The Country</h3><p>Explore the official website for the latest event details and ticket information.</p></div><a class="button ghost" href="https://www.rockinthecountry.co.uk" target="_blank" rel="noopener">Official Website</a></article>
+      </div>
+    </section>
+
+    <section class="section paper guide-venue-section" id="venue">
+      <div class="featured-venue-card reveal">
+        <div class="featured-venue-image"><img src="lowplaces.webp" alt="Low Places country venue"></div>
+        <div class="featured-venue-copy">
+          <p class="kicker red">Featured Country Venue</p>
+          <h2>Low Places Birmingham</h2>
+          <p>A country bar and Boot Scootin’ venue in Birmingham. Check its official website for current events, opening information and venue details.</p>
+          <div class="guide-badges"><span>Country Bar</span><span>Boot Scootin’ Venue</span><span>Birmingham</span></div>
+          <div class="actions"><a class="button" href="https://www.low-places.co.uk" target="_blank" rel="noopener">Visit Official Website</a><a class="button ghost dark-ghost" href="calendar.html">View Boot Scootin’ Dates</a></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark nora-recommends-section" id="recommends">
+      <div class="section-title centre reveal">
+        <p class="kicker">Real favourites</p>
+        <h2>Nora Recommends</h2>
+        <p>A curated starting collection based on Nora’s own tastes, purchases and country experiences.</p>
+      </div>
+      <div class="nora-recommends-grid">
+        <article class="nora-recommend-card reveal"><span class="recommend-badge">Personally Owned</span><h3>Ivory Sky Boots</h3><p>Western boots Nora genuinely owns and wears as part of her country wardrobe.</p><a class="text-link light-link" href="https://ivoryskyco.com/" target="_blank" rel="noopener">Visit Ivory Sky →</a></article>
+        <article class="nora-recommend-card reveal"><span class="recommend-badge">Boot Scootin’ Approved</span><h3>Home By Sunday</h3><p>Statement western hats and accessories that are already part of Nora’s personal collection.</p><a class="text-link light-link" href="https://www.homebysunday.com" target="_blank" rel="noopener">Visit Home By Sunday →</a></article>
+        <article class="nora-recommend-card reveal"><span class="recommend-badge">Festival Favourite</span><h3>The Long Road</h3><p>A festival closely connected to Nora’s Moonshine community plans and handbook.</p><a class="text-link light-link" href="long-road-handbook.html">Open the Handbook Preview →</a></article>
+        <article class="nora-recommend-card reveal"><span class="recommend-badge">Artist Nora Loves</span><h3>Megan Moroney</h3><p>An artist whose music and songwriting hold a special place in Nora’s country world.</p><span class="status-chip">Personal feature coming soon</span></article>
+        <article class="nora-recommend-card reveal"><span class="recommend-badge">Nora’s Drink</span><h3>PBR</h3><p>Nora’s go-to beer for country festivals and good-time country nights.</p></article>
+        <article class="nora-recommend-card reveal"><span class="recommend-badge">Nora’s Drink</span><h3>KAH Reposado Tequila</h3><p>Nora’s preferred reposado tequila for celebrations and country nights out.</p></article>
+      </div>
+    </section>
+
+    <section class="section paper guide-transparency">
+      <div class="guide-transparency-card reveal"><div><p class="kicker red">Curated, not crowded</p><h2>Why these recommendations?</h2></div><p>The guide is designed around things Nora genuinely owns, enjoys, attends or confidently recommends. It will grow carefully rather than becoming an unfiltered directory.</p></div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-lockup">
+      <img class="brand-logo footer-logo" src="brand-logo.png" alt="Boot Scootin’ Line Dancing logo">
+      <div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div>
+    </div>
+    <p class="script">Your guide to country life in the UK. ♥</p>
+    <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
+  </footer>
+
+  <script src="script.js?v=55"></script>
+
+
+
+
+
+
+<script id="menu45-script">
+document.querySelectorAll("#menu45 details.menu45-section").forEach(function(section){
+ section.addEventListener("toggle",function(){
+  if(!section.open)return;
+  document.querySelectorAll("#menu45 details.menu45-section").forEach(function(other){if(other!==section)other.open=false;});
+ });
+});
+</script>
+</body>
+</html>

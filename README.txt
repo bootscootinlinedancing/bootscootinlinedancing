@@ -527,3 +527,15 @@ YOUTUBE
 - Added Nora's official Boot Scootin' Line Dancing YouTube channel.
 - Added a YouTube call-to-action near the top of the Dance Library.
 - Added a second channel link directly within Nora's original choreography card.
+
+
+Boot Scootin' Website Version 55
+
+ACTUAL COUNTRY GUIDE UPDATE
+- Rebuilt country-guide.html using the existing branded header, Explore menu and footer.
+- Added a visible Country Guide gateway to country-corner.html.
+- Added official festival cards for The Long Road, C2C, Country Calling, State Fayre and Rockin' The Country.
+- Added Low Places Birmingham as a featured country venue.
+- Added Nora Recommends cards for Ivory Sky, Home By Sunday, The Long Road, Megan Moroney, PBR and KAH Reposado Tequila.
+- Updated every Explore menu link so Nora's Country Guide opens country-guide.html.
+- Updated styles and cache version to V55.
