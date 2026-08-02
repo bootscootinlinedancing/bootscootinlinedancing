@@ -4990,3 +4990,5 @@ nav a{
 .guide-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem}
 .guide-card{background:#fff8ef;border:1px solid #d8c2aa;border-radius:14px;padding:2rem;text-decoration:none;color:#241515;transition:.2s}
 .guide-card:hover{transform:translateY(-5px);box-shadow:0 10px 24px rgba(0,0,0,.12)}
+
+.festival-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}.festival-card,.nora-recommends{background:#fff8ef;padding:20px;border:1px solid #d8c1a4;border-radius:14px}.festival-card a{display:inline-block;margin-top:10px}.festival-hub{padding:60px 20px}
