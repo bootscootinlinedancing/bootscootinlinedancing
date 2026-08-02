@@ -1,0 +1,8 @@
+Boot Scootin Website Version 58
+
+- Expanded Buckin’ Boots Summer Stomp into a full journey feature.
+- Added group, workshop, dance-floor, partner-dancing and event-logo imagery.
+- Added the iCloud Summer Stomp video with a prominent play card and fallback button.
+- Added the Troy and Elise / Dirt Road Dancing story.
+- Added a detailed section explaining how Nora will incorporate the teaching methods into Boot Scootin’ classes.
+- Added thank-you section and mobile-responsive gallery.
