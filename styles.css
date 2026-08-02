@@ -3051,3 +3051,124 @@ nav a{
   .privacy-settings-list label{grid-template-columns:1fr}
   .chat-input-row>div{grid-template-columns:1fr}
 }
+
+
+/* VERSION 37 - MOBILE REPAIR & EXCLUSIVE HANDBOOK PREVIEW */
+.dashboard-mobile-tabs{display:none}
+.ecc-mark{
+  display:block;
+  font-family:Oswald,sans-serif!important;
+  font-size:clamp(3rem,13vw,6rem)!important;
+  font-weight:700;
+  letter-spacing:.08em;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.handbook-preview-hero{
+  min-height:680px;
+  display:grid;
+  grid-template-columns:1.05fr .95fr;
+  align-items:center;
+  gap:2rem;
+  padding:7rem max(4vw,calc((100vw - 1180px)/2)) 4rem;
+  color:#fff;
+  background:
+    radial-gradient(circle at 70% 35%,rgba(130,33,24,.32),transparent 38%),
+    linear-gradient(135deg,#080504,#1e0d0a);
+}
+.handbook-hero-copy h1{font-size:clamp(3.4rem,7vw,6.7rem);line-height:.95}
+.handbook-preview-hero>img{
+  width:min(480px,100%);
+  max-height:620px;
+  object-fit:contain;
+  justify-self:center;
+  box-shadow:0 22px 70px rgba(0,0,0,.52);
+}
+.handbook-preview-grid{
+  width:min(1160px,94vw);
+  margin:2rem auto 0;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:1rem;
+}
+.handbook-preview-grid figure{margin:0;background:#160d0b;border:1px solid #5a302a}
+.handbook-preview-grid img{display:block;width:100%;height:auto}
+.handbook-preview-grid figcaption{padding:.8rem;color:#f0dcc4;text-align:center;font-weight:700}
+.handbook-lock-card{
+  width:min(1120px,94vw);
+  margin:auto;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:2rem;
+  align-items:center;
+  padding:1.5rem;
+  border:1px solid #c9ae88;
+  background:#fffaf3;
+}
+.handbook-lock-card img{width:100%;display:block}
+.handbook-lock-card h2{font-size:clamp(2.2rem,5vw,4rem)}
+.handbook-lock-card li{margin:.55rem 0}
+.small-note{font-size:.86rem;color:#705f50;margin-top:1rem}
+
+@media(max-width:900px){
+  .member-dashboard{
+    display:block!important;
+    width:min(100%,94vw);
+  }
+  .dashboard-sidebar{
+    position:static!important;
+    display:block;
+    width:100%;
+    margin:0 0 1rem;
+  }
+  .dashboard-mini-nav{display:none!important}
+  .dashboard-mobile-tabs{
+    position:sticky;
+    top:70px;
+    z-index:20;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:1px;
+    margin:0 0 1rem;
+    background:#4a2526;
+    border:1px solid #5c3030;
+  }
+  .dashboard-mobile-tabs button{
+    min-width:0;
+    padding:.7rem .25rem;
+    border:0;
+    background:#130b09;
+    color:#ead8c7;
+    font-family:Oswald,sans-serif;
+    font-size:.78rem;
+    line-height:1.15;
+  }
+  .dashboard-mobile-tabs button.active{background:#82161b;color:#fff}
+  .dashboard-content{width:100%;overflow:visible}
+  .dashboard-panel{width:100%}
+  .account-action-grid{grid-template-columns:1fr!important}
+  .journey-photo-preview{margin-inline:auto}
+  .profile-upload-preview{display:block}
+  .handbook-preview-hero{grid-template-columns:1fr;padding-top:6rem;text-align:center}
+  .handbook-preview-hero .actions{justify-content:center}
+  .handbook-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .handbook-lock-card{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  .dashboard-mobile-tabs{top:62px}
+  .dashboard-mobile-tabs button{font-size:.7rem}
+  .dashboard-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .handbook-preview-grid{grid-template-columns:1fr}
+  .handbook-preview-hero{min-height:auto;padding-inline:1rem}
+  .handbook-preview-hero>img{max-height:510px}
+}
+
+/* Prevent the dashboard's internal navigation from ever inheriting the full-screen site menu. */
+.dashboard-mini-nav,
+.dashboard-mobile-tabs{
+  position:relative;
+  inset:auto;
+  transform:none;
+  overflow:visible;
+}

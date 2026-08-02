@@ -290,3 +290,20 @@ VERSION 36 — MEMBER EXPERIENCE PREVIEW
 - Added homepage links to My Journey, Passport and Ask Nora.
 - Real secure accounts, shared data, attendance and automated rewards are NOT live yet.
 - A secure backend, authentication, privacy notice and consent testing are still required before real member registrations.
+
+
+Boot Scootin' Website Version 37
+
+FIXED
+- Rebuilt My Boot Scootin' Journey to remove duplicate account sections.
+- Removed the mobile sticky overlay that was covering the page.
+- Added compact mobile dashboard tabs.
+- Removed duplicate element IDs and repaired dashboard interactions.
+- Replaced the broken ECC decorative lettering with a clean, readable mark.
+
+LONG ROAD HANDBOOK
+- Added a public preview page with five selected, watermarked preview images.
+- Added a blurred members-only teaser.
+- Added links from the Moonshine & Good Times Gang page.
+- The full 33-page PDF is NOT included anywhere in the website or ZIP.
+- Full access remains private for confirmed community members until secure accounts are live.

@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v36";
+const CACHE_NAME = "boot-scootin-v37";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -13,6 +13,7 @@ const APP_SHELL = [
   "/ask-nora.html",
   "/passport.html",
   "/moonshine.html",
+  "/long-road-handbook.html",
   "/country-map.html",
   "/styles.css",
   "/script.js",
@@ -22,6 +23,12 @@ const APP_SHELL = [
   "/app-icon-512.png",
   "/nora.webp",
   "/landing-poster.webp"
+  "/long-road-preview/cover.webp",
+  "/long-road-preview/welcome.webp",
+  "/long-road-preview/contents.webp",
+  "/long-road-preview/lineup.webp",
+  "/long-road-preview/rain-guide.webp",
+  "/long-road-preview/members-only-teaser.webp",
 ];
 
 self.addEventListener("install", event => {

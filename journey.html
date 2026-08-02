@@ -47,6 +47,7 @@
           <p>Community</p>
           <a href="community.html">Community Hub</a>
           <a href="moonshine.html">Moonshine &amp; Good Times Gang</a>
+          <a href="long-road-handbook.html">Long Road Handbook</a>
           <a href="journey.html" aria-current="page">My Boot Scootin’ Journey</a>
           <a href="community.html#birthday-boots">Birthday Boots</a>
         </section>
@@ -79,18 +80,25 @@
       <div class="section-title centre reveal">
         <p class="kicker">Your personal dance space</p>
         <h1>My Boot Scootin’ Journey</h1>
-        <p>A secure future member area for tracking dances, confidence, support needs and milestones.</p>
+        <p>A preview of the future member area for dances, confidence, support and milestones.</p>
       </div>
     </section>
 
     <section class="section paper member-dashboard-section">
       <div class="journey-status reveal">
-        <span class="status-chip">Interactive preview — secure accounts are not live yet</span>
+        <span class="status-chip">Interactive preview - secure accounts are not live yet</span>
         <h2>Your own little Boot Scootin’ home.</h2>
-        <p>Explore how members will track dances, confidence, achievements and support needs. This preview stores nothing online.</p>
+        <p>Explore the planned member dashboard. Nothing on this preview is uploaded or shared with Nora.</p>
       </div>
 
       <div class="member-dashboard reveal">
+        <div class="dashboard-mobile-tabs" aria-label="Dashboard sections">
+          <button type="button" data-dashboard-target="overview" class="active">Overview</button>
+          <button type="button" data-dashboard-target="dances">My Dances</button>
+          <button type="button" data-dashboard-target="achievements">Achievements</button>
+          <button type="button" data-dashboard-target="privacy">Privacy</button>
+        </div>
+
         <aside class="dashboard-sidebar">
           <div class="journey-photo-preview" id="journeyPhotoPreview"><span>NA</span></div>
           <h3>Welcome back, Cowgirl</h3>
@@ -99,7 +107,7 @@
           <label class="profile-upload-preview">
             Preview a profile photo
             <input id="profilePhotoDemo" type="file" accept="image/*">
-            <small>The live account will make this optional and private by default.</small>
+            <small>Optional in the future member account.</small>
           </label>
 
           <nav class="dashboard-mini-nav" aria-label="Dashboard preview sections">
@@ -143,7 +151,7 @@
               <article class="dashboard-card next-class-card">
                 <p class="kicker red">Next class</p>
                 <h3>Friday Night Line Dancing</h3>
-                <p><strong>Edgbaston Community Centre</strong><br>7:30 pm–8:30 pm</p>
+                <p><strong>Edgbaston Community Centre</strong><br>7:30 pm-8:30 pm</p>
                 <a class="button" href="calendar.html">View Calendar</a>
               </article>
             </div>
@@ -152,7 +160,7 @@
               <div>
                 <p class="kicker red">Support from Nora</p>
                 <h3>You decide what to share.</h3>
-                <p>Turn sharing on only when you would like Nora to see your confidence ratings, shared notes or dances where you need help.</p>
+                <p>Members will be able to share selected confidence ratings, notes or requests for help - or keep everything private.</p>
               </div>
               <label class="demo-switch">
                 <input id="shareDemo" type="checkbox">
@@ -167,18 +175,9 @@
               <a class="button compact" href="dance-library.html">Browse Library</a>
             </div>
             <div class="journey-dance-list">
-              <article>
-                <div><h3>Ziggy</h3><p>32 counts · 4 walls · Absolute Beginner</p></div>
-                <select aria-label="Confidence for Ziggy"><option>I’ve got this</option><option selected>Comfortable</option><option>Needs practice</option><option>I’d like support</option></select>
-              </article>
-              <article>
-                <div><h3>Cowgirl</h3><p>32 counts · 2 walls · Beginner</p></div>
-                <select aria-label="Confidence for Cowgirl"><option>I’ve got this</option><option>Comfortable</option><option selected>Needs practice</option><option>I’d like support</option></select>
-              </article>
-              <article>
-                <div><h3>Choosin’ Texas</h3><p>24 counts · 4 walls · Beginner</p></div>
-                <select aria-label="Confidence for Choosin’ Texas"><option>I’ve got this</option><option>Comfortable</option><option>Needs practice</option><option selected>I’d like support</option></select>
-              </article>
+              <article><div><h3>Ziggy</h3><p>Absolute Beginner</p></div><select><option>I’ve got this</option><option selected>Comfortable</option><option>Needs practice</option><option>I’d like support</option></select></article>
+              <article><div><h3>Cowgirl</h3><p>Beginner</p></div><select><option>I’ve got this</option><option>Comfortable</option><option selected>Needs practice</option><option>I’d like support</option></select></article>
+              <article><div><h3>Choosin’ Texas</h3><p>Beginner</p></div><select><option>I’ve got this</option><option>Comfortable</option><option>Needs practice</option><option selected>I’d like support</option></select></article>
             </div>
           </section>
 
@@ -198,24 +197,24 @@
             <div class="panel-heading"><div><p class="kicker red">Privacy &amp; account</p><h2>You stay in control.</h2></div></div>
 
             <div class="privacy-settings-list">
-              <label><span><strong>Share dance progress with Nora</strong><small>Only confidence, support requests and notes you choose to share.</small></span><input type="checkbox"></label>
-              <label><span><strong>Allow Nora to see my profile photo</strong><small>Your photo stays private unless you turn this on.</small></span><input type="checkbox"></label>
-              <label><span><strong>Birthday Boots feature</strong><small>Choose exact date, month only, Nora privately or completely private.</small></span><select><option>Keep private</option><option>Share with Nora only</option><option>Birthday month only</option><option>Exact day and month</option></select></label>
+              <label><span><strong>Share dance progress with Nora</strong><small>Only information the member chooses.</small></span><input type="checkbox"></label>
+              <label><span><strong>Allow Nora to see my profile photo</strong><small>Private unless permission is switched on.</small></span><input type="checkbox"></label>
+              <label><span><strong>Birthday Boots</strong><small>Choose private, Nora only, month only or exact day and month.</small></span><select><option>Keep private</option><option>Share with Nora only</option><option>Birthday month only</option><option>Exact day and month</option></select></label>
             </div>
 
             <div class="account-action-grid">
               <article><h3>Download my data</h3><p>Export dances, notes and achievements.</p><button class="button muted-button" disabled>Coming with Accounts</button></article>
-              <article><h3>Pause my account</h3><p>Stop sharing and hide your profile without losing progress.</p><button class="button muted-button" disabled>Coming with Accounts</button></article>
-              <article class="danger-card"><h3>Delete my account</h3><p>Permanently remove your profile and progress after secure confirmation.</p><button class="button danger-button" id="deletePreview" type="button">Preview Steps</button></article>
+              <article><h3>Pause my account</h3><p>Hide the profile without losing progress.</p><button class="button muted-button" disabled>Coming with Accounts</button></article>
+              <article class="danger-card"><h3>Delete my account</h3><p>Permanently remove the account after secure confirmation.</p><button class="button danger-button" id="deletePreviewButton" type="button">Preview Steps</button></article>
             </div>
 
-            <div class="deletion-preview" id="deletionPreview" hidden>
+            <div class="deletion-preview" id="deletionPreviewPanel" hidden>
               <h3>Account deletion process</h3>
               <ol>
                 <li>Confirm using a password or secure email link.</li>
                 <li>Sharing with Nora stops immediately.</li>
                 <li>All active sessions are signed out.</li>
-                <li>A seven-day cancellation period begins.</li>
+                <li>A short cancellation period begins.</li>
                 <li>Profile, photo, notes and progress are permanently removed.</li>
               </ol>
             </div>
@@ -226,48 +225,10 @@
 
     <section class="section dark privacy-design-section">
       <div class="privacy-design-grid reveal">
-        <article><span>🔒</span><h3>Private by default</h3><p>Only the member sees their progress unless they actively choose to share it.</p></article>
-        <article><span>🛡️</span><h3>Secure login</h3><p>Authentication, MFA and database permissions will be handled by a trusted backend service.</p></article>
-        <article><span>👁️</span><h3>Limited instructor view</h3><p>Nora only sees dances, confidence and notes a member has chosen to share.</p></article>
-        <article><span>💳</span><h3>No card storage</h3><p>Payments remain with SumUp or the booking provider, never inside member profiles.</p></article>
-      </div>
-    </section>
-
-    <section class="section paper account-settings-preview">
-      <div class="section-title reveal">
-        <p class="kicker red">Account Settings</p>
-        <h2>Members stay in control.</h2>
-      </div>
-
-      <div class="account-action-grid reveal">
-        <article>
-          <h3>Download my data</h3>
-          <p>Export dances, confidence ratings, notes and milestones.</p>
-          <button class="button muted-button" type="button" disabled>Download Preview</button>
-        </article>
-        <article>
-          <h3>Pause my account</h3>
-          <p>Hide the profile, stop sharing and sign out while keeping progress for later.</p>
-          <button class="button muted-button" type="button" disabled>Pause Preview</button>
-        </article>
-        <article class="danger-card">
-          <h3>Delete my account</h3>
-          <p>Permanently remove the profile, dance progress and notes after secure confirmation and a short cancellation period.</p>
-          <button class="button danger-button" id="deletePreview" type="button">Preview Deletion Steps</button>
-        </article>
-      </div>
-
-      <div class="deletion-preview" id="deletionPreview" hidden>
-        <p class="kicker red">Deletion preview</p>
-        <h3>Before an account is permanently deleted:</h3>
-        <ol>
-          <li>The member confirms by password or secure email link.</li>
-          <li>Sharing with Nora stops immediately.</li>
-          <li>All active sessions are revoked.</li>
-          <li>A seven-day cancellation period begins.</li>
-          <li>Profile, progress and notes are permanently removed.</li>
-        </ol>
-        <p>Mailing lists, WhatsApp, Eventbrite and SumUp remain separate and must be managed independently.</p>
+        <article><span>🔒</span><h3>Private by default</h3><p>Progress remains private unless a member actively shares it.</p></article>
+        <article><span>🛡️</span><h3>Secure login</h3><p>Real accounts will use trusted authentication and protected database permissions.</p></article>
+        <article><span>👁️</span><h3>Limited instructor view</h3><p>Nora sees only the information a member has chosen to share.</p></article>
+        <article><span>🗑️</span><h3>Delete anytime</h3><p>Members will be able to close their account and remove their data.</p></article>
       </div>
     </section>
   </main>
@@ -283,9 +244,11 @@
 
   <script src="script.js"></script>
   
+
 <script>
     const photoInput = document.getElementById("profilePhotoDemo");
     const photoPreview = document.getElementById("journeyPhotoPreview");
+
     photoInput?.addEventListener("change", () => {
       const file = photoInput.files?.[0];
       if (!file) return;
@@ -301,17 +264,20 @@
       shareDemo.nextElementSibling.textContent = shareDemo.checked ? "Shared with Nora" : "Private";
     });
 
-    document.querySelectorAll("[data-dashboard-target]").forEach(button => {
+    const dashboardButtons = document.querySelectorAll("[data-dashboard-target]");
+    const dashboardPanels = document.querySelectorAll("[data-dashboard-panel]");
+
+    dashboardButtons.forEach(button => {
       button.addEventListener("click", () => {
-        document.querySelectorAll("[data-dashboard-target]").forEach(item => item.classList.remove("active"));
-        document.querySelectorAll("[data-dashboard-panel]").forEach(panel => panel.classList.remove("active"));
-        button.classList.add("active");
-        document.querySelector(`[data-dashboard-panel="${button.dataset.dashboardTarget}"]`)?.classList.add("active");
+        const target = button.dataset.dashboardTarget;
+        dashboardButtons.forEach(item => item.classList.toggle("active", item.dataset.dashboardTarget === target));
+        dashboardPanels.forEach(panel => panel.classList.toggle("active", panel.dataset.dashboardPanel === target));
+        document.querySelector(".member-dashboard-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
 
-    document.getElementById("deletePreview")?.addEventListener("click", () => {
-      const panel = document.getElementById("deletionPreview");
+    document.getElementById("deletePreviewButton")?.addEventListener("click", () => {
+      const panel = document.getElementById("deletionPreviewPanel");
       panel.hidden = !panel.hidden;
     });
   </script>
