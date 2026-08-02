@@ -241,3 +241,15 @@ document.querySelectorAll("#menu45 details.menu45-section").forEach((section) =>
     section.classList.add("menu45-opening");
   });
 });
+
+
+// Version 47 Explore accordion: only one submenu stays open.
+document.querySelectorAll("#menu45 details.menu45-section").forEach((section) => {
+  section.addEventListener("toggle", () => {
+    if (!section.open) return;
+
+    document.querySelectorAll("#menu45 details.menu45-section").forEach((other) => {
+      if (other !== section) other.open = false;
+    });
+  });
+});

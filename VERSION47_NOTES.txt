@@ -1,0 +1,20 @@
+Boot Scootin' Website Version 47
+
+EXPLORE MENU
+- Retained the approved underlined accordion design.
+- Added a short description beneath every main menu heading.
+- Open sections receive a stronger red underline and control.
+- Added subtle submenu opening animation and tap feedback.
+- The entire heading row remains clickable.
+- Only one submenu stays open at a time.
+
+MOONSHINE & GOOD TIMES GANG
+- Removed all public or promised WhatsApp community invite links.
+- Added a private Join Request form.
+- Applicants must provide their name, email, social-media profile and an introduction.
+- Added a community-rules agreement.
+- Added clear wording explaining why requests are vetted.
+- The completed request opens in the visitor's email app for private review.
+- Added a direct Instagram-message alternative.
+- Updated Ask Nora to explain that community invitations are approved privately.
+- Updated Long Road calls to action to say Request Community Access.

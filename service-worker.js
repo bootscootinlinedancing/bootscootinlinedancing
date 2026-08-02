@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v46";
+const CACHE_NAME = "boot-scootin-v47";
 
 self.addEventListener("install", event => {
   self.skipWaiting();
@@ -15,12 +15,8 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
-  const request = event.request;
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-
   event.respondWith(
-    fetch(request, { cache: "no-store" })
-      .catch(() => caches.match(request))
+    fetch(event.request, { cache: "no-store" })
+      .catch(() => caches.match(event.request))
   );
 });
