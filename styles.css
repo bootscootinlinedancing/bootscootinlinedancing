@@ -6256,3 +6256,82 @@ p,li,dd{
 
 /* V90.1 HQ Stability */
 .health-ready{border-left:4px solid #2e8b57}.health-warning{border-left:4px solid #d39b00}.health-error{border-left:4px solid #b22222}.health-loading{opacity:.7}
+
+
+/* VERSION 90.2 — RANCH OPERATIONS & STABILITY */
+.ranch-toast{
+  position:fixed;right:1rem;top:1rem;z-index:2147483646;
+  max-width:min(420px,calc(100vw - 2rem));padding:.85rem 1rem;
+  border:1px solid #2f774b;background:#e5f1e8;color:#245c39;
+  box-shadow:0 12px 35px rgba(0,0,0,.22);font:700 .78rem/1.4 Oswald,sans-serif;
+}
+.ranch-toast.error{border-color:#a9363c;background:#f3dfe0;color:#812b31}
+#hqLaunchChecklist li.info{color:#315b7a}
+#hqLaunchChecklist li.info>span{background:#4d7fa8;box-shadow:0 0 0 5px #dbe8f1}
+#hqLaunchChecklist li.error{color:#8c2e34}
+#hqLaunchChecklist li.error>span{background:#b43b42;box-shadow:0 0 0 5px #efd9da}
+
+.operations-summary-grid{
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.65rem;margin:1rem 0 1.2rem;
+}
+.operations-summary-grid article{
+  min-width:0;padding:.9rem;border:1px solid #c8aa87;background:#f4e6d1;
+}
+.operations-summary-grid span,.operations-summary-grid strong{display:block}
+.operations-summary-grid span{font:600 .64rem/1.25 Oswald,sans-serif;text-transform:uppercase;color:#725b4f}
+.operations-summary-grid strong{margin-top:.35rem;color:#90242a;font:700 1.4rem/1 Oswald,sans-serif}
+.operations-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.operations-card{padding:1rem;border:1px solid #c8aa87;background:#fff8ed}
+.operations-register{margin-top:1rem}
+.operations-queue-item{
+  display:block;width:100%;margin:.45rem 0;padding:.75rem;border:1px solid #d3b996;
+  border-left:4px solid #b77f3b;background:#fff;text-align:left;cursor:pointer;
+}
+.operations-queue-item.refund{border-left-color:#b83a41}
+.operations-queue-item.waiting{border-left-color:#4f78a0}
+.operations-queue-item strong,.operations-queue-item span{display:block}
+.operations-queue-item span{margin-top:.2rem;color:#6f594e;font-size:.72rem}
+.operations-activity-row,.operations-class-row{
+  display:flex;justify-content:space-between;gap:1rem;align-items:center;
+  padding:.7rem 0;border-bottom:1px solid #dbc5a8;
+}
+.operations-activity-row:last-child,.operations-class-row:last-child{border-bottom:0}
+.operations-activity-row strong,.operations-activity-row span,
+.operations-class-row strong,.operations-class-row span,
+.operations-class-row b,.operations-class-row small{display:block}
+.operations-activity-row span,.operations-class-row span,.operations-class-row small{color:#6f594e;font-size:.7rem}
+.operations-class-row>div:last-child{text-align:right}
+.hq-waiting-row{grid-template-columns:1fr 1.1fr auto auto!important;align-items:center}
+.hq-waiting-actions{display:flex;gap:.35rem}
+.hq-waiting-actions button{
+  padding:.42rem .58rem;border:1px solid #90242a;background:#fff;color:#90242a;
+  font:700 .65rem Oswald,sans-serif;cursor:pointer;
+}
+
+/* Health uses one controller and clear status colours. */
+.hq-health-card.ready{border-left:4px solid #35945a}
+.hq-health-card.info{border-left:4px solid #4d7fa8}
+.hq-health-card.setup{border-left:4px solid #c28a3d}
+.hq-health-card.error{border-left:4px solid #b43b42}
+.health-dot.info{background:#4d7fa8!important}
+.health-dot.setup,.health-dot.attention{background:#c28a3d!important}
+.health-dot.error{background:#b43b42!important}
+.health-dot.ready{background:#35945a!important}
+
+@media(max-width:1100px){
+  .operations-summary-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:780px){
+  .operations-grid{grid-template-columns:1fr}
+  .operations-summary-grid{grid-template-columns:1fr 1fr}
+  .hq-waiting-row{grid-template-columns:1fr!important}
+  .hq-waiting-actions{display:grid;grid-template-columns:1fr 1fr}
+}
+@media print{
+  .ranch-sidebar,.ranch-topbar,.ranch-notice,.ranch-panel:not(.operations-register),
+  .ranch-view:not([data-view-panel="operations"]) .ranch-panel-head,
+  #printOperationsRegister{display:none!important}
+  .ranch-main{margin:0!important;padding:0!important}
+  .ranch-view[data-view-panel="operations"]{display:block!important}
+  .operations-register{border:0!important}
+}

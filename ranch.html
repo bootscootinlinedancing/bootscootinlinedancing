@@ -6,11 +6,12 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=90.1">
+  <link rel="stylesheet" href="styles.css?v=90.2">
   <meta name="theme-color" content="#080606">
 </head>
 <body class="ranch-body">
   <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div id="ranchToast" class="ranch-toast" role="status" aria-live="polite" hidden></div>
   <div class="ranch-app">
     <aside class="ranch-sidebar" id="ranchSidebar">
       <div class="ranch-brand">
@@ -21,6 +22,8 @@
         <button class="active" data-view="overview">HQ Home</button>
         <button data-view="classes">Classes</button>
         <button data-view="bookings">Class Bookings</button>
+        <button data-view="customers">Customers</button>
+        <button data-view="operations">Operations</button>
         <button data-view="private-events">Private Events</button>
         <button data-view="media">Media</button>
         <button data-view="trail">Trail & Rewards</button>
@@ -48,9 +51,9 @@
 
       <section class="ranch-view active" data-view-panel="overview">
         <div class="ranch-stats" id="ranchStats">
-          <article><span>Upcoming classes</span><strong>—</strong></article>
-          <article><span>Places booked</span><strong>—</strong></article>
-          <article><span>Revenue</span><strong>—</strong></article>
+          <article><span>Upcoming classes</span><strong id="overviewUpcoming">—</strong></article>
+          <article><span>Places booked</span><strong id="overviewBooked">—</strong></article>
+          <article><span>Revenue</span><strong id="overviewRevenue">—</strong></article>
           <article><span>Media files</span><strong id="ranchMediaCount">—</strong></article>
         </div>
         <section class="ranch-panel hq-health-summary" id="hqHealthSummary">
@@ -110,7 +113,7 @@
           </section>
           <section class="ranch-panel">
             <div class="ranch-panel-head"><div><p class="kicker red">Activity</p><h2>Recent bookings</h2></div></div>
-            <div id="ranchRecent" class="ranch-list">No paid bookings yet.</div>
+            <div id="ranchRecent" class="ranch-list" aria-live="polite">Loading recent activity…</div>
           </section>
         </div>
       </section>
@@ -174,6 +177,53 @@
             <div><p class="kicker red">Waiting list</p><h3>People waiting for a place</h3></div>
           </div>
           <div id="ranchWaitingList">Loading…</div>
+        </div>
+      </section>
+
+      
+      <section class="ranch-view" data-view-panel="operations">
+        <div class="ranch-panel">
+          <div class="ranch-panel-head">
+            <div>
+              <p class="kicker red">Phase 4 operations</p>
+              <h2>Daily Operations Centre</h2>
+              <p>See today’s classes, active guests, payment totals, waiting-list pressure and actions that still need attention.</p>
+            </div>
+            <button class="button secondary compact" id="refreshOperations" type="button">Refresh</button>
+          </div>
+
+          <div class="operations-summary-grid">
+            <article><span>Today’s classes</span><strong id="opsTodayClasses">—</strong></article>
+            <article><span>Today’s guests</span><strong id="opsTodayGuests">—</strong></article>
+            <article><span>Paid revenue</span><strong id="opsPaidRevenue">—</strong></article>
+            <article><span>Awaiting payment</span><strong id="opsPendingPayments">—</strong></article>
+            <article><span>Waiting-list guests</span><strong id="opsWaitingGuests">—</strong></article>
+            <article><span>Refund / credit review</span><strong id="opsRefundReview">—</strong></article>
+          </div>
+
+          <div class="operations-grid">
+            <section class="operations-card">
+              <div class="ranch-panel-head">
+                <div><p class="kicker red">Action queue</p><h3>Needs attention</h3></div>
+              </div>
+              <div id="operationsQueue">Loading…</div>
+            </section>
+
+            <section class="operations-card">
+              <div class="ranch-panel-head">
+                <div><p class="kicker red">Activity</p><h3>Latest changes</h3></div>
+              </div>
+              <div id="operationsActivity">Loading…</div>
+            </section>
+          </div>
+
+          <section class="operations-card operations-register">
+            <div class="ranch-panel-head">
+              <div><p class="kicker red">Class register</p><h3>Today and next up</h3></div>
+              <button class="button secondary compact" id="printOperationsRegister" type="button">Print register</button>
+            </div>
+            <div id="operationsClasses">Loading…</div>
+          </section>
         </div>
       </section>
 
@@ -396,64 +446,6 @@
       </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=90.1" defer></script>
-  <script>
-(()=>{
-  const button=document.getElementById('runChecks') || [...document.querySelectorAll('button')].find(b=>/run checks/i.test(b.textContent));
-  const cards=[...document.querySelectorAll('[data-health-key],.health-card,.service-check,.status-card')];
-
-  const labelMap={
-    website:/website/i,
-    database:/database|d1/i,
-    media:/media|r2/i,
-    payments:/payment|sumup/i,
-    access:/access|admin protection/i,
-    email:/email/i
-  };
-
-  function findCard(key){
-    return cards.find(card=>{
-      if(card.dataset.healthKey===key)return true;
-      return labelMap[key]?.test(card.textContent||'');
-    });
-  }
-
-  function apply(card,item){
-    if(!card)return;
-    card.classList.remove('health-ready','health-setup','health-error','health-info','checking');
-    card.classList.add(`health-${item.status}`);
-    const statusNode=card.querySelector('[data-health-status],.health-status,.status-label,.service-status');
-    if(statusNode)statusNode.textContent=item.status==='ready'?'READY':item.status==='error'?'ERROR':item.status==='info'?'INFO':'SETUP';
-    const detailNode=card.querySelector('[data-health-detail],.health-detail,.service-detail');
-    if(detailNode&&item.detail)detailNode.textContent=item.detail;
-  }
-
-  async function run(){
-    if(button){button.disabled=true;button.textContent='CHECKING…';}
-    cards.forEach(c=>c.classList.add('checking'));
-    const timeout=new AbortController();
-    const timer=setTimeout(()=>timeout.abort(),10000);
-    try{
-      const response=await fetch('/api/admin/system-health',{cache:'no-store',signal:timeout.signal});
-      const data=await response.json();
-      if(!response.ok)throw new Error(data.error||'Checks could not be completed.');
-      ['website','database','media','email','access','payments'].forEach(key=>apply(findCard(key),data[key]));
-    }catch(error){
-      cards.forEach(card=>{
-        card.classList.remove('checking');
-        if(!card.classList.contains('health-ready'))card.classList.add('health-setup');
-      });
-      const notice=document.querySelector('[data-health-message],#healthMessage,.health-message');
-      if(notice)notice.textContent='Some live checks are unavailable. The page has stopped safely; try again after refreshing or review Cloudflare bindings.';
-    }finally{
-      clearTimeout(timer);
-      if(button){button.disabled=false;button.textContent='RUN CHECKS';}
-    }
-  }
-
-  button?.addEventListener('click',run);
-  run();
-})();
-</script>
+  <script src="ranch.js?v=90.2" defer></script>
 </body>
 </html>
