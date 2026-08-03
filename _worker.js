@@ -264,6 +264,7 @@ async function ensureBookingSchema(env) {
   // ADD COLUMN IF NOT EXISTS, so each migration is attempted safely.
   const migrations = [
     `ALTER TABLE bookings ADD COLUMN secure_token TEXT`,
+    `ALTER TABLE bookings ADD COLUMN customer_token TEXT`,
     `ALTER TABLE bookings ADD COLUMN terms_accepted_at TEXT`,
     `ALTER TABLE bookings ADD COLUMN marketing_consent INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE bookings ADD COLUMN cancellation_requested_at TEXT`,
@@ -277,6 +278,7 @@ async function ensureBookingSchema(env) {
     try { await env.BOOKINGS_DB.prepare(migration).run(); } catch (_) {}
   }
   try { await env.BOOKINGS_DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_secure_token ON bookings(secure_token)`).run(); } catch (_) {}
+  try { await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_booking_customer_token ON bookings(customer_token)`).run(); } catch (_) {}
   try { await env.BOOKINGS_DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_secure_token ON waiting_list(secure_token)`).run(); } catch (_) {}
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO venues(id,name,location,capacity) VALUES
     ('ecc','Edgbaston Community Centre','Birmingham',20),
@@ -356,7 +358,7 @@ async function createClassReservation(request, env) {
 
   const held=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(quantity),0) total FROM booking_holds WHERE class_id=? AND expires_at>?`).bind(classId,new Date().toISOString()).first();
   const spaces=Math.max(0,Number(row.capacity)-Number(row.sold||0)-Number(held?.total||0));
-  const id=crypto.randomUUID(), token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const id=crypto.randomUUID(), token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''), customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const reference=`BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
 
   if(requestedWaitlist||spaces<quantity){
@@ -372,8 +374,8 @@ async function createClassReservation(request, env) {
 
   await env.BOOKINGS_DB.batch([
     env.BOOKINGS_DB.prepare(`INSERT INTO booking_holds(id,class_id,quantity,expires_at) VALUES(?,?,?,?)`).bind(holdId,classId,quantity,holdExpiry),
-    env.BOOKINGS_DB.prepare(`INSERT INTO bookings(id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,quantity,amount_pence,status,payment_provider,secure_token,terms_accepted_at,marketing_consent,retention_delete_after) VALUES(?,?,?,?,?,?,?,?,?,'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`)
-      .bind(id,reference,classId,holdId,name,email,phone,quantity,amount,paymentReady?'SUMUP':'MANUAL',token,Number(Boolean(body.marketing_consent))),
+    env.BOOKINGS_DB.prepare(`INSERT INTO bookings(id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,quantity,amount_pence,status,payment_provider,secure_token,customer_token,terms_accepted_at,marketing_consent,retention_delete_after) VALUES(?,?,?,?,?,?,?,?,?,'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`)
+      .bind(id,reference,classId,holdId,name,email,phone,quantity,amount,paymentReady?'SUMUP':'MANUAL',token,customerToken,Number(Boolean(body.marketing_consent))),
     env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
       .bind(email,'BOOKING_CREATED','booking',id,JSON.stringify({reference,quantity,terms:true,paymentReady}))
   ]);
@@ -402,7 +404,22 @@ async function createClassReservation(request, env) {
       return json({error:'Secure payment could not be started. No payment has been taken. Please try again.'},502);
     }
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET provider_checkout_id=? WHERE id=?`).bind(checkout.id,id).run();
-    return json({ok:true,reference,secure_token:token,status:'PENDING',payment_enabled:true,checkout_url:checkout.hosted_checkout_url||checkout.hosted_checkout?.url},201);
+    const checkoutUrl=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||'';
+    let validCheckoutUrl='';
+    try{
+      const parsed=new URL(checkoutUrl);
+      if(parsed.protocol==='https:') validCheckoutUrl=parsed.toString();
+    }catch(_){}
+    if(!validCheckoutUrl){
+      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET payment_provider='MANUAL',admin_notes=? WHERE id=?`)
+        .bind('SumUp checkout URL unavailable; booking retained for manual confirmation.',id).run();
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(quantity,classId,quantity),
+        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
+      ]);
+      return json({ok:true,reference,secure_token:token,customer_token:customerToken,status:'PENDING',payment_enabled:false,message:'Your place is reserved. Secure online payment is temporarily unavailable, so Nora will confirm payment separately.'},201);
+    }
+    return json({ok:true,reference,secure_token:token,customer_token:customerToken,status:'PENDING',payment_enabled:true,checkout_url:validCheckoutUrl},201);
   }
 
   // Manual/pilot mode: reserve immediately so HQ can manage the booking.
@@ -410,7 +427,7 @@ async function createClassReservation(request, env) {
     env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(quantity,classId,quantity),
     env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
   ]);
-  return json({ok:true,reference,secure_token:token,status:'PENDING',payment_enabled:false,message:'Your place is reserved. Online payment is not enabled yet, so Nora will confirm payment separately.'},201);
+  return json({ok:true,reference,secure_token:token,customer_token:customerToken,status:'PENDING',payment_enabled:false,message:'Your place is reserved. Online payment is not enabled yet, so Nora will confirm payment separately.'},201);
 }
 
 async function syncSumUpBooking(env, booking) {
@@ -496,6 +513,97 @@ async function cancelBooking(request,env){
 }
 
 
+
+async function customerPortalLink(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const body=await request.json().catch(()=>null);
+  const reference=clean(body?.reference,120),email=clean(body?.email,160).toLowerCase();
+  if(!reference||!emailOk(email))return json({error:'Enter a valid booking reference and email address.'},400);
+
+  let booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE reference=? AND lower(customer_email)=?`).bind(reference,email).first();
+  if(!booking)return json({error:'We could not find a booking matching those details.'},404);
+
+  let customerToken=booking.customer_token;
+  if(!customerToken){
+    customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET customer_token=? WHERE lower(customer_email)=?`).bind(customerToken,email).run();
+  }else{
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET customer_token=? WHERE lower(customer_email)=? AND (customer_token IS NULL OR customer_token='')`).bind(customerToken,email).run();
+  }
+  return json({ok:true,customer_token:customerToken});
+}
+
+async function customerPortal(request,env,url){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const token=clean(url.searchParams.get('token'),180);
+  if(!token)return json({error:'Secure customer token is missing.'},400);
+
+  const owner=await env.BOOKINGS_DB.prepare(`SELECT customer_email,customer_name FROM bookings WHERE customer_token=? LIMIT 1`).bind(token).first();
+  if(!owner)return json({error:'This secure booking link is invalid or has expired.'},404);
+
+  const {results}=await env.BOOKINGS_DB.prepare(`
+    SELECT b.*,c.title class_title,c.starts_at,c.ends_at,c.venue,c.location,
+      EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended
+    FROM bookings b JOIN classes c ON c.id=b.class_id
+    WHERE lower(b.customer_email)=lower(?)
+    ORDER BY c.starts_at DESC
+  `).bind(owner.customer_email).all();
+
+  const now=Date.now();
+  const decorate=b=>{
+    const hours=(new Date(b.starts_at)-new Date())/3600000;
+    return {
+      ...b,
+      can_cancel:['PENDING','PAID'].includes(b.status)&&new Date(b.starts_at).getTime()>now,
+      payment_label:b.status==='PAID'?'Paid':b.status==='REFUNDED'?'Refunded':b.payment_provider==='MANUAL'?'To be confirmed':b.status,
+      cancellation_guidance:hours>=48?'Full refund or class credit available.':hours>=24?'Transfer or class credit available.':'Late-cancellation terms apply.'
+    };
+  };
+  const upcoming=results.filter(b=>new Date(b.starts_at).getTime()>now&&!['CANCELLED','REFUNDED','FAILED'].includes(b.status)).map(decorate);
+  const history=results.filter(b=>!upcoming.some(u=>u.id===b.id)).map(decorate);
+  const attended=results.filter(b=>Number(b.attended)===1).length;
+  const loyaltyProgress=attended%9;
+
+  return json({
+    customer_name:owner.customer_name,
+    upcoming,history,
+    summary:{
+      upcoming:upcoming.length,
+      attended,
+      loyalty_progress:loyaltyProgress,
+      reward_ready:attended>0&&attended%9===0
+    }
+  });
+}
+
+async function bookingCalendar(request,env,url){
+  if(!env.BOOKINGS_DB)return new Response('Booking database is not connected.',{status:503});
+  await ensureBookingSchema(env);
+  const token=clean(url.searchParams.get('token'),180);
+  const b=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.customer_name,c.title,c.starts_at,c.ends_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.secure_token=?`).bind(token).first();
+  if(!b)return new Response('Booking not found.',{status:404});
+
+  const icsDate=value=>new Date(value).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z');
+  const end=b.ends_at||new Date(new Date(b.starts_at).getTime()+3600000).toISOString();
+  const safe=value=>String(value||'').replace(/\\/g,'\\\\').replace(/,/g,'\\,').replace(/;/g,'\\;').replace(/\n/g,'\\n');
+  const ics=[
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Boot Scootin Line Dancing//Bookings//EN',
+    'CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
+    `UID:${safe(b.reference)}@bootscootinlinedancing.co.uk`,
+    `DTSTAMP:${icsDate(new Date())}`,
+    `DTSTART:${icsDate(b.starts_at)}`,
+    `DTEND:${icsDate(end)}`,
+    `SUMMARY:${safe(b.title)}`,
+    `LOCATION:${safe(`${b.venue}, ${b.location}`)}`,
+    `DESCRIPTION:${safe(`Boot Scootin' booking ${b.reference} for ${b.customer_name}.`)}`,
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  return new Response(ics,{headers:{'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':`attachment; filename="${b.reference}.ics"`}});
+}
+
+
 async function privateEventInquiry(request, env) {
   if (!env.BOOKINGS_DB) return json({ error:'The inquiry service is temporarily unavailable.' },503);
   await ensureBookingSchema(env);
@@ -506,7 +614,7 @@ async function privateEventInquiry(request, env) {
   const type=clean(b.event_type,60), preferred=clean(b.preferred_date,10), address=clean(b.venue_address,300), postcode=clean(b.venue_postcode,16).toUpperCase();
   const guests=Math.max(1,Math.min(5000,Number(b.guest_count)||0));
   if(!name||!emailOk(email)||!type||!dateOk(preferred)||!address||!postcode||!guests) return json({error:'Please complete your contact details, event type, preferred date, venue address, postcode and guest number.'},400);
-  const id=crypto.randomUUID(), token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const id=crypto.randomUUID(), token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''), customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const reference=`PE-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,5).toUpperCase()}`;
   const values=[id,reference,token,name,email,phone,type,clean(b.event_type_other,80),preferred,clean(b.alternative_date,10),clean(b.start_time,8),clean(b.end_time,8),clean(b.venue_name,160),address,postcode,guests,clean(b.age_range,120),clean(b.experience_level,80),clean(b.session_length,80),clean(b.format_requested,120),clean(b.music_requests,600),Number(Boolean(b.sound_system_provided)),Number(Boolean(b.microphone_provided)),Number(Boolean(b.dance_floor_confirmed)),Number(Boolean(b.power_available)),Number(Boolean(b.parking_loading_available)),clean(b.equipment_notes,600),clean(b.accessibility_notes,600),clean(b.additional_notes,1200)];
   await env.BOOKINGS_DB.batch([
@@ -882,6 +990,9 @@ export default {
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
       if (path === '/api/booking-cancel' && request.method === 'POST') return cancelBooking(request, env);
+      if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
+      if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);
+      if (path === '/api/booking-calendar' && request.method === 'GET') return bookingCalendar(request, env, url);
       if (path === '/api/private-events/inquiries' && request.method === 'POST') return privateEventInquiry(request, env);
       if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);

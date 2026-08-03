@@ -6164,3 +6164,47 @@ p,li,dd{
     transition-duration:.01ms!important;
   }
 }
+
+
+/* VERSION 88 — PHASE 2 CUSTOMER BOOKING EXPERIENCE */
+.customer-portal-hero{min-height:420px;display:grid;place-items:center}
+.customer-portal-shell{max-width:1180px;margin:auto}
+.customer-portal-gate{max-width:700px;margin:auto;padding:1.3rem;border:1px solid #c9ab86;background:#fff8ed}
+.customer-lookup-form{display:grid;grid-template-columns:1fr 1fr auto;gap:.75rem;align-items:end}
+.customer-portal-head,.customer-section-head{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.customer-summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin:1rem 0}
+.customer-summary-grid article{padding:1rem;border:1px solid #c9ab86;background:#f4e6d1}
+.customer-summary-grid span,.customer-summary-grid strong{display:block}
+.customer-summary-grid span{font:600 .68rem Oswald,sans-serif;text-transform:uppercase;color:#6e584d}
+.customer-summary-grid strong{margin-top:.35rem;font:700 1.5rem Oswald,sans-serif;color:#90242a}
+.customer-loyalty-card{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center;padding:1.2rem;border:1px solid #51282b;background:#150a0b;color:#fff}
+.customer-loyalty-card h3{margin:.25rem 0;color:#fff}
+.customer-loyalty-card p{color:#cdb8a7}
+.loyalty-stamp-row{display:grid;grid-template-columns:repeat(3,44px);gap:.45rem}
+.loyalty-stamp-row span{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:1px solid #9a7660;color:#6c5548;font-size:1.35rem}
+.loyalty-stamp-row span.earned{border-color:#d9474d;background:#8f2329;color:#fff}
+.customer-booking-section{margin-top:1.5rem}
+.customer-booking-card{display:grid;grid-template-columns:minmax(240px,1.3fr) 1fr auto;gap:1rem;align-items:center;margin:.75rem 0;padding:1rem;border:1px solid #c9ab86;background:#fff8ed}
+.customer-booking-main h4{margin:.2rem 0;font-size:1.15rem}
+.customer-booking-main p{margin:.22rem 0;color:#695349}
+.customer-booking-card dl{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:0}
+.customer-booking-card dt{font-size:.62rem;text-transform:uppercase;color:#755f53}
+.customer-booking-card dd{margin:0;font-weight:700}
+.customer-booking-actions{display:grid;gap:.45rem}
+.customer-booking-actions a,.customer-booking-actions button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:.48rem .7rem;border:1px solid #90242a;background:#fff;color:#90242a;font:700 .68rem Oswald,sans-serif;text-decoration:none;cursor:pointer}
+.customer-cancellation-guidance{grid-column:1/-1;margin:0;padding:.65rem;border-left:3px solid #ad3036;background:#f2e3cf;color:#694f44}
+.customer-empty{padding:1rem;border:1px dashed #bea17f;background:#f4e6d1;color:#6a554b;text-align:center}
+
+@media(max-width:820px){
+  .customer-lookup-form{grid-template-columns:1fr}
+  .customer-summary-grid{grid-template-columns:1fr 1fr}
+  .customer-loyalty-card{grid-template-columns:1fr}
+  .loyalty-stamp-row{grid-template-columns:repeat(9,1fr)}
+  .loyalty-stamp-row span{width:100%;height:auto;aspect-ratio:1/1}
+  .customer-booking-card{grid-template-columns:1fr}
+  .customer-booking-actions{grid-template-columns:1fr 1fr}
+}
+@media(max-width:520px){
+  .customer-summary-grid{grid-template-columns:1fr}
+  .loyalty-stamp-row{grid-template-columns:repeat(3,1fr)}
+}

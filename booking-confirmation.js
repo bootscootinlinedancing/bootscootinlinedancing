@@ -1,6 +1,6 @@
 (async()=>{
   const p=new URLSearchParams(location.search);
-  const ref=p.get('reference'), token=p.get('token');
+  const ref=p.get('reference'), token=p.get('token'), customerToken=p.get('customer');
   const title=document.getElementById('confirmationTitle');
   const text=document.getElementById('confirmationText');
   const details=document.getElementById('confirmationDetails');
@@ -8,6 +8,7 @@
   const policy=document.getElementById('manageBookingPolicy');
   const cancelButton=document.getElementById('cancelBookingButton');
   const message=document.getElementById('manageBookingMessage');
+  const portalLink=document.getElementById('openCustomerPortal');
 
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const date=value=>new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
@@ -45,6 +46,7 @@
         <dt>Status</dt><dd>${esc(b.status.replaceAll('_',' '))}</dd>
       </dl>`;
 
+      if(portalLink) portalLink.href=`my-bookings.html?token=${encodeURIComponent(customerToken||token||'')}`;
       if(token&&!cancelled){
         panel.hidden=false;
         policy.textContent=b.cancellation_guidance;
