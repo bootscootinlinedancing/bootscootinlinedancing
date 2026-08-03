@@ -72,3 +72,121 @@
 
   loadClasses();loadBookings();loadPrivateEvents();loadMedia();loadHealth();checkMediaBackend();
 })();
+
+
+/* VERSION 80 — HQ command centre */
+(() => {
+  const notificationsNode = document.getElementById('hqNotifications');
+  const accessNode = document.getElementById('ranchAccessStatus');
+  const refreshButton = document.getElementById('refreshNotifications');
+
+  const escapeText = value => String(value ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+
+  const renderNotifications = items => {
+    if (!notificationsNode) return;
+    if (!items.length) {
+      notificationsNode.innerHTML = '<article class="hq-notification is-good"><span>✓</span><div><strong>Nothing urgent</strong><p>Your connected services are responding and there are no new items requiring attention.</p></div></article>';
+      return;
+    }
+    notificationsNode.innerHTML = items.map(item => `
+      <article class="hq-notification ${escapeText(item.kind || '')}">
+        <span>${escapeText(item.icon || '•')}</span>
+        <div><strong>${escapeText(item.title)}</strong><p>${escapeText(item.message)}</p>${item.action ? `<button type="button" data-notification-view="${escapeText(item.action)}">Open</button>` : ''}</div>
+      </article>`).join('');
+
+    notificationsNode.querySelectorAll('[data-notification-view]').forEach(button => {
+      button.addEventListener('click', () => {
+        const target = button.dataset.notificationView;
+        const navButton = document.querySelector(`.ranch-nav [data-view="${target}"]`);
+        if (navButton) navButton.click();
+      });
+    });
+  };
+
+  const updateChecklist = health => {
+    const states = {
+      website: health?.website?.status === 'ONLINE',
+      database: health?.database?.status === 'READY',
+      media: health?.media?.status === 'READY',
+      access: health?.access?.status === 'READY',
+      payments: health?.payments?.status === 'READY'
+    };
+    Object.entries(states).forEach(([key, ready]) => {
+      const li = document.querySelector(`[data-check="${key}"]`);
+      if (!li) return;
+      li.classList.toggle('ready', Boolean(ready));
+      li.classList.toggle('pending', !ready);
+    });
+    const email = document.querySelector('[data-check="email"]');
+    if (email) email.classList.add('ready');
+
+    if (accessNode) {
+      const protectedState = health?.access?.status === 'READY';
+      accessNode.classList.toggle('protected', protectedState);
+      accessNode.classList.toggle('setup', !protectedState);
+      accessNode.innerHTML = `<span></span>${protectedState ? 'HQ protected by Cloudflare Access' : 'HQ protection still needs Cloudflare Access'}`;
+    }
+  };
+
+  async function collectNotifications() {
+    const items = [];
+    let health = null;
+
+    try {
+      const response = await fetch('/api/admin/health', {cache: 'no-store'});
+      health = await response.json();
+      updateChecklist(health);
+
+      if (health?.access?.status !== 'READY') {
+        items.push({kind:'is-warning', icon:'🔒', title:'Protect Boot Scootin’ HQ', message:'Cloudflare Access is not confirmed yet. Keep private customer information locked until protection is active.', action:'health'});
+      }
+      if (health?.payments?.status !== 'READY') {
+        items.push({kind:'is-setup', icon:'💳', title:'Payments are still in setup mode', message:'SumUp sandbox is not connected, so paid bookings and deposits remain disabled.', action:'health'});
+      }
+      if (health?.database?.status !== 'READY') {
+        items.push({kind:'is-warning', icon:'🗄️', title:'Database needs attention', message:'D1 is not reporting ready. Classes and private-event records may not load.', action:'health'});
+      }
+      if (health?.media?.status !== 'READY') {
+        items.push({kind:'is-setup', icon:'📸', title:'Media storage needs attention', message:'R2 is not reporting ready, so HQ uploads remain unavailable.', action:'media'});
+      }
+    } catch (error) {
+      items.push({kind:'is-warning', icon:'⚠️', title:'System check could not run', message:'HQ could not reach the health endpoint. The public website may still be available.', action:'health'});
+    }
+
+    try {
+      const response = await fetch('/api/admin/private-events', {cache:'no-store'});
+      if (response.ok) {
+        const data = await response.json();
+        const newItems = (data.items || []).filter(item => ['NEW','INQUIRY_RECEIVED','CHANGES_REQUESTED'].includes(String(item.status || '').toUpperCase()));
+        if (newItems.length) {
+          items.unshift({kind:'is-new', icon:'🎉', title:`${newItems.length} private-event item${newItems.length === 1 ? '' : 's'} need attention`, message:'Open the Private Events dashboard to review inquiries or requested changes.', action:'private-events'});
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const response = await fetch('/api/admin/classes', {cache:'no-store'});
+      if (response.ok) {
+        const classes = await response.json();
+        const upcoming = Array.isArray(classes) ? classes.filter(item => new Date(item.starts_at) > new Date() && item.status === 'open') : [];
+        if (!upcoming.length) {
+          items.push({kind:'is-setup', icon:'📅', title:'No upcoming classes are live', message:'Add or open a class so the public booking page has a date to display.', action:'classes'});
+        }
+      }
+    } catch (_) {}
+
+    renderNotifications(items);
+  }
+
+  document.querySelectorAll('[data-view-jump]').forEach(button => {
+    button.addEventListener('click', () => {
+      const navButton = document.querySelector(`.ranch-nav [data-view="${button.dataset.viewJump}"]`);
+      if (navButton) navButton.click();
+    });
+  });
+
+  if (refreshButton) refreshButton.addEventListener('click', collectNotifications);
+  window.addEventListener('load', collectNotifications);
+})();

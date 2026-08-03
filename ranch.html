@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=79">
+  <link rel="stylesheet" href="styles.css?v=80">
 </head>
 <body class="ranch-body">
   <div class="ranch-app">
@@ -37,7 +37,7 @@
           <p class="kicker red">Private management area</p>
           <h1 id="ranchTitle">HQ Home</h1>
         </div>
-        <div class="ranch-status"><span></span> Secure admin area</div>
+        <div class="ranch-status" id="ranchAccessStatus"><span></span> Checking HQ protection</div>
       </header>
 
       <div id="ranchNotice" class="ranch-notice">
@@ -55,6 +55,52 @@
           <div class="ranch-panel-head"><div><p class="kicker red">System health</p><h2>Free pilot status</h2><p>Live checks show which services are ready, in test mode or still need setup.</p></div><button class="button secondary compact" id="refreshHealthSummary">Run checks</button></div>
           <div class="hq-health-mini" id="hqHealthMini"><span class="health-dot checking"></span> Checking your setup…</div>
         </section>
+        
+        <section class="ranch-panel hq-command-centre">
+          <div class="ranch-panel-head">
+            <div>
+              <p class="kicker red">Command centre</p>
+              <h2>What needs your attention</h2>
+              <p>HQ gathers important setup tasks and recent activity in one place.</p>
+            </div>
+            <button class="button secondary compact" id="refreshNotifications" type="button">Refresh</button>
+          </div>
+          <div class="hq-notification-grid">
+            <div id="hqNotifications" class="hq-notification-list" aria-live="polite">
+              <article class="hq-notification is-loading">
+                <span>⏳</span>
+                <div><strong>Checking your platform…</strong><p>HQ is reviewing classes, bookings, events and service connections.</p></div>
+              </article>
+            </div>
+            <aside class="hq-launch-checklist">
+              <p class="kicker red">Launch checklist</p>
+              <h3>Platform foundations</h3>
+              <ul id="hqLaunchChecklist">
+                <li data-check="website"><span></span> Public website online</li>
+                <li data-check="database"><span></span> D1 database connected</li>
+                <li data-check="media"><span></span> R2 media connected</li>
+                <li data-check="email"><span class="manual-ready"></span> Cloudflare email routing configured</li>
+                <li data-check="access"><span></span> Cloudflare Access protecting HQ</li>
+                <li data-check="payments"><span></span> SumUp sandbox connected</li>
+              </ul>
+            </aside>
+          </div>
+        </section>
+
+        <section class="ranch-panel hq-quick-actions">
+          <div class="ranch-panel-head">
+            <div><p class="kicker red">Quick actions</p><h2>Run Boot Scootin’ from one place</h2></div>
+          </div>
+          <div class="hq-quick-action-grid">
+            <button type="button" data-open-class><span>＋</span><strong>Add a class</strong><small>Create a new public date</small></button>
+            <button type="button" data-view-jump="private-events"><span>🎉</span><strong>Private events</strong><small>Review inquiries and quotes</small></button>
+            <button type="button" data-view-jump="media"><span>📸</span><strong>Media manager</strong><small>Upload photos, video or PDFs</small></button>
+            <a href="member-hub.html" target="_blank" rel="noopener"><span>🤠</span><strong>Member Hub</strong><small>Preview the member experience</small></a>
+            <a href="bookings.html" target="_blank" rel="noopener"><span>👢</span><strong>Public bookings</strong><small>Check the customer journey</small></a>
+            <a href="mailto:hello@bootscootinlinedancing.co.uk"><span>✉️</span><strong>Business email</strong><small>Open general enquiries</small></a>
+          </div>
+        </section>
+
         <div class="ranch-grid-2">
           <section class="ranch-panel">
             <div class="ranch-panel-head"><div><p class="kicker red">Schedule</p><h2>Next classes</h2></div><button class="button compact" data-open-class>Add class</button></div>
@@ -219,6 +265,6 @@
       </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=76" defer></script>
+  <script src="ranch.js?v=80" defer></script>
 </body>
 </html>
