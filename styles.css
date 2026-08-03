@@ -5797,3 +5797,63 @@ body.menu-open{position:fixed!important;inset:0!important;width:100%!important;o
   -webkit-tap-highlight-color:transparent!important;
 }
 #nav[aria-hidden="true"]{display:block!important}
+
+
+/* VERSION 82 — DESKTOP MENU BUTTON FIX */
+.header .menu,
+#menuButton.menu{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:86px!important;
+  min-height:44px!important;
+  margin-left:auto!important;
+  padding:.65rem 1rem!important;
+  border:1px solid rgba(255,255,255,.5)!important;
+  border-radius:0!important;
+  background:rgba(10,6,6,.82)!important;
+  color:#fff!important;
+  font:700 .76rem/1 Oswald,sans-serif!important;
+  letter-spacing:.11em!important;
+  text-transform:uppercase!important;
+  cursor:pointer!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:relative!important;
+  z-index:120!important;
+  touch-action:manipulation!important;
+}
+.header .menu:hover,
+.header .menu:focus-visible{
+  border-color:#df444a!important;
+  background:#8f2026!important;
+  outline:none!important;
+}
+.header .menu[aria-expanded="true"]{
+  border-color:#df444a!important;
+  background:#8f2026!important;
+}
+@media(min-width:951px){
+  .header{
+    display:flex!important;
+    align-items:center!important;
+  }
+  .header .menu,
+  #menuButton.menu{
+    display:inline-flex!important;
+    margin-left:auto!important;
+    margin-right:.7rem!important;
+  }
+  .header>.button.compact{
+    display:inline-flex!important;
+  }
+}
+@media(max-width:950px){
+  .header .menu,
+  #menuButton.menu{
+    display:inline-flex!important;
+    min-width:70px!important;
+    margin-left:auto!important;
+    margin-right:0!important;
+  }
+}
