@@ -6292,3 +6292,75 @@ p,li,dd{
 @media(max-width:1100px){.operations-summary-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:780px){.operations-grid{grid-template-columns:1fr}.operations-summary-grid{grid-template-columns:1fr 1fr}.customer-admin-tools{align-items:stretch;flex-direction:column}.hq-customer-card{grid-template-columns:1fr}}
 @media print{.ranch-sidebar,.ranch-topbar,.ranch-notice,#printOperationsRegister{display:none!important}.ranch-main{margin:0!important;padding:0!important}.ranch-view[data-view-panel="operations"]{display:block!important}.operations-card:not(.operations-register){display:none!important}.operations-register{border:0!important}}
+
+
+/* V90.2.1 VERIFIED RANCH HOTFIX */
+.ranch-public-warning{
+  display:grid;
+  gap:.25rem;
+  border-left-color:#b23a40!important;
+  background:#f4dede!important;
+  color:#76272c!important;
+}
+.ranch-public-warning strong{font-size:1rem}
+.ranch-public-warning span{line-height:1.45}
+
+.ranch-menu-close{
+  display:none;
+  position:absolute;
+  top:.75rem;
+  right:.75rem;
+  width:44px;
+  height:44px;
+  border:1px solid #754044;
+  background:#1c0c0d;
+  color:#fff;
+  font-size:1.8rem;
+  line-height:1;
+  cursor:pointer;
+  z-index:2;
+}
+.ranch-menu-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:290;
+  background:rgba(0,0,0,.68);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s ease;
+}
+.ranch-menu-backdrop.open{
+  opacity:1;
+  pointer-events:auto;
+}
+body.ranch-menu-open{
+  overflow:hidden!important;
+  touch-action:none;
+}
+
+@media(max-width:980px){
+  .ranch-sidebar{
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding-top:4.5rem!important;
+    touch-action:pan-y!important;
+  }
+  .ranch-menu-close{display:grid;place-items:center}
+  .ranch-nav{
+    flex:0 0 auto!important;
+    margin-top:1rem!important;
+    padding-bottom:1rem!important;
+  }
+  .ranch-site-link{
+    margin-top:.4rem!important;
+    flex:0 0 auto!important;
+  }
+}
+
+@media(min-width:981px){
+  .ranch-menu-backdrop{display:none!important}
+  .ranch-sidebar{aria-hidden:false}
+}

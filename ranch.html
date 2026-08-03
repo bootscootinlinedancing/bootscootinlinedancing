@@ -6,14 +6,16 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=90.2-verified">
+  <link rel="stylesheet" href="styles.css?v=90.2.1-hotfix">
   <meta name="theme-color" content="#080606">
 </head>
 <body class="ranch-body">
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <div id="ranchToast" class="ranch-toast" role="status" aria-live="polite" hidden></div>
   <div class="ranch-app">
-    <aside class="ranch-sidebar" id="ranchSidebar">
+    <div class="ranch-menu-backdrop" id="ranchMenuBackdrop" hidden></div>
+    <aside class="ranch-sidebar" id="ranchSidebar" aria-hidden="true">
+      <button class="ranch-menu-close" id="ranchMenuClose" type="button" aria-label="Close HQ menu">×</button>
       <div class="ranch-brand">
         <img src="brand-logo-v60.webp" alt="Boot Scootin' Line Dancing">
         <div><span>Boot Scootin'</span><strong>HQ</strong></div>
@@ -37,17 +39,18 @@
 
     <main id="main-content" class="ranch-main">
       <header class="ranch-topbar">
-        <button class="ranch-menu-button" id="ranchMenuButton" aria-label="Open HQ menu">☰</button>
+        <button class="ranch-menu-button" id="ranchMenuButton" type="button" aria-label="Open HQ menu" aria-controls="ranchSidebar" aria-expanded="false">☰</button>
         <div>
           <p class="kicker red">Private management area</p>
           <h1 id="ranchTitle">HQ Home</h1>
         </div>
-        <div class="ranch-status verified-release" id="verifiedReleaseBadge"><span></span> V90.2 VERIFIED</div>
+        <div class="ranch-status verified-release" id="verifiedReleaseBadge"><span></span> V90.2.1 HOTFIX</div>
           <div class="ranch-status" id="ranchAccessStatus"><span></span> Checking HQ protection</div>
       </header>
 
-      <div id="ranchNotice" class="ranch-notice">
-        Free pilot mode: keep this area private and use test data only until database, media storage and SumUp sandbox checks are complete.
+      <div id="ranchNotice" class="ranch-notice ranch-public-warning">
+        <strong>⚠ HQ is currently publicly accessible.</strong>
+        <span>Cloudflare Access has not been configured yet. Do not store sensitive customer information here until login protection is enabled.</span>
       </div>
 
       <section class="ranch-view active" data-view-panel="overview">
@@ -447,6 +450,6 @@
       </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=90.2-verified" defer></script>
+  <script src="ranch.js?v=90.2.1-hotfix" defer></script>
 </body>
 </html>

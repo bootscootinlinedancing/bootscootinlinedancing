@@ -1,5 +1,19 @@
 # Changelog
 
+## [V90.2.1 RANCH HOTFIX] — 2026-08-03
+
+### Fixed
+- Replaced the obsolete `/api/admin/health?version=73` request with `/api/admin/system-health`.
+- Added a ten-second timeout and guaranteed final status rendering.
+- Added a mobile menu close button.
+- Added an outside-click backdrop.
+- Added Escape-key support.
+- Added body-scroll locking while the menu is open.
+- Made the sidebar independently scrollable on mobile.
+- Menu closes after selecting an HQ section and after Safari back/forward navigation.
+- Added an explicit warning that Ranch is publicly accessible until Cloudflare Access is configured.
+
+
 All notable changes to Boot Scootin’ Platform are recorded here.
 
 ## [V90.2 VERIFIED] — 2026-08-03

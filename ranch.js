@@ -9,9 +9,37 @@
     clearTimeout(toast.timer);toast.timer=setTimeout(()=>{node.hidden=true;},3200);
   }
   const panels=[...document.querySelectorAll('[data-view-panel]')],nav=[...document.querySelectorAll('.ranch-nav button:not([disabled])')];
-  function show(view){panels.forEach(p=>p.classList.toggle('active',p.dataset.viewPanel===view));nav.forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.getElementById('ranchTitle').textContent=nav.find(b=>b.dataset.view===view)?.textContent.trim()||'Boot Scootin’ HQ';document.getElementById('ranchSidebar').classList.remove('open');}
-  nav.forEach(b=>b.onclick=()=>show(b.dataset.view));
-  document.getElementById('ranchMenuButton').onclick=()=>document.getElementById('ranchSidebar').classList.toggle('open');
+  function show(view){panels.forEach(p=>p.classList.toggle('active',p.dataset.viewPanel===view));nav.forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.getElementById('ranchTitle').textContent=nav.find(b=>b.dataset.view===view)?.textContent.trim()||'Boot Scootin’ HQ';setRanchMenu(false);}
+  nav.forEach(b=>b.onclick=()=>{show(b.dataset.view);setRanchMenu(false);});
+  const ranchSidebar=document.getElementById('ranchSidebar');
+  const ranchMenuButton=document.getElementById('ranchMenuButton');
+  const ranchMenuClose=document.getElementById('ranchMenuClose');
+  const ranchMenuBackdrop=document.getElementById('ranchMenuBackdrop');
+
+  function setRanchMenu(open){
+    if(!ranchSidebar||!ranchMenuButton)return;
+    ranchSidebar.classList.toggle('open',open);
+    ranchSidebar.setAttribute('aria-hidden',String(!open));
+    ranchMenuButton.setAttribute('aria-expanded',String(open));
+    document.body.classList.toggle('ranch-menu-open',open);
+    if(ranchMenuBackdrop){
+      ranchMenuBackdrop.hidden=!open;
+      ranchMenuBackdrop.classList.toggle('open',open);
+    }
+    if(open){
+      ranchSidebar.scrollTop=0;
+      requestAnimationFrame(()=>ranchMenuClose?.focus({preventScroll:true}));
+    }else{
+      requestAnimationFrame(()=>ranchMenuButton.focus({preventScroll:true}));
+    }
+  }
+
+  ranchMenuButton?.addEventListener('click',()=>setRanchMenu(!ranchSidebar.classList.contains('open')));
+  ranchMenuClose?.addEventListener('click',()=>setRanchMenu(false));
+  ranchMenuBackdrop?.addEventListener('click',()=>setRanchMenu(false));
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&ranchSidebar?.classList.contains('open'))setRanchMenu(false);
+  });
 
 
   const healthLabels={
@@ -25,7 +53,45 @@
   };
   function healthCard(key,item){const [title,desc]=healthLabels[key]||[key,''];const status=item?.status||'unknown';return `<article class="hq-health-card ${esc(status)}"><span class="health-dot ${esc(status)}"></span><div><strong>${esc(title)}</strong><small>${esc(item?.message||desc)}</small></div><b>${esc(status.replaceAll('_',' '))}</b></article>`;}
   function renderHealth(){const grid=document.getElementById('hqHealthGrid'),mini=document.getElementById('hqHealthMini'),h=state.health;if(!h)return;const keys=['website','access','database','media','payments','email','backups'];if(grid)grid.innerHTML=keys.map(k=>healthCard(k,h.services?.[k])).join('');const ready=keys.filter(k=>['ready','online','protected'].includes(h.services?.[k]?.status)).length;const attention=keys.length-ready;if(mini)mini.innerHTML=`<span class="health-dot ${attention?'attention':'ready'}"></span><strong>${ready} ready</strong><span> · ${attention} ${attention===1?'item needs':'items need'} attention</span><a href="#" data-open-health>View details</a>`;document.querySelectorAll('[data-open-health]').forEach(a=>a.onclick=e=>{e.preventDefault();show('health');});}
-  async function loadHealth(){const grid=document.getElementById('hqHealthGrid'),mini=document.getElementById('hqHealthMini');if(grid)grid.innerHTML='<article class="hq-health-card"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>Please wait.</small></div></article>';if(mini)mini.innerHTML='<span class="health-dot checking"></span> Checking your setup…';try{state.health=await jsonFetch('/api/admin/health?version=73',{cache:'no-store'});renderHealth();}catch(e){state.health={services:{website:{status:'online',message:'This page loaded successfully.'},access:{status:'attention',message:e.message},database:{status:'attention',message:'Could not run the protected health check.'},media:{status:'attention',message:'Could not run the protected health check.'},payments:{status:'setup',message:'Not connected to SumUp sandbox yet.'},email:{status:'setup',message:'Not connected yet.'},backups:{status:'setup',message:'Export and restore test not completed yet.'}}};renderHealth();}}
+  async function loadHealth(){
+    const grid=document.getElementById('hqHealthGrid');
+    const mini=document.getElementById('hqHealthMini');
+    if(grid)grid.innerHTML='<article class="hq-health-card checking"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>This check will stop automatically after ten seconds.</small></div></article>';
+    if(mini)mini.innerHTML='<span class="health-dot checking"></span> Checking your setup…';
+
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),10000);
+
+    try{
+      const data=await jsonFetch('/api/admin/system-health',{cache:'no-store',signal:controller.signal});
+      state.health={
+        services:{
+          website:{status:data.website?.status==='ready'?'online':data.website?.status||'attention',message:data.website?.detail||data.website?.label||'Website check complete.'},
+          database:{status:data.database?.status==='ready'?'online':data.database?.status||'attention',message:data.database?.detail||data.database?.label||'Database check complete.'},
+          media:{status:data.media?.status==='ready'?'online':data.media?.status||'attention',message:data.media?.detail||data.media?.label||'Media check complete.'},
+          email:{status:data.email?.status==='info'?'setup':data.email?.status||'setup',message:data.email?.detail||data.email?.label||'Email routing is managed in Cloudflare.'},
+          access:{status:data.access?.status==='ready'?'online':'attention',message:data.access?.detail||data.access?.label||'Cloudflare Access is not configured yet.'},
+          payments:{status:data.payments?.status==='ready'?'online':'setup',message:data.payments?.detail||data.payments?.label||'SumUp sandbox is not connected yet.'},
+          backups:{status:'setup',message:'Export and restore test not completed yet.'}
+        }
+      };
+    }catch(error){
+      state.health={
+        services:{
+          website:{status:'online',message:'This HQ page loaded successfully.'},
+          database:{status:'attention',message:'Live D1 check was unavailable.'},
+          media:{status:'attention',message:'Live R2 check was unavailable.'},
+          email:{status:'setup',message:'Email routing must be reviewed in Cloudflare.'},
+          access:{status:'attention',message:error.name==='AbortError'?'Health check timed out safely.':'Cloudflare Access is not configured yet.'},
+          payments:{status:'setup',message:'SumUp sandbox is not connected yet.'},
+          backups:{status:'setup',message:'Export and restore test not completed yet.'}
+        }
+      };
+    }finally{
+      clearTimeout(timer);
+      renderHealth();
+    }
+  }
 
   async function jsonFetch(url,options){const r=await fetch(url,{headers:{Accept:'application/json','Content-Type':'application/json',...(options?.headers||{})},...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'The Ranch backend is not configured yet.');return d;}
   async function loadClasses(){try{state.classes=await jsonFetch('/api/admin/classes');document.getElementById('ranchNotice').hidden=true;}catch(e){state.classes=[];document.getElementById('ranchNotice').hidden=false;document.getElementById('ranchNotice').textContent=e.message+' The dashboard is showing setup mode until Cloudflare D1 and Access are connected.';}renderClasses();renderOverview();}
@@ -256,6 +322,7 @@
     link.click();URL.revokeObjectURL(link.href);
   });
 
+  window.addEventListener('pageshow',()=>setRanchMenu(false));
   loadOperations();
   loadCustomers();
 

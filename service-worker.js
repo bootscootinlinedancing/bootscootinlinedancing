@@ -1,7 +1,11 @@
-const CACHE_NAME = "boot-scootin-v90-2-verified";
+const CACHE_NAME = "boot-scootin-v90-2-1-hotfix";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key)))).then(() => self.clients.claim()));
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
+  );
 });
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
