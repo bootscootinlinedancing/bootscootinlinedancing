@@ -182,8 +182,8 @@
   }
   async function loadHealth(){
     const box=$('#ranch91HealthSummary'),button=$('#ranch91RunChecks');
-    box.innerHTML='<div class="ranch91-loading">Checking services…</div>';
-    button.disabled=true;button.textContent='Checking…';
+    box.innerHTML=setupPanel('Checking services','Running diagnostic checks…');
+    button.disabled=true;button.textContent='Checking…';console.info('[HQ] Running health checks');
     try{
       const h=await jsonFetch('/api/admin/system-health',{cache:'no-store'});
       box.innerHTML=[
@@ -192,7 +192,7 @@
       ].join('');
     }catch(error){
       box.innerHTML=setupPanel('Live check unavailable',error.message);
-    }finally{button.disabled=false;button.textContent='Run checks';}
+    }finally{console.info('[HQ] Health checks complete');button.disabled=false;button.textContent='Run checks';}
   }
 
   // Classes
@@ -207,7 +207,7 @@
   }
   async function loadClasses(){
     const box=$('#ranchClasses');if(!box)return;
-    box.innerHTML='<div class="ranch91-loading">Loading classes…</div>';
+    box.innerHTML=emptyPanel('Loading classes…');
     if(!state.bootstrap?.configured.database){renderClasses();return;}
     try{
       state.classes=await jsonFetch('/api/admin/classes',{cache:'no-store'});
