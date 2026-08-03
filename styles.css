@@ -5857,3 +5857,36 @@ body.menu-open{position:fixed!important;inset:0!important;width:100%!important;o
     margin-right:0!important;
   }
 }
+
+
+/* VERSION 83 — LIVE CLASS MANAGER */
+.class-manager-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin-bottom:1rem}
+.class-manager-summary article{padding:.85rem 1rem;border:1px solid #c8ab88;background:#f3e4cf}
+.class-manager-summary span,.class-manager-summary strong{display:block}
+.class-manager-summary span{color:#70594e;font:600 .68rem Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em}
+.class-manager-summary strong{margin-top:.3rem;color:#8e2329;font:700 1.55rem/1 Oswald,sans-serif}
+.class-manager-row>div:first-child em{display:block;margin-top:.35rem;color:#755f54;font-size:.72rem;font-style:normal}
+.class-manager-row>span:nth-child(3) b,.class-manager-row>span:nth-child(3) small{display:block}
+.class-manager-row>span:nth-child(3) small{margin-top:.2rem;color:#6f584e;font-size:.68rem}
+.class-manager-actions{display:flex;flex-wrap:wrap;gap:.35rem}
+.class-manager-actions button{padding:.42rem .55rem}
+.class-manager-actions button.danger{border-color:#a33a3f;color:#8f2026}
+.class-dialog-intro{margin:-.3rem 0 1rem;color:#6b554b}
+.class-default-info{padding:1rem;border:1px solid #c8ae8d;background:#f4e6d2}
+.class-default-info strong{font-family:Oswald,sans-serif}
+.class-default-info ul{margin:.65rem 0 0;padding-left:1.2rem}
+.class-default-info li{margin:.35rem 0;color:#654f45;font-size:.78rem}
+.class-publish-explainer{display:flex;gap:.7rem;align-items:flex-start;margin:1rem 0;padding:.85rem 1rem;border-left:4px solid #a8783e;background:#f3e5cf}
+.class-publish-explainer>span{width:12px;height:12px;flex:0 0 auto;margin-top:.15rem;border-radius:50%;background:#bd8743}
+.class-publish-explainer p{margin:0;color:#604a41;font-size:.78rem}
+.class-publish-explainer.open{border-color:#328755;background:#dfeee3}.class-publish-explainer.open>span{background:#31945b}
+.class-publish-explainer.closed{border-color:#7a674f}.class-publish-explainer.closed>span{background:#806b52}
+.class-publish-explainer.cancelled{border-color:#a0343a;background:#f2dede}.class-publish-explainer.cancelled>span{background:#aa343a}
+.dialog-action-row{display:flex;flex-wrap:wrap;gap:.65rem}
+.ranch-class-dialog form{max-width:860px}
+@media(max-width:780px){
+  .class-manager-summary{grid-template-columns:1fr 1fr}
+  .class-manager-head{display:none}
+  .class-manager-row{grid-template-columns:1fr!important}
+  .class-manager-row>span,.class-manager-row>div{width:100%}
+}

@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=82">
+  <link rel="stylesheet" href="styles.css?v=83">
 </head>
 <body class="ranch-body">
   <div class="ranch-app">
@@ -123,6 +123,12 @@
             <select id="ranchClassFilter" aria-label="Filter classes"><option value="upcoming">Upcoming</option><option value="all">All classes</option><option value="draft">Drafts</option><option value="closed">Closed</option></select>
             <button class="button secondary compact" id="refreshRanch">Refresh</button>
           </div>
+          <div id="classManagerSummary" class="class-manager-summary">
+            <article><span>Live</span><strong id="classLiveCount">—</strong></article>
+            <article><span>Drafts</span><strong id="classDraftCount">—</strong></article>
+            <article><span>Booked places</span><strong id="classBookedCount">—</strong></article>
+            <article><span>Waiting</span><strong id="classWaitingCount">—</strong></article>
+          </div>
           <div id="ranchClasses" class="ranch-class-table">Loading…</div>
         </div>
       </section>
@@ -229,26 +235,95 @@
     </main>
   </div>
 
-  <dialog class="ranch-dialog" id="classDialog">
+  <dialog class="ranch-dialog ranch-class-dialog" id="classDialog">
     <form id="classForm" method="dialog">
       <button type="button" class="dialog-close" id="closeClassDialog" aria-label="Close">×</button>
-      <p class="kicker red">Class manager</p>
+      <p class="kicker red">Live class manager</p>
       <h2 id="classDialogTitle">Add a class</h2>
+      <p class="class-dialog-intro">Create the class once in HQ and it will appear on the public booking page when its status is set to <strong>Open for booking</strong>.</p>
       <input type="hidden" name="id" id="ranchClassId">
+
       <div class="ranch-form-grid">
-        <label>Class title<input name="title" required placeholder="Beginner Line Dancing"></label>
-        <label>Venue<select name="venue" id="ranchVenue" required><option value="">Choose venue</option><option value="Edgbaston Community Centre">Edgbaston Community Centre</option><option value="Low Places">Low Places</option><option value="Custom venue">Custom venue</option></select></label>
-        <label class="wide">Full location<input name="location" id="ranchLocation" required placeholder="Birmingham"></label>
-        <label>Starts<input name="starts_at" type="datetime-local" required></label>
-        <label>Ends<input name="ends_at" type="datetime-local"></label>
-        <label>Price per person (£)<input name="price" type="number" min="0" step="0.01" value="6.00" required></label>
-        <label>Capacity<input name="capacity" id="ranchCapacity" type="number" min="1" max="500" value="20" required><small id="capacityHint">ECC defaults to 20; Low Places defaults to 50.</small></label>
-        <label>Status<select name="status"><option value="draft">Draft</option><option value="open">Open for booking</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label>
-        <label>Level<select name="level"><option>Beginner friendly</option><option>Improver</option><option>All levels</option><option>Private event</option></select></label>
-        <label class="wide">Customer notes<textarea name="public_notes" rows="4" placeholder="No partner needed. Please arrive 10 minutes early."></textarea></label>
+        <label>Class title
+          <input name="title" required value="Beginner Line Dancing" placeholder="Beginner Line Dancing">
+        </label>
+
+        <label>Venue
+          <select name="venue" id="ranchVenue" required>
+            <option value="">Choose venue</option>
+            <option value="Edgbaston Community Centre">Edgbaston Community Centre</option>
+            <option value="Low Places">Low Places</option>
+            <option value="Custom venue">Custom venue</option>
+          </select>
+        </label>
+
+        <label class="wide">Full location
+          <input name="location" id="ranchLocation" required placeholder="Venue address or area">
+          <small id="locationHint">The saved venue address fills automatically and can still be edited.</small>
+        </label>
+
+        <label>Starts
+          <input name="starts_at" id="ranchStartsAt" type="datetime-local" required>
+        </label>
+
+        <label>Ends
+          <input name="ends_at" id="ranchEndsAt" type="datetime-local">
+          <small>Defaults to one hour after the start time.</small>
+        </label>
+
+        <label>Price per person (£)
+          <input name="price" type="number" min="0" step="0.01" value="6.00" required>
+        </label>
+
+        <label>Capacity
+          <input name="capacity" id="ranchCapacity" type="number" min="1" max="500" value="20" required>
+          <small id="capacityHint">ECC defaults to 20; Low Places defaults to 50.</small>
+        </label>
+
+        <label>Status
+          <select name="status" id="ranchClassStatus">
+            <option value="draft">Draft — hidden from customers</option>
+            <option value="open">Open for booking — live</option>
+            <option value="closed">Closed — visible but unavailable</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </label>
+
+        <label>Level
+          <select name="level">
+            <option>Beginner friendly</option>
+            <option>Improver</option>
+            <option>All levels</option>
+            <option>Workshop</option>
+          </select>
+        </label>
+
+        <div class="wide class-default-info">
+          <strong>Standard information shown on every class</strong>
+          <ul>
+            <li>Wear whatever feels comfortable — cowboy boots or trainers are both absolutely fine.</li>
+            <li>Bring plenty of water because we will work up a sweat.</li>
+            <li>No partner is needed and complete beginners are welcome.</li>
+            <li>Please arrive around 10 minutes early.</li>
+          </ul>
+        </div>
+
+        <label class="wide">Additional note for this class <em>(optional)</em>
+          <textarea name="public_notes" rows="4" placeholder="For example: Christmas jumpers welcome, parking entrance has changed, or class finishes 15 minutes early."></textarea>
+          <small>Leave this blank for a normal class. The standard information above will still be shown.</small>
+        </label>
       </div>
+
+      <div class="class-publish-explainer" id="classPublishExplainer">
+        <span></span>
+        <p><strong>Draft:</strong> this class will be saved in HQ but hidden from the public booking page.</p>
+      </div>
+
       <p id="classFormMessage" class="form-message" aria-live="polite"></p>
-      <button class="button booking-submit" type="submit">Save class</button>
+      <div class="dialog-action-row">
+        <button class="button booking-submit" type="submit">Save class</button>
+        <button class="button secondary" id="saveAndDuplicate" type="button">Save & duplicate</button>
+      </div>
     </form>
   </dialog>
 
@@ -265,6 +340,6 @@
       </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=80" defer></script>
+  <script src="ranch.js?v=83" defer></script>
 </body>
 </html>

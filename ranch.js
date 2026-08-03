@@ -29,14 +29,52 @@
   async function checkMediaBackend(){const box=document.getElementById('mediaBackendStatus');if(!box)return;box.className='hq-backend-status checking';box.innerHTML='<strong>Checking media connection…</strong><span>Checking HQ login and Cloudflare R2 storage.</span>';try{const r=await fetch('/api/admin/media-status?version=73',{cache:'no-store',headers:{Accept:'application/json'}});const d=await r.json().catch(()=>({}));const checks=d.checks||{};const rows=Object.entries(checks).map(([k,v])=>`<li><b>${v.ready?'✓':'×'}</b><span><strong>${esc(k.replace(/([A-Z])/g,' $1'))}</strong> — ${esc(v.message||'')}</span></li>`).join('');box.className=`hq-backend-status ${d.ready?'ready':'error'}`;box.innerHTML=`<strong>${d.ready?'Media Manager is connected':'Media Manager needs setup'}</strong><span>${esc(d.error||'Uploads can now be stored securely in Cloudflare R2.')}</span><ul class="media-check-list">${rows}</ul>`;return d.ready;}catch(e){box.className='hq-backend-status error';box.innerHTML=`<strong>Connection check failed</strong><span>${esc(e.message)}</span>`;return false;}}
   function renderMedia(){const box=document.getElementById('ranchMedia');if(!box)return;box.innerHTML=state.media.length?state.media.map(m=>`<article class="ranch-media-item"><div class="ranch-media-preview">${m.media_type==='image'?`<img src="/media/${encodeURIComponent(m.storage_key)}" alt="">`:m.media_type==='video'?'<span>VIDEO</span>':m.media_type==='pdf'?'<span>PDF</span>':'<span>FILE</span>'}</div><div class="ranch-media-copy"><strong>${esc(m.title)}</strong><small>${esc(m.original_name)} · ${esc(m.placement||'library')}</small><code>/media/${esc(m.storage_key)}</code></div><div class="ranch-media-actions"><button data-copy-media="${esc(m.storage_key)}">Copy link</button><button data-delete-media="${esc(m.id)}">Delete</button></div></article>`).join(''):'<div class="ranch-empty">No media uploaded yet.</div>';}
   function renderOverview(){const open=state.classes.filter(c=>c.status==='open'&&new Date(c.starts_at)>=new Date());const sold=state.classes.reduce((n,c)=>n+Number(c.sold||0),0);const revenue=state.classes.reduce((n,c)=>n+(Number(c.sold||0)*Number(c.price_pence||0)),0);const stats=document.getElementById('ranchStats').children;stats[0].querySelector('strong').textContent=open.length;stats[1].querySelector('strong').textContent=sold;stats[2].querySelector('strong').textContent=money(revenue);const up=document.getElementById('ranchUpcoming');up.innerHTML=open.length?open.slice(0,5).map(c=>`<article><div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div><b>${Math.max(0,c.capacity-c.sold)} left</b></article>`).join(''):'<div class="ranch-empty">No upcoming classes yet. Add your first class.</div>';}
-  function renderClasses(){const filter=document.getElementById('ranchClassFilter').value;let rows=[...state.classes];if(filter==='upcoming')rows=rows.filter(c=>new Date(c.starts_at)>=new Date()&&!['cancelled'].includes(c.status));else if(filter!=='all')rows=rows.filter(c=>c.status===filter);const box=document.getElementById('ranchClasses');box.innerHTML=rows.length?`<div class="ranch-table-head"><span>Class</span><span>Date</span><span>Capacity</span><span>Status</span><span></span></div>${rows.map(c=>`<article class="ranch-class-row"><div><strong>${esc(c.title)}</strong><small>${esc(c.venue)} · ${esc(c.location)}</small></div><span>${fmt(c.starts_at)}</span><span>${Number(c.sold||0)} / ${c.capacity}</span><span><i class="status-pill ${esc(c.status)}">${esc(c.status)}</i></span><div class="ranch-actions"><button data-edit="${esc(c.id)}">Edit</button><button data-delete="${esc(c.id)}">Delete</button></div></article>`).join('')}`:'<div class="ranch-empty">No classes in this view.</div>';}
-  function renderBookings(){const d=state.bookings,box=document.getElementById('ranchBookings');const stats=document.getElementById('ranchStats')?.children;if(stats&&d?.stats){stats[1].querySelector('strong').textContent=d.stats.guests;}
-    box.innerHTML=d?.classes?.length?d.classes.map(c=>`<section class="register"><h3>${esc(c.title)}</h3><p>${fmt(c.starts_at)} · ${esc(c.venue)}</p><div class="ranch-register-table"><table><thead><tr><th>Name</th><th>Email</th><th>Places</th><th>Reference</th></tr></thead><tbody>${c.bookings.map(b=>`<tr><td>${esc(b.name)}</td><td>${esc(b.email)}</td><td>${b.quantity}</td><td>${esc(b.reference)}</td></tr>`).join('')}</tbody></table></div></section>`).join(''):'<div class="ranch-empty">No paid bookings yet.</div>';}
+  function renderClasses(){
+    const filter=document.getElementById('ranchClassFilter').value;
+    let rows=[...state.classes];
 
-  const dialog=document.getElementById('classDialog'),form=document.getElementById('classForm');
-  const venueDefaults={
-    'Edgbaston Community Centre':{capacity:20,location:'Edgbaston Community Centre, Birmingham'},
-    'Low Places':{capacity:50,location:'Low Places, Birmingham'}
+    if(filter==='upcoming'){
+      rows=rows.filter(c=>new Date(c.starts_at)>=new Date()&&c.status!=='cancelled');
+    }else if(filter!=='all'){
+      rows=rows.filter(c=>c.status===filter);
+    }
+
+    const live=state.classes.filter(c=>c.status==='open'&&new Date(c.starts_at)>=new Date()).length;
+    const drafts=state.classes.filter(c=>c.status==='draft').length;
+    const booked=state.classes.reduce((sum,c)=>sum+Number(c.sold||0),0);
+    const waiting=state.classes.reduce((sum,c)=>sum+Number(c.waiting||0),0);
+    const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
+    set('classLiveCount',live);set('classDraftCount',drafts);set('classBookedCount',booked);set('classWaitingCount',waiting);
+
+    const box=document.getElementById('ranchClasses');
+    box.innerHTML=rows.length?`
+      <div class="ranch-table-head class-manager-head">
+        <span>Class</span><span>Date</span><span>Places</span><span>Status</span><span>Actions</span>
+      </div>
+      ${rows.map(c=>{
+        const left=Math.max(0,Number(c.capacity)-Number(c.sold||0));
+        const nextStatus=c.status==='cancelled'?'open':c.status==='open'?'closed':'open';
+        const statusLabel=c.status==='cancelled'?'Reopen':c.status==='open'?'Close':'Publish';
+        return `<article class="ranch-class-row class-manager-row">
+          <div>
+            <strong>${esc(c.title)}</strong>
+            <small>${esc(c.venue)} · ${esc(c.level||'Beginner friendly')}</small>
+            ${c.public_notes?`<em>${esc(c.public_notes)}</em>`:''}
+          </div>
+          <span>${fmt(c.starts_at)}</span>
+          <span>
+            <b>${Number(c.sold||0)} / ${Number(c.capacity)}</b>
+            <small>${left} left${Number(c.waiting||0)?` · ${Number(c.waiting)} waiting`:''}</small>
+          </span>
+          <span><i class="status-pill ${esc(c.status)}">${esc(c.status)}</i></span>
+          <div class="ranch-actions class-manager-actions">
+            <button data-edit="${esc(c.id)}">Edit</button>
+            <button data-duplicate="${esc(c.id)}">Duplicate</button>
+            <button data-status-id="${esc(c.id)}" data-status-value="${nextStatus}">${statusLabel}</button>
+            <button class="danger" data-delete="${esc(c.id)}">Delete</button>
+          </div>
+        </article>`;
+      }).join('')}`:'<div class="ranch-empty">No classes in this view.</div>';
   };
   const venueSelect=document.getElementById('ranchVenue');
   venueSelect?.addEventListener('change',()=>{const d=venueDefaults[venueSelect.value];if(!d)return;document.getElementById('ranchCapacity').value=d.capacity;document.getElementById('ranchLocation').value=d.location;});

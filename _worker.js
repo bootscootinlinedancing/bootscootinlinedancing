@@ -395,13 +395,112 @@ async function privateEventRespond(request, env) {
 }
 
 async function adminClasses(request, env) {
-  const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
-  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes ORDER BY starts_at`).all();return json(results);}
-  const b=await request.json().catch(()=>null); if(!b)return json({error:'Invalid class request.'},400);
-  if(request.method==='DELETE'){await env.BOOKINGS_DB.prepare(`DELETE FROM classes WHERE id=?`).bind(clean(b.id,120)).run();return json({ok:true});}
-  const id=clean(b.id,120)||crypto.randomUUID(); const vals=[clean(b.title,160),clean(b.venue,160),clean(b.location,240),new Date(b.starts_at).toISOString(),b.ends_at?new Date(b.ends_at).toISOString():null,Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),clean(b.status,20)||'draft',clean(b.level,80)||'Beginner friendly',clean(b.public_notes,600)];
-  if(request.method==='POST'){await env.BOOKINGS_DB.prepare(`INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(id,...vals).run();return json({ok:true,id},201);}
-  if(request.method==='PATCH'){await env.BOOKINGS_DB.prepare(`UPDATE classes SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(...vals,id).run();return json({ok:true,id});}
+  const check=requireAccessAdmin(request,env);
+  if(check.response)return check.response;
+  await ensureBookingSchema(env);
+
+  if(request.method==='GET'){
+    const {results}=await env.BOOKINGS_DB.prepare(`
+      SELECT
+        c.*,
+        COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
+        COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count
+      FROM classes c
+      ORDER BY c.starts_at
+    `).all();
+    return json(results);
+  }
+
+  const b=await request.json().catch(()=>null);
+  if(!b)return json({error:'Invalid class request.'},400);
+
+  const action=clean(b.action,30);
+
+  if(request.method==='POST' && action==='DUPLICATE'){
+    const original=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(clean(b.id,120)).first();
+    if(!original)return json({error:'The class could not be found.'},404);
+    const id=crypto.randomUUID();
+    const start=new Date(original.starts_at);
+    const end=original.ends_at?new Date(original.ends_at):null;
+    start.setDate(start.getDate()+7);
+    if(end)end.setDate(end.getDate()+7);
+    await env.BOOKINGS_DB.prepare(`
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(
+      id,original.title,original.venue,original.location,start.toISOString(),end?end.toISOString():null,
+      original.price_pence,original.capacity,'draft',original.level,original.public_notes
+    ).run();
+    return json({ok:true,id},201);
+  }
+
+  if(request.method==='PATCH' && action==='STATUS'){
+    const id=clean(b.id,120);
+    const status=clean(b.status,20);
+    if(!['draft','open','closed','cancelled'].includes(status))return json({error:'Invalid class status.'},400);
+    await env.BOOKINGS_DB.prepare(`UPDATE classes SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,id).run();
+    return json({ok:true,id,status});
+  }
+
+  if(request.method==='DELETE'){
+    const id=clean(b.id,120);
+    const linked=await env.BOOKINGS_DB.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM bookings WHERE class_id=?) +
+        (SELECT COUNT(*) FROM waiting_list WHERE class_id=?) AS linked
+    `).bind(id,id).first();
+    if(Number(linked?.linked||0)>0){
+      return json({error:'This class already has bookings or waiting-list entries. Cancel it instead of deleting it.'},409);
+    }
+    await env.BOOKINGS_DB.prepare(`DELETE FROM classes WHERE id=?`).bind(id).run();
+    return json({ok:true});
+  }
+
+  const id=clean(b.id,120)||crypto.randomUUID();
+  const title=clean(b.title,160);
+  const venue=clean(b.venue,160);
+  const location=clean(b.location,240);
+  const starts=new Date(b.starts_at);
+  const ends=b.ends_at?new Date(b.ends_at):null;
+
+  if(!title || !venue || !location || Number.isNaN(starts.getTime())){
+    return json({error:'Please complete the class title, venue, location and start time.'},400);
+  }
+  if(ends && (Number.isNaN(ends.getTime()) || ends<=starts)){
+    return json({error:'The finish time must be after the start time.'},400);
+  }
+
+  const status=clean(b.status,20)||'draft';
+  if(!['draft','open','closed','cancelled'].includes(status))return json({error:'Invalid class status.'},400);
+
+  const vals=[
+    title,venue,location,starts.toISOString(),ends?ends.toISOString():null,
+    Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),
+    status,clean(b.level,80)||'Beginner friendly',clean(b.public_notes,600)
+  ];
+
+  if(request.method==='POST'){
+    await env.BOOKINGS_DB.prepare(`
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(id,...vals).run();
+    return json({ok:true,id},201);
+  }
+
+  if(request.method==='PATCH'){
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT sold FROM classes WHERE id=?`).bind(id).first();
+    if(!existing)return json({error:'The class could not be found.'},404);
+    if(Number(b.capacity)<Number(existing.sold||0)){
+      return json({error:`Capacity cannot be lower than the ${existing.sold} places already booked.`},409);
+    }
+    await env.BOOKINGS_DB.prepare(`
+      UPDATE classes
+      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).bind(...vals,id).run();
+    return json({ok:true,id});
+  }
+
   return json({error:'Method not allowed.'},405);
 }
 
