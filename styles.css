@@ -6254,5 +6254,5 @@ p,li,dd{
   .hq-customer-card{grid-template-columns:1fr}
 }
 
-/* V90 */
-.hq-health-row.ready{background:#eef8f0}.hq-health-row.setup{background:#fff8e6}.hq-health-row.error{background:#fdeeee}
+/* V90.1 HQ Stability */
+.health-ready{border-left:4px solid #2e8b57}.health-warning{border-left:4px solid #d39b00}.health-error{border-left:4px solid #b22222}.health-loading{opacity:.7}

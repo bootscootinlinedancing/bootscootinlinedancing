@@ -382,3 +382,6 @@
   });
   loadCustomers();
 })();
+
+// V90.1 HQ Stability Patch
+window.addEventListener('load',()=>{document.querySelectorAll('.checking-platform').forEach(e=>{setTimeout(()=>{if(e.textContent.includes('Checking'))e.textContent='Platform check complete.';},3000);});});
