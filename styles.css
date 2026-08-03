@@ -6507,3 +6507,18 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
   .ranch92-connection b{grid-column:2}
   .ranch-class-row,.ranch-booking-row{align-items:start;flex-direction:column}
 }
+
+
+/* V92.2 — BACKEND PERFORMANCE */
+#ranch92LastUpdated{
+  display:block;
+  margin-top:.2rem;
+  font-size:.68rem;
+  opacity:.8;
+}
+.ranch91-modebar{
+  min-height:74px;
+}
+.ranch92-state.setup{
+  animation:none!important;
+}

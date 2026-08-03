@@ -7,7 +7,10 @@
     customers:null,
     operations:null,
     media:[],
-    privateEvents:[]
+    privateEvents:[],
+    bootstrapPromise:null,
+    bootstrapLoadedAt:0,
+    bootstrapError:null
   };
 
   const $=selector=>document.querySelector(selector);
@@ -20,6 +23,44 @@
     if(Number.isNaN(d.getTime()))return String(value);
     return new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(d);
   };
+
+
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-2';
+  const BOOTSTRAP_FRESH_MS=30000;
+
+  function saveBootstrapCache(data){
+    try{
+      localStorage.setItem(BOOTSTRAP_CACHE_KEY,JSON.stringify({
+        savedAt:Date.now(),
+        data
+      }));
+    }catch(_){}
+  }
+
+  function readBootstrapCache(){
+    try{
+      const cached=JSON.parse(localStorage.getItem(BOOTSTRAP_CACHE_KEY)||'null');
+      if(!cached?.data)return null;
+      return cached;
+    }catch(_){return null;}
+  }
+
+  function updateLastUpdated(source='live'){
+    const node=document.getElementById('ranch92LastUpdated');
+    if(!node)return;
+    const time=state.bootstrapLoadedAt?new Date(state.bootstrapLoadedAt):new Date();
+    node.textContent=`${source==='cache'?'Showing saved data':'Last updated'} ${time.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+  }
+
+  function setModeLoading(show){
+    const title=document.getElementById('ranch92ModeTitle');
+    const detail=document.getElementById('ranch92ModeDetail');
+    if(!title||!detail)return;
+    if(show && !state.bootstrap){
+      title.textContent='Checking backend configuration…';
+      detail.textContent='Please wait.';
+    }
+  }
 
   function toast(message,kind='success'){
     const node=$('#ranch91Toast');if(!node)return;
@@ -90,7 +131,7 @@
     if(name==='classes')loadClasses();
     if(name==='bookings')loadBookings();
     if(name==='customers')loadCustomers();
-    if(name==='operations')loadOperations();
+    if(name==='operations')renderOperationsFromBootstrap();
     if(name==='private-events')loadPrivateEvents();
     if(name==='media')loadMedia();
   }
@@ -162,17 +203,61 @@
     $$('#ranch91Attention [data-jump]').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.jump)));
   }
 
-  async function loadBootstrap(showToast=False){
-    try{
-      state.bootstrap=await jsonFetch('/api/admin/bootstrap',{cache:'no-store'});
+  async function loadBootstrap(showToast=false,{force=false,silent=false}={}){
+    const age=Date.now()-state.bootstrapLoadedAt;
+    if(!force && state.bootstrap && age<BOOTSTRAP_FRESH_MS){
       renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
-      if(showToast)toast('Backend status refreshed.');
-    }catch(error){
-      $('#ranch92ModeTitle').textContent='Backend check unavailable';
-      $('#ranch92ModeDetail').textContent=error.message;
-      $('#ranch91Attention').innerHTML=setupPanel('Backend endpoint unavailable','Confirm the latest _worker.js was deployed with the website.');
-      if(showToast)toast(error.message,'error');
+      return state.bootstrap;
     }
+
+    if(state.bootstrapPromise)return state.bootstrapPromise;
+
+    if(!state.bootstrap){
+      const cached=readBootstrapCache();
+      if(cached?.data){
+        state.bootstrap=cached.data;
+        state.bootstrapLoadedAt=cached.savedAt||Date.now();
+        renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
+        updateLastUpdated('cache');
+      }
+    }
+
+    if(!silent)setModeLoading(true);
+
+    state.bootstrapPromise=(async()=>{
+      try{
+        const data=await jsonFetch('/api/admin/bootstrap',{cache:'no-store'},6000);
+        state.bootstrap=data;
+        state.bootstrapLoadedAt=Date.now();
+        state.bootstrapError=null;
+        saveBootstrapCache(data);
+        renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
+        updateLastUpdated('live');
+        if(showToast)toast('Backend status refreshed.');
+        return data;
+      }catch(error){
+        state.bootstrapError=error;
+        if(state.bootstrap){
+          renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
+          updateLastUpdated('cache');
+          if(showToast)toast('Live refresh was slow. Showing the last successful data.','error');
+          return state.bootstrap;
+        }
+
+        const title=document.getElementById('ranch92ModeTitle');
+        const detail=document.getElementById('ranch92ModeDetail');
+        if(title)title.textContent='Backend check unavailable';
+        if(detail)detail.textContent='The live check did not finish. Tap Refresh to try again.';
+        const attention=document.getElementById('ranch91Attention');
+        if(attention)attention.innerHTML=setupPanel('Backend temporarily unavailable','The page stopped waiting after six seconds. Tap Refresh to retry.');
+        if(showToast)toast('Backend refresh timed out.','error');
+        throw error;
+      }finally{
+        state.bootstrapPromise=null;
+      }
+    })();
+
+    return state.bootstrapPromise;
   }
 
   // Health
@@ -206,6 +291,9 @@
     box.innerHTML=rows.length?rows.map(c=>`<article class="ranch-class-row"><div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div><div><b>${Number(c.sold||0)} / ${Number(c.capacity||0)}</b><small>${esc(c.status)}</small></div></article>`).join(''):emptyPanel('No classes have been created yet.');
   }
   async function loadClasses(){
+    if(!state.bootstrap){
+      await loadBootstrap(false,{silent:true}).catch(()=>null);
+    }
     const box=$('#ranchClasses');if(!box)return;
     box.innerHTML=emptyPanel('Loading classes…');
     if(!state.bootstrap?.configured.database){renderClasses();return;}
@@ -219,6 +307,9 @@
 
   // Bookings
   async function loadBookings(){
+    if(!state.bootstrap){
+      await loadBootstrap(false,{silent:true}).catch(()=>null);
+    }
     const box=$('#ranchBookings'),waiting=$('#ranchWaitingList');
     if(!box)return;
     if(state.bootstrap?.mode!=='protected'){
@@ -240,6 +331,9 @@
 
   // Customers
   async function loadCustomers(){
+    if(!state.bootstrap){
+      await loadBootstrap(false,{silent:true}).catch(()=>null);
+    }
     const box=$('#ranchCustomers');if(!box)return;
     if(state.bootstrap?.mode!=='protected'){
       box.innerHTML=lockedPanel('Customer register is locked','Enable Cloudflare Access before viewing names, emails, attendance and loyalty records.');
@@ -273,10 +367,13 @@
     const c=$('#operationsClasses');
     if(c)c.innerHTML=b.classes.length?b.classes.map(row=>`<article class="operations-class-row"><div><strong>${esc(row.title)}</strong><span>${fmt(row.starts_at)} · ${esc(row.venue)}</span></div><div><b>${Number(row.sold||0)} / ${Number(row.capacity||0)}</b></div></article>`).join(''):(b.configured.database?emptyPanel('No upcoming classes.'):setupPanel('Class register unavailable','Connect D1 using the BOOKINGS_DB binding.'));
   }
-  async function loadOperations(){await loadBootstrap();renderOperationsFromBootstrap();}
+  async function loadOperations(){renderOperationsFromBootstrap();loadBootstrap(false,{silent:true}).catch(()=>{});}
 
   // Private events
   async function loadPrivateEvents(){
+    if(!state.bootstrap){
+      await loadBootstrap(false,{silent:true}).catch(()=>null);
+    }
     const box=$('#ranchPrivateEvents');if(!box)return;
     if(state.bootstrap?.mode!=='protected'){
       box.innerHTML=lockedPanel('Private-event inquiries are locked','Enable Cloudflare Access before viewing customer names, contact details and event addresses.');
@@ -292,6 +389,9 @@
 
   // Media
   async function loadMedia(){
+    if(!state.bootstrap){
+      await loadBootstrap(false,{silent:true}).catch(()=>null);
+    }
     const box=$('#ranchMedia');if(!box)return;
     if(!state.bootstrap?.configured.media){
       box.innerHTML=setupPanel('Media storage is not connected','Bind an R2 bucket using the name MEDIA_BUCKET.');
@@ -313,16 +413,47 @@
 
   // Events
   $('#ranch91RunChecks')?.addEventListener('click',loadHealth);
-  $('#ranch91RefreshOverview')?.addEventListener('click',()=>loadBootstrap(true));
-  $('#ranch92RefreshSetup')?.addEventListener('click',()=>loadBootstrap(true));
+  $('#ranch91RefreshOverview')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
+  $('#ranch92RefreshSetup')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
   $('#refreshCustomers')?.addEventListener('click',loadCustomers);
   $('#customerAdminSearch')?.addEventListener('input',loadCustomers);
-  $('#refreshOperations')?.addEventListener('click',loadOperations);
+  $('#refreshOperations')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
   $('#printOperationsRegister')?.addEventListener('click',()=>window.print());
   $('#refreshPrivateEvents')?.addEventListener('click',loadPrivateEvents);
   $('#refreshMedia')?.addEventListener('click',loadMedia);
 
   showView('overview');
-  loadBootstrap();
+  const cachedBootstrap=readBootstrapCache();
+  if(cachedBootstrap?.data){
+    state.bootstrap=cachedBootstrap.data;
+    state.bootstrapLoadedAt=cachedBootstrap.savedAt||Date.now();
+    renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
+    updateLastUpdated('cache');
+  }
+  loadBootstrap(false,{silent:Boolean(state.bootstrap)}).catch(()=>{});
   loadHealth();
+  setTimeout(()=>{
+    const replacements=[
+      ['#ranch92SetupStatus','Connection status is temporarily unavailable. Tap Refresh to retry.'],
+      ['#ranch91Attention','Operational status is temporarily unavailable. Tap Refresh to retry.'],
+      ['#ranchUpcoming','Class information is temporarily unavailable. Tap Refresh to retry.'],
+      ['#ranchRecent','Recent activity is temporarily unavailable. Tap Refresh to retry.'],
+      ['#operationsQueue','Action queue is temporarily unavailable.'],
+      ['#operationsActivity','Recent activity is temporarily unavailable.'],
+      ['#operationsClasses','Class register is temporarily unavailable.']
+    ];
+    replacements.forEach(([selector,message])=>{
+      const node=document.querySelector(selector);
+      if(node && /loading|checking/i.test(node.textContent||'')){
+        node.innerHTML=`<div class="ranch92-state setup"><strong>Still waiting?</strong><p>${message}</p></div>`;
+      }
+    });
+    const mode=document.getElementById('ranch92ModeTitle');
+    if(mode && /checking/i.test(mode.textContent||'')){
+      mode.textContent=state.bootstrap?'Using the last successful backend data':'Backend check timed out';
+      const detail=document.getElementById('ranch92ModeDetail');
+      if(detail)detail.textContent=state.bootstrap?'A live refresh will continue in the background.':'Tap Refresh to try again.';
+    }
+  },7000);
+
 })();

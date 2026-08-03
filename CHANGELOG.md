@@ -1,5 +1,21 @@
 # Changelog
 
+## [V92.2 BACKEND PERFORMANCE] — 2026-08-03
+
+### Fixed
+- Prevented repeated backend configuration requests when switching HQ sections.
+- Added one shared in-flight bootstrap request so duplicate requests are merged.
+- Added a 30-second in-memory freshness window.
+- Added local browser caching of the last successful backend result.
+- Cached data appears immediately while a quiet live refresh runs in the background.
+- Slow refreshes no longer erase working class, booking or connection information.
+- Reduced the backend timeout to six seconds.
+- Added a final seven-second safeguard for any remaining loading placeholder.
+- Added a visible last-updated time.
+- Refresh buttons now force a new check without resetting the interface first.
+- Operations navigation now uses already-loaded data instead of starting another request.
+
+
 ## [V92 BACKEND INTEGRATION] — 2026-08-03
 
 ### Added
