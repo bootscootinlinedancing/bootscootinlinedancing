@@ -6253,3 +6253,6 @@ p,li,dd{
   .customer-admin-tools{align-items:stretch;flex-direction:column}
   .hq-customer-card{grid-template-columns:1fr}
 }
+
+/* V90 */
+.hq-health-row.ready{background:#eef8f0}.hq-health-row.setup{background:#fff8e6}.hq-health-row.error{background:#fdeeee}
