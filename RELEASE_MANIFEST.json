@@ -1,0 +1,46 @@
+{
+  "release": "V90.2 VERIFIED",
+  "built_from": "boot-scootin-platform-v90.1-hq-stability(1).zip",
+  "built_at_utc": "2026-08-03T20:32:18.197798Z",
+  "file_count": 99,
+  "checks": {
+    "verified badge": true,
+    "customers nav": true,
+    "operations nav": true,
+    "operations panel": true,
+    "customers panel": true,
+    "operations loader": true,
+    "customers loader": true,
+    "operations api": true,
+    "verified css": true,
+    "changelog": true,
+    "cache": true,
+    "under 100 files": true
+  },
+  "key_files": {
+    "ranch.html": {
+      "sha256": "3b77bcb7f64858c5ae26ff3071802ae60d5e568fe23a2a727df8cfa2686ce52c",
+      "size": 28106
+    },
+    "ranch.js": {
+      "sha256": "6651a5e7cd9f01d0b184e80ef6634ad8772649ac2782a11122762d128fce3ce4",
+      "size": 40459
+    },
+    "_worker.js": {
+      "sha256": "a3df345558987f9e43c49ec0e432556f16e1ff533cb557e7eece073b9847d753",
+      "size": 70458
+    },
+    "styles.css": {
+      "sha256": "0fcafc4d463ca2ede9886e1265f638e940173537dabd76b730204d11c7c59c28",
+      "size": 237752
+    },
+    "CHANGELOG.md": {
+      "sha256": "d91c21625ba8a5a6147969fa4cc0aced74860f1eef492e700245fcbad1eadedf",
+      "size": 1339
+    },
+    "service-worker.js": {
+      "sha256": "a27d9929b089b58fe7a86678962e52c00a870443a15621c04e5943fa3f9e327b",
+      "size": 488
+    }
+  }
+}

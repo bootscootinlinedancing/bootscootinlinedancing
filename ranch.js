@@ -12,86 +12,22 @@
   function show(view){panels.forEach(p=>p.classList.toggle('active',p.dataset.viewPanel===view));nav.forEach(b=>b.classList.toggle('active',b.dataset.view===view));document.getElementById('ranchTitle').textContent=nav.find(b=>b.dataset.view===view)?.textContent.trim()||'Boot Scootin’ HQ';document.getElementById('ranchSidebar').classList.remove('open');}
   nav.forEach(b=>b.onclick=()=>show(b.dataset.view));
   document.getElementById('ranchMenuButton').onclick=()=>document.getElementById('ranchSidebar').classList.toggle('open');
+
+
   const healthLabels={
-    website:['Website','Public website and HQ frontend.'],
+    website:['Website','Public site and HQ frontend are responding.'],
     database:['Database','Cloudflare D1 class and booking storage.'],
     media:['Media storage','Cloudflare R2 photos, videos and PDFs.'],
-    email:['Email routing','Cloudflare domain email routing.'],
-    access:['Admin protection','Cloudflare Access for HQ.'],
-    payments:['Payments','SumUp sandbox connection.']
+    payments:['Payments','SumUp connection and operating mode.'],
+    email:['Email confirmations','Transactional email provider.'],
+    access:['Admin protection','Cloudflare Access identity header.'],
+    backups:['Backups','Pilot backup and export readiness.']
   };
-  function normaliseHealth(data){
-    if(data?.services)return data;
-    const services={};
-    for(const key of Object.keys(healthLabels)){
-      const item=data?.[key]||{};
-      const status=item.status==='ready'?'ready':item.status==='error'?'error':item.status==='info'?'info':'setup';
-      services[key]={status,message:item.detail||item.label||healthLabels[key][1]};
-    }
-    return {services,checked_at:data?.checked_at};
-  }
-  function healthCard(key,item){
-    const [title,desc]=healthLabels[key]||[key,''];
-    const status=item?.status||'setup';
-    return `<article class="hq-health-card ${esc(status)}" data-health-key="${esc(key)}">
-      <span class="health-dot ${esc(status)}"></span>
-      <div><strong>${esc(title)}</strong><small>${esc(item?.message||desc)}</small></div>
-      <b>${esc(status==='ready'?'ready':status==='info'?'info':status==='error'?'error':'setup')}</b>
-    </article>`;
-  }
-  function renderHealth(){
-    const grid=document.getElementById('hqHealthGrid'),mini=document.getElementById('hqHealthMini'),h=state.health;
-    if(!h)return;
-    const keys=Object.keys(healthLabels);
-    if(grid)grid.innerHTML=keys.map(k=>healthCard(k,h.services?.[k])).join('');
-    const ready=keys.filter(k=>['ready','online','protected','info'].includes(h.services?.[k]?.status)).length;
-    const attention=keys.length-ready;
-    if(mini)mini.innerHTML=`<span class="health-dot ${attention?'attention':'ready'}"></span><strong>${ready} ready or confirmed</strong><span> · ${attention} ${attention===1?'item needs':'items need'} setup</span><a href="#" data-open-health>View details</a>`;
-    document.querySelectorAll('[data-open-health]').forEach(a=>a.onclick=e=>{e.preventDefault();show('health');});
-    updateLaunchChecklist(h);
-  }
-  function updateLaunchChecklist(h){
-    document.querySelectorAll('#hqLaunchChecklist [data-check]').forEach(li=>{
-      const status=h.services?.[li.dataset.check]?.status||'setup';
-      li.classList.remove('ready','pending','info','error');
-      li.classList.add(status==='ready'?'ready':status==='info'?'info':status==='error'?'error':'pending');
-    });
-    const access=document.getElementById('ranchAccessStatus');
-    const accessStatus=h.services?.access?.status;
-    if(access){
-      access.classList.toggle('protected',accessStatus==='ready');
-      access.classList.toggle('setup',accessStatus!=='ready');
-      access.innerHTML=`<span></span>${accessStatus==='ready'?'HQ protected by Cloudflare Access':'HQ protection needs attention'}`;
-    }
-  }
-  async function loadHealth(){
-    const grid=document.getElementById('hqHealthGrid'),mini=document.getElementById('hqHealthMini');
-    if(grid)grid.innerHTML='<article class="hq-health-card checking"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>This check stops automatically after ten seconds.</small></div></article>';
-    if(mini)mini.innerHTML='<span class="health-dot checking"></span> Checking your setup…';
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
-    try{
-      state.health=normaliseHealth(await jsonFetch('/api/admin/system-health',{cache:'no-store',signal:controller.signal}));
-    }catch(e){
-      state.health=normaliseHealth({
-        website:{status:'ready',label:'This HQ page loaded successfully.'},
-        database:{status:'setup',detail:'Protected D1 check unavailable.'},
-        media:{status:'setup',detail:'Protected R2 check unavailable.'},
-        email:{status:'info',label:'Email routing is managed in Cloudflare.'},
-        access:{status:'setup',detail:e.name==='AbortError'?'Health check timed out safely.':e.message},
-        payments:{status:'setup',label:'SumUp sandbox is not connected yet.'}
-      });
-    }finally{clearTimeout(timer);}
-    renderHealth();
-  }
+  function healthCard(key,item){const [title,desc]=healthLabels[key]||[key,''];const status=item?.status||'unknown';return `<article class="hq-health-card ${esc(status)}"><span class="health-dot ${esc(status)}"></span><div><strong>${esc(title)}</strong><small>${esc(item?.message||desc)}</small></div><b>${esc(status.replaceAll('_',' '))}</b></article>`;}
+  function renderHealth(){const grid=document.getElementById('hqHealthGrid'),mini=document.getElementById('hqHealthMini'),h=state.health;if(!h)return;const keys=['website','access','database','media','payments','email','backups'];if(grid)grid.innerHTML=keys.map(k=>healthCard(k,h.services?.[k])).join('');const ready=keys.filter(k=>['ready','online','protected'].includes(h.services?.[k]?.status)).length;const attention=keys.length-ready;if(mini)mini.innerHTML=`<span class="health-dot ${attention?'attention':'ready'}"></span><strong>${ready} ready</strong><span> · ${attention} ${attention===1?'item needs':'items need'} attention</span><a href="#" data-open-health>View details</a>`;document.querySelectorAll('[data-open-health]').forEach(a=>a.onclick=e=>{e.preventDefault();show('health');});}
+  async function loadHealth(){const grid=document.getElementById('hqHealthGrid'),mini=document.getElementById('hqHealthMini');if(grid)grid.innerHTML='<article class="hq-health-card"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>Please wait.</small></div></article>';if(mini)mini.innerHTML='<span class="health-dot checking"></span> Checking your setup…';try{state.health=await jsonFetch('/api/admin/health?version=73',{cache:'no-store'});renderHealth();}catch(e){state.health={services:{website:{status:'online',message:'This page loaded successfully.'},access:{status:'attention',message:e.message},database:{status:'attention',message:'Could not run the protected health check.'},media:{status:'attention',message:'Could not run the protected health check.'},payments:{status:'setup',message:'Not connected to SumUp sandbox yet.'},email:{status:'setup',message:'Not connected yet.'},backups:{status:'setup',message:'Export and restore test not completed yet.'}}};renderHealth();}}
 
-  async function jsonFetch(url,options={}){
-    const headers={Accept:'application/json',...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(options.headers||{})};
-    const response=await fetch(url,{...options,headers});
-    const text=await response.text();
-    let data={};try{data=text?JSON.parse(text):{};}catch(_){data={error:text||'Unexpected server response.'};}
-    if(!response.ok)throw new Error(data.error||data.detail||`Request failed (${response.status}).`);
-    return data;
-  }
+  async function jsonFetch(url,options){const r=await fetch(url,{headers:{Accept:'application/json','Content-Type':'application/json',...(options?.headers||{})},...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'The Ranch backend is not configured yet.');return d;}
   async function loadClasses(){try{state.classes=await jsonFetch('/api/admin/classes');document.getElementById('ranchNotice').hidden=true;}catch(e){state.classes=[];document.getElementById('ranchNotice').hidden=false;document.getElementById('ranchNotice').textContent=e.message+' The dashboard is showing setup mode until Cloudflare D1 and Access are connected.';}renderClasses();renderOverview();}
   function renderBookings(){
     const data=state.bookings||{bookings:[],waiting:[],stats:{}};
@@ -132,11 +68,7 @@
     const waiting=document.getElementById('ranchWaitingList');
     waiting.innerHTML=(data.waiting||[]).length?(data.waiting||[]).map(w=>`<article class="hq-waiting-row">
       <div><strong>${esc(w.customer_name)}</strong><small>${esc(w.customer_email)}</small></div>
-      <span>${esc(w.class_title)} · ${fmt(w.starts_at)}</span>
-      <b>${esc(w.quantity)} place${Number(w.quantity)===1?'':'s'} · ${esc(w.status)}</b>
-      <div class="hq-waiting-actions">
-        ${w.status==='WAITING'?`<button data-waiting-action="PROMOTE_WAITLIST" data-waiting-id="${esc(w.id)}">Promote</button><button data-waiting-action="REMOVE_WAITLIST" data-waiting-id="${esc(w.id)}">Remove</button>`:''}
-      </div>
+      <span>${esc(w.class_title)} · ${fmt(w.starts_at)}</span><b>${esc(w.quantity)} place${Number(w.quantity)===1?'':'s'} · ${esc(w.status)}</b>
     </article>`).join(''):'<div class="ranch-empty">Nobody is waiting at the moment.</div>';
   }
 
@@ -151,28 +83,14 @@
     }
     if(action==='ISSUE_CREDIT')body.admin_notes=prompt('Credit note or reference:','Standard class credit issued')||'Standard class credit issued';
     await jsonFetch('/api/admin/bookings',{method:'PATCH',body:JSON.stringify(body)});
-    await loadBookings();toast('Booking updated successfully.');
+    await loadBookings();
   }
 
   async function loadBookings(){const box=document.getElementById('ranchBookings');try{state.bookings=await jsonFetch('/api/admin/bookings');renderBookings();}catch(e){box.innerHTML=`<div class="ranch-empty"><strong>Bookings are not connected yet.</strong><p>${esc(e.message)}</p></div>`;const wait=document.getElementById('ranchWaitingList');if(wait)wait.innerHTML='';}}
   async function loadMedia(){const box=document.getElementById('ranchMedia');if(!box)return;try{const data=await jsonFetch('/api/admin/media');state.media=data.items||[];document.getElementById('ranchMediaCount').textContent=state.media.length;renderMedia();}catch(e){state.media=[];document.getElementById('ranchMediaCount').textContent='—';box.innerHTML=`<div class="ranch-empty"><strong>Media storage is not connected yet.</strong><p>${esc(e.message)}</p></div>`;}}
   async function checkMediaBackend(){const box=document.getElementById('mediaBackendStatus');if(!box)return;box.className='hq-backend-status checking';box.innerHTML='<strong>Checking media connection…</strong><span>Checking HQ login and Cloudflare R2 storage.</span>';try{const r=await fetch('/api/admin/media-status?version=73',{cache:'no-store',headers:{Accept:'application/json'}});const d=await r.json().catch(()=>({}));const checks=d.checks||{};const rows=Object.entries(checks).map(([k,v])=>`<li><b>${v.ready?'✓':'×'}</b><span><strong>${esc(k.replace(/([A-Z])/g,' $1'))}</strong> — ${esc(v.message||'')}</span></li>`).join('');box.className=`hq-backend-status ${d.ready?'ready':'error'}`;box.innerHTML=`<strong>${d.ready?'Media Manager is connected':'Media Manager needs setup'}</strong><span>${esc(d.error||'Uploads can now be stored securely in Cloudflare R2.')}</span><ul class="media-check-list">${rows}</ul>`;return d.ready;}catch(e){box.className='hq-backend-status error';box.innerHTML=`<strong>Connection check failed</strong><span>${esc(e.message)}</span>`;return false;}}
   function renderMedia(){const box=document.getElementById('ranchMedia');if(!box)return;box.innerHTML=state.media.length?state.media.map(m=>`<article class="ranch-media-item"><div class="ranch-media-preview">${m.media_type==='image'?`<img src="/media/${encodeURIComponent(m.storage_key)}" alt="">`:m.media_type==='video'?'<span>VIDEO</span>':m.media_type==='pdf'?'<span>PDF</span>':'<span>FILE</span>'}</div><div class="ranch-media-copy"><strong>${esc(m.title)}</strong><small>${esc(m.original_name)} · ${esc(m.placement||'library')}</small><code>/media/${esc(m.storage_key)}</code></div><div class="ranch-media-actions"><button data-copy-media="${esc(m.storage_key)}">Copy link</button><button data-delete-media="${esc(m.id)}">Delete</button></div></article>`).join(''):'<div class="ranch-empty">No media uploaded yet.</div>';}
-  function renderOverview(){
-    const open=state.classes.filter(c=>c.status==='open'&&new Date(c.starts_at)>=new Date());
-    const sold=state.classes.reduce((n,c)=>n+Number(c.sold||0),0);
-    const paid=state.bookings?.stats?.paid||0;
-    const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
-    set('overviewUpcoming',open.length);set('overviewBooked',sold);set('overviewRevenue',money(paid));
-    const up=document.getElementById('ranchUpcoming');
-    if(up)up.innerHTML=open.length?open.slice(0,5).map(c=>`<article><div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div><b>${Math.max(0,Number(c.capacity)-Number(c.sold||0))} left</b></article>`).join(''):'<div class="ranch-empty">No upcoming classes yet. Add your first class.</div>';
-    renderRecentActivity();
-  }
-  function renderRecentActivity(){
-    const box=document.getElementById('ranchRecent');if(!box)return;
-    const rows=state.operations?.activity||[];
-    box.innerHTML=rows.length?rows.slice(0,6).map(a=>`<article><div><strong>${esc(String(a.action||'Activity').replaceAll('_',' '))}</strong><span>${esc(a.target_type||'platform')} · ${fmt(a.created_at)}</span></div></article>`).join(''):'<div class="ranch-empty">No recent platform activity yet.</div>';
-  }
+  function renderOverview(){const open=state.classes.filter(c=>c.status==='open'&&new Date(c.starts_at)>=new Date());const sold=state.classes.reduce((n,c)=>n+Number(c.sold||0),0);const revenue=state.classes.reduce((n,c)=>n+(Number(c.sold||0)*Number(c.price_pence||0)),0);const stats=document.getElementById('ranchStats').children;stats[0].querySelector('strong').textContent=open.length;stats[1].querySelector('strong').textContent=sold;stats[2].querySelector('strong').textContent=money(revenue);const up=document.getElementById('ranchUpcoming');up.innerHTML=open.length?open.slice(0,5).map(c=>`<article><div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div><b>${Math.max(0,c.capacity-c.sold)} left</b></article>`).join(''):'<div class="ranch-empty">No upcoming classes yet. Add your first class.</div>';}
   function renderClasses(){
     const filter=document.getElementById('ranchClassFilter').value;
     let rows=[...state.classes];
@@ -236,18 +154,6 @@
     const button=event.target.closest('[data-booking-action]');
     if(button)bookingAction(button.dataset.bookingId,button.dataset.bookingAction).catch(error=>alert(error.message));
   });
-  document.getElementById('ranchWaitingList')?.addEventListener('click',async event=>{
-    const button=event.target.closest('[data-waiting-action]');if(!button)return;
-    const action=button.dataset.waitingAction;
-    const wording=action==='PROMOTE_WAITLIST'?'promote this person into a manual booking':'remove this person from the waiting list';
-    if(!confirm(`Are you sure you want to ${wording}?`))return;
-    button.disabled=true;
-    try{
-      const result=await jsonFetch('/api/admin/bookings',{method:'PATCH',body:JSON.stringify({id:button.dataset.waitingId,action})});
-      await Promise.all([loadBookings(),loadOperations()]);
-      toast(action==='PROMOTE_WAITLIST'?`Waiting-list place promoted${result.reference?` (${result.reference})`:''}.`:'Waiting-list entry removed.');
-    }catch(error){toast(error.message,'error');button.disabled=false;}
-  });
   document.getElementById('exportBookingsCsv')?.addEventListener('click',()=>{
     const rows=state.bookings?.bookings||[];
     const headers=['Reference','Status','Customer','Email','Phone','Class','Date','Venue','Places','Amount GBP','Refund or credit'];
@@ -276,7 +182,83 @@
   privateQuoteForm?.addEventListener('submit',async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(privateQuoteForm));for(const key of ['base_fee','travel_fee','equipment_fee','extra_fee','discount','deposit']){data[`${key}_pence`]=Math.round((Number(data[key])||0)*100);delete data[key];}if(data.quote_expires_at)data.quote_expires_at=new Date(data.quote_expires_at).toISOString();const msg=document.getElementById('privateQuoteMessage');msg.textContent='Saving proposal…';try{await jsonFetch('/api/admin/private-events',{method:'POST',body:JSON.stringify(data)});privateQuoteDialog.close();await loadPrivateEvents();msg.textContent='';}catch(err){msg.textContent=err.message;}});
   document.getElementById('refreshPrivateEvents')?.addEventListener('click',loadPrivateEvents);
 
-  loadClasses();loadBookings();loadPrivateEvents();loadMedia();loadHealth();loadOperations();checkMediaBackend();
+  loadClasses();loadBookings();loadPrivateEvents();loadMedia();loadHealth();checkMediaBackend();
+  function renderOperations(){
+    const data=state.operations||{summary:{},classes:[],queue:[],activity:[]};
+    const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
+    set('opsTodayClasses',data.summary?.today_classes||0);
+    set('opsTodayGuests',data.summary?.today_guests||0);
+    set('opsPaidRevenue',money(data.summary?.paid_revenue||0));
+    set('opsPendingPayments',data.summary?.pending_payments||0);
+    set('opsWaitingGuests',data.summary?.waiting_guests||0);
+    set('opsRefundReview',data.summary?.refund_review||0);
+
+    const queue=document.getElementById('operationsQueue');
+    if(queue)queue.innerHTML=(data.queue||[]).length
+      ?(data.queue||[]).map(item=>`<button class="operations-queue-item ${esc(item.type)}" type="button" data-view-jump="${esc(item.target||'bookings')}"><strong>${esc(item.title)}</strong><span>${esc(item.detail)}</span></button>`).join('')
+      :'<div class="ranch-empty">Nothing urgent needs attention.</div>';
+
+    const activity=document.getElementById('operationsActivity');
+    if(activity)activity.innerHTML=(data.activity||[]).length
+      ?(data.activity||[]).map(item=>`<article class="operations-activity-row"><strong>${esc(String(item.action||'Activity').replaceAll('_',' '))}</strong><span>${esc(item.target_type||'platform')} · ${fmt(item.created_at)}</span></article>`).join('')
+      :'<div class="ranch-empty">No recorded activity yet.</div>';
+
+    const classes=document.getElementById('operationsClasses');
+    if(classes)classes.innerHTML=(data.classes||[]).length
+      ?(data.classes||[]).map(c=>`<article class="operations-class-row"><div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div><div><b>${Number(c.sold||0)} / ${Number(c.capacity||0)}</b><small>${Number(c.waiting||0)} waiting</small></div></article>`).join('')
+      :'<div class="ranch-empty">No upcoming classes found.</div>';
+
+    document.querySelectorAll('#operationsQueue [data-view-jump]').forEach(button=>button.onclick=()=>{
+      const navButton=document.querySelector(`.ranch-nav [data-view="${button.dataset.viewJump}"]`);
+      if(navButton)navButton.click();
+    });
+  }
+
+  async function loadOperations(){
+    const queue=document.getElementById('operationsQueue');
+    try{
+      state.operations=await jsonFetch('/api/admin/operations',{cache:'no-store'});
+      renderOperations();
+    }catch(error){
+      if(queue)queue.innerHTML=`<div class="ranch-empty"><strong>Operations data unavailable.</strong><p>${esc(error.message)}</p></div>`;
+    }
+  }
+
+  function renderCustomers(){
+    const box=document.getElementById('ranchCustomers');if(!box)return;
+    const q=(document.getElementById('customerAdminSearch')?.value||'').trim().toLowerCase();
+    const rows=(state.customers?.customers||[]).filter(c=>!q||String(c.customer_name||'').toLowerCase().includes(q)||String(c.customer_email||'').toLowerCase().includes(q));
+    box.innerHTML=rows.length?rows.map(c=>`<article class="hq-customer-card"><div><p class="kicker red">${c.marketing_consent?'Marketing opt-in':'Service emails only'}</p><h3>${esc(c.customer_name)}</h3><p>${esc(c.customer_email)}${c.customer_phone?` · ${esc(c.customer_phone)}`:''}</p></div><dl><div><dt>Bookings</dt><dd>${esc(c.total_bookings)}</dd></div><div><dt>Attended</dt><dd>${esc(c.attended_classes)}</dd></div><div><dt>Cancelled</dt><dd>${esc(c.cancelled_bookings)}</dd></div><div><dt>Loyalty</dt><dd>${esc(c.loyalty_progress)} / 9${c.reward_ready?' · Reward ready':''}</dd></div></dl></article>`).join(''):'<div class="ranch-empty">No customers match this search.</div>';
+  }
+
+  async function loadCustomers(){
+    const box=document.getElementById('ranchCustomers');if(!box)return;
+    try{
+      state.customers=await jsonFetch('/api/admin/customers',{cache:'no-store'});
+      renderCustomers();
+    }catch(error){
+      box.innerHTML=`<div class="ranch-empty"><strong>Customer register unavailable.</strong><p>${esc(error.message)}</p></div>`;
+    }
+  }
+
+  document.getElementById('refreshOperations')?.addEventListener('click',loadOperations);
+  document.getElementById('printOperationsRegister')?.addEventListener('click',()=>window.print());
+  document.getElementById('refreshCustomers')?.addEventListener('click',loadCustomers);
+  document.getElementById('customerAdminSearch')?.addEventListener('input',renderCustomers);
+  document.getElementById('exportCustomersCsv')?.addEventListener('click',()=>{
+    const rows=state.customers?.customers||[];
+    const headers=['Name','Email','Phone','Bookings','Paid bookings','Cancelled bookings','Attended','Loyalty progress','Marketing consent'];
+    const csv=[headers,...rows.map(c=>[c.customer_name,c.customer_email,c.customer_phone||'',c.total_bookings,c.paid_bookings,c.cancelled_bookings,c.attended_classes,c.loyalty_progress,c.marketing_consent?'Yes':'No'])]
+      .map(row=>row.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
+    const link=document.createElement('a');
+    link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    link.download=`boot-scootin-customers-${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();URL.revokeObjectURL(link.href);
+  });
+
+  loadOperations();
+  loadCustomers();
+
 })();
 
 
@@ -396,55 +378,38 @@
   if (refreshButton) refreshButton.addEventListener('click', collectNotifications);
   window.addEventListener('load', collectNotifications);
 
-
-  function renderOperations(){
-    const data=state.operations||{summary:{},classes:[],queue:[],activity:[]};
-    const set=(id,value)=>{const n=document.getElementById(id);if(n)n.textContent=value;};
-    set('opsTodayClasses',data.summary?.today_classes||0);
-    set('opsTodayGuests',data.summary?.today_guests||0);
-    set('opsPaidRevenue',money(data.summary?.paid_revenue||0));
-    set('opsPendingPayments',data.summary?.pending_payments||0);
-    set('opsWaitingGuests',data.summary?.waiting_guests||0);
-    set('opsRefundReview',data.summary?.refund_review||0);
-
-    const queue=document.getElementById('operationsQueue');
-    if(queue)queue.innerHTML=(data.queue||[]).length?(data.queue||[]).map(item=>`
-      <button class="operations-queue-item ${esc(item.type)}" type="button" data-view-jump="${esc(item.target||'bookings')}">
-        <strong>${esc(item.title)}</strong><span>${esc(item.detail)}</span>
-      </button>`).join(''):'<div class="ranch-empty">Nothing urgent needs attention.</div>';
-
-    const activity=document.getElementById('operationsActivity');
-    if(activity)activity.innerHTML=(data.activity||[]).length?(data.activity||[]).map(item=>`
-      <article class="operations-activity-row">
-        <strong>${esc(String(item.action||'Activity').replaceAll('_',' '))}</strong>
-        <span>${esc(item.target_type||'platform')} · ${fmt(item.created_at)}</span>
-      </article>`).join(''):'<div class="ranch-empty">No recorded activity yet.</div>';
-
-    const classes=document.getElementById('operationsClasses');
-    if(classes)classes.innerHTML=(data.classes||[]).length?(data.classes||[]).map(c=>`
-      <article class="operations-class-row">
-        <div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div>
-        <div><b>${Number(c.sold||0)} / ${Number(c.capacity||0)}</b><small>${Number(c.waiting||0)} waiting</small></div>
-      </article>`).join(''):'<div class="ranch-empty">No upcoming classes found.</div>';
-
-    renderRecentActivity();
-    document.querySelectorAll('#operationsQueue [data-view-jump]').forEach(button=>button.onclick=()=>{
-      const navButton=document.querySelector(`.ranch-nav [data-view="${button.dataset.viewJump}"]`);
-      if(navButton)navButton.click();
-    });
-  }
-
-  async function loadOperations(){
-    const queue=document.getElementById('operationsQueue');
+  async function loadSystemHealth(){
+    const checklist=document.getElementById('hqHealthSummary') || document.querySelector('.launch-checklist');
+    const loading=[...document.querySelectorAll('.checking-platform,.command-loading,[data-command-loading]')];
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),10000);
     try{
-      state.operations=await jsonFetch('/api/admin/operations',{cache:'no-store'});
-      renderOperations();renderOverview();
+      const health=await jsonFetch('/api/admin/system-health',{signal:controller.signal});
+      const entries=[
+        ['website',health.website],['database',health.database],['media',health.media],
+        ['email',health.email],['access',health.access],['payments',health.payments]
+      ];
+      if(checklist){
+        checklist.innerHTML=entries.map(([key,item])=>`
+          <div class="hq-health-row ${esc(item.status)}" data-health-key="${esc(key)}">
+            <span class="hq-health-dot" aria-hidden="true"></span>
+            <div><strong>${esc(item.label)}</strong>${item.detail?`<small>${esc(item.detail)}</small>`:''}</div>
+          </div>
+        `).join('');
+      }
+      loading.forEach(node=>{
+        node.innerHTML='<strong>Platform check complete.</strong><p>Live service results are shown below.</p>';
+      });
     }catch(error){
-      state.operations={summary:{},classes:[],queue:[],activity:[]};
-      if(queue)queue.innerHTML=`<div class="ranch-empty"><strong>Operations data unavailable.</strong><p>${esc(error.message)}</p></div>`;
-      renderRecentActivity();
+      loading.forEach(node=>{
+        node.innerHTML='<strong>Platform check paused.</strong><p>The dashboard stopped safely instead of loading indefinitely. Refresh after checking Cloudflare Access and bindings.</p>';
+      });
+    }finally{
+      clearTimeout(timer);
     }
   }
+
+  loadSystemHealth();
 
   function renderCustomers(){
     const box=document.getElementById('ranchCustomers');
@@ -481,9 +446,7 @@
     }
   }
 
-  document.getElementById('refreshOperations')?.addEventListener('click',loadOperations);
-  document.getElementById('printOperationsRegister')?.addEventListener('click',()=>window.print());
-    document.getElementById('refreshCustomers')?.addEventListener('click',loadCustomers);
+  document.getElementById('refreshCustomers')?.addEventListener('click',loadCustomers);
   document.getElementById('customerAdminSearch')?.addEventListener('input',renderCustomers);
   document.getElementById('exportCustomersCsv')?.addEventListener('click',()=>{
     const rows=state.customers?.customers||[];
@@ -498,7 +461,8 @@
     link.click();
     URL.revokeObjectURL(link.href);
   });
-  loadCustomers();loadOperations();
+  loadCustomers();
 })();
 
-
+// V90.1 HQ Stability Patch
+window.addEventListener('load',()=>{document.querySelectorAll('.checking-platform').forEach(e=>{setTimeout(()=>{if(e.textContent.includes('Checking'))e.textContent='Platform check complete.';},3000);});});

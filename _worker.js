@@ -912,10 +912,9 @@ async function adminOperations(request, env) {
   if (check.response) return check.response;
   await ensureBookingSchema(env);
 
-  const [classRows, bookingRows, waitingRows, activityRows] = await Promise.all([
+  const [classesResult, bookingsResult, waitingResult, activityResult] = await Promise.all([
     env.BOOKINGS_DB.prepare(`
       SELECT c.*,
-        COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) booking_count,
         COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) waiting
       FROM classes c
       WHERE c.starts_at >= datetime('now','-1 day')
@@ -924,13 +923,15 @@ async function adminOperations(request, env) {
     `).all(),
     env.BOOKINGS_DB.prepare(`
       SELECT b.*,c.title class_title,c.starts_at,c.venue
-      FROM bookings b JOIN classes c ON c.id=b.class_id
+      FROM bookings b
+      JOIN classes c ON c.id=b.class_id
       ORDER BY b.created_at DESC
       LIMIT 100
     `).all(),
     env.BOOKINGS_DB.prepare(`
-      SELECT w.*,c.title class_title,c.starts_at,c.venue,c.capacity,c.sold
-      FROM waiting_list w JOIN classes c ON c.id=w.class_id
+      SELECT w.*,c.title class_title,c.starts_at,c.venue
+      FROM waiting_list w
+      JOIN classes c ON c.id=w.class_id
       WHERE w.status='WAITING'
       ORDER BY w.created_at
       LIMIT 50
@@ -943,43 +944,48 @@ async function adminOperations(request, env) {
     `).all()
   ]);
 
-  const classes = classRows.results || [];
-  const bookings = bookingRows.results || [];
-  const waiting = waitingRows.results || [];
+  const classes = classesResult.results || [];
+  const bookings = bookingsResult.results || [];
+  const waiting = waitingResult.results || [];
   const today = new Date().toISOString().slice(0,10);
   const todayClasses = classes.filter(c => String(c.starts_at || '').slice(0,10) === today);
-  const todayClassIds = new Set(todayClasses.map(c => c.id));
+  const todayIds = new Set(todayClasses.map(c => c.id));
   const active = bookings.filter(b => ['PENDING','PAID'].includes(b.status));
-  const todayGuests = active.filter(b => todayClassIds.has(b.class_id)).reduce((n,b)=>n+Number(b.quantity||0),0);
 
-  const refundStates = new Set(['REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW']);
+  const reviewStates = new Set(['REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW']);
   const queue = [
-    ...bookings.filter(b => b.status === 'PENDING').slice(0,8).map(b => ({
-      type:'payment', title:`Payment awaiting confirmation — ${b.customer_name}`,
-      detail:`${b.class_title} · ${b.reference}`, target:'bookings'
+    ...bookings.filter(b => b.status === 'PENDING').slice(0,6).map(b => ({
+      type:'payment',
+      title:`Payment awaiting confirmation — ${b.customer_name}`,
+      detail:`${b.class_title} · ${b.reference}`,
+      target:'bookings'
     })),
-    ...bookings.filter(b => refundStates.has(b.refund_status)).slice(0,8).map(b => ({
-      type:'refund', title:`Refund or credit review — ${b.customer_name}`,
-      detail:`${b.refund_status} · ${b.reference}`, target:'bookings'
+    ...bookings.filter(b => reviewStates.has(b.refund_status)).slice(0,6).map(b => ({
+      type:'refund',
+      title:`Refund or credit review — ${b.customer_name}`,
+      detail:`${b.refund_status} · ${b.reference}`,
+      target:'bookings'
     })),
-    ...waiting.slice(0,8).map(w => ({
-      type:'waiting', title:`Waiting list — ${w.customer_name}`,
-      detail:`${w.class_title} · ${w.quantity} place${Number(w.quantity)===1?'':'s'}`, target:'bookings'
+    ...waiting.slice(0,6).map(w => ({
+      type:'waiting',
+      title:`Waiting list — ${w.customer_name}`,
+      detail:`${w.class_title} · ${w.quantity} place${Number(w.quantity)===1?'':'s'}`,
+      target:'bookings'
     }))
   ].slice(0,12);
 
   return json({
     summary:{
       today_classes:todayClasses.length,
-      today_guests:todayGuests,
+      today_guests:active.filter(b => todayIds.has(b.class_id)).reduce((n,b)=>n+Number(b.quantity||0),0),
       paid_revenue:bookings.filter(b=>b.status==='PAID').reduce((n,b)=>n+Number(b.amount_pence||0),0),
       pending_payments:bookings.filter(b=>b.status==='PENDING').length,
       waiting_guests:waiting.reduce((n,w)=>n+Number(w.quantity||0),0),
-      refund_review:bookings.filter(b=>refundStates.has(b.refund_status)).length
+      refund_review:bookings.filter(b=>reviewStates.has(b.refund_status)).length
     },
     classes,
     queue,
-    activity:activityRows.results || []
+    activity:activityResult.results || []
   });
 }
 
@@ -1042,42 +1048,6 @@ async function adminBookings(request, env) {
   const body=await request.json().catch(()=>null);
   if(!body)return json({error:'Invalid booking action.'},400);
   const id=clean(body.id,120),action=clean(body.action,40);
-
-  if(action==='REMOVE_WAITLIST'){
-    const wait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE id=?`).bind(id).first();
-    if(!wait)return json({error:'Waiting-list entry not found.'},404);
-    await env.BOOKINGS_DB.prepare(`UPDATE waiting_list SET status='CANCELLED' WHERE id=?`).bind(id).run();
-    await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-      .bind(check.state.email,action,'waiting_list',id,JSON.stringify(body)).run();
-    return json({ok:true});
-  }
-
-  if(action==='PROMOTE_WAITLIST'){
-    const wait=await env.BOOKINGS_DB.prepare(`
-      SELECT w.*,c.price_pence,c.capacity,c.sold,c.status class_status
-      FROM waiting_list w JOIN classes c ON c.id=w.class_id WHERE w.id=?
-    `).bind(id).first();
-    if(!wait)return json({error:'Waiting-list entry not found.'},404);
-    if(wait.status!=='WAITING')return json({error:'This waiting-list entry is no longer active.'},409);
-    if(wait.class_status!=='open')return json({error:'The class is not open for booking.'},409);
-    if(Number(wait.sold||0)+Number(wait.quantity||0)>Number(wait.capacity||0))return json({error:'There are not enough spaces to promote this entry yet.'},409);
-
-    const bookingId=crypto.randomUUID();
-    const reference=`BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
-    const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
-    await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`
-        INSERT INTO bookings(id,reference,class_id,customer_name,customer_email,quantity,amount_pence,status,payment_provider,secure_token,terms_accepted_at,retention_delete_after)
-        VALUES(?,?,?,?,?,?,?,'PENDING','MANUAL',?,CURRENT_TIMESTAMP,datetime('now','+24 months'))
-      `).bind(bookingId,reference,wait.class_id,wait.customer_name,wait.customer_email,wait.quantity,Number(wait.price_pence||0)*Number(wait.quantity||0),secureToken),
-      env.BOOKINGS_DB.prepare(`UPDATE waiting_list SET status='PROMOTED' WHERE id=?`).bind(id),
-      env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(wait.quantity,wait.class_id),
-      env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-        .bind(check.state.email,action,'waiting_list',id,JSON.stringify({bookingId,reference}))
-    ]);
-    return json({ok:true,reference});
-  }
-
   const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=?`).bind(id).first();
   if(!booking)return json({error:'Booking not found.'},404);
 

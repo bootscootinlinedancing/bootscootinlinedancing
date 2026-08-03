@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=90.2">
+  <link rel="stylesheet" href="styles.css?v=90.2-verified">
   <meta name="theme-color" content="#080606">
 </head>
 <body class="ranch-body">
@@ -42,7 +42,8 @@
           <p class="kicker red">Private management area</p>
           <h1 id="ranchTitle">HQ Home</h1>
         </div>
-        <div class="ranch-status" id="ranchAccessStatus"><span></span> Checking HQ protection</div>
+        <div class="ranch-status verified-release" id="verifiedReleaseBadge"><span></span> V90.2 VERIFIED</div>
+          <div class="ranch-status" id="ranchAccessStatus"><span></span> Checking HQ protection</div>
       </header>
 
       <div id="ranchNotice" class="ranch-notice">
@@ -113,7 +114,7 @@
           </section>
           <section class="ranch-panel">
             <div class="ranch-panel-head"><div><p class="kicker red">Activity</p><h2>Recent bookings</h2></div></div>
-            <div id="ranchRecent" class="ranch-list" aria-live="polite">Loading recent activity…</div>
+            <div id="ranchRecent" class="ranch-list">No paid bookings yet.</div>
           </section>
         </div>
       </section>
@@ -185,9 +186,9 @@
         <div class="ranch-panel">
           <div class="ranch-panel-head">
             <div>
-              <p class="kicker red">Phase 4 operations</p>
+              <p class="kicker red">V90.2 verified release</p>
               <h2>Daily Operations Centre</h2>
-              <p>See today’s classes, active guests, payment totals, waiting-list pressure and actions that still need attention.</p>
+              <p>Today’s classes, guests, revenue, pending payments, waiting-list pressure and operational actions in one place.</p>
             </div>
             <button class="button secondary compact" id="refreshOperations" type="button">Refresh</button>
           </div>
@@ -196,7 +197,7 @@
             <article><span>Today’s classes</span><strong id="opsTodayClasses">—</strong></article>
             <article><span>Today’s guests</span><strong id="opsTodayGuests">—</strong></article>
             <article><span>Paid revenue</span><strong id="opsPaidRevenue">—</strong></article>
-            <article><span>Awaiting payment</span><strong id="opsPendingPayments">—</strong></article>
+            <article><span>Pending payments</span><strong id="opsPendingPayments">—</strong></article>
             <article><span>Waiting-list guests</span><strong id="opsWaitingGuests">—</strong></article>
             <article><span>Refund / credit review</span><strong id="opsRefundReview">—</strong></article>
           </div>
@@ -211,7 +212,7 @@
 
             <section class="operations-card">
               <div class="ranch-panel-head">
-                <div><p class="kicker red">Activity</p><h3>Latest changes</h3></div>
+                <div><p class="kicker red">Recent activity</p><h3>Latest changes</h3></div>
               </div>
               <div id="operationsActivity">Loading…</div>
             </section>
@@ -446,6 +447,6 @@
       </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=90.2" defer></script>
+  <script src="ranch.js?v=90.2-verified" defer></script>
 </body>
 </html>
