@@ -615,7 +615,7 @@ async function systemHealth(request, env) {
     database: { status: 'setup', label: 'D1 database connected' },
     media: { status: 'setup', label: 'R2 media connected' },
     email: { status: 'info', label: 'Cloudflare email routing configured' },
-    access: { status: 'ready', label: 'Cloudflare Access protecting HQ' },
+    access: { status: 'setup', label: 'Cloudflare Access not configured yet' },
     payments: { status: 'setup', label: 'SumUp sandbox connected' },
     checked_at: new Date().toISOString()
   };
@@ -906,6 +906,103 @@ async function adminClasses(request, env) {
 }
 
 
+
+
+async function adminBootstrap(request, env) {
+  const admin = adminState(request, env);
+  const result = {
+    mode: admin.email && admin.authorised ? 'protected' : 'public_pilot',
+    admin_email: admin.authorised ? admin.email : null,
+    configured: {
+      access: Boolean(admin.email),
+      admin_email: Boolean(String(env.ADMIN_EMAIL || '').trim()),
+      database: Boolean(env.BOOKINGS_DB),
+      media: Boolean(env.MEDIA_BUCKET),
+      sumup: Boolean(env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE)
+    },
+    summary: {
+      upcoming_classes: 0,
+      places_booked: 0,
+      paid_revenue: 0,
+      media_files: 0,
+      pending_payments: 0,
+      waiting_guests: 0,
+      refund_review: 0,
+      private_event_count: 0
+    },
+    classes: [],
+    activity: [],
+    setup_steps: []
+  };
+
+  if (!admin.email) result.setup_steps.push('Protect /ranch* and /api/admin/* with Cloudflare Access.');
+  if (!env.BOOKINGS_DB) result.setup_steps.push('Create and bind a D1 database using the binding name BOOKINGS_DB.');
+  if (!env.MEDIA_BUCKET) result.setup_steps.push('Create and bind an R2 bucket using the binding name MEDIA_BUCKET.');
+  if (!String(env.ADMIN_EMAIL || '').trim()) result.setup_steps.push('Add ADMIN_EMAIL as an environment variable.');
+  if (!(env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE)) result.setup_steps.push('Connect SumUp Sandbox after D1 and Access checks pass.');
+
+  if (env.BOOKINGS_DB) {
+    try {
+      await ensureBookingSchema(env);
+      const now = new Date().toISOString();
+      const [classesResult, stats, activityResult, privateResult] = await Promise.all([
+        env.BOOKINGS_DB.prepare(`
+          SELECT id,title,venue,location,starts_at,ends_at,price_pence,capacity,sold,status,level,public_notes
+          FROM classes
+          WHERE starts_at >= ? AND status IN ('open','draft')
+          ORDER BY starts_at
+          LIMIT 20
+        `).bind(now).all(),
+        env.BOOKINGS_DB.prepare(`
+          SELECT
+            COALESCE(SUM(CASE WHEN status IN ('PENDING','PAID') THEN quantity ELSE 0 END),0) places_booked,
+            COALESCE(SUM(CASE WHEN status='PAID' THEN amount_pence ELSE 0 END),0) paid_revenue,
+            COALESCE(SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END),0) pending_payments,
+            COALESCE(SUM(CASE WHEN refund_status IN ('REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW') THEN 1 ELSE 0 END),0) refund_review
+          FROM bookings
+        `).first(),
+        env.BOOKINGS_DB.prepare(`
+          SELECT action,target_type,created_at
+          FROM audit_log
+          ORDER BY created_at DESC
+          LIMIT 10
+        `).all(),
+        env.BOOKINGS_DB.prepare(`SELECT COUNT(*) total FROM private_event_inquiries`).first()
+      ]);
+
+      const waiting = await env.BOOKINGS_DB.prepare(`
+        SELECT COALESCE(SUM(quantity),0) total FROM waiting_list WHERE status='WAITING'
+      `).first();
+
+      result.classes = classesResult.results || [];
+      result.summary.upcoming_classes = result.classes.filter(row => row.status === 'open').length;
+      result.summary.places_booked = Number(stats?.places_booked || 0);
+      result.summary.paid_revenue = Number(stats?.paid_revenue || 0);
+      result.summary.pending_payments = Number(stats?.pending_payments || 0);
+      result.summary.refund_review = Number(stats?.refund_review || 0);
+      result.summary.waiting_guests = Number(waiting?.total || 0);
+      result.summary.private_event_count = Number(privateResult?.total || 0);
+      result.activity = (activityResult.results || []).map(row => ({
+        action: row.action,
+        target_type: row.target_type,
+        created_at: row.created_at
+      }));
+    } catch (error) {
+      result.database_error = error.message;
+    }
+  }
+
+  if (env.MEDIA_BUCKET) {
+    try {
+      const items = await readIndex(env);
+      result.summary.media_files = items.length;
+    } catch (error) {
+      result.media_error = error.message;
+    }
+  }
+
+  return json(result);
+}
 
 async function adminOperations(request, env) {
   const check = requireAccessAdmin(request, env);
@@ -1250,6 +1347,7 @@ export default {
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
       if (path === '/api/booking-cancel' && request.method === 'POST') return cancelBooking(request, env);
       if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);
+      if (path === '/api/admin/bootstrap' && request.method === 'GET') return adminBootstrap(request, env);
       if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
       if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);
       if (path === '/api/booking-calendar' && request.method === 'GET') return bookingCalendar(request, env, url);

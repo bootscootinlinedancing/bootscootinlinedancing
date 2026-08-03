@@ -1,5 +1,24 @@
 # Changelog
 
+## [V92 BACKEND INTEGRATION] — 2026-08-03
+
+### Added
+- Added `/api/admin/bootstrap`, a safe configuration-aware backend endpoint.
+- Connected HQ summary cards to D1 and R2 when bindings are available.
+- Added backend connection status for Access, ADMIN_EMAIL, D1, R2 and SumUp.
+- Added exact setup steps inside HQ Settings.
+- Added safe non-sensitive class, activity and operations summaries in public pilot mode.
+- Added protected-state screens for bookings, customers, private events and media.
+- Added final success, empty, setup or locked states to every HQ section.
+- Removed indefinite “Loading…” states.
+- Added ten-second request timeouts throughout Ranch.
+- Added V92 cache busting.
+
+### Privacy
+- Customer names, emails, event addresses, booking records and media management remain locked until Cloudflare Access is enabled.
+- Public pilot mode only exposes non-sensitive aggregate and class information.
+
+
 ## [V91 RANCH REBUILD] — 2026-08-03
 
 ### Rebuilt

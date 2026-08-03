@@ -6469,3 +6469,41 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
 @media(max-width:460px){
   .ranch91-summary{grid-template-columns:1fr}
 }
+
+
+/* VERSION 92 — BACKEND INTEGRATION */
+.ranch91-modebar{display:grid;gap:.18rem;margin-bottom:1rem;padding:.8rem 1rem;border-left:5px solid #c28a3d;background:#f3e5cf;color:#604a3f}
+.ranch91-modebar.protected{border-left-color:#35945a;background:#e4f0e7;color:#245c39}
+.ranch91-modebar strong{font-size:.9rem}
+.ranch91-modebar span{font-size:.75rem;line-height:1.45}
+
+.ranch92-state{display:grid;gap:.45rem;padding:1rem;border:1px solid #d3b996;background:#f4e6d1}
+.ranch92-state.locked{border-left:5px solid #4d7fa8}
+.ranch92-state.setup{border-left:5px solid #c28a3d}
+.ranch92-state strong{font-size:1rem}
+.ranch92-state p{margin:0;color:#6c554a;line-height:1.5}
+.ranch92-state button{justify-self:start;padding:.55rem .75rem;border:1px solid #8f2b31;background:#fff;color:#8f2b31;font:700 .7rem Oswald,sans-serif;cursor:pointer}
+
+.ranch92-setup-status{display:grid;gap:.6rem;margin-top:1rem}
+.ranch92-connection{display:grid;grid-template-columns:22px 1fr auto;gap:.7rem;align-items:center;padding:.8rem;border:1px solid #d3b996;background:#fff}
+.ranch92-connection>span{width:16px;height:16px;border-radius:50%;background:#c28a3d}
+.ranch92-connection.ready>span{background:#35945a}
+.ranch92-connection strong,.ranch92-connection small{display:block}
+.ranch92-connection small{margin-top:.15rem;color:#6c554a}
+.ranch92-connection b{font:700 .66rem Oswald,sans-serif;text-transform:uppercase}
+.ranch92-steps{padding:1rem;border-left:5px solid #c28a3d;background:#f4e6d1}
+.ranch92-steps h3{margin-top:0}
+.ranch92-steps li{margin:.45rem 0;line-height:1.45}
+.ranch92-complete{padding:1rem;border-left:5px solid #35945a;background:#e4f0e7;color:#245c39}
+
+.ranch-class-row,.ranch-booking-row{display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:.8rem;border-bottom:1px solid #dbc5a8}
+.ranch-class-row strong,.ranch-class-row span,.ranch-class-row b,.ranch-class-row small,
+.ranch-booking-row strong,.ranch-booking-row span{display:block}
+.ranch-class-row span,.ranch-class-row small,.ranch-booking-row span{color:#6c554a;font-size:.72rem}
+.ranch-class-row>div:last-child{text-align:right}
+
+@media(max-width:600px){
+  .ranch92-connection{grid-template-columns:20px 1fr}
+  .ranch92-connection b{grid-column:2}
+  .ranch-class-row,.ranch-booking-row{align-items:start;flex-direction:column}
+}

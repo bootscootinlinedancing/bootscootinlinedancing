@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=91">
+  <link rel="stylesheet" href="styles.css?v=92">
 </head>
 <body class="ranch-v91">
   <a class="skip-link" href="#ranchMain">Skip to HQ content</a>
@@ -56,10 +56,14 @@
         <p>PRIVATE MANAGEMENT AREA</p>
         <h1 id="ranch91PageTitle">HQ Home</h1>
       </div>
-      <div class="ranch91-release">V91</div>
+      <div class="ranch91-release">V92</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
+      <section class="ranch91-modebar" id="ranch92Modebar">
+        <strong id="ranch92ModeTitle">Checking backend configuration…</strong>
+        <span id="ranch92ModeDetail">Please wait.</span>
+      </section>
       <section class="ranch91-warning">
         <strong>⚠ HQ is currently publicly accessible.</strong>
         <span>Do not store sensitive customer information here until Cloudflare Access is enabled.</span>
@@ -304,6 +308,18 @@
       </section>
 
       <section class="ranch-view" data-view-panel="settings">
+        <section class="ranch91-card ranch92-setup-card">
+          <div class="ranch91-card-head">
+            <div>
+              <p class="kicker red">Backend integration</p>
+              <h2>Connection status</h2>
+              <p>This section shows exactly which Cloudflare and SumUp connections are available.</p>
+            </div>
+            <button id="ranch92RefreshSetup" class="button secondary compact" type="button">Refresh</button>
+          </div>
+          <div id="ranch92SetupStatus" class="ranch92-setup-status">Loading…</div>
+        </section>
+
         <div class="ranch-grid-2">
           <section class="ranch-panel"><p class="kicker red">Free pilot</p><h2>Low-cost launch checklist</h2><ul class="ranch-checklist"><li>Protect HQ pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Use test data and test every booking and capacity rule</li><li>Connect SumUp Sandbox before any live payments</li><li>Review ICO fee status before public member accounts launch</li></ul></section>
           <section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Not connected yet. This is safe: no card details are collected and no live booking is confirmed.</p><div class="ranch-connection"><span></span> Awaiting sandbox connection</div></section>
@@ -316,6 +332,6 @@
 
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="ranch.js?v=91"></script>
+  <script src="ranch.js?v=92"></script>
 </body>
 </html>
