@@ -6015,3 +6015,152 @@ body.menu-open{position:fixed!important;inset:0!important;width:100%!important;o
   .hq-booking-actions{grid-template-columns:1fr 1fr}
   .hq-waiting-row{grid-template-columns:1fr}
 }
+
+
+/* VERSION 87 — PHASE 1 FINAL WEBSITE POLISH */
+.skip-link{
+  position:fixed;
+  left:1rem;
+  top:-5rem;
+  z-index:10000;
+  padding:.75rem 1rem;
+  background:#fff;
+  color:#111;
+  border:2px solid #bd2b32;
+  font:700 .8rem Oswald,sans-serif;
+}
+.skip-link:focus{top:1rem}
+
+:focus-visible{
+  outline:3px solid #f14a50!important;
+  outline-offset:3px!important;
+}
+button,a,input,select,textarea{min-height:44px}
+img{max-width:100%;height:auto}
+
+/* Never split the business-page title inside a word. */
+.businesses-love-title{
+  display:grid!important;
+  gap:.02em!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin-inline:auto!important;
+  text-align:center!important;
+  line-height:.9!important;
+}
+.businesses-love-title span{
+  display:block!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+  overflow-wrap:normal!important;
+  hyphens:none!important;
+}
+.businesses-love-title span:first-child{
+  font-size:.84em!important;
+}
+
+/* Correct official Backroad Boots logo presentation. */
+.backroad-visual{
+  min-height:0!important;
+  aspect-ratio:1/1!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:clamp(1rem,4vw,2rem)!important;
+  background:#050505!important;
+  overflow:hidden!important;
+}
+.backroad-visual img{
+  display:block!important;
+  width:min(88%,560px)!important;
+  height:auto!important;
+  aspect-ratio:1/1!important;
+  object-fit:contain!important;
+  border:0!important;
+  border-radius:50%!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+
+/* Inclusive Ask Nora greeting. */
+.ask-inclusive-greeting{
+  margin:0 0 .65rem!important;
+  color:#df454b!important;
+  font:700 clamp(1.1rem,4vw,1.5rem)/1.1 Oswald,sans-serif!important;
+}
+
+/* Consistent buttons and readable secondary actions. */
+.button,.header .menu,.booking-submit{
+  text-decoration:none!important;
+  cursor:pointer;
+}
+.button:disabled,button:disabled{
+  cursor:not-allowed!important;
+  opacity:.62!important;
+}
+.button.ghost,.dark-ghost{
+  color:#fff!important;
+  border-color:#c9a677!important;
+}
+
+/* Prevent long headings and text from escaping cards. */
+h1,h2,h3,.business-love-copy,.section-title{
+  min-width:0;
+}
+h1,h2,h3{
+  overflow-wrap:normal;
+  word-break:normal;
+  hyphens:none;
+}
+p,li,dd{
+  overflow-wrap:anywhere;
+}
+
+/* Polished responsive spacing. */
+@media(max-width:700px){
+  .businesses-love-title{
+    font-size:clamp(3.25rem,15vw,5.2rem)!important;
+  }
+  .businesses-love-title span:first-child{
+    font-size:.76em!important;
+  }
+  .feature-hero .section-title{
+    width:100%!important;
+    max-width:100%!important;
+    padding-inline:1.15rem!important;
+  }
+  .business-love-card{
+    width:calc(100% - 1.5rem)!important;
+    margin-inline:auto!important;
+  }
+  .backroad-visual{
+    padding:1.25rem!important;
+  }
+  .backroad-visual img{
+    width:min(92%,390px)!important;
+  }
+  .actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    width:100%!important;
+  }
+  .actions .button{
+    width:100%!important;
+    box-sizing:border-box!important;
+  }
+}
+
+@media(min-width:701px){
+  .businesses-love-title{
+    font-size:clamp(4.8rem,8vw,8rem)!important;
+  }
+}
+
+/* Respect people who reduce animation. */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    scroll-behavior:auto!important;
+    transition-duration:.01ms!important;
+  }
+}
