@@ -8,7 +8,7 @@
   <link rel="icon" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=83">
+  <link rel="stylesheet" href="styles.css?v=84">
 </head>
 <body class="member-hub-body">
   <header class="member-hub-topbar">
@@ -38,7 +38,7 @@
         <button data-member-view="bookings"><span>📅</span> My Bookings</button>
         <button data-member-view="library"><span>🎶</span> Dance Library</button>
         <button data-member-view="outfitters"><span>🎁</span> Trail Outfitters</button>
-        <button data-member-view="lounge"><span>🌙</span> Moonshine Lounge</button>
+        <button data-member-view="lounge"><span>🌙</span> Apply for Moonshine</button>
         <button data-member-view="profile"><span>👤</span> My Profile</button>
       </nav>
 
@@ -59,7 +59,7 @@
           <option value="bookings">My Bookings</option>
           <option value="library">Dance Library</option>
           <option value="outfitters">Trail Outfitters</option>
-          <option value="lounge">Moonshine Lounge</option>
+          <option value="lounge">Apply for Moonshine</option>
           <option value="profile">My Profile</option>
         </select>
       </div>
@@ -115,10 +115,10 @@
           </article>
 
           <article class="member-card">
-            <p class="kicker red">Who’s going?</p>
-            <h2>18 dancers</h2>
-            <p>Five first-timers and seven regulars have opted in for the next class.</p>
-            <button data-jump="lounge">Enter Moonshine Lounge</button>
+            <p class="kicker red">Private community</p>
+            <h2>Moonshine &amp; Good Times</h2>
+            <p>Membership is optional and personally approved by Nora. It is not included automatically with a website account.</p>
+            <button data-jump="lounge">See how to apply</button>
           </article>
         </div>
 
@@ -253,14 +253,42 @@
 
       <section class="member-panel" data-member-panel="lounge">
         <div class="member-section-head">
-          <div><p class="kicker red">Moonshine Lounge</p><h1>Your friendly community corner.</h1></div>
-          <a href="moonshine.html">Community information</a>
+          <div>
+            <p class="kicker red">Approval-only community</p>
+            <h1>Moonshine &amp; Good Times Gang</h1>
+          </div>
+          <span class="moonshine-locked-label">🔒 Not automatically included</span>
         </div>
-        <div class="member-dashboard-grid">
-          <article class="member-card"><span class="member-feature-icon">👢</span><h2>Who’s Going?</h2><p>Opt in to show other members you are attending. Contact information is never shown.</p><button disabled>Privacy controls after login</button></article>
-          <article class="member-card"><span class="member-feature-icon">🏕️</span><h2>Festival Meetups</h2><p>Meeting points, times and community plans in one place.</p><button disabled>Coming later</button></article>
-          <article class="member-card"><span class="member-feature-icon">📣</span><h2>Announcements</h2><p>Class updates, new dances, special events and important notices.</p><button disabled>Coming later</button></article>
-          <article class="member-card"><span class="member-feature-icon">⭐</span><h2>Member Spotlight</h2><p>Celebrate members who choose to share their Trail story.</p><button disabled>Opt-in only</button></article>
+
+        <div class="moonshine-application-layout">
+          <article class="member-card moonshine-application-card">
+            <span class="member-feature-icon">🌙</span>
+            <h2>Would you like to apply?</h2>
+            <p>Moonshine &amp; Good Times is a private community. Creating a Boot Scootin’ website account will not automatically provide access.</p>
+            <p>Members will need to choose to apply, agree to the community rules and wait for Nora to personally approve the application.</p>
+
+            <div class="moonshine-steps">
+              <div><b>1</b><span>Choose to apply</span></div>
+              <div><b>2</b><span>Tell Nora why you would like to join</span></div>
+              <div><b>3</b><span>Agree to the community rules</span></div>
+              <div><b>4</b><span>Wait for approval</span></div>
+            </div>
+
+            <button type="button" disabled>Applications open after member login launches</button>
+          </article>
+
+          <aside class="member-card moonshine-access-card">
+            <p class="kicker red">After approval</p>
+            <h2>Your Lounge access unlocks</h2>
+            <ul>
+              <li>Community announcements</li>
+              <li>Meetups and country-event plans</li>
+              <li>Festival information</li>
+              <li>Approved members-only updates</li>
+              <li>A private invitation to the relevant community space</li>
+            </ul>
+            <p class="member-privacy-note">Approval can be refused or withdrawn to protect the safety, privacy and atmosphere of the community.</p>
+          </aside>
         </div>
       </section>
 

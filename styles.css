@@ -5890,3 +5890,49 @@ body.menu-open{position:fixed!important;inset:0!important;width:100%!important;o
   .class-manager-row{grid-template-columns:1fr!important}
   .class-manager-row>span,.class-manager-row>div{width:100%}
 }
+
+
+/* VERSION 84 — BRAND IDENTITY & TRUST */
+.training-list li{padding:.5rem 0;border-bottom:1px solid rgba(126,80,58,.18)}
+.training-list li:last-child{border-bottom:0}
+.about-training-note{margin-top:1rem;padding:.8rem 1rem;border-left:3px solid #98272c;background:#f2e4d2;color:#654f45}
+.about-values-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;max-width:1150px;margin:auto}
+.about-values-grid article{padding:1.25rem;border:1px solid #c9ad8b;background:#fff8ed;text-align:center}
+.about-values-grid span{display:block;font-size:2rem}
+.about-values-grid h3{margin:.65rem 0 .35rem}
+.about-values-grid p{margin:0;color:#6b554a}
+.about-signoff-card{max-width:800px;margin:auto;padding:clamp(1.4rem,4vw,2.5rem);border:1px solid #51282b;background:#150a0b;text-align:center}
+.about-signoff-card .script{font-size:clamp(2rem,5vw,3.5rem);color:#fff}
+.about-signoff-card>p:not(.script){color:#cdb8a7}
+.about-signoff-card strong,.about-signoff-card span{display:block}
+.about-signoff-card span{margin-top:.45rem;color:#df484e;font:700 1.3rem Caveat,cursive}
+.official-relationship-section{padding-bottom:2rem}
+.official-business-card{max-width:1050px;margin:auto}
+.threefives-visual b{display:block;margin-top:.75rem;padding:.35rem .55rem;border:1px solid currentColor;font:700 .63rem Oswald,sans-serif;letter-spacing:.08em}
+.recommendations-section .business-love-card{background:#160b0c;border-color:#4f292b}
+.recommendations-section .business-love-copy h2{color:#fff}
+.recommendations-section .business-love-copy p{color:#cdb8a7}
+.business-subtitle{margin-top:-.3rem!important;color:#df4a50!important;font:700 .9rem Oswald,sans-serif!important}
+.business-disclaimer{padding:.75rem .9rem;border-left:3px solid #b67f43;background:rgba(255,255,255,.05);font-size:.76rem}
+.business-transparency-card{max-width:900px;margin:auto;padding:1.4rem;border:1px solid #c8aa87;background:#fff8ed;text-align:center}
+.business-transparency-card h2{margin:.3rem 0 .7rem}
+.business-transparency-card p{color:#695349}
+.moonshine-locked-label{padding:.5rem .7rem;border:1px solid #9a3338;background:#2a1214;color:#fff!important}
+.moonshine-application-layout{display:grid;grid-template-columns:1.15fr .85fr;gap:1rem}
+.moonshine-steps{display:grid;gap:.55rem;margin:1rem 0}
+.moonshine-steps>div{display:grid;grid-template-columns:34px 1fr;align-items:center;gap:.65rem}
+.moonshine-steps b{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#8f2228;color:#fff}
+.moonshine-access-card ul{padding-left:1.2rem}
+.moonshine-access-card li{margin:.5rem 0}
+.member-privacy-note{padding:.75rem;border-left:3px solid #8f2228;background:#f2e4d2}
+.site-ip-notice{max-width:1050px;margin:1.3rem auto 0;padding:1rem;border-top:1px solid rgba(255,255,255,.18);color:#bfa998;text-align:center}
+.site-ip-notice p{margin:.35rem auto;max-width:95ch;font-size:.7rem;line-height:1.45}
+.site-ip-notice strong{color:#fff}
+.site-ip-notice .ip-small{color:#927f72;font-size:.62rem}
+@media(max-width:850px){
+  .about-values-grid{grid-template-columns:1fr 1fr}
+  .moonshine-application-layout{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .about-values-grid{grid-template-columns:1fr}
+}
