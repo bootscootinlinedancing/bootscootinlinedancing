@@ -5936,3 +5936,43 @@ body.menu-open{position:fixed!important;inset:0!important;width:100%!important;o
 @media(max-width:520px){
   .about-values-grid{grid-template-columns:1fr}
 }
+
+
+/* VERSION 85 — BRAND POLISH & MOBILE GLITCH FIXES */
+.training-list{list-style:none!important;margin:1rem 0 0!important;padding:0!important}
+.training-list li{position:relative!important;display:block!important;padding:.72rem 0 .72rem 2rem!important;border-bottom:1px solid rgba(255,255,255,.12)!important;color:#fff!important;line-height:1.4!important}
+.training-list li::before{content:"✓"!important;position:absolute!important;left:0!important;top:.72rem!important;width:1.25rem!important;color:#df474d!important;font:700 1rem/1 Oswald,sans-serif!important;transform:none!important}
+.training-list li::marker{content:""!important}
+.training-list li:last-child{border-bottom:0!important}
+.story-panel .training-list strong{color:#fff!important}
+.story-panel .about-training-note{font-size:.88rem!important;line-height:1.55!important}
+
+.backroad-visual{display:grid!important;place-items:center!important;min-height:360px!important;padding:1.4rem!important;overflow:hidden!important;background:radial-gradient(circle at center,rgba(137,0,74,.24),transparent 58%),#080609!important}
+.backroad-visual img{width:min(84%,420px)!important;aspect-ratio:1/1!important;object-fit:cover!important;object-position:center!important;border-radius:50%!important;border:1px solid rgba(255,255,255,.25)!important;box-shadow:0 0 0 10px rgba(196,31,40,.12),0 0 45px rgba(153,0,61,.28)!important}
+
+.recommendations-section .button.ghost,.backroad-links .button.ghost,.dark-ghost{border:1px solid #d8b47b!important;background:#1a0d0e!important;color:#fff!important;opacity:1!important;text-shadow:none!important}
+.recommendations-section .button.ghost:hover,.recommendations-section .button.ghost:focus-visible,.backroad-links .button.ghost:hover,.backroad-links .button.ghost:focus-visible,.dark-ghost:hover,.dark-ghost:focus-visible{border-color:#ef4a50!important;background:#8f2026!important;color:#fff!important}
+
+.business-love-grid{align-items:start!important}
+.business-love-card{overflow:hidden!important}
+.business-love-copy{min-width:0!important}
+.business-love-copy h2{overflow-wrap:anywhere!important}
+.business-love-visual{min-height:320px!important}
+
+@media(max-width:700px){
+  .businesses-page .feature-hero{min-height:auto!important;padding-top:4.8rem!important;padding-bottom:4rem!important}
+  .businesses-page .feature-hero h1{font-size:clamp(3.15rem,16vw,5.2rem)!important;line-height:.95!important;max-width:100%!important}
+  .businesses-page .feature-hero .section-title{padding-inline:1rem!important}
+  .businesses-page .feature-hero p{font-size:1rem!important;line-height:1.6!important}
+  .business-love-card{display:block!important}
+  .business-love-visual,.backroad-visual{min-height:280px!important}
+  .backroad-visual img{width:min(82%,320px)!important}
+  .business-love-copy{padding:1.35rem!important}
+  .business-love-copy h2{font-size:clamp(2.35rem,12vw,3.7rem)!important;line-height:1!important}
+  .backroad-links{display:grid!important;grid-template-columns:1fr!important;gap:.65rem!important}
+  .backroad-links .button{width:100%!important;box-sizing:border-box!important}
+  .about-page .story-copy h2{font-size:clamp(2.8rem,13vw,4.5rem)!important;line-height:1!important}
+  .about-page .story-copy p{font-size:1rem!important;line-height:1.65!important}
+  .about-page .story-panel{padding:1.35rem!important}
+  .about-page .story-panel h3{font-size:clamp(2.3rem,11vw,3.4rem)!important;line-height:1.03!important}
+}
