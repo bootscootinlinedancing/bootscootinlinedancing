@@ -344,90 +344,181 @@ function requireAccessAdmin(request, env) {
 async function createClassReservation(request, env) {
   if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
   await ensureBookingSchema(env);
+
   const body = await request.json().catch(() => null);
   if (!body) return json({ error: 'The booking request could not be read.' }, 400);
 
-  const name=clean(body.name,100), email=clean(body.email,160).toLowerCase(), phone=clean(body.phone,30);
-  const classId=clean(body.classId,120), quantity=Math.max(1,Math.min(4,Number(body.quantity)||1));
-  const requestedWaitlist=clean(body.bookingMode,20)==='waitlist';
-  if(!name||!emailOk(email)||!classId) return json({error:'Please enter your name, a valid email address and choose a class.'},400);
-  if(!body.terms_accepted) return json({error:'Please accept the booking and cancellation terms.'},400);
+  const name = clean(body.name, 100);
+  const email = clean(body.email, 160).toLowerCase();
+  const phone = clean(body.phone, 30);
+  const classId = clean(body.classId, 120);
+  const quantity = Math.max(1, Math.min(4, Number(body.quantity) || 1));
+  const requestedWaitlist = clean(body.bookingMode, 20) === 'waitlist';
 
-  const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=? AND status='open' AND starts_at>?`).bind(classId,new Date().toISOString()).first();
-  if(!row) return json({error:'This class is no longer open for booking.'},404);
-
-  const held=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(quantity),0) total FROM booking_holds WHERE class_id=? AND expires_at>?`).bind(classId,new Date().toISOString()).first();
-  const spaces=Math.max(0,Number(row.capacity)-Number(row.sold||0)-Number(held?.total||0));
-  const id=crypto.randomUUID(), token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''), customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
-  const reference=`BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
-
-  if(requestedWaitlist||spaces<quantity){
-    await env.BOOKINGS_DB.prepare(`INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token) VALUES(?,?,?,?,?,'WAITING',?)`)
-      .bind(id,classId,name,email,quantity,token).run();
-    return json({ok:true,waitlisted:true,reference,status:'WAITLISTED',secure_token:token,message:'You have been added to the waiting list. No payment has been taken.'},201);
+  if (!name || !emailOk(email) || !classId) {
+    return json({ error: 'Please enter your name, a valid email address and choose a class.' }, 400);
+  }
+  if (!body.terms_accepted) {
+    return json({ error: 'Please accept the booking and cancellation terms.' }, 400);
   }
 
-  const amount=Number(row.price_pence)*quantity;
-  const paymentReady=Boolean(env.SUMUP_API_KEY&&env.SUMUP_MERCHANT_CODE);
-  const holdId=crypto.randomUUID();
-  const holdExpiry=new Date(Date.now()+15*60*1000).toISOString();
+  const classRow = await env.BOOKINGS_DB.prepare(
+    `SELECT * FROM classes WHERE id=? AND status='open' AND starts_at>?`
+  ).bind(classId, new Date().toISOString()).first();
 
-  await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`INSERT INTO booking_holds(id,class_id,quantity,expires_at) VALUES(?,?,?,?)`).bind(holdId,classId,quantity,holdExpiry),
-    env.BOOKINGS_DB.prepare(`INSERT INTO bookings(id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,quantity,amount_pence,status,payment_provider,secure_token,customer_token,terms_accepted_at,marketing_consent,retention_delete_after) VALUES(?,?,?,?,?,?,?,?,?,'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`)
-      .bind(id,reference,classId,holdId,name,email,phone,quantity,amount,paymentReady?'SUMUP':'MANUAL',token,customerToken,Number(Boolean(body.marketing_consent))),
-    env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-      .bind(email,'BOOKING_CREATED','booking',id,JSON.stringify({reference,quantity,terms:true,paymentReady}))
-  ]);
+  if (!classRow) return json({ error: 'This class is no longer open for booking.' }, 404);
 
-  if(paymentReady){
-    const origin=new URL(request.url).origin;
-    const checkoutPayload={
-      checkout_reference:reference,
-      amount:Number((amount/100).toFixed(2)),
-      currency:'GBP',
-      merchant_code:String(env.SUMUP_MERCHANT_CODE),
-      description:`${row.title} — ${quantity} place${quantity===1?'':'s'}`,
-      redirect_url:`${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(token)}`,
-      return_url:`${origin}/api/sumup/booking-webhook`,
-      hosted_checkout:{enabled:true}
-    };
-    const sumup=await fetch('https://api.sumup.com/v0.1/checkouts',{
-      method:'POST',
-      headers:{Authorization:`Bearer ${env.SUMUP_API_KEY}`,'Content-Type':'application/json'},
-      body:JSON.stringify(checkoutPayload)
-    });
-    const checkout=await sumup.json().catch(()=>({}));
-    if(!sumup.ok||!checkout.id){
-      await env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId).run();
-      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='FAILED',admin_notes=? WHERE id=?`).bind(`SumUp checkout failed: ${JSON.stringify(checkout).slice(0,500)}`,id).run();
-      return json({error:'Secure payment could not be started. No payment has been taken. Please try again.'},502);
-    }
-    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET provider_checkout_id=? WHERE id=?`).bind(checkout.id,id).run();
-    const checkoutUrl=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||'';
-    let validCheckoutUrl='';
-    try{
-      const parsed=new URL(checkoutUrl);
-      if(parsed.protocol==='https:') validCheckoutUrl=parsed.toString();
-    }catch(_){}
-    if(!validCheckoutUrl){
-      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET payment_provider='MANUAL',admin_notes=? WHERE id=?`)
-        .bind('SumUp checkout URL unavailable; booking retained for manual confirmation.',id).run();
-      await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(quantity,classId,quantity),
-        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
-      ]);
-      return json({ok:true,reference,secure_token:token,customer_token:customerToken,status:'PENDING',payment_enabled:false,message:'Your place is reserved. Secure online payment is temporarily unavailable, so Nora will confirm payment separately.'},201);
-    }
-    return json({ok:true,reference,secure_token:token,customer_token:customerToken,status:'PENDING',payment_enabled:true,checkout_url:validCheckoutUrl},201);
+  const held = await env.BOOKINGS_DB.prepare(
+    `SELECT COALESCE(SUM(quantity),0) total FROM booking_holds WHERE class_id=? AND expires_at>?`
+  ).bind(classId, new Date().toISOString()).first();
+
+  const spaces = Math.max(
+    0,
+    Number(classRow.capacity || 0) - Number(classRow.sold || 0) - Number(held?.total || 0)
+  );
+
+  const id = crypto.randomUUID();
+  const secureToken = crypto.randomUUID() + crypto.randomUUID().replaceAll('-', '');
+  const customerToken = crypto.randomUUID() + crypto.randomUUID().replaceAll('-', '');
+  const reference = `BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
+
+  if (requestedWaitlist || spaces < quantity) {
+    await env.BOOKINGS_DB.prepare(
+      `INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token)
+       VALUES(?,?,?,?,?,'WAITING',?)`
+    ).bind(id, classId, name, email, quantity, secureToken).run();
+
+    return json({
+      ok: true,
+      waitlisted: true,
+      reference,
+      status: 'WAITLISTED',
+      secure_token: secureToken,
+      customer_token: customerToken,
+      message: 'You have been added to the waiting list. No payment has been taken.'
+    }, 201);
   }
 
-  // Manual/pilot mode: reserve immediately so HQ can manage the booking.
+  const amount = Number(classRow.price_pence || 0) * quantity;
+  const paymentReady = Boolean(env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE);
+  const holdId = crypto.randomUUID();
+  const holdExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+  await env.BOOKINGS_DB.prepare(
+    `INSERT INTO booking_holds(id,class_id,quantity,expires_at) VALUES(?,?,?,?)`
+  ).bind(holdId, classId, quantity, holdExpiry).run();
+
+  // Try the upgraded schema first. If the customer_token column has not yet
+  // propagated, use the compatible schema and continue safely.
+  try {
+    await env.BOOKINGS_DB.prepare(
+      `INSERT INTO bookings(
+        id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,
+        quantity,amount_pence,status,payment_provider,secure_token,customer_token,
+        terms_accepted_at,marketing_consent,retention_delete_after
+      ) VALUES(?,?,?,?,?,?,?,?,?,'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
+    ).bind(
+      id, reference, classId, holdId, name, email, phone, quantity, amount,
+      paymentReady ? 'SUMUP' : 'MANUAL', secureToken, customerToken,
+      Number(Boolean(body.marketing_consent))
+    ).run();
+  } catch (_) {
+    await env.BOOKINGS_DB.prepare(
+      `INSERT INTO bookings(
+        id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,
+        quantity,amount_pence,status,payment_provider,secure_token,
+        terms_accepted_at,marketing_consent,retention_delete_after
+      ) VALUES(?,?,?,?,?,?,?,?,?,'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
+    ).bind(
+      id, reference, classId, holdId, name, email, phone, quantity, amount,
+      paymentReady ? 'SUMUP' : 'MANUAL', secureToken,
+      Number(Boolean(body.marketing_consent))
+    ).run();
+  }
+
+  await env.BOOKINGS_DB.prepare(
+    `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
+     VALUES(?,?,?,?,?)`
+  ).bind(
+    email, 'BOOKING_CREATED', 'booking', id,
+    JSON.stringify({ reference, quantity, terms: true, paymentReady })
+  ).run();
+
+  if (paymentReady) {
+    try {
+      const origin = new URL(request.url).origin;
+      const checkoutPayload = {
+        checkout_reference: reference,
+        amount: Number((amount / 100).toFixed(2)),
+        currency: 'GBP',
+        merchant_code: String(env.SUMUP_MERCHANT_CODE),
+        description: `${classRow.title} — ${quantity} place${quantity === 1 ? '' : 's'}`,
+        redirect_url: `${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}&customer=${encodeURIComponent(customerToken)}`,
+        hosted_checkout: { enabled: true }
+      };
+
+      const sumup = await fetch('https://api.sumup.com/v0.1/checkouts', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.SUMUP_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(checkoutPayload)
+      });
+
+      const checkout = await sumup.json().catch(() => ({}));
+      const rawUrl = checkout.hosted_checkout_url || checkout.hosted_checkout?.url || '';
+      let checkoutUrl = '';
+
+      try {
+        const parsed = new URL(rawUrl);
+        if (parsed.protocol === 'https:') checkoutUrl = parsed.toString();
+      } catch (_) {}
+
+      if (sumup.ok && checkout.id && checkoutUrl) {
+        await env.BOOKINGS_DB.prepare(
+          `UPDATE bookings SET provider_checkout_id=? WHERE id=?`
+        ).bind(checkout.id, id).run();
+
+        return json({
+          ok: true,
+          reference,
+          secure_token: secureToken,
+          customer_token: customerToken,
+          status: 'PENDING',
+          payment_enabled: true,
+          checkout_url: checkoutUrl
+        }, 201);
+      }
+    } catch (_) {
+      // Fall through to manual reservation.
+    }
+  }
+
+  // Safe fallback: reserve the space and let Nora confirm payment manually.
   await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(quantity,classId,quantity),
-    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
+    env.BOOKINGS_DB.prepare(
+      `UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP
+       WHERE id=? AND sold+?<=capacity`
+    ).bind(quantity, classId, quantity),
+    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId),
+    env.BOOKINGS_DB.prepare(
+      `UPDATE bookings SET payment_provider='MANUAL',
+       admin_notes='Online payment unavailable; manual confirmation required.'
+       WHERE id=?`
+    ).bind(id)
   ]);
-  return json({ok:true,reference,secure_token:token,customer_token:customerToken,status:'PENDING',payment_enabled:false,message:'Your place is reserved. Online payment is not enabled yet, so Nora will confirm payment separately.'},201);
+
+  return json({
+    ok: true,
+    reference,
+    secure_token: secureToken,
+    customer_token: customerToken,
+    status: 'PENDING',
+    payment_enabled: false,
+    manual_confirmation: true,
+    message: 'Your place has been reserved. Nora will confirm payment separately.'
+  }, 201);
 }
 
 async function syncSumUpBooking(env, booking) {
@@ -513,6 +604,58 @@ async function cancelBooking(request,env){
 }
 
 
+
+
+async function systemHealth(request, env) {
+  const access = requireAccessAdmin(request, env);
+  if (access.response) return access.response;
+
+  const result = {
+    website: { status: 'ready', label: 'Public website online' },
+    database: { status: 'setup', label: 'D1 database connected' },
+    media: { status: 'setup', label: 'R2 media connected' },
+    email: { status: 'info', label: 'Cloudflare email routing configured' },
+    access: { status: 'ready', label: 'Cloudflare Access protecting HQ' },
+    payments: { status: 'setup', label: 'SumUp sandbox connected' },
+    checked_at: new Date().toISOString()
+  };
+
+  try {
+    if (env.BOOKINGS_DB) {
+      await ensureBookingSchema(env);
+      const count = await env.BOOKINGS_DB.prepare(
+        `SELECT COUNT(*) total FROM sqlite_master WHERE type='table'`
+      ).first();
+      result.database = {
+        status: Number(count?.total || 0) > 0 ? 'ready' : 'setup',
+        label: Number(count?.total || 0) > 0 ? 'D1 database connected' : 'D1 database needs setup',
+        detail: `${Number(count?.total || 0)} tables available`
+      };
+    }
+  } catch (error) {
+    result.database = { status: 'error', label: 'D1 database check failed', detail: error.message };
+  }
+
+  try {
+    if (env.MEDIA_BUCKET) {
+      await env.MEDIA_BUCKET.list({ limit: 1 });
+      result.media = { status: 'ready', label: 'R2 media connected' };
+    }
+  } catch (error) {
+    result.media = { status: 'error', label: 'R2 media check failed', detail: error.message };
+  }
+
+  result.payments = env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE
+    ? { status: 'ready', label: 'SumUp sandbox connected' }
+    : { status: 'setup', label: 'SumUp sandbox not connected yet' };
+
+  result.email = {
+    status: 'info',
+    label: 'Cloudflare email routing is managed in the domain dashboard'
+  };
+
+  return json(result);
+}
 
 async function customerPortalLink(request,env){
   if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
@@ -762,6 +905,39 @@ async function adminClasses(request, env) {
   return json({error:'Method not allowed.'},405);
 }
 
+
+async function adminCustomers(request, env) {
+  const check = requireAccessAdmin(request, env);
+  if (check.response) return check.response;
+  await ensureBookingSchema(env);
+
+  const { results } = await env.BOOKINGS_DB.prepare(`
+    SELECT
+      lower(b.customer_email) customer_key,
+      MAX(b.customer_name) customer_name,
+      lower(b.customer_email) customer_email,
+      MAX(b.customer_phone) customer_phone,
+      COUNT(*) total_bookings,
+      SUM(CASE WHEN b.status='PAID' THEN 1 ELSE 0 END) paid_bookings,
+      SUM(CASE WHEN b.status='CANCELLED' THEN 1 ELSE 0 END) cancelled_bookings,
+      SUM(CASE WHEN a.booking_id IS NOT NULL THEN 1 ELSE 0 END) attended_classes,
+      MAX(b.marketing_consent) marketing_consent,
+      MAX(b.created_at) last_booking_at
+    FROM bookings b
+    LEFT JOIN attendance a ON a.booking_id=b.id
+    GROUP BY lower(b.customer_email)
+    ORDER BY last_booking_at DESC
+  `).all();
+
+  return json({
+    customers: results.map(row => ({
+      ...row,
+      loyalty_progress: Number(row.attended_classes || 0) % 9,
+      reward_ready: Number(row.attended_classes || 0) > 0 && Number(row.attended_classes || 0) % 9 === 0
+    }))
+  });
+}
+
 async function adminBookings(request, env) {
   const check=requireAccessAdmin(request,env);if(check.response)return check.response;
   await ensureBookingSchema(env);
@@ -990,6 +1166,7 @@ export default {
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
       if (path === '/api/booking-cancel' && request.method === 'POST') return cancelBooking(request, env);
+      if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);
       if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
       if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);
       if (path === '/api/booking-calendar' && request.method === 'GET') return bookingCalendar(request, env, url);
@@ -998,6 +1175,7 @@ export default {
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env);
+      if (path === '/api/admin/customers' && request.method === 'GET') return adminCustomers(request, env);
       if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);
       if (path === '/api/admin/media-status' && request.method === 'GET') return mediaStatus(request, env);
       if (path === '/api/admin/media') return mediaCollection(request, env);

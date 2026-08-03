@@ -6208,3 +6208,48 @@ p,li,dd{
   .customer-summary-grid{grid-template-columns:1fr}
   .loyalty-stamp-row{grid-template-columns:repeat(3,1fr)}
 }
+
+
+/* VERSION 89 — PHASE 3 HQ ADMIN & RELIABILITY FIXES */
+.health-ready,.hq-health-row.ready{--health:#39965a}
+.health-setup,.hq-health-row.setup{--health:#d19b39}
+.health-error,.hq-health-row.error{--health:#bd3940}
+.health-info,.hq-health-row.info{--health:#4a78b8}
+.health-card,.service-check,.status-card{transition:border-color .2s ease,background .2s ease}
+.health-ready,.health-setup,.health-error,.health-info{border-left-color:var(--health)!important}
+.health-ready .status-dot,.health-setup .status-dot,.health-error .status-dot,.health-info .status-dot{background:var(--health)!important}
+.checking{opacity:.72}
+
+.hq-health-summary{display:grid;gap:.15rem}
+.hq-health-row{display:grid;grid-template-columns:42px 1fr;gap:.7rem;align-items:center;padding:.7rem 0;border-bottom:1px solid #d2b997}
+.hq-health-row:last-child{border-bottom:0}
+.hq-health-dot{display:block;width:24px;height:24px;margin:auto;border-radius:50%;background:var(--health,#d19b39);box-shadow:0 0 0 8px color-mix(in srgb,var(--health,#d19b39) 18%,transparent)}
+.hq-health-row strong,.hq-health-row small{display:block}
+.hq-health-row small{margin-top:.18rem;color:#745f52}
+
+.customer-admin-tools{display:flex;justify-content:space-between;align-items:end;gap:1rem;margin-bottom:1rem}
+.customer-admin-tools label{flex:1}
+.hq-customer-card{display:grid;grid-template-columns:minmax(230px,1.2fr) 1fr;gap:1rem;align-items:center;margin:.7rem 0;padding:1rem;border:1px solid #c8aa87;background:#fff8ed}
+.hq-customer-card h3{margin:.2rem 0}
+.hq-customer-card p{margin:.2rem 0;color:#695349}
+.hq-customer-card dl{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:0}
+.hq-customer-card dt{font-size:.62rem;text-transform:uppercase;color:#755f53}
+.hq-customer-card dd{margin:0;font-weight:700}
+
+/* Customer booking failure messages should be visible but not overwhelming. */
+.booking-dialog .form-message:not(:empty){
+  padding:.75rem;
+  border-left:4px solid #ae3036;
+  background:#f1dfca;
+  color:#8c282e;
+  font-size:.9rem;
+  line-height:1.45;
+}
+
+/* Keep profile/member cards clear on mobile. */
+.member-panel .button[href="my-bookings.html"]{display:inline-flex;margin:.75rem 0}
+
+@media(max-width:760px){
+  .customer-admin-tools{align-items:stretch;flex-direction:column}
+  .hq-customer-card{grid-template-columns:1fr}
+}

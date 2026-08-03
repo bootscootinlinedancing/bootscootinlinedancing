@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=88">
+  <link rel="stylesheet" href="styles.css?v=89">
   <meta name="theme-color" content="#080606">
 </head>
 <body class="ranch-body">
@@ -268,7 +268,27 @@
           <section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Not connected yet. This is safe: no card details are collected and no live booking is confirmed.</p><div class="ranch-connection"><span></span> Awaiting sandbox connection</div></section>
         </div>
       </section>
-    </main>
+    
+      <section class="ranch-view" data-view-panel="customers">
+        <div class="ranch-panel">
+          <div class="ranch-panel-head">
+            <div>
+              <p class="kicker red">Customer register</p>
+              <h2>Customers &amp; attendance</h2>
+              <p>View booking activity, attendance, loyalty progress and contact permissions without exposing payment details.</p>
+            </div>
+            <button class="button secondary compact" id="refreshCustomers">Refresh</button>
+          </div>
+          <div class="customer-admin-tools">
+            <label>Search
+              <input id="customerAdminSearch" type="search" placeholder="Name or email">
+            </label>
+            <button class="button secondary compact" id="exportCustomersCsv" type="button">Export CSV</button>
+          </div>
+          <div id="ranchCustomers">Loading…</div>
+        </div>
+      </section>
+</main>
   </div>
 
   <dialog class="ranch-dialog ranch-class-dialog" id="classDialog">
@@ -376,6 +396,64 @@
       </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=88" defer></script>
+  <script src="ranch.js?v=89" defer></script>
+  <script>
+(()=>{
+  const button=document.getElementById('runChecks') || [...document.querySelectorAll('button')].find(b=>/run checks/i.test(b.textContent));
+  const cards=[...document.querySelectorAll('[data-health-key],.health-card,.service-check,.status-card')];
+
+  const labelMap={
+    website:/website/i,
+    database:/database|d1/i,
+    media:/media|r2/i,
+    payments:/payment|sumup/i,
+    access:/access|admin protection/i,
+    email:/email/i
+  };
+
+  function findCard(key){
+    return cards.find(card=>{
+      if(card.dataset.healthKey===key)return true;
+      return labelMap[key]?.test(card.textContent||'');
+    });
+  }
+
+  function apply(card,item){
+    if(!card)return;
+    card.classList.remove('health-ready','health-setup','health-error','health-info','checking');
+    card.classList.add(`health-${item.status}`);
+    const statusNode=card.querySelector('[data-health-status],.health-status,.status-label,.service-status');
+    if(statusNode)statusNode.textContent=item.status==='ready'?'READY':item.status==='error'?'ERROR':item.status==='info'?'INFO':'SETUP';
+    const detailNode=card.querySelector('[data-health-detail],.health-detail,.service-detail');
+    if(detailNode&&item.detail)detailNode.textContent=item.detail;
+  }
+
+  async function run(){
+    if(button){button.disabled=true;button.textContent='CHECKING…';}
+    cards.forEach(c=>c.classList.add('checking'));
+    const timeout=new AbortController();
+    const timer=setTimeout(()=>timeout.abort(),10000);
+    try{
+      const response=await fetch('/api/admin/system-health',{cache:'no-store',signal:timeout.signal});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||'Checks could not be completed.');
+      ['website','database','media','email','access','payments'].forEach(key=>apply(findCard(key),data[key]));
+    }catch(error){
+      cards.forEach(card=>{
+        card.classList.remove('checking');
+        if(!card.classList.contains('health-ready'))card.classList.add('health-setup');
+      });
+      const notice=document.querySelector('[data-health-message],#healthMessage,.health-message');
+      if(notice)notice.textContent='Some live checks are unavailable. The page has stopped safely; try again after refreshing or review Cloudflare bindings.';
+    }finally{
+      clearTimeout(timer);
+      if(button){button.disabled=false;button.textContent='RUN CHECKS';}
+    }
+  }
+
+  button?.addEventListener('click',run);
+  run();
+})();
+</script>
 </body>
 </html>

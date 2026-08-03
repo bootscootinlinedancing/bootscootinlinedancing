@@ -296,4 +296,89 @@
 
   if (refreshButton) refreshButton.addEventListener('click', collectNotifications);
   window.addEventListener('load', collectNotifications);
+
+  async function loadSystemHealth(){
+    const checklist=document.getElementById('hqHealthSummary') || document.querySelector('.launch-checklist');
+    const loading=[...document.querySelectorAll('.checking-platform,.command-loading,[data-command-loading]')];
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),10000);
+    try{
+      const health=await jsonFetch('/api/admin/system-health',{signal:controller.signal});
+      const entries=[
+        ['website',health.website],['database',health.database],['media',health.media],
+        ['email',health.email],['access',health.access],['payments',health.payments]
+      ];
+      if(checklist){
+        checklist.innerHTML=entries.map(([key,item])=>`
+          <div class="hq-health-row ${esc(item.status)}" data-health-key="${esc(key)}">
+            <span class="hq-health-dot" aria-hidden="true"></span>
+            <div><strong>${esc(item.label)}</strong>${item.detail?`<small>${esc(item.detail)}</small>`:''}</div>
+          </div>
+        `).join('');
+      }
+      loading.forEach(node=>{
+        node.innerHTML='<strong>Platform check complete.</strong><p>Live service results are shown below.</p>';
+      });
+    }catch(error){
+      loading.forEach(node=>{
+        node.innerHTML='<strong>Platform check paused.</strong><p>The dashboard stopped safely instead of loading indefinitely. Refresh after checking Cloudflare Access and bindings.</p>';
+      });
+    }finally{
+      clearTimeout(timer);
+    }
+  }
+
+  loadSystemHealth();
+
+  function renderCustomers(){
+    const box=document.getElementById('ranchCustomers');
+    if(!box)return;
+    const q=(document.getElementById('customerAdminSearch')?.value||'').trim().toLowerCase();
+    const rows=(state.customers?.customers||[]).filter(c=>
+      !q || String(c.customer_name||'').toLowerCase().includes(q) || String(c.customer_email||'').toLowerCase().includes(q)
+    );
+    box.innerHTML=rows.length?rows.map(c=>`
+      <article class="hq-customer-card">
+        <div>
+          <p class="kicker red">${c.marketing_consent?'Marketing opt-in':'Service emails only'}</p>
+          <h3>${esc(c.customer_name)}</h3>
+          <p>${esc(c.customer_email)}${c.customer_phone?` · ${esc(c.customer_phone)}`:''}</p>
+        </div>
+        <dl>
+          <div><dt>Bookings</dt><dd>${esc(c.total_bookings)}</dd></div>
+          <div><dt>Attended</dt><dd>${esc(c.attended_classes)}</dd></div>
+          <div><dt>Cancelled</dt><dd>${esc(c.cancelled_bookings)}</dd></div>
+          <div><dt>Loyalty</dt><dd>${esc(c.loyalty_progress)} / 9${c.reward_ready?' · Reward ready':''}</dd></div>
+        </dl>
+      </article>
+    `).join(''):'<div class="ranch-empty">No customers match this search.</div>';
+  }
+
+  async function loadCustomers(){
+    const box=document.getElementById('ranchCustomers');
+    if(!box)return;
+    try{
+      state.customers=await jsonFetch('/api/admin/customers');
+      renderCustomers();
+    }catch(error){
+      box.innerHTML=`<div class="ranch-empty"><strong>Customer register unavailable.</strong><p>${esc(error.message)}</p></div>`;
+    }
+  }
+
+  document.getElementById('refreshCustomers')?.addEventListener('click',loadCustomers);
+  document.getElementById('customerAdminSearch')?.addEventListener('input',renderCustomers);
+  document.getElementById('exportCustomersCsv')?.addEventListener('click',()=>{
+    const rows=state.customers?.customers||[];
+    const headers=['Name','Email','Phone','Bookings','Paid bookings','Cancelled bookings','Attended','Loyalty progress','Marketing consent'];
+    const csv=[headers,...rows.map(c=>[
+      c.customer_name,c.customer_email,c.customer_phone||'',c.total_bookings,c.paid_bookings,
+      c.cancelled_bookings,c.attended_classes,c.loyalty_progress,c.marketing_consent?'Yes':'No'
+    ])].map(row=>row.map(v=>`"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
+    const link=document.createElement('a');
+    link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    link.download=`boot-scootin-customers-${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+  loadCustomers();
 })();
