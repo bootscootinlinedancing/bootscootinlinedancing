@@ -5976,3 +5976,42 @@ body.menu-open{position:fixed!important;inset:0!important;width:100%!important;o
   .about-page .story-panel{padding:1.35rem!important}
   .about-page .story-panel h3{font-size:clamp(2.3rem,11vw,3.4rem)!important;line-height:1.03!important}
 }
+
+
+/* VERSION 86 — VISUAL FIXES & ONLINE BOOKING SYSTEM */
+.businesses-love-title span{display:block!important;white-space:nowrap!important}
+.businesses-love-title{font-size:clamp(3rem,9vw,7.2rem)!important;line-height:.92!important}
+.backroad-visual{padding:1rem!important;background:#050505!important}
+.backroad-visual img{width:min(88%,480px)!important;box-shadow:none!important;border:0!important;object-fit:contain!important}
+.booking-policy-summary{margin:1rem 0;padding:1rem;border:1px solid #c7a77e;background:#f4e5cf}
+.booking-policy-summary h3{margin:0 0 .65rem}
+.booking-policy-summary ul{margin:0;padding-left:1.2rem}
+.booking-policy-summary li{margin:.42rem 0;color:#59463e;font-size:.77rem;line-height:1.45}
+.booking-policy-summary p{margin:.7rem 0 0;color:#745c50;font-size:.7rem}
+.booking-policy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.booking-policy-grid article{padding:1rem;border:1px solid #51282b;background:#150a0b}
+.booking-policy-grid strong{color:#fff;font:700 1rem Oswald,sans-serif}
+.booking-policy-grid p{color:#cdb8a7}
+.fair-policy-note{margin-top:1rem;padding:1rem;border-left:4px solid #d64147;background:#221012;color:#d7c3b2}
+.manage-booking-panel{margin:1rem 0;padding:1rem;border:1px solid #c4a27c;background:#f3e3cd}
+.manage-booking-panel h2{margin-top:0}
+.class-public-note{padding:.55rem .7rem;border-left:3px solid #ad3036;background:#f3e5d3}
+.spaces.full{color:#a52f35!important}
+.booking-admin-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin-bottom:1rem}
+.booking-admin-stats article{padding:.8rem;border:1px solid #c8aa87;background:#f4e6d1}
+.booking-admin-stats span,.booking-admin-stats strong{display:block}.booking-admin-stats span{font-size:.68rem}.booking-admin-stats strong{font:700 1.35rem Oswald,sans-serif;color:#90242a}
+.booking-admin-tools{display:flex;justify-content:space-between;align-items:end;gap:1rem;margin-bottom:1rem}
+.hq-booking-card{display:grid;grid-template-columns:minmax(210px,1.2fr) 1fr auto;gap:1rem;align-items:center;margin:.7rem 0;padding:1rem;border:1px solid #c8aa87;background:#fff8ed}
+.hq-booking-main h3{margin:.2rem 0}.hq-booking-main p,.hq-booking-main small{display:block;margin:.2rem 0;color:#695349}
+.hq-booking-card dl{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin:0}.hq-booking-card dl div{min-width:0}.hq-booking-card dt{font-size:.62rem;text-transform:uppercase}.hq-booking-card dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.hq-booking-actions{display:grid;gap:.35rem}.hq-booking-actions button{padding:.45rem .6rem;border:1px solid #8f252b;background:#fff;color:#8f252b;font:700 .65rem Oswald,sans-serif;cursor:pointer}
+.waiting-list-head{margin-top:1.5rem}.hq-waiting-row{display:grid;grid-template-columns:1fr 1.2fr auto;gap:1rem;padding:.75rem;border-bottom:1px solid #d2b998}.hq-waiting-row small{display:block}
+@media(max-width:760px){
+  .businesses-love-title{font-size:clamp(2.9rem,13.2vw,4.5rem)!important}
+  .booking-policy-grid{grid-template-columns:1fr}
+  .booking-admin-stats{grid-template-columns:1fr 1fr}
+  .booking-admin-tools{align-items:stretch;flex-direction:column}
+  .hq-booking-card{grid-template-columns:1fr}
+  .hq-booking-actions{grid-template-columns:1fr 1fr}
+  .hq-waiting-row{grid-template-columns:1fr}
+}

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=85">
+  <link rel="stylesheet" href="styles.css?v=86">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style id="menu45-style">
@@ -173,11 +173,11 @@
   <main class="booking-page">
     <section class="booking-hero">
       <div class="booking-shell">
-        <p class="kicker">Direct booking pilot · No payment taken</p>
+        <p class="kicker">Secure online class booking</p>
         <h1>Book your next class</h1>
-        <p class="booking-lead">Choose a class and request your place. During the pilot, no payment is taken and Nora will confirm the booking separately.</p>
+        <p class="booking-lead">Choose a live class, reserve up to four places and pay securely through SumUp when online payments are enabled. Full classes automatically offer a waiting-list place.</p>
         <div class="security-strip" aria-label="Booking security information">
-          <span>✓ Live capacity</span><span>✓ Waiting list when full</span><span>✓ No card details collected</span>
+          <span>✓ Live capacity</span><span>✓ Automatic waiting list</span><span>✓ SumUp hosted payment</span>
         </div>
       </div>
     </section>
@@ -201,22 +201,65 @@
     <dialog id="bookingDialog" class="booking-dialog">
       <form id="bookingForm" method="dialog" novalidate>
         <button class="dialog-close" type="button" id="closeBooking" aria-label="Close">×</button>
-        <p class="kicker red">Reserve your place</p>
+        <p class="kicker red" id="bookingDialogKicker">Book your place</p>
         <h2 id="selectedClassName">Class booking</h2>
         <p id="selectedClassMeta" class="dialog-meta"></p>
         <input type="hidden" id="classId" name="classId">
+        <input type="hidden" id="bookingMode" name="bookingMode" value="booking">
+
         <div class="form-grid">
           <label>Full name<input name="name" autocomplete="name" maxlength="100" required></label>
           <label>Email address<input name="email" type="email" autocomplete="email" maxlength="160" required></label>
           <label>Mobile number <small>(optional)</small><input name="phone" type="tel" autocomplete="tel" maxlength="30"></label>
-          <label>Number of places<select name="quantity" id="quantity" required><option value="1">1 place</option><option value="2">2 places</option><option value="3">3 places</option><option value="4">4 places</option></select></label>
+          <label>Number of places
+            <select name="quantity" id="quantity" required>
+              <option value="1">1 place</option><option value="2">2 places</option>
+              <option value="3">3 places</option><option value="4">4 places</option>
+            </select>
+          </label>
         </div>
-        <label class="check-row"><input type="checkbox" name="terms" required><span>I agree to the booking terms, cancellation policy and privacy notice.</span></label>
-        <p class="privacy-note">Do not enter medical details or card information here. This pilot records your request only; payment is not yet taken.</p>
-        <button class="button booking-submit" type="submit">Request My Place</button>
+
+        <section class="booking-policy-summary" aria-labelledby="policySummaryTitle">
+          <h3 id="policySummaryTitle">Cancellation and refund summary</h3>
+          <ul>
+            <li><strong>48 hours or more:</strong> full refund to the original payment method, or a class credit.</li>
+            <li><strong>24–48 hours:</strong> one class transfer or class credit.</li>
+            <li><strong>Less than 24 hours or a no-show:</strong> normally no refund or credit, unless the place is resold or exceptional circumstances are agreed.</li>
+            <li><strong>If Boot Scootin’ cancels:</strong> full refund or transfer to another class.</li>
+          </ul>
+          <p>Refunds and charges will always be applied fairly and proportionately. Your statutory rights are not affected.</p>
+        </section>
+
+        <label class="check-row"><input type="checkbox" name="terms" value="accepted" required><span>I have read and agree to the booking, cancellation and refund terms.</span></label>
+        <label class="check-row"><input type="checkbox" name="marketing_consent" value="1"><span>Optional: send me occasional Boot Scootin’ class and event news.</span></label>
+        <p class="privacy-note">Payment details are entered only on SumUp’s secure hosted checkout. Boot Scootin’ does not collect or store your card details.</p>
+        <button class="button booking-submit" type="submit" id="bookingSubmit">Continue to Secure Payment</button>
         <p id="formMessage" class="form-message" role="alert"></p>
       </form>
     </dialog>
+
+    
+    <section class="section dark booking-policy-section" id="cancellation-policy">
+      <div class="booking-shell">
+        <div class="section-title centre reveal">
+          <p class="kicker">Plain and fair terms</p>
+          <h2>Class Cancellation &amp; Refund Policy</h2>
+          <p>Please read this before booking. The summary is also shown again at checkout.</p>
+        </div>
+        <div class="booking-policy-grid reveal">
+          <article><strong>48+ hours’ notice</strong><p>Choose a full refund to the original payment method or move the value to a future standard class.</p></article>
+          <article><strong>24–48 hours’ notice</strong><p>Choose one transfer to another available standard class or receive class credit. A cash refund is not normally offered at this stage.</p></article>
+          <article><strong>Under 24 hours</strong><p>No refund or credit is normally available because the reserved space may be difficult to refill. If the place is resold, the payment will be refunded.</p></article>
+          <article><strong>No-shows</strong><p>No refund or class credit is normally available. Exceptional circumstances can be considered individually.</p></article>
+          <article><strong>Boot Scootin’ cancels</strong><p>You can choose a full refund or transfer the full value to another class. This also applies where the agreed service cannot be provided.</p></article>
+          <article><strong>How to cancel</strong><p>Use the secure manage-booking link supplied after booking, or email bookings@bootscootinlinedancing.co.uk with your booking reference.</p></article>
+        </div>
+        <div class="fair-policy-note reveal">
+          <strong>Fairness promise</strong>
+          <p>Any amount retained will reflect the genuine loss caused by the cancellation and reasonable steps will be taken to refill the space. Nothing in this policy limits your statutory consumer rights.</p>
+        </div>
+      </div>
+    </section>
 
     <section class="booking-help">
       <div class="booking-shell help-grid">
@@ -243,8 +286,8 @@
     </section>
 
   </main>
-  <script src="script.js?v=85"></script>
-  <script src="bookings.js?v=85" defer></script>
+  <script src="script.js?v=86"></script>
+  <script src="bookings.js?v=86" defer></script>
 
 <a class="admin-login-link" href="/admin-login" aria-label="Administrator login">🔒 Admin Login</a>
 

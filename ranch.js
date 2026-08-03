@@ -24,7 +24,64 @@
 
   async function jsonFetch(url,options){const r=await fetch(url,{headers:{Accept:'application/json','Content-Type':'application/json',...(options?.headers||{})},...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'The Ranch backend is not configured yet.');return d;}
   async function loadClasses(){try{state.classes=await jsonFetch('/api/admin/classes');document.getElementById('ranchNotice').hidden=true;}catch(e){state.classes=[];document.getElementById('ranchNotice').hidden=false;document.getElementById('ranchNotice').textContent=e.message+' The dashboard is showing setup mode until Cloudflare D1 and Access are connected.';}renderClasses();renderOverview();}
-  async function loadBookings(){const box=document.getElementById('ranchBookings');try{state.bookings=await jsonFetch('/api/admin/bookings');renderBookings();}catch(e){box.innerHTML=`<div class="ranch-empty"><strong>Bookings are not connected yet.</strong><p>${esc(e.message)}</p></div>`;}}
+  function renderBookings(){
+    const data=state.bookings||{bookings:[],waiting:[],stats:{}};
+    const filter=document.getElementById('bookingAdminFilter')?.value||'all';
+    let rows=data.bookings||[];
+    if(filter==='active')rows=rows.filter(b=>['PENDING','PAID'].includes(b.status));
+    else if(filter==='refund-review')rows=rows.filter(b=>['REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW'].includes(b.refund_status));
+    else if(filter!=='all')rows=rows.filter(b=>b.status===filter);
+
+    const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
+    set('bookingGuestTotal',data.stats?.guests||0);
+    set('bookingRevenueTotal',money(data.stats?.paid||0));
+    set('bookingRefundTotal',data.stats?.refunds_due||0);
+    set('bookingWaitTotal',data.stats?.waiting||0);
+
+    const box=document.getElementById('ranchBookings');
+    box.innerHTML=rows.length?rows.map(b=>`<article class="hq-booking-card">
+      <div class="hq-booking-main">
+        <p class="kicker red">${esc(b.status)}</p>
+        <h3>${esc(b.customer_name)}</h3>
+        <p>${esc(b.class_title)} · ${fmt(b.starts_at)}</p>
+        <small>${esc(b.customer_email)}${b.customer_phone?` · ${esc(b.customer_phone)}`:''}</small>
+      </div>
+      <dl>
+        <div><dt>Reference</dt><dd>${esc(b.reference)}</dd></div>
+        <div><dt>Places</dt><dd>${esc(b.quantity)}</dd></div>
+        <div><dt>Total</dt><dd>${money(b.amount_pence)}</dd></div>
+        <div><dt>Refund / credit</dt><dd>${esc(b.refund_status||'—')}</dd></div>
+      </dl>
+      <div class="hq-booking-actions">
+        ${b.status==='PENDING'?`<button data-booking-action="MARK_PAID" data-booking-id="${esc(b.id)}">Mark paid</button>`:''}
+        ${['PENDING','PAID'].includes(b.status)?`<button data-booking-action="CHECK_IN" data-booking-id="${esc(b.id)}">${b.checked_in?'Checked in':'Check in'}</button>`:''}
+        ${['PENDING','PAID'].includes(b.status)?`<button data-booking-action="CANCEL" data-booking-id="${esc(b.id)}">Cancel</button>`:''}
+        ${b.status==='CANCELLED'&&b.refund_status!=='REFUNDED'?`<button data-booking-action="MARK_REFUNDED" data-booking-id="${esc(b.id)}">Mark refunded</button><button data-booking-action="ISSUE_CREDIT" data-booking-id="${esc(b.id)}">Issue credit</button>`:''}
+      </div>
+    </article>`).join(''):'<div class="ranch-empty">No bookings match this filter.</div>';
+
+    const waiting=document.getElementById('ranchWaitingList');
+    waiting.innerHTML=(data.waiting||[]).length?(data.waiting||[]).map(w=>`<article class="hq-waiting-row">
+      <div><strong>${esc(w.customer_name)}</strong><small>${esc(w.customer_email)}</small></div>
+      <span>${esc(w.class_title)} · ${fmt(w.starts_at)}</span><b>${esc(w.quantity)} place${Number(w.quantity)===1?'':'s'} · ${esc(w.status)}</b>
+    </article>`).join(''):'<div class="ranch-empty">Nobody is waiting at the moment.</div>';
+  }
+
+  async function bookingAction(id,action){
+    const labels={MARK_PAID:'mark this booking as paid',CHECK_IN:'check this guest in',CANCEL:'cancel this booking',MARK_REFUNDED:'mark the payment as refunded',ISSUE_CREDIT:'issue a class credit'};
+    if(!confirm(`Are you sure you want to ${labels[action]||action}?`))return;
+    const body={id,action};
+    if(action==='MARK_REFUNDED'){
+      const booking=(state.bookings?.bookings||[]).find(b=>b.id===id);
+      body.refund_amount_pence=booking?.amount_pence||0;
+      body.admin_notes=prompt('Optional refund note:','Refund processed through SumUp')||'';
+    }
+    if(action==='ISSUE_CREDIT')body.admin_notes=prompt('Credit note or reference:','Standard class credit issued')||'Standard class credit issued';
+    await jsonFetch('/api/admin/bookings',{method:'PATCH',body:JSON.stringify(body)});
+    await loadBookings();
+  }
+
+  async function loadBookings(){const box=document.getElementById('ranchBookings');try{state.bookings=await jsonFetch('/api/admin/bookings');renderBookings();}catch(e){box.innerHTML=`<div class="ranch-empty"><strong>Bookings are not connected yet.</strong><p>${esc(e.message)}</p></div>`;const wait=document.getElementById('ranchWaitingList');if(wait)wait.innerHTML='';}}
   async function loadMedia(){const box=document.getElementById('ranchMedia');if(!box)return;try{const data=await jsonFetch('/api/admin/media');state.media=data.items||[];document.getElementById('ranchMediaCount').textContent=state.media.length;renderMedia();}catch(e){state.media=[];document.getElementById('ranchMediaCount').textContent='—';box.innerHTML=`<div class="ranch-empty"><strong>Media storage is not connected yet.</strong><p>${esc(e.message)}</p></div>`;}}
   async function checkMediaBackend(){const box=document.getElementById('mediaBackendStatus');if(!box)return;box.className='hq-backend-status checking';box.innerHTML='<strong>Checking media connection…</strong><span>Checking HQ login and Cloudflare R2 storage.</span>';try{const r=await fetch('/api/admin/media-status?version=73',{cache:'no-store',headers:{Accept:'application/json'}});const d=await r.json().catch(()=>({}));const checks=d.checks||{};const rows=Object.entries(checks).map(([k,v])=>`<li><b>${v.ready?'✓':'×'}</b><span><strong>${esc(k.replace(/([A-Z])/g,' $1'))}</strong> — ${esc(v.message||'')}</span></li>`).join('');box.className=`hq-backend-status ${d.ready?'ready':'error'}`;box.innerHTML=`<strong>${d.ready?'Media Manager is connected':'Media Manager needs setup'}</strong><span>${esc(d.error||'Uploads can now be stored securely in Cloudflare R2.')}</span><ul class="media-check-list">${rows}</ul>`;return d.ready;}catch(e){box.className='hq-backend-status error';box.innerHTML=`<strong>Connection check failed</strong><span>${esc(e.message)}</span>`;return false;}}
   function renderMedia(){const box=document.getElementById('ranchMedia');if(!box)return;box.innerHTML=state.media.length?state.media.map(m=>`<article class="ranch-media-item"><div class="ranch-media-preview">${m.media_type==='image'?`<img src="/media/${encodeURIComponent(m.storage_key)}" alt="">`:m.media_type==='video'?'<span>VIDEO</span>':m.media_type==='pdf'?'<span>PDF</span>':'<span>FILE</span>'}</div><div class="ranch-media-copy"><strong>${esc(m.title)}</strong><small>${esc(m.original_name)} · ${esc(m.placement||'library')}</small><code>/media/${esc(m.storage_key)}</code></div><div class="ranch-media-actions"><button data-copy-media="${esc(m.storage_key)}">Copy link</button><button data-delete-media="${esc(m.id)}">Delete</button></div></article>`).join(''):'<div class="ranch-empty">No media uploaded yet.</div>';}
@@ -87,6 +144,18 @@
   document.getElementById('ranchClassFilter').onchange=renderClasses;
   document.getElementById('refreshRanch').onclick=loadClasses;
   document.getElementById('refreshBookings').onclick=loadBookings;
+  document.getElementById('bookingAdminFilter')?.addEventListener('change',renderBookings);
+  document.getElementById('ranchBookings')?.addEventListener('click',event=>{
+    const button=event.target.closest('[data-booking-action]');
+    if(button)bookingAction(button.dataset.bookingId,button.dataset.bookingAction).catch(error=>alert(error.message));
+  });
+  document.getElementById('exportBookingsCsv')?.addEventListener('click',()=>{
+    const rows=state.bookings?.bookings||[];
+    const headers=['Reference','Status','Customer','Email','Phone','Class','Date','Venue','Places','Amount GBP','Refund or credit'];
+    const csv=[headers,...rows.map(b=>[b.reference,b.status,b.customer_name,b.customer_email,b.customer_phone||'',b.class_title,b.starts_at,b.venue,b.quantity,(Number(b.amount_pence||0)/100).toFixed(2),b.refund_status||''])]
+      .map(row=>row.map(value=>`"${String(value??'').replaceAll('"','""')}"`).join(',')).join('\n');
+    const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));link.download=`boot-scootin-bookings-${new Date().toISOString().slice(0,10)}.csv`;link.click();URL.revokeObjectURL(link.href);
+  });
   document.getElementById('refreshMedia')?.addEventListener('click',loadMedia);
   document.getElementById('checkMediaBackend')?.addEventListener('click',checkMediaBackend);
   document.getElementById('refreshHealth')?.addEventListener('click',loadHealth);

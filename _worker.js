@@ -259,6 +259,25 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_private_quote_inquiry ON private_event_quotes(inquiry_id,version)`
   ];
   for (const statement of statements) await env.BOOKINGS_DB.prepare(statement).run();
+
+  // V86 booking self-service and cancellation fields. D1 does not support
+  // ADD COLUMN IF NOT EXISTS, so each migration is attempted safely.
+  const migrations = [
+    `ALTER TABLE bookings ADD COLUMN secure_token TEXT`,
+    `ALTER TABLE bookings ADD COLUMN terms_accepted_at TEXT`,
+    `ALTER TABLE bookings ADD COLUMN marketing_consent INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE bookings ADD COLUMN cancellation_requested_at TEXT`,
+    `ALTER TABLE bookings ADD COLUMN cancellation_band TEXT`,
+    `ALTER TABLE bookings ADD COLUMN refund_status TEXT`,
+    `ALTER TABLE bookings ADD COLUMN refund_amount_pence INTEGER`,
+    `ALTER TABLE bookings ADD COLUMN admin_notes TEXT`,
+    `ALTER TABLE waiting_list ADD COLUMN secure_token TEXT`
+  ];
+  for (const migration of migrations) {
+    try { await env.BOOKINGS_DB.prepare(migration).run(); } catch (_) {}
+  }
+  try { await env.BOOKINGS_DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_secure_token ON bookings(secure_token)`).run(); } catch (_) {}
+  try { await env.BOOKINGS_DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_secure_token ON waiting_list(secure_token)`).run(); } catch (_) {}
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO venues(id,name,location,capacity) VALUES
     ('ecc','Edgbaston Community Centre','Birmingham',20),
     ('low-places','Low Places','Birmingham',50)`).run();
@@ -325,26 +344,157 @@ async function createClassReservation(request, env) {
   await ensureBookingSchema(env);
   const body = await request.json().catch(() => null);
   if (!body) return json({ error: 'The booking request could not be read.' }, 400);
-  const name = clean(body.name, 100), email = clean(body.email, 160).toLowerCase(), phone = clean(body.phone, 30);
-  const classId = clean(body.classId, 120), quantity = Math.max(1, Math.min(10, Number(body.quantity) || 1));
-  if (!name || !emailOk(email) || !classId) return json({ error: 'Please enter your name, a valid email address and choose a class.' }, 400);
-  const row = await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=? AND status='open'`).bind(classId).first();
-  if (!row) return json({ error: 'This class is no longer open for booking.' }, 404);
-  const spaces = Math.max(0, Number(row.capacity) - Number(row.sold || 0));
-  const id = crypto.randomUUID();
-  const reference = `BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
-  if (spaces < quantity) {
-    await env.BOOKINGS_DB.prepare(`INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status) VALUES(?,?,?,?,?,'WAITING')`).bind(id,classId,name,email,quantity).run();
-    return json({ ok:true, waitlisted:true, reference, message:'The class is full, so you have been added to the waiting list. No payment has been taken.' }, 201);
+
+  const name=clean(body.name,100), email=clean(body.email,160).toLowerCase(), phone=clean(body.phone,30);
+  const classId=clean(body.classId,120), quantity=Math.max(1,Math.min(4,Number(body.quantity)||1));
+  const requestedWaitlist=clean(body.bookingMode,20)==='waitlist';
+  if(!name||!emailOk(email)||!classId) return json({error:'Please enter your name, a valid email address and choose a class.'},400);
+  if(!body.terms_accepted) return json({error:'Please accept the booking and cancellation terms.'},400);
+
+  const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=? AND status='open' AND starts_at>?`).bind(classId,new Date().toISOString()).first();
+  if(!row) return json({error:'This class is no longer open for booking.'},404);
+
+  const held=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(quantity),0) total FROM booking_holds WHERE class_id=? AND expires_at>?`).bind(classId,new Date().toISOString()).first();
+  const spaces=Math.max(0,Number(row.capacity)-Number(row.sold||0)-Number(held?.total||0));
+  const id=crypto.randomUUID(), token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const reference=`BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
+
+  if(requestedWaitlist||spaces<quantity){
+    await env.BOOKINGS_DB.prepare(`INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token) VALUES(?,?,?,?,?,'WAITING',?)`)
+      .bind(id,classId,name,email,quantity,token).run();
+    return json({ok:true,waitlisted:true,reference,status:'WAITLISTED',secure_token:token,message:'You have been added to the waiting list. No payment has been taken.'},201);
   }
-  const amount = Number(row.price_pence) * quantity;
+
+  const amount=Number(row.price_pence)*quantity;
+  const paymentReady=Boolean(env.SUMUP_API_KEY&&env.SUMUP_MERCHANT_CODE);
+  const holdId=crypto.randomUUID();
+  const holdExpiry=new Date(Date.now()+15*60*1000).toISOString();
+
   await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`INSERT INTO bookings(id,reference,class_id,customer_name,customer_email,customer_phone,quantity,amount_pence,status,payment_provider,retention_delete_after) VALUES(?,?,?,?,?,?,?,?, 'PENDING','TEST',datetime('now','+24 months'))`).bind(id,reference,classId,name,email,phone,quantity,amount),
-    env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(quantity,classId,quantity),
-    env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(email,'TEST_RESERVATION_CREATED','booking',id,JSON.stringify({reference,quantity}))
+    env.BOOKINGS_DB.prepare(`INSERT INTO booking_holds(id,class_id,quantity,expires_at) VALUES(?,?,?,?)`).bind(holdId,classId,quantity,holdExpiry),
+    env.BOOKINGS_DB.prepare(`INSERT INTO bookings(id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,quantity,amount_pence,status,payment_provider,secure_token,terms_accepted_at,marketing_consent,retention_delete_after) VALUES(?,?,?,?,?,?,?,?,?,'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`)
+      .bind(id,reference,classId,holdId,name,email,phone,quantity,amount,paymentReady?'SUMUP':'MANUAL',token,Number(Boolean(body.marketing_consent))),
+    env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+      .bind(email,'BOOKING_CREATED','booking',id,JSON.stringify({reference,quantity,terms:true,paymentReady}))
   ]);
-  return json({ ok:true, reference, status:'PENDING', payment_enabled:false, message:'Your place has been recorded in pilot mode. No payment has been taken and the booking is not final until Nora confirms it.' }, 201);
+
+  if(paymentReady){
+    const origin=new URL(request.url).origin;
+    const checkoutPayload={
+      checkout_reference:reference,
+      amount:Number((amount/100).toFixed(2)),
+      currency:'GBP',
+      merchant_code:String(env.SUMUP_MERCHANT_CODE),
+      description:`${row.title} — ${quantity} place${quantity===1?'':'s'}`,
+      redirect_url:`${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(token)}`,
+      return_url:`${origin}/api/sumup/booking-webhook`,
+      hosted_checkout:{enabled:true}
+    };
+    const sumup=await fetch('https://api.sumup.com/v0.1/checkouts',{
+      method:'POST',
+      headers:{Authorization:`Bearer ${env.SUMUP_API_KEY}`,'Content-Type':'application/json'},
+      body:JSON.stringify(checkoutPayload)
+    });
+    const checkout=await sumup.json().catch(()=>({}));
+    if(!sumup.ok||!checkout.id){
+      await env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId).run();
+      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='FAILED',admin_notes=? WHERE id=?`).bind(`SumUp checkout failed: ${JSON.stringify(checkout).slice(0,500)}`,id).run();
+      return json({error:'Secure payment could not be started. No payment has been taken. Please try again.'},502);
+    }
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET provider_checkout_id=? WHERE id=?`).bind(checkout.id,id).run();
+    return json({ok:true,reference,secure_token:token,status:'PENDING',payment_enabled:true,checkout_url:checkout.hosted_checkout_url||checkout.hosted_checkout?.url},201);
+  }
+
+  // Manual/pilot mode: reserve immediately so HQ can manage the booking.
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(quantity,classId,quantity),
+    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
+  ]);
+  return json({ok:true,reference,secure_token:token,status:'PENDING',payment_enabled:false,message:'Your place is reserved. Online payment is not enabled yet, so Nora will confirm payment separately.'},201);
 }
+
+async function syncSumUpBooking(env, booking) {
+  if(!booking?.provider_checkout_id||!env.SUMUP_API_KEY) return booking;
+  const response=await fetch(`https://api.sumup.com/v0.1/checkouts/${encodeURIComponent(booking.provider_checkout_id)}`,{
+    headers:{Authorization:`Bearer ${env.SUMUP_API_KEY}`,Accept:'application/json'}
+  });
+  if(!response.ok)return booking;
+  const checkout=await response.json();
+  if(checkout.status==='PAID'&&booking.status!=='PAID'){
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP,provider_transaction_id=COALESCE(?,provider_transaction_id) WHERE id=?`).bind(checkout.transaction_id||null,booking.id),
+      env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(booking.quantity,booking.class_id,booking.quantity),
+      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id)
+    ]);
+    booking.status='PAID';
+  }else if(['FAILED','EXPIRED'].includes(checkout.status)&&booking.status==='PENDING'){
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='FAILED' WHERE id=?`).bind(booking.id),
+      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id)
+    ]);
+    booking.status='FAILED';
+  }
+  return booking;
+}
+
+async function bookingStatus(request,env,url){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const token=clean(url.searchParams.get('token'),160),reference=clean(url.searchParams.get('reference'),120);
+  let booking=null;
+  if(token)booking=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.secure_token=?`).bind(token).first();
+  else if(reference)booking=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.reference=?`).bind(reference).first();
+
+  if(!booking&&token){
+    const wait=await env.BOOKINGS_DB.prepare(`SELECT w.*,c.title class_title,c.starts_at,c.venue,c.location,0 amount_pence,'WAITLISTED' status FROM waiting_list w JOIN classes c ON c.id=w.class_id WHERE w.secure_token=?`).bind(token).first();
+    if(wait)return json({...wait,reference:'WAITLIST',payment_enabled:false,can_cancel:wait.status==='WAITING',cancellation_guidance:'You can leave the waiting list at any time. No payment has been taken.'});
+  }
+  if(!booking)return json({error:'Booking not found.'},404);
+  booking=await syncSumUpBooking(env,booking);
+  const hours=(new Date(booking.starts_at)-new Date())/3600000;
+  const guidance=hours>=48?'A cancellation now qualifies for a full refund or class credit.':hours>=24?'A cancellation now qualifies for one transfer or class credit.':'This is within 24 hours. A refund or credit is normally available only if the place is resold or exceptional circumstances are agreed.';
+  return json({
+    reference:booking.reference,status:booking.status,class_title:booking.class_title,starts_at:booking.starts_at,
+    venue:booking.venue,location:booking.location,quantity:booking.quantity,amount_pence:booking.amount_pence,
+    payment_enabled:Boolean(env.SUMUP_API_KEY&&env.SUMUP_MERCHANT_CODE),can_cancel:['PENDING','PAID'].includes(booking.status),
+    cancellation_guidance:guidance,refund_outcome:booking.refund_status||''
+  });
+}
+
+async function cancelBooking(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const body=await request.json().catch(()=>null),token=clean(body?.token,160);
+  if(!token)return json({error:'Secure booking token is missing.'},400);
+
+  const booking=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.starts_at FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.secure_token=?`).bind(token).first();
+  if(!booking){
+    const wait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE secure_token=?`).bind(token).first();
+    if(!wait)return json({error:'Booking not found.'},404);
+    await env.BOOKINGS_DB.prepare(`UPDATE waiting_list SET status='CANCELLED' WHERE id=?`).bind(wait.id).run();
+    return json({ok:true,message:'You have been removed from the waiting list. No payment was taken.'});
+  }
+  if(!['PENDING','PAID'].includes(booking.status))return json({error:'This booking can no longer be cancelled online.'},409);
+
+  const hours=(new Date(booking.starts_at)-new Date())/3600000;
+  const band=hours>=48?'FULL_REFUND':hours>=24?'CLASS_CREDIT':'LATE_CANCELLATION';
+  const refundStatus=booking.status==='PAID'?(band==='FULL_REFUND'?'REFUND_DUE':band==='CLASS_CREDIT'?'CREDIT_DUE':'REVIEW_IF_RESOLD'):'NO_PAYMENT_TAKEN';
+
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=CURRENT_TIMESTAMP,cancellation_band=?,refund_status=? WHERE id=?`).bind(band,refundStatus,booking.id),
+    env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(booking.quantity,booking.class_id),
+    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
+    env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(booking.customer_email,'CUSTOMER_CANCELLED','booking',booking.id,JSON.stringify({band,refundStatus}))
+  ]);
+
+  const message=band==='FULL_REFUND'
+    ?'Your cancellation is recorded. A full refund or class credit is due.'
+    :band==='CLASS_CREDIT'
+      ?'Your cancellation is recorded. You are eligible for one class transfer or class credit.'
+      :'Your late cancellation is recorded. A refund or credit is normally considered only if the place is resold or exceptional circumstances are agreed.';
+  return json({ok:true,band,refund_status:refundStatus,message});
+}
+
 
 async function privateEventInquiry(request, env) {
   if (!env.BOOKINGS_DB) return json({ error:'The inquiry service is temporarily unavailable.' },503);
@@ -505,11 +655,63 @@ async function adminClasses(request, env) {
 }
 
 async function adminBookings(request, env) {
-  const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
-  const {results}=await env.BOOKINGS_DB.prepare(`SELECT c.id,c.title,c.starts_at,c.venue,b.id booking_id,b.customer_name name,b.customer_email email,b.quantity,b.reference,b.status FROM classes c LEFT JOIN bookings b ON b.class_id=c.id AND b.status IN ('PENDING','PAID') ORDER BY c.starts_at,b.created_at`).all();
-  const map=new Map(); for(const r of results){if(!map.has(r.id))map.set(r.id,{id:r.id,title:r.title,starts_at:r.starts_at,venue:r.venue,bookings:[]});if(r.booking_id)map.get(r.id).bookings.push({id:r.booking_id,name:r.name,email:r.email,quantity:r.quantity,reference:r.reference,status:r.status});}
-  return json({classes:[...map.values()],stats:{guests:results.filter(r=>r.booking_id).reduce((n,r)=>n+Number(r.quantity||0),0)}});
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env);
+
+  if(request.method==='GET'){
+    const {results}=await env.BOOKINGS_DB.prepare(`
+      SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location,
+      EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) checked_in
+      FROM bookings b JOIN classes c ON c.id=b.class_id
+      ORDER BY c.starts_at DESC,b.created_at DESC
+    `).all();
+    const {results:waiting}=await env.BOOKINGS_DB.prepare(`
+      SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w JOIN classes c ON c.id=w.class_id
+      ORDER BY c.starts_at,w.created_at
+    `).all();
+    const stats={
+      guests:results.filter(b=>['PENDING','PAID'].includes(b.status)).reduce((n,b)=>n+Number(b.quantity||0),0),
+      paid:results.filter(b=>b.status==='PAID').reduce((n,b)=>n+Number(b.amount_pence||0),0),
+      refunds_due:results.filter(b=>['REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD'].includes(b.refund_status)).length,
+      waiting:waiting.filter(w=>w.status==='WAITING').reduce((n,w)=>n+Number(w.quantity||0),0)
+    };
+    return json({bookings:results,waiting,stats});
+  }
+
+  const body=await request.json().catch(()=>null);
+  if(!body)return json({error:'Invalid booking action.'},400);
+  const id=clean(body.id,120),action=clean(body.action,40);
+  const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=?`).bind(id).first();
+  if(!booking)return json({error:'Booking not found.'},404);
+
+  if(action==='MARK_PAID'){
+    if(booking.status!=='PAID'){
+      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
+    }
+  }else if(action==='CANCEL'){
+    if(['PENDING','PAID'].includes(booking.status)){
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),refund_status=COALESCE(refund_status,'ADMIN_REVIEW') WHERE id=?`).bind(id),
+        env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(booking.quantity,booking.class_id)
+      ]);
+    }
+  }else if(action==='MARK_REFUNDED'){
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)
+      .bind(Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence),clean(body.admin_notes,600),id).run();
+  }else if(action==='ISSUE_CREDIT'){
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='CLASS_CREDIT_ISSUED',admin_notes=? WHERE id=?`).bind(clean(body.admin_notes,600),id).run();
+  }else if(action==='CHECK_IN'){
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO attendance(id,booking_id,checked_in_by) VALUES(?,?,?)`).bind(crypto.randomUUID(),id,check.state.email).run();
+  }else if(action==='NO_SHOW'){
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET admin_notes=? WHERE id=?`).bind(`NO SHOW — ${clean(body.admin_notes,500)}`,id).run();
+  }else{
+    return json({error:'Unknown booking action.'},400);
+  }
+  await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+    .bind(check.state.email,action,'booking',id,JSON.stringify(body)).run();
+  return json({ok:true});
 }
+
 
 async function adminPrivateEvents(request, env) {
   const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
@@ -678,11 +880,13 @@ export default {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
+      if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
+      if (path === '/api/booking-cancel' && request.method === 'POST') return cancelBooking(request, env);
       if (path === '/api/private-events/inquiries' && request.method === 'POST') return privateEventInquiry(request, env);
       if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
-      if (path === '/api/admin/bookings' && request.method === 'GET') return adminBookings(request, env);
+      if (path === '/api/admin/bookings') return adminBookings(request, env);
       if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);
       if (path === '/api/admin/media-status' && request.method === 'GET') return mediaStatus(request, env);
       if (path === '/api/admin/media') return mediaCollection(request, env);

@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <title>Boot Scootin' HQ</title>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=85">
+  <link rel="stylesheet" href="styles.css?v=86">
 </head>
 <body class="ranch-body">
   <div class="ranch-app">
@@ -135,11 +135,45 @@
 
       <section class="ranch-view" data-view-panel="bookings">
         <div class="ranch-panel">
-          <div class="ranch-panel-head"><div><p class="kicker red">Registers</p><h2>Paid bookings</h2><p>Only confirmed paid bookings appear here once SumUp is connected.</p></div><button class="button secondary compact" id="refreshBookings">Refresh</button></div>
+          <div class="ranch-panel-head">
+            <div>
+              <p class="kicker red">Live class bookings</p>
+              <h2>Bookings, payments &amp; attendance</h2>
+              <p>Review every reservation, waiting-list place, payment state, cancellation and refund or credit action.</p>
+            </div>
+            <button class="button secondary compact" id="refreshBookings">Refresh</button>
+          </div>
+
+          <div class="booking-admin-stats">
+            <article><span>Active guests</span><strong id="bookingGuestTotal">—</strong></article>
+            <article><span>Paid revenue</span><strong id="bookingRevenueTotal">—</strong></article>
+            <article><span>Refunds / credits to review</span><strong id="bookingRefundTotal">—</strong></article>
+            <article><span>Waiting-list guests</span><strong id="bookingWaitTotal">—</strong></article>
+          </div>
+
+          <div class="booking-admin-tools">
+            <label>Filter
+              <select id="bookingAdminFilter">
+                <option value="all">All bookings</option>
+                <option value="active">Active</option>
+                <option value="PAID">Paid</option>
+                <option value="PENDING">Pending payment</option>
+                <option value="CANCELLED">Cancelled</option>
+                <option value="REFUNDED">Refunded</option>
+                <option value="refund-review">Refund / credit review</option>
+              </select>
+            </label>
+            <button class="button secondary compact" id="exportBookingsCsv" type="button">Export CSV</button>
+          </div>
+
           <div id="ranchBookings">Loading…</div>
+
+          <div class="ranch-panel-head waiting-list-head">
+            <div><p class="kicker red">Waiting list</p><h3>People waiting for a place</h3></div>
+          </div>
+          <div id="ranchWaitingList">Loading…</div>
         </div>
       </section>
-
 
       <section class="ranch-view" data-view-panel="private-events">
         <div class="ranch-panel">
@@ -340,6 +374,6 @@
       </div><p id="privateQuoteMessage" class="form-message"></p><button class="button booking-submit" type="submit">Save & Send Proposal</button>
     </form>
   </dialog>
-  <script src="ranch.js?v=85" defer></script>
+  <script src="ranch.js?v=86" defer></script>
 </body>
 </html>
