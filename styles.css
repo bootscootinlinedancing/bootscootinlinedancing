@@ -5770,3 +5770,30 @@ body.menu-open{overflow:hidden!important}
 .ranch-status.setup{border-color:#9d6734;color:#8a5b2e}.ranch-status.setup span{background:#c68a43}.ranch-status.protected{border-color:#3a7752;color:#315f41}.ranch-status.protected span{background:#31945b}
 @media(max-width:900px){.hq-notification-grid{grid-template-columns:1fr}.hq-quick-action-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.hq-quick-action-grid{grid-template-columns:1fr}}
+
+
+/* VERSION 81 — MENU STABILITY FIX */
+html:has(body.menu-open){overflow:hidden!important}
+body.menu-open{position:fixed!important;inset:0!important;width:100%!important;overflow:hidden!important}
+#nav.menu45-overlay{
+  touch-action:pan-y!important;
+  -webkit-overflow-scrolling:touch!important;
+  contain:layout paint style!important;
+}
+#menu45.menu45-panel{
+  transform:translateZ(0)!important;
+  -webkit-transform:translateZ(0)!important;
+}
+#menu45 details.menu45-section>summary{
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+}
+#menu45 .menu45-submenu>a,
+#menu45 .menu45-first,
+#menu45 .nav-close{
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+#nav[aria-hidden="true"]{display:block!important}

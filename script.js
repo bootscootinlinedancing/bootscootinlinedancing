@@ -64,30 +64,39 @@ if (intro) {
   }
 }
 
-// Menu works on every page.
+// VERSION 81 — ONE STABLE MENU CONTROLLER
 const navClose = document.getElementById('navClose');
 
 function setMenuOpen(open) {
   if (!nav || !menuButton) return;
+
   nav.classList.toggle('open', open);
+  nav.setAttribute('aria-hidden', String(!open));
   menuButton.setAttribute('aria-expanded', String(open));
   document.body.classList.toggle('menu-open', open);
+
+  if (open) {
+    nav.scrollTop = 0;
+    requestAnimationFrame(() => navClose?.focus({preventScroll:true}));
+  } else {
+    nav.querySelectorAll('details.menu45-section[open]').forEach(section => {
+      section.open = false;
+    });
+    requestAnimationFrame(() => menuButton.focus({preventScroll:true}));
+  }
 }
 
 if (menuButton && nav) {
-  let lastMenuToggle=0;
-  const toggleMenu = event => {
-    const now=Date.now(); if(now-lastMenuToggle<350)return; lastMenuToggle=now;
-    event?.preventDefault();
-    event?.stopPropagation();
+  // A single click handler works for touch, mouse and keyboard.
+  menuButton.addEventListener('click', event => {
+    event.preventDefault();
     setMenuOpen(!nav.classList.contains('open'));
-  };
-  menuButton.addEventListener('click', toggleMenu);
-  menuButton.addEventListener('pointerup', event => {
-    if (event.pointerType === 'touch' || event.pointerType === 'pen') toggleMenu(event);
-  }, {passive:false});
+  });
 
-  navClose?.addEventListener('click', () => setMenuOpen(false));
+  navClose?.addEventListener('click', event => {
+    event.preventDefault();
+    setMenuOpen(false);
+  });
 
   nav.querySelectorAll('a').forEach(link => {
     link.addEventListener('click', () => setMenuOpen(false));
@@ -98,7 +107,9 @@ if (menuButton && nav) {
   });
 
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape') setMenuOpen(false);
+    if (event.key === 'Escape' && nav.classList.contains('open')) {
+      setMenuOpen(false);
+    }
   });
 }
 
@@ -229,54 +240,37 @@ installGuide?.addEventListener("click", event => {
 });
 
 
-// VERSION 61 — STABLE EXPLORE MENU
-// Only one submenu opens at a time, while the menu keeps the visitor's exact scroll position.
-(function(){
-  const menu = document.getElementById('menu45');
-  const overlay = document.getElementById('nav');
-  if (!menu || !overlay) return;
 
-  const sections = Array.from(menu.querySelectorAll('details.menu45-section'));
-  let savedScrollTop = 0;
+// VERSION 81 — SIMPLE ACCORDION
+(() => {
+  const overlay = document.getElementById('nav');
+  const sections = [...document.querySelectorAll('#menu45 details.menu45-section')];
+  if (!overlay || !sections.length) return;
 
   sections.forEach(section => {
-    const summary = section.querySelector(':scope > summary');
-
-    summary?.addEventListener('pointerdown', () => {
-      savedScrollTop = overlay.scrollTop;
-    }, {passive:true});
-
-    summary?.addEventListener('click', () => {
-      savedScrollTop = overlay.scrollTop;
-    });
-
     section.addEventListener('toggle', () => {
-      const keep = savedScrollTop || overlay.scrollTop;
+      if (!section.open) return;
 
-      if (section.open) {
-        sections.forEach(other => {
-          if (other !== section && other.open) other.open = false;
-        });
-        section.classList.remove('menu45-opening');
-        void section.offsetWidth;
-        section.classList.add('menu45-opening');
-      }
+      sections.forEach(other => {
+        if (other !== section) other.open = false;
+      });
 
-      // Native <details> can move the scroller when content above collapses.
-      // Restore it after layout settles so opening one section never jumps into the next.
+      // Keep the opened heading visible without forcing the page underneath to move.
       requestAnimationFrame(() => {
-        overlay.scrollTop = keep;
-        requestAnimationFrame(() => { overlay.scrollTop = keep; });
+        const summary = section.querySelector(':scope > summary');
+        if (!summary) return;
+        const overlayRect = overlay.getBoundingClientRect();
+        const rect = summary.getBoundingClientRect();
+
+        if (rect.top < overlayRect.top + 90 || rect.bottom > overlayRect.bottom - 20) {
+          summary.scrollIntoView({block:'nearest', behavior:'smooth'});
+        }
       });
     });
   });
+
+  // Safari back/forward cache can preserve a stale open overlay.
+  window.addEventListener('pageshow', () => {
+    setMenuOpen(false);
+  });
 })();
-
-
-// Always reset overlay state when Safari restores a page from its back/forward cache.
-window.addEventListener('pageshow', () => {
-  if (nav && menuButton && !nav.classList.contains('open')) {
-    document.body.classList.remove('menu-open');
-    menuButton.setAttribute('aria-expanded','false');
-  }
-});
