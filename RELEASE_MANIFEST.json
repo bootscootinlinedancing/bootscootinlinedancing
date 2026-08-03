@@ -1,37 +1,36 @@
 {
-  "release": "V90.2.1 RANCH HOTFIX VERIFIED",
-  "built_from": "boot-scootin-platform-v90.2-VERIFIED.zip",
-  "built_at": "2026-08-03T20:44:44.416659+00:00",
+  "release": "V91 RANCH REBUILD VERIFIED",
+  "built_from": "boot-scootin-platform-v90.2.1-RANCH-HOTFIX-VERIFIED.zip",
+  "built_at": "2026-08-03T20:54:13.442930+00:00",
   "checks": {
-    "new health endpoint": true,
-    "old health endpoint removed": true,
+    "new drawer": true,
+    "scrollable drawer": true,
+    "single health endpoint": true,
     "health timeout": true,
-    "menu close button": true,
-    "menu backdrop": true,
-    "scrollable mobile sidebar": true,
+    "no old ranch script": true,
     "public warning": true,
     "cache": true
   },
   "files": {
     "ranch.html": {
-      "size": 28475,
-      "sha256": "5b25ad03ab518fd6e043af89b46164cd6ca8dd458d6baee7a6ec3ed4deec1bea"
+      "size": 17818,
+      "sha256": "2f36247b6cbd197b58da6b26b1c4efc317b659f65a954394181f49ed1550689e"
     },
     "ranch.js": {
-      "size": 43362,
-      "sha256": "828bbdaa53b5750d6abf76663e6e3d4f105fc314a53d9b1bda07a7194c46723e"
+      "size": 9698,
+      "sha256": "1283e6b6834b398641d493162bc565c29ebbb6481b09ea8449fcd8f350c03b99"
     },
     "styles.css": {
-      "size": 239251,
-      "sha256": "e11849ab0f9c3bcd46e619667970df6231ee1413ffeef4c9fd83cccab1822f94"
+      "size": 245108,
+      "sha256": "f26d29266c9c7d25fc7ad545a8863eabd9081a3f907b651cb5c0ad9cd4c803c8"
     },
     "service-worker.js": {
-      "size": 510,
-      "sha256": "ecea1045db0516b20f8f875de8110e335b1011c25a6831ac7cff69d2cc407dec"
+      "size": 477,
+      "sha256": "6f296e3d6fbdb98c24f0a74784655918449d555f72c731165a7ae2c86e69e578"
     },
     "CHANGELOG.md": {
-      "size": 1950,
-      "sha256": "8dbdd44238e730e2bc76a70e9d1991e87adb1df3a0e602cccaa41b9cb8515abc"
+      "size": 2686,
+      "sha256": "be7ece62aac7418327e7c47ccc8b5f030a5adc555f624c152d0ea6b0ccf18fbc"
     }
   }
 }

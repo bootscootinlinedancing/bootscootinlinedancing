@@ -1,5 +1,19 @@
 # Changelog
 
+## [V91 RANCH REBUILD] — 2026-08-03
+
+### Rebuilt
+- Replaced the previous Ranch shell with a clean HQ application layout.
+- Replaced the old mobile sidebar with one independently scrollable drawer.
+- Added reliable open, close, backdrop, Escape-key and Safari pageshow handling.
+- Replaced competing health scripts with one controller and one endpoint.
+- Added a ten-second timeout and guaranteed final health rendering.
+- Added a simplified overview, command centre, live health summary and recent activity.
+- Preserved the existing Classes, Bookings, Customers, Operations, Private Events, Media, Health and Settings panels.
+- Added a visible public-access warning until Cloudflare Access is configured.
+- Added V91 cache busting.
+
+
 ## [V90.2.1 RANCH HOTFIX] — 2026-08-03
 
 ### Fixed
