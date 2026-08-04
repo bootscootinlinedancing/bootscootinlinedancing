@@ -10,7 +10,10 @@
     privateEvents:[],
     bootstrapPromise:null,
     bootstrapLoadedAt:0,
-    bootstrapError:null
+    bootstrapError:null,
+    diagnostics:[],
+    frontendErrors:0,
+    requestSequence:0
   };
 
   const $=selector=>document.querySelector(selector);
@@ -69,7 +72,8 @@
   }
 
   async function jsonFetch(url,options={},timeoutMs=10000){
-    const requestId=++state.requestSequence;
+    state.requestSequence=Number.isFinite(state.requestSequence)?state.requestSequence+1:1;
+    const requestId=state.requestSequence;
     const started=performance.now();
     const method=options.method||'GET';
     const controller=new AbortController();
@@ -118,12 +122,16 @@
   }
 
   function diagnosticEvent(type,detail={}){
-    const event={time:new Date().toISOString(),type,...detail};
-    state.diagnostics.unshift(event);
-    state.diagnostics=state.diagnostics.slice(0,DIAGNOSTIC_LIMIT);
-    try{sessionStorage.setItem('boot-scootin-hq-diagnostics',JSON.stringify(state.diagnostics));}catch(_){}
-    renderDiagnostics();
-    console.info('[HQ DIAGNOSTIC]',event);
+    try{
+      if(!Array.isArray(state.diagnostics))state.diagnostics=[];
+      if(!Number.isFinite(state.frontendErrors))state.frontendErrors=0;
+      const event={time:new Date().toISOString(),type,...detail};
+      state.diagnostics.unshift(event);
+      state.diagnostics=state.diagnostics.slice(0,DIAGNOSTIC_LIMIT);
+      try{sessionStorage.setItem('boot-scootin-hq-diagnostics',JSON.stringify(state.diagnostics));}catch(_){}
+      try{renderDiagnostics();}catch(_){}
+      try{console.info('[HQ DIAGNOSTIC]',event);}catch(_){}
+    }catch(_){/* Diagnostics must never stop HQ. */}
   }
 
   function setConnectionIndicator(status,label){
@@ -137,19 +145,20 @@
   function renderDiagnostics(){
     const box=document.getElementById('diagnosticLog');
     if(!box)return;
-    const bootstrap=state.diagnostics.find(item=>item.endpoint==='/api/admin/bootstrap');
-    const health=state.diagnostics.find(item=>item.endpoint==='/api/admin/system-health');
-    const latest=state.diagnostics[0];
+    const events=Array.isArray(state.diagnostics)?state.diagnostics:[];
+    const bootstrap=events.find(item=>item.endpoint==='/api/admin/bootstrap');
+    const health=events.find(item=>item.endpoint==='/api/admin/system-health');
+    const latest=events[0];
     const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
     set('diagBootstrap',bootstrap?`${bootstrap.status||bootstrap.result||'Error'} · ${bootstrap.duration_ms||0}ms`:'Not tested');
     set('diagHealth',health?`${health.status||health.result||'Error'} · ${health.duration_ms||0}ms`:'Not tested');
     set('diagLastRequest',latest?.endpoint||latest?.type||'—');
     set('diagErrorCount',state.frontendErrors);
-    if(!state.diagnostics.length){
+    if(!events.length){
       box.innerHTML='<div class="ranch-empty">No diagnostic events recorded yet.</div>';
       return;
     }
-    box.innerHTML=state.diagnostics.map(item=>{
+    box.innerHTML=events.map(item=>{
       const cls=item.status>=200&&item.status<300?'success':(item.status===401||item.status===403?'protected':(item.error?'error':'info'));
       return `<article class="diagnostic-row ${cls}">
         <div><strong>${esc(item.endpoint||item.type.replaceAll('_',' '))}</strong><span>${esc(new Date(item.time).toLocaleTimeString('en-GB'))} · ${esc(item.status?`HTTP ${item.status}`:(item.result||'Recorded'))}</span></div>
@@ -205,16 +214,17 @@
   // Drawer
   const drawer=$('#ranch91Drawer'),backdrop=$('#ranch91Backdrop'),menuButton=$('#ranch91Menu'),closeButton=$('#ranch91Close');
   function setDrawer(open){
+    if(!drawer||!menuButton)return;
     drawer.classList.toggle('open',open);
     drawer.setAttribute('aria-hidden',String(!open));
     menuButton.setAttribute('aria-expanded',String(open));
     document.body.classList.toggle('ranch91-drawer-open',open);
-    backdrop.hidden=!open;backdrop.classList.toggle('open',open);
-    if(open){drawer.scrollTop=0;setTimeout(()=>closeButton.focus({preventScroll:true}),0);}
+    if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
+    if(open){drawer.scrollTop=0;if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);}
   }
-  menuButton.addEventListener('click',()=>setDrawer(!drawer.classList.contains('open')));
-  closeButton.addEventListener('click',()=>setDrawer(false));
-  backdrop.addEventListener('click',()=>setDrawer(false));
+  menuButton?.addEventListener('click',()=>setDrawer(!drawer.classList.contains('open')));
+  closeButton?.addEventListener('click',()=>setDrawer(false));
+  backdrop?.addEventListener('click',()=>setDrawer(false));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
   window.addEventListener('pageshow',()=>setDrawer(false));
 
@@ -677,6 +687,7 @@
   try{
     const previous=JSON.parse(sessionStorage.getItem('boot-scootin-hq-diagnostics')||'[]');
     if(Array.isArray(previous))state.diagnostics=previous.slice(0,DIAGNOSTIC_LIMIT);
+    else state.diagnostics=[];
   }catch(_){}
   diagnosticEvent('hq_script_started',{result:'V92.4 loaded',online:navigator.onLine,visibility:document.visibilityState});
 

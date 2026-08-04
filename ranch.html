@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.4"ranch-v91">
+  <link rel="stylesheet" href="styles.css?v=92.4.1"ranch-v91">
   <a class="skip-link" href="#ranchMain">Skip to HQ content</a>
 
   <div class="ranch91-backdrop" id="ranch91Backdrop" hidden></div>
@@ -56,7 +56,7 @@
         <h1 id="ranch91PageTitle">HQ Home</h1>
       </div>
       <div class="hq-connection-indicator checking" id="hqConnectionIndicator"><span></span><b>Checking</b></div>
-      <div class="ranch91-release">V92.4</div>
+      <div class="ranch91-release">V92.4.1</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -373,5 +373,29 @@
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
   <script src="ranch.js?v=92.3></script>
+
+  <script>
+  (function(){
+    function initEmergencyMenu(){
+      var button=document.getElementById('ranch91Menu');
+      var drawer=document.getElementById('ranch91Drawer');
+      var close=document.getElementById('ranch91Close');
+      var backdrop=document.getElementById('ranch91Backdrop');
+      if(!button||!drawer||button.dataset.recoveryBound==='1')return;
+      button.dataset.recoveryBound='1';
+      function toggle(open){
+        drawer.classList.toggle('open',open);
+        drawer.setAttribute('aria-hidden',String(!open));
+        button.setAttribute('aria-expanded',String(open));
+        document.body.classList.toggle('ranch91-drawer-open',open);
+        if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
+      }
+      button.addEventListener('click',function(){toggle(!drawer.classList.contains('open'));});
+      if(close)close.addEventListener('click',function(){toggle(false);});
+      if(backdrop)backdrop.addEventListener('click',function(){toggle(false);});
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initEmergencyMenu);else initEmergencyMenu();
+  })();
+  </script>
 </body>
 </html>

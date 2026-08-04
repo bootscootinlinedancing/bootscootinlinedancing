@@ -1,5 +1,16 @@
 # Changelog
 
+## [V92.4.1 RECOVERY] — 2026-08-04
+
+### Critical fix
+- Initialised the diagnostic state fields that were missing from V92.4.
+- Prevented diagnostics from ever stopping the main HQ script.
+- Fixed request ID generation.
+- Added null-safe menu controls.
+- Added an independent emergency menu fallback.
+- Preserved the V92.4 request monitor after correcting the startup failure.
+
+
 ## [V92.4 DIAGNOSTIC] — 2026-08-04
 
 ### Added

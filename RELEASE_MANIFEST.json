@@ -1,47 +1,39 @@
 {
-  "release": "V92.4 DIAGNOSTIC VERIFIED",
-  "built_from": "boot-scootin-platform-v92.3-VERIFIED-FROM-V92.2.zip",
-  "built_at": "2026-08-04T07:14:39.977523+00:00",
+  "release": "V92.4.1 RECOVERY VERIFIED",
+  "built_from": "boot-scootin-platform-v92.4-DIAGNOSTIC-VERIFIED.zip",
+  "built_at": "2026-08-04T10:44:02.895784+00:00",
   "checks": {
+    "diagnostics initialized": true,
+    "diagnostics fail safe": true,
+    "menu optional chaining": true,
+    "emergency menu": true,
     "version": true,
-    "diagnostics nav": true,
-    "diagnostics panel": true,
-    "request instrumentation": true,
-    "error logging": true,
-    "copy report": true,
-    "deduplication": true,
-    "indicator": true,
     "cache": true
-  },
-  "javascript_syntax": {
-    "checked": true,
-    "ok": true,
-    "output": ""
   },
   "files": {
     "ranch.html": {
-      "size": 21051,
-      "sha256": "db39b1dd34a822047d8163239abfcc438e910429c9b58277f8816303bf09c5cb"
+      "size": 22221,
+      "sha256": "cf479cb9f32654840f5f9794e23c86777fc0efaaa82112828575b647ae99bb5f"
     },
     "ranch.js": {
-      "size": 36221,
-      "sha256": "1a1906048609b03d10f4a9fdebf791662a09edcd55e7abbc814eaaa8fedf2512"
-    },
-    "_worker.js": {
-      "size": 77306,
-      "sha256": "a7dfc2fb72cf766c506dbe22f707afd8a2a93cf819fc3167ca1e6941db217176"
+      "size": 36733,
+      "sha256": "b910ed846786102ebe21f9b8ff7ebc718164acb24f6de4d577ee81807de45793"
     },
     "styles.css": {
       "size": 251586,
       "sha256": "7867a2f2ded757568d8d8fd5f8aaded067cc53631bcb667664279be50c932f31"
     },
+    "_worker.js": {
+      "size": 77306,
+      "sha256": "a7dfc2fb72cf766c506dbe22f707afd8a2a93cf819fc3167ca1e6941db217176"
+    },
     "service-worker.js": {
       "size": 487,
-      "sha256": "b79801eca13b2b6b252560c682cff78e3260ab7d4cfac467984155654aa5d839"
+      "sha256": "7c13eef2716103fc20efc53b6db6389e2061eff304b6805502d8c4d45f356ec9"
     },
     "CHANGELOG.md": {
-      "size": 5831,
-      "sha256": "2ee6520e11a9f592d8d974830e5635495371561b913339f3c8f88c48241b8ae2"
+      "size": 6211,
+      "sha256": "2ec35c5a9136cbc80c79ca81b75d46d09e1c666c4fa704ac7c2a38e6d1292686"
     }
   }
 }
