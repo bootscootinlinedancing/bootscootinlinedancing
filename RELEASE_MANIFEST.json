@@ -1,39 +1,48 @@
 {
-  "release": "V92.4.1 RECOVERY VERIFIED",
-  "built_from": "boot-scootin-platform-v92.4-DIAGNOSTIC-VERIFIED.zip",
-  "built_at": "2026-08-04T10:44:02.895784+00:00",
+  "release": "V92.4.2 HTML REPAIR VERIFIED",
+  "built_from": "boot-scootin-platform-v92.4.1-RECOVERY-VERIFIED.zip",
+  "built_at": "2026-08-04T16:44:04.539731+00:00",
+  "root_cause": "Malformed Ranch HTML prevented ranch.js from loading.",
   "checks": {
-    "diagnostics initialized": true,
-    "diagnostics fail safe": true,
-    "menu optional chaining": true,
-    "emergency menu": true,
-    "version": true,
-    "cache": true
+    "valid stylesheet tag": true,
+    "closing head": true,
+    "body class": true,
+    "valid script tag": true,
+    "old malformed script removed": true,
+    "old malformed stylesheet removed": true,
+    "release marker": true,
+    "diagnostics retained": true,
+    "cache version": true
+  },
+  "javascript_syntax": {
+    "checked": true,
+    "ok": true,
+    "output": ""
   },
   "files": {
     "ranch.html": {
-      "size": 22221,
-      "sha256": "cf479cb9f32654840f5f9794e23c86777fc0efaaa82112828575b647ae99bb5f"
+      "size": 22247,
+      "sha256": "df6ae6a2988086cce163028670ae86e795665714c32efbdc7c9ad101f1a54361"
     },
     "ranch.js": {
       "size": 36733,
       "sha256": "b910ed846786102ebe21f9b8ff7ebc718164acb24f6de4d577ee81807de45793"
     },
-    "styles.css": {
-      "size": 251586,
-      "sha256": "7867a2f2ded757568d8d8fd5f8aaded067cc53631bcb667664279be50c932f31"
-    },
     "_worker.js": {
       "size": 77306,
       "sha256": "a7dfc2fb72cf766c506dbe22f707afd8a2a93cf819fc3167ca1e6941db217176"
     },
+    "styles.css": {
+      "size": 251586,
+      "sha256": "7867a2f2ded757568d8d8fd5f8aaded067cc53631bcb667664279be50c932f31"
+    },
     "service-worker.js": {
-      "size": 487,
-      "sha256": "7c13eef2716103fc20efc53b6db6389e2061eff304b6805502d8c4d45f356ec9"
+      "size": 512,
+      "sha256": "d8aa0e1eeade4b63c50695b067e3af495e403757f8a68fa0f7543b4453909a4c"
     },
     "CHANGELOG.md": {
-      "size": 6211,
-      "sha256": "2ec35c5a9136cbc80c79ca81b75d46d09e1c666c4fa704ac7c2a38e6d1292686"
+      "size": 6605,
+      "sha256": "3127ccc59fc58ee25c7eab43bff369156e4cf276960ffd31dd729fab5abcc050"
     }
   }
 }

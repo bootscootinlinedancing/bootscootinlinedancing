@@ -1,5 +1,16 @@
 # Changelog
 
+## [V92.4.2 HTML REPAIR] — 2026-08-04
+
+### Root-cause fix
+- Repaired the malformed Ranch stylesheet and body line.
+- Restored valid closing `head` and opening `body` elements.
+- Repaired the malformed `ranch.js` script tag.
+- Ranch JavaScript now loads normally.
+- Restores the menu, backend rendering, diagnostics and dashboard figures.
+- Updated the Ranch asset cache version to V92.4.2.
+
+
 ## [V92.4.1 RECOVERY] — 2026-08-04
 
 ### Critical fix
