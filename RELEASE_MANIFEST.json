@@ -1,37 +1,42 @@
 {
-  "release": "V92.2 BACKEND PERFORMANCE VERIFIED",
-  "built_from": "boot-scootin-platform-v92.1-STABILITY.zip",
-  "built_at": "2026-08-03T21:35:47.474146+00:00",
+  "release": "V92.3 VERIFIED FROM UPLOADED V92.2",
+  "built_from": "boot-scootin-platform-v92.2-BACKEND-PERFORMANCE-VERIFIED(1).zip",
+  "built_at": "2026-08-04T06:01:07.886190+00:00",
   "checks": {
-    "release marker": true,
-    "bootstrap cache": true,
-    "request deduplication": true,
-    "freshness window": true,
-    "six second backend timeout": true,
-    "last successful data fallback": true,
-    "loading safeguard": true,
-    "cache version": true
+    "source is uploaded V92.2": true,
+    "version marker": true,
+    "cleanup panel": true,
+    "candidate helper": true,
+    "single delete": true,
+    "bulk delete": true,
+    "capacity restore": true,
+    "booking UI": true,
+    "cache": true
   },
   "files": {
     "ranch.html": {
-      "size": 18658,
-      "sha256": "2f39a37cd69ef2200632b3c2bd68dae1be2d30a477e17cafc469e913b1f1f317"
+      "size": 19299,
+      "sha256": "512221fc81dc80fb849dcba3131a78b60b77bdbceae1e391d92cc6f2ab30f215"
     },
     "ranch.js": {
-      "size": 24880,
-      "sha256": "51ee0c04ff6eb8e34abc32fd0c80d93ac1db469f530cd405f737f7d065e28ae4"
+      "size": 29147,
+      "sha256": "909ad2c5321c97281bb6d2c8e942cab8213a2cf3d5a8257361e242aae17400c7"
+    },
+    "_worker.js": {
+      "size": 77306,
+      "sha256": "a7dfc2fb72cf766c506dbe22f707afd8a2a93cf819fc3167ca1e6941db217176"
     },
     "styles.css": {
-      "size": 247647,
-      "sha256": "95c84ffd472f72c9fff5e13f51e5ef3c9aa6da71c8fafa46e30da9f0f1a2a760"
+      "size": 249426,
+      "sha256": "bce9eb2ceb2aa71691a93c89c41cf0eddf0be343959fadfccb5965ce2a12f140"
     },
     "service-worker.js": {
       "size": 498,
-      "sha256": "11180e0ab7500ba4af2728c36236064178ccb0479f3d27f12d7e92193bb6b1dc"
+      "sha256": "638986572d162bbb250a5dc25ef6983b369e6c42eee6370e5143c0e1610b7038"
     },
     "CHANGELOG.md": {
-      "size": 4571,
-      "sha256": "56adb66b86c6d71f1dfcfdef08bb4bdab55c0a3185f9ee0a3b02ea3a12ab1233"
+      "size": 5268,
+      "sha256": "cf3fe38b097a671c41386640ecd3bb647e48bc39f03839f1f6e2de79c2598d36"
     }
   }
 }

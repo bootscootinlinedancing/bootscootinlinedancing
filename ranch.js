@@ -270,7 +270,7 @@
     box.innerHTML=setupPanel('Checking services','Running diagnostic checks…');
     button.disabled=true;button.textContent='Checking…';console.info('[HQ] Running health checks');
     try{
-      const h=await jsonFetch('/api/admin/system-health',{cache:'no-store'});
+      const h=await jsonFetch('/api/admin/system-health',{cache:'no-store'});state.health=h;
       box.innerHTML=[
         healthRow('Website',h.website),healthRow('Database',h.database),healthRow('Media storage',h.media),
         healthRow('Email routing',h.email),healthRow('Admin protection',h.access),healthRow('Payments',h.payments)
@@ -306,27 +306,139 @@
   }
 
   // Bookings
-  async function loadBookings(){
+
+  function renderBookingAdmin(){
+    const box=$('#ranchBookings');
+    const waiting=$('#ranchWaitingList');
+    if(!box)return;
+
+    const data=state.bookings||{bookings:[],waiting:[],stats:{}};
+    const filter=$('#bookingAdminFilter')?.value||'all';
+    let rows=data.bookings||[];
+
+    if(filter==='active')rows=rows.filter(b=>['PENDING','PAID'].includes(b.status));
+    else if(filter==='refund-review')rows=rows.filter(b=>['REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW'].includes(b.refund_status));
+    else if(filter!=='all')rows=rows.filter(b=>b.status===filter);
+
+    box.innerHTML=rows.length?rows.map(b=>`
+      <article class="booking-admin-card ${b.is_test_candidate?'test-booking':''}">
+        <header>
+          <div>
+            <span class="booking-status">${esc(b.status)}</span>
+            ${b.is_test_candidate?'<span class="booking-test-badge">TEST CANDIDATE</span>':''}
+            <h3>${esc(b.customer_name)}</h3>
+            <p>${esc(b.customer_email)}</p>
+          </div>
+          <strong>${money(b.amount_pence)}</strong>
+        </header>
+        <dl>
+          <div><dt>Class</dt><dd>${esc(b.class_title)}</dd></div>
+          <div><dt>Date</dt><dd>${fmt(b.starts_at)}</dd></div>
+          <div><dt>Places</dt><dd>${esc(b.quantity)}</dd></div>
+          <div><dt>Reference</dt><dd>${esc(b.reference)}</dd></div>
+          <div><dt>Payment</dt><dd>${esc(b.payment_provider)}</dd></div>
+          <div><dt>Created</dt><dd>${fmt(b.created_at)}</dd></div>
+        </dl>
+        ${b.is_test_candidate?`<div class="booking-admin-actions"><button type="button" class="danger-outline" data-delete-test-booking="${esc(b.id)}">Delete test booking</button></div>`:''}
+      </article>
+    `).join(''):emptyPanel('No bookings match this filter.');
+
+    const candidates=(data.bookings||[]).filter(b=>b.is_test_candidate);
+    const panel=$('#bookingCleanupPanel');
+    if(panel)panel.hidden=false;
+    const count=$('#testBookingCount');
+    if(count)count.textContent=`${candidates.length} test booking${candidates.length===1?'':'s'} found`;
+    const allButton=$('#deleteAllTestBookings');
+    if(allButton)allButton.disabled=!candidates.length;
+
+    box.querySelectorAll('[data-delete-test-booking]').forEach(button=>{
+      button.addEventListener('click',()=>deleteSingleTestBooking(button.dataset.deleteTestBooking));
+    });
+
+    if(waiting){
+      waiting.innerHTML=(data.waiting||[]).length
+        ?data.waiting.map(w=>`<article class="hq-waiting-row"><strong>${esc(w.customer_name)}</strong><span>${esc(w.class_title)} · ${fmt(w.starts_at)}</span><b>${esc(w.status)}</b></article>`).join('')
+        :emptyPanel('No waiting-list entries.');
+    }
+  }
+
+  async function bookingAdminAction(payload){
+    return jsonFetch('/api/admin/bookings',{
+      method:'PATCH',
+      body:JSON.stringify(payload)
+    },8000);
+  }
+
+  async function deleteSingleTestBooking(id){
+    if(!confirm('Delete this test booking? Its class spaces will be restored.'))return;
+    try{
+      await bookingAdminAction({id,action:'DELETE_TEST_BOOKING'});
+      localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+      await loadBookings(true);
+      await loadBootstrap(false,{force:true,silent:true});
+      toast('Test booking deleted and class capacity restored.');
+    }catch(error){
+      toast(error.message,'error');
+    }
+  }
+
+  async function deleteAllTestBookings(){
+    const candidates=(state.bookings?.bookings||[]).filter(b=>b.is_test_candidate);
+    if(!candidates.length){
+      toast('No eligible test bookings found.','error');
+      return;
+    }
+
+    const confirmation=prompt(`This will delete ${candidates.length} unpaid manual test booking${candidates.length===1?'':'s'} and restore their class spaces.\n\nType DELETE TEST BOOKINGS to continue.`);
+    if(confirmation!=='DELETE TEST BOOKINGS')return;
+
+    try{
+      const result=await bookingAdminAction({
+        action:'DELETE_ALL_TEST_BOOKINGS',
+        confirmation
+      });
+      localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+      await loadBookings(true);
+      await loadBootstrap(false,{force:true,silent:true});
+      toast(`${result.deleted||0} test booking${Number(result.deleted)===1?'':'s'} deleted.`);
+    }catch(error){
+      toast(error.message,'error');
+    }
+  }
+
+  async function loadBookings(force=false){
     if(!state.bootstrap){
       await loadBootstrap(false,{silent:true}).catch(()=>null);
     }
-    const box=$('#ranchBookings'),waiting=$('#ranchWaitingList');
+
+    const box=$('#ranchBookings');
+    const waiting=$('#ranchWaitingList');
     if(!box)return;
+
     if(state.bootstrap?.mode!=='protected'){
-      box.innerHTML=lockedPanel('Booking details are protected','Enable Cloudflare Access before viewing names, emails, payments or attendance.');
+      box.innerHTML=lockedPanel('Booking details are protected','Enable Cloudflare Access before viewing names, emails, payments or deleting test bookings.');
       if(waiting)waiting.innerHTML=lockedPanel('Waiting-list details are protected','Enable Cloudflare Access before viewing customer details.');
+      const panel=$('#bookingCleanupPanel');
+      if(panel)panel.hidden=true;
       return;
     }
-    box.innerHTML='<div class="ranch91-loading">Loading bookings…</div>';
+
+    if(!state.bookings || force){
+      box.innerHTML='<div class="ranch91-loading">Loading bookings…</div>';
+    }
+
     try{
-      state.bookings=await jsonFetch('/api/admin/bookings',{cache:'no-store'});
-      box.innerHTML=state.bookings.bookings?.length
-        ?state.bookings.bookings.map(b=>`<article class="ranch-booking-row"><div><strong>${esc(b.customer_name)}</strong><span>${esc(b.class_title)} · ${esc(b.reference)}</span></div><b>${esc(b.status)}</b></article>`).join('')
-        :emptyPanel('No bookings yet.');
-      if(waiting)waiting.innerHTML=state.bookings.waiting?.length
-        ?state.bookings.waiting.map(w=>`<article class="hq-waiting-row"><strong>${esc(w.customer_name)}</strong><span>${esc(w.class_title)}</span><b>${esc(w.status)}</b></article>`).join('')
-        :emptyPanel('No waiting-list entries.');
-    }catch(error){box.innerHTML=lockedPanel('Bookings unavailable',error.message);if(waiting)waiting.innerHTML='';}
+      state.bookings=await jsonFetch('/api/admin/bookings',{cache:'no-store'},8000);
+      renderBookingAdmin();
+    }catch(error){
+      if(state.bookings){
+        renderBookingAdmin();
+        toast('Booking refresh was slow. Keeping the previous list.','error');
+      }else{
+        box.innerHTML=lockedPanel('Bookings unavailable',error.message);
+        if(waiting)waiting.innerHTML='';
+      }
+    }
   }
 
   // Customers
@@ -415,6 +527,9 @@
   $('#ranch91RunChecks')?.addEventListener('click',loadHealth);
   $('#ranch91RefreshOverview')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
   $('#ranch92RefreshSetup')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
+  $('#refreshBookings')?.addEventListener('click',()=>loadBookings(true));
+  $('#bookingAdminFilter')?.addEventListener('change',()=>renderBookingAdmin());
+  $('#deleteAllTestBookings')?.addEventListener('click',deleteAllTestBookings);
   $('#refreshCustomers')?.addEventListener('click',loadCustomers);
   $('#customerAdminSearch')?.addEventListener('input',loadCustomers);
   $('#refreshOperations')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));

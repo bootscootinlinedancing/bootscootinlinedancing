@@ -1118,6 +1118,52 @@ async function adminCustomers(request, env) {
   });
 }
 
+
+function isTestBookingCandidate(booking) {
+  return Boolean(
+    booking &&
+    booking.status === 'PENDING' &&
+    booking.payment_provider === 'MANUAL' &&
+    !booking.paid_at &&
+    !booking.provider_transaction_id &&
+    !booking.refund_status
+  );
+}
+
+async function deleteTestBooking(env, booking, actor) {
+  if (!isTestBookingCandidate(booking)) {
+    return { ok: false, error: 'Only unpaid manual pending test bookings can be deleted.' };
+  }
+
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`DELETE FROM attendance WHERE booking_id=?`).bind(booking.id),
+    env.BOOKINGS_DB.prepare(`DELETE FROM payments WHERE booking_id=?`).bind(booking.id),
+    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id || ''),
+    env.BOOKINGS_DB.prepare(`DELETE FROM audit_log WHERE target_type='booking' AND target_id=?`).bind(booking.id),
+    env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(booking.id),
+    env.BOOKINGS_DB.prepare(`
+      UPDATE classes
+      SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP
+      WHERE id=?
+    `).bind(Number(booking.quantity || 0), booking.class_id),
+    env.BOOKINGS_DB.prepare(`
+      INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
+      VALUES(?,?,?,?,?)
+    `).bind(
+      actor || 'hq',
+      'TEST_BOOKING_DELETED',
+      'class',
+      booking.class_id,
+      JSON.stringify({
+        reference: booking.reference,
+        quantity: Number(booking.quantity || 0)
+      })
+    )
+  ]);
+
+  return { ok: true };
+}
+
 async function adminBookings(request, env) {
   const check=requireAccessAdmin(request,env);if(check.response)return check.response;
   await ensureBookingSchema(env);
@@ -1139,12 +1185,50 @@ async function adminBookings(request, env) {
       refunds_due:results.filter(b=>['REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD'].includes(b.refund_status)).length,
       waiting:waiting.filter(w=>w.status==='WAITING').reduce((n,w)=>n+Number(w.quantity||0),0)
     };
-    return json({bookings:results,waiting,stats});
+    return json({
+      bookings:(results||[]).map(booking=>({
+        ...booking,
+        is_test_candidate:isTestBookingCandidate(booking)
+      })),
+      waiting,
+      stats
+    });
   }
 
   const body=await request.json().catch(()=>null);
   if(!body)return json({error:'Invalid booking action.'},400);
   const id=clean(body.id,120),action=clean(body.action,40);
+
+  if(action==='DELETE_TEST_BOOKING'){
+    const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=?`).bind(id).first();
+    if(!booking)return json({error:'Booking not found.'},404);
+    const result=await deleteTestBooking(env,booking,check.state.email);
+    if(!result.ok)return json({error:result.error},409);
+    return json({ok:true,deleted:1});
+  }
+
+  if(action==='DELETE_ALL_TEST_BOOKINGS'){
+    if(clean(body.confirmation,80)!=='DELETE TEST BOOKINGS'){
+      return json({error:'Type DELETE TEST BOOKINGS exactly to confirm.'},400);
+    }
+
+    const {results:candidates}=await env.BOOKINGS_DB.prepare(`
+      SELECT * FROM bookings
+      WHERE status='PENDING'
+        AND payment_provider='MANUAL'
+        AND paid_at IS NULL
+        AND provider_transaction_id IS NULL
+        AND refund_status IS NULL
+      ORDER BY created_at DESC
+    `).all();
+
+    let deleted=0;
+    for(const booking of candidates||[]){
+      const result=await deleteTestBooking(env,booking,check.state.email);
+      if(result.ok)deleted++;
+    }
+    return json({ok:true,deleted});
+  }
   const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=?`).bind(id).first();
   if(!booking)return json({error:'Booking not found.'},404);
 

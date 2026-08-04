@@ -6,9 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.2">
-</head>
-<body class="ranch-v91">
+  <link rel="stylesheet" href="styles.css?v=92.3"ranch-v91">
   <a class="skip-link" href="#ranchMain">Skip to HQ content</a>
 
   <div class="ranch91-backdrop" id="ranch91Backdrop" hidden></div>
@@ -56,7 +54,7 @@
         <p>PRIVATE MANAGEMENT AREA</p>
         <h1 id="ranch91PageTitle">HQ Home</h1>
       </div>
-      <div class="ranch91-release">V92.2</div>
+      <div class="ranch91-release">V92.3</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -179,6 +177,19 @@
             </label>
             <button class="button secondary compact" id="exportBookingsCsv" type="button">Export CSV</button>
           </div>
+
+          
+          <section class="booking-cleanup-panel" id="bookingCleanupPanel" hidden>
+            <div>
+              <p class="kicker red">Test data cleanup</p>
+              <h3>Remove unsuccessful test bookings</h3>
+              <p>Only unpaid manual pending bookings can be removed. Their class spaces will be restored automatically.</p>
+            </div>
+            <div class="booking-cleanup-actions">
+              <strong id="testBookingCount">0 test bookings found</strong>
+              <button class="button secondary compact" id="deleteAllTestBookings" type="button">Delete all test bookings</button>
+            </div>
+          </section>
 
           <div id="ranchBookings">Loading…</div>
 
@@ -333,6 +344,6 @@
 
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="ranch.js?v=92.2"></script>
+  <script src="ranch.js?v=92.3></script>
 </body>
 </html>

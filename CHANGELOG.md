@@ -1,5 +1,23 @@
 # Changelog
 
+## [V92.3 VERIFIED FROM V92.2] — 2026-08-04
+
+### Added
+- Detailed protected booking cards.
+- Automatic test-booking candidate detection.
+- Individual Delete test booking control.
+- Bulk Delete all test bookings control with typed confirmation.
+- Class-capacity restoration after deletion.
+- TEST_BOOKING_DELETED audit records.
+- Booking list preservation during slow refreshes.
+- Health-result preservation during refreshes.
+
+### Safety
+- Only unpaid manual PENDING bookings with no provider transaction, payment or refund status are eligible.
+- Paid, refunded, cancelled or provider-backed bookings are not eligible.
+- Cleanup controls remain unavailable until Cloudflare Access protects HQ.
+
+
 ## [V92.2 BACKEND PERFORMANCE] — 2026-08-03
 
 ### Fixed
