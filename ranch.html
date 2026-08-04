@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.4.2">
+  <link rel="stylesheet" href="styles.css?v=92.4.3">
 </head>
 <body class="ranch-v91">
   <a class="skip-link" href="#ranchMain">Skip to HQ content</a>
@@ -49,7 +49,7 @@
 
   <div class="ranch91-app">
     <header class="ranch91-topbar">
-      <button id="ranch91Menu" class="ranch91-menu" type="button" aria-controls="ranch91Drawer" aria-expanded="false">
+      <button id="ranch91Menu" class="ranch91-menu" type="button" onclick="return window.BootScootinHQMenuToggle(event)" aria-controls="ranch91Drawer" aria-expanded="false">
         <span aria-hidden="true">☰</span>
         <span>Menu</span>
       </button>
@@ -58,7 +58,7 @@
         <h1 id="ranch91PageTitle">HQ Home</h1>
       </div>
       <div class="hq-connection-indicator checking" id="hqConnectionIndicator"><span></span><b>Checking</b></div>
-      <div class="ranch91-release">V92.4.2</div>
+      <div class="ranch91-release">V92.4.3</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -79,6 +79,22 @@
           <article><span>Revenue</span><strong id="overviewRevenue">—</strong></article>
           <article><span>Media files</span><strong id="overviewMedia">—</strong></article>
         </div>
+
+        
+        <section class="ranch91-card known-test-cleanup" id="knownTestCleanupCard">
+          <div class="ranch91-card-head">
+            <div>
+              <p class="kicker red">Temporary test cleanup</p>
+              <h2>Remove the three 26 August test bookings</h2>
+              <p>This control targets only the three unpaid manual bookings created on 3 August for Boot Scootin’ Special. It cannot delete other bookings.</p>
+            </div>
+            <button id="cleanupKnownAugustTests" class="button" type="button">Delete 3 test bookings</button>
+          </div>
+          <div id="knownTestCleanupStatus" class="known-test-cleanup-status">
+            The dashboard currently reports three pending test payments.
+          </div>
+        </section>
+
 
         <section class="ranch91-card">
           <div class="ranch91-card-head">
@@ -374,7 +390,7 @@
 
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="ranch.js?v=92.4.2"></script>
+  <script src="ranch.js?v=92.4.3"></script>
 
   <script>
   (function(){

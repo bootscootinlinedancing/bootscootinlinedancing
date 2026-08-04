@@ -6585,3 +6585,39 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
   .diagnostic-actions button{width:100%}
 }
 @media(max-width:430px){.diagnostic-summary-grid{grid-template-columns:1fr}}
+
+
+/* V92.4.3 — MENU, CAPACITY & KNOWN TEST CLEANUP */
+.ranch91-menu{
+  position:relative!important;
+  z-index:1000!important;
+  pointer-events:auto!important;
+  touch-action:manipulation!important;
+  -webkit-tap-highlight-color:rgba(198,29,36,.18);
+}
+.ranch91-drawer{
+  visibility:visible!important;
+  pointer-events:auto;
+}
+.ranch91-drawer:not(.open){
+  pointer-events:none;
+}
+.known-test-cleanup{
+  border-left:5px solid #b77f3b;
+  background:#fff1d9;
+}
+.known-test-cleanup-status{
+  margin-top:1rem;
+  padding:.8rem;
+  border:1px solid #d3b996;
+  background:#fff8ed;
+  color:#6f594d;
+}
+@media(max-width:760px){
+  .known-test-cleanup .ranch91-card-head{
+    display:grid;
+  }
+  .known-test-cleanup .button{
+    width:100%;
+  }
+}

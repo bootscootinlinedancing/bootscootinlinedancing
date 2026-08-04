@@ -1,5 +1,26 @@
 # Changelog
 
+## [V92.4.3 MENU, CAPACITY & TEST CLEANUP] — 2026-08-04
+
+### Fixed
+- Added an independent iPhone-safe Ranch menu controller.
+- The menu button now opens the drawer without depending on the main Ranch script.
+- Added stronger touch and pointer handling for the menu.
+- Class availability now derives from actual `PENDING` and `PAID` booking quantities.
+- The three pending bookings for 26 August now reduce availability from 50 to 47.
+- Public class listings and HQ use the same booking-based capacity calculation.
+
+### Test cleanup
+- Added a temporary one-purpose cleanup control.
+- It targets only exactly three unpaid manual bookings:
+  - class `low-2026-08-26`
+  - created on 3 August 2026
+  - status `PENDING`
+- Cleanup refuses to run unless exactly three matching records are found.
+- Deletion restores dashboard totals and class capacity.
+- No other bookings can be deleted through this temporary endpoint.
+
+
 ## [V92.4.2 HTML REPAIR] — 2026-08-04
 
 ### Root-cause fix

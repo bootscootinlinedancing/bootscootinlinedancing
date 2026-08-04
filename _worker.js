@@ -317,8 +317,27 @@ async function publicClasses(env) {
     await ensureBookingSchema(env);
     const now = new Date().toISOString();
     const { results } = await env.BOOKINGS_DB.prepare(`
-      SELECT c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,c.sold,c.status,c.level,c.public_notes,
-      MAX(0,c.capacity-c.sold-COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)) AS spaces_remaining
+      SELECT c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
+      COALESCE((
+        SELECT SUM(b.quantity)
+        FROM bookings b
+        WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
+      ),0) AS sold,
+      c.status,c.level,c.public_notes,
+      MAX(
+        0,
+        c.capacity
+        - COALESCE((
+            SELECT SUM(b.quantity)
+            FROM bookings b
+            WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
+          ),0)
+        - COALESCE((
+            SELECT SUM(h.quantity)
+            FROM booking_holds h
+            WHERE h.class_id=c.id AND h.expires_at>?
+          ),0)
+      ) AS spaces_remaining
       FROM classes c WHERE c.status='open' AND c.starts_at>? ORDER BY c.starts_at
     `).bind(now,now).all();
     return json(results.map(row => ({ ...row, price: row.price_pence / 100 })));
@@ -947,9 +966,16 @@ async function adminBootstrap(request, env) {
       const now = new Date().toISOString();
       const [classesResult, stats, activityResult, privateResult] = await Promise.all([
         env.BOOKINGS_DB.prepare(`
-          SELECT id,title,venue,location,starts_at,ends_at,price_pence,capacity,sold,status,level,public_notes
-          FROM classes
-          WHERE starts_at >= ? AND status IN ('open','draft')
+          SELECT
+            c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
+            COALESCE((
+              SELECT SUM(b.quantity)
+              FROM bookings b
+              WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
+            ),0) AS sold,
+            c.status,c.level,c.public_notes
+          FROM classes c
+          WHERE c.starts_at >= ? AND c.status IN ('open','draft')
           ORDER BY starts_at
           LIMIT 20
         `).bind(now).all(),
@@ -1002,6 +1028,49 @@ async function adminBootstrap(request, env) {
   }
 
   return json(result);
+}
+
+
+async function cleanupKnownAugustTestBookings(request, env) {
+  if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
+  await ensureBookingSchema(env);
+
+  const body = await request.json().catch(() => ({}));
+  if (clean(body.confirmation, 80) !== 'DELETE 3 TEST BOOKINGS') {
+    return json({ error: 'Type DELETE 3 TEST BOOKINGS exactly to confirm.' }, 400);
+  }
+
+  const { results } = await env.BOOKINGS_DB.prepare(`
+    SELECT *
+    FROM bookings
+    WHERE class_id='low-2026-08-26'
+      AND status='PENDING'
+      AND payment_provider='MANUAL'
+      AND date(created_at)='2026-08-03'
+      AND paid_at IS NULL
+      AND provider_transaction_id IS NULL
+      AND refund_status IS NULL
+    ORDER BY created_at
+  `).all();
+
+  if ((results || []).length !== 3) {
+    return json({
+      error: `The cleanup expected exactly 3 matching test bookings but found ${(results || []).length}. Nothing was deleted.`,
+      matched: (results || []).length
+    }, 409);
+  }
+
+  let deleted = 0;
+  for (const booking of results) {
+    const result = await deleteTestBooking(env, booking, 'public-pilot-known-test-cleanup');
+    if (result.ok) deleted += 1;
+  }
+
+  return json({
+    ok: true,
+    deleted,
+    message: `${deleted} known test bookings were deleted.`
+  });
 }
 
 async function adminOperations(request, env) {
@@ -1431,6 +1500,7 @@ export default {
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
       if (path === '/api/booking-cancel' && request.method === 'POST') return cancelBooking(request, env);
       if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);
+      if (path === '/api/admin/cleanup-known-august-tests' && request.method === 'POST') return cleanupKnownAugustTestBookings(request, env);
       if (path === '/api/admin/bootstrap' && request.method === 'GET') return adminBootstrap(request, env);
       if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
       if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);

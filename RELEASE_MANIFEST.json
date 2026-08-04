@@ -1,48 +1,53 @@
 {
-  "release": "V92.4.2 HTML REPAIR VERIFIED",
-  "built_from": "boot-scootin-platform-v92.4.1-RECOVERY-VERIFIED.zip",
-  "built_at": "2026-08-04T16:44:04.539731+00:00",
-  "root_cause": "Malformed Ranch HTML prevented ranch.js from loading.",
+  "release": "V92.4.3 MENU, CAPACITY & TEST CLEANUP VERIFIED",
+  "built_from": "boot-scootin-platform-v92.4.2-HTML-REPAIR-VERIFIED.zip",
+  "built_at": "2026-08-04T17:56:34.736509+00:00",
   "checks": {
-    "valid stylesheet tag": true,
-    "closing head": true,
-    "body class": true,
-    "valid script tag": true,
-    "old malformed script removed": true,
-    "old malformed stylesheet removed": true,
-    "release marker": true,
-    "diagnostics retained": true,
+    "version marker": true,
+    "inline menu fallback": true,
+    "menu onclick": true,
+    "booking-derived capacity": true,
+    "targeted cleanup endpoint": true,
+    "exact three guard": true,
+    "target class restricted": true,
+    "target date restricted": true,
+    "cleanup button": true,
     "cache version": true
   },
   "javascript_syntax": {
-    "checked": true,
-    "ok": true,
-    "output": ""
+    "ranch.js": {
+      "ok": true,
+      "output": ""
+    },
+    "_worker.js": {
+      "ok": true,
+      "output": ""
+    }
   },
   "files": {
     "ranch.html": {
-      "size": 22247,
-      "sha256": "df6ae6a2988086cce163028670ae86e795665714c32efbdc7c9ad101f1a54361"
+      "size": 23079,
+      "sha256": "294429ac291ea4a6d3fe557a07a095bb4c7aed70973ecf038638aa32846400bf"
     },
     "ranch.js": {
-      "size": 36733,
-      "sha256": "b910ed846786102ebe21f9b8ff7ebc718164acb24f6de4d577ee81807de45793"
+      "size": 38484,
+      "sha256": "014c7034ca4541879cf347d5147ba39955ef6e8ca51e4ca979d25551b588984c"
     },
     "_worker.js": {
-      "size": 77306,
-      "sha256": "a7dfc2fb72cf766c506dbe22f707afd8a2a93cf819fc3167ca1e6941db217176"
+      "size": 79382,
+      "sha256": "7986178063680f8def09dc31c0aa6036d9857f727aba6c4b85eb98a3437da773"
     },
     "styles.css": {
-      "size": 251586,
-      "sha256": "7867a2f2ded757568d8d8fd5f8aaded067cc53631bcb667664279be50c932f31"
+      "size": 252319,
+      "sha256": "fcda3f81c02f2b247969cc44c824830f80a5015b44442eccc0f1f47bb9837bd1"
     },
     "service-worker.js": {
-      "size": 512,
-      "sha256": "d8aa0e1eeade4b63c50695b067e3af495e403757f8a68fa0f7543b4453909a4c"
+      "size": 522,
+      "sha256": "8ca3d03fc172d107d8b8c404c6891de412aeda133d5e5fd53d25577a4ab9e746"
     },
     "CHANGELOG.md": {
-      "size": 6605,
-      "sha256": "3127ccc59fc58ee25c7eab43bff369156e4cf276960ffd31dd729fab5abcc050"
+      "size": 7522,
+      "sha256": "977cab3873af488cd8599a60c57ba8318ae395048b170517984a1e9edb5bbe7e"
     }
   }
 }

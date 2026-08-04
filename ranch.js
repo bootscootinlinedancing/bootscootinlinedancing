@@ -222,7 +222,11 @@
     if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
     if(open){drawer.scrollTop=0;if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);}
   }
-  menuButton?.addEventListener('click',()=>setDrawer(!drawer.classList.contains('open')));
+  menuButton?.addEventListener('click',event=>{
+    if(typeof window.BootScootinHQMenuToggle==='function')return;
+    event.preventDefault();
+    setDrawer(!drawer.classList.contains('open'));
+  });
   closeButton?.addEventListener('click',()=>setDrawer(false));
   backdrop?.addEventListener('click',()=>setDrawer(false));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
@@ -283,6 +287,8 @@
     if(!b)return;
     $('#overviewUpcoming').textContent=b.summary.upcoming_classes;
     $('#overviewBooked').textContent=b.summary.places_booked;
+    const cleanupCard=document.getElementById('knownTestCleanupCard');
+    if(cleanupCard)cleanupCard.hidden=Number(b.summary.pending_payments||0)===0;
     $('#overviewRevenue').textContent=money(b.summary.paid_revenue);
     $('#overviewMedia').textContent=b.summary.media_files;
 
@@ -648,6 +654,40 @@
   $('#refreshPrivateEvents')?.addEventListener('click',loadPrivateEvents);
   $('#refreshMedia')?.addEventListener('click',loadMedia);
 
+
+
+  async function cleanupKnownAugustTests(){
+    const button=document.getElementById('cleanupKnownAugustTests');
+    const status=document.getElementById('knownTestCleanupStatus');
+    const confirmation=prompt('This deletes only the three known 3 August test bookings for the 26 August class.\n\nType DELETE 3 TEST BOOKINGS to continue.');
+    if(confirmation!=='DELETE 3 TEST BOOKINGS')return;
+
+    if(button){button.disabled=true;button.textContent='Deleting…';}
+    if(status)status.textContent='Deleting the three known test bookings and recalculating capacity…';
+
+    try{
+      const result=await jsonFetch('/api/admin/cleanup-known-august-tests',{
+        method:'POST',
+        body:JSON.stringify({confirmation})
+      },10000);
+
+      localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+      state.bootstrap=null;
+      state.bootstrapLoadedAt=0;
+      await loadBootstrap(false,{force:true,silent:true});
+
+      if(status)status.textContent=`${result.deleted||0} test bookings deleted. The 26 August class capacity and dashboard totals have been refreshed.`;
+      if(button){button.hidden=true;}
+      toast('Three test bookings deleted.');
+    }catch(error){
+      if(status)status.textContent=error.message;
+      toast(error.message,'error');
+    }finally{
+      if(button&&!button.hidden){button.disabled=false;button.textContent='Delete 3 test bookings';}
+    }
+  }
+
+  document.getElementById('cleanupKnownAugustTests')?.addEventListener('click',cleanupKnownAugustTests);
 
   async function runDiagnosticTests(){
     const button=document.getElementById('runDiagnosticTests');

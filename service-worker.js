@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v92-4-2-html-repair";
+const CACHE_NAME = "boot-scootin-v92-4-3-menu-capacity-cleanup";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(
