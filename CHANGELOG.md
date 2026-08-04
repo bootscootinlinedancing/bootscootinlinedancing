@@ -1,5 +1,22 @@
 # Changelog
 
+## [V92.4 DIAGNOSTIC] — 2026-08-04
+
+### Added
+- Dedicated Diagnostics section.
+- Request IDs, endpoint names, HTTP status codes and response times.
+- JavaScript error and unhandled-promise logging.
+- Online/offline event logging.
+- Run tests, Copy report and Clear controls.
+- Live Connected, Saved data or Unavailable indicator.
+- Session-persistent diagnostic history.
+
+### Stability
+- Existing dashboard data remains visible during refreshes.
+- Loading banners appear only when no saved data exists.
+- Overlapping bootstrap calls reuse the active request.
+
+
 ## [V92.3 VERIFIED FROM V92.2] — 2026-08-04
 
 ### Added

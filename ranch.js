@@ -69,21 +69,28 @@
   }
 
   async function jsonFetch(url,options={},timeoutMs=10000){
+    const requestId=++state.requestSequence;
+    const started=performance.now();
+    const method=options.method||'GET';
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    diagnosticEvent('request_started',{endpoint:url,method,request_id:requestId,timeout_ms:timeoutMs});
     try{
       const response=await fetch(url,{
         ...options,
-        signal: options.signal || controller.signal,
+        signal:options.signal||controller.signal,
         headers:{
           Accept:'application/json',
           ...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),
-          ...(options.headers||{})
+          ...(options.headers||{}),
+          'X-HQ-Diagnostic-Request':String(requestId)
         }
       });
       const text=await response.text();
       let data={};
       try{data=text?JSON.parse(text):{};}catch(_){data={error:text||'Unexpected server response.'};}
+      const duration=Math.round(performance.now()-started);
+      diagnosticEvent('request_completed',{endpoint:url,method,request_id:requestId,status:response.status,duration_ms:duration});
       if(!response.ok){
         const error=new Error(data.error||data.detail||`Request failed (${response.status}).`);
         error.code=data.code||'REQUEST_FAILED';
@@ -91,8 +98,99 @@
         throw error;
       }
       return data;
+    }catch(error){
+      const duration=Math.round(performance.now()-started);
+      diagnosticEvent('request_failed',{endpoint:url,method,request_id:requestId,duration_ms:duration,result:error.name==='AbortError'?'Timed out':'Failed',error:safeError(error)});
+      throw error;
     }finally{clearTimeout(timer);}
   }
+
+
+  const DIAGNOSTIC_LIMIT=100;
+
+  function safeError(error){
+    return {
+      name:error?.name||'Error',
+      message:String(error?.message||error||'Unknown error').slice(0,500),
+      code:error?.code||null,
+      status:error?.status||null
+    };
+  }
+
+  function diagnosticEvent(type,detail={}){
+    const event={time:new Date().toISOString(),type,...detail};
+    state.diagnostics.unshift(event);
+    state.diagnostics=state.diagnostics.slice(0,DIAGNOSTIC_LIMIT);
+    try{sessionStorage.setItem('boot-scootin-hq-diagnostics',JSON.stringify(state.diagnostics));}catch(_){}
+    renderDiagnostics();
+    console.info('[HQ DIAGNOSTIC]',event);
+  }
+
+  function setConnectionIndicator(status,label){
+    const node=document.getElementById('hqConnectionIndicator');
+    if(!node)return;
+    node.className=`hq-connection-indicator ${status}`;
+    const text=node.querySelector('b');
+    if(text)text.textContent=label;
+  }
+
+  function renderDiagnostics(){
+    const box=document.getElementById('diagnosticLog');
+    if(!box)return;
+    const bootstrap=state.diagnostics.find(item=>item.endpoint==='/api/admin/bootstrap');
+    const health=state.diagnostics.find(item=>item.endpoint==='/api/admin/system-health');
+    const latest=state.diagnostics[0];
+    const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
+    set('diagBootstrap',bootstrap?`${bootstrap.status||bootstrap.result||'Error'} · ${bootstrap.duration_ms||0}ms`:'Not tested');
+    set('diagHealth',health?`${health.status||health.result||'Error'} · ${health.duration_ms||0}ms`:'Not tested');
+    set('diagLastRequest',latest?.endpoint||latest?.type||'—');
+    set('diagErrorCount',state.frontendErrors);
+    if(!state.diagnostics.length){
+      box.innerHTML='<div class="ranch-empty">No diagnostic events recorded yet.</div>';
+      return;
+    }
+    box.innerHTML=state.diagnostics.map(item=>{
+      const cls=item.status>=200&&item.status<300?'success':(item.status===401||item.status===403?'protected':(item.error?'error':'info'));
+      return `<article class="diagnostic-row ${cls}">
+        <div><strong>${esc(item.endpoint||item.type.replaceAll('_',' '))}</strong><span>${esc(new Date(item.time).toLocaleTimeString('en-GB'))} · ${esc(item.status?`HTTP ${item.status}`:(item.result||'Recorded'))}</span></div>
+        <div class="diagnostic-meta">${item.duration_ms!=null?`<b>${esc(item.duration_ms)}ms</b>`:''}${item.request_id?`<small>#${esc(item.request_id)}</small>`:''}</div>
+        ${item.error?`<p>${esc(item.error.message||item.error)}</p>`:''}
+      </article>`;
+    }).join('');
+  }
+
+  function buildDiagnosticReport(){
+    return JSON.stringify({
+      generated_at:new Date().toISOString(),
+      location:location.href,
+      user_agent:navigator.userAgent,
+      online:navigator.onLine,
+      visibility:document.visibilityState,
+      version:'V92.4',
+      bootstrap_loaded:Boolean(state.bootstrap),
+      bootstrap_loaded_at:state.bootstrapLoadedAt?new Date(state.bootstrapLoadedAt).toISOString():null,
+      frontend_errors:state.frontendErrors,
+      events:state.diagnostics
+    },null,2);
+  }
+
+  window.addEventListener('error',event=>{
+    state.frontendErrors++;
+    diagnosticEvent('javascript_error',{error:safeError(event.error||event.message),filename:event.filename||null,line:event.lineno||null,column:event.colno||null});
+  });
+  window.addEventListener('unhandledrejection',event=>{
+    state.frontendErrors++;
+    diagnosticEvent('unhandled_promise_rejection',{error:safeError(event.reason)});
+  });
+  window.addEventListener('online',()=>{
+    diagnosticEvent('network_online',{result:'Browser reports online'});
+    setConnectionIndicator('checking','Rechecking');
+    loadBootstrap(false,{force:true,silent:true}).catch(()=>{});
+  });
+  window.addEventListener('offline',()=>{
+    diagnosticEvent('network_offline',{result:'Browser reports offline'});
+    setConnectionIndicator('error','Offline');
+  });
 
   function lockedPanel(title,detail){
     return `<div class="ranch92-state locked"><strong>${esc(title)}</strong><p>${esc(detail)}</p><button type="button" data-open-settings>Open setup instructions</button></div>`;
@@ -120,7 +218,7 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
   window.addEventListener('pageshow',()=>setDrawer(false));
 
-  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',settings:'Settings'};
+  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
     state.currentView=name;
     $$('.ranch-view').forEach(panel=>panel.classList.toggle('active',panel.dataset.viewPanel===name));
@@ -210,7 +308,7 @@
       return state.bootstrap;
     }
 
-    if(state.bootstrapPromise)return state.bootstrapPromise;
+    if(state.bootstrapPromise){diagnosticEvent('bootstrap_deduplicated',{result:'Reused active request'});return state.bootstrapPromise;}
 
     if(!state.bootstrap){
       const cached=readBootstrapCache();
@@ -222,8 +320,9 @@
       }
     }
 
-    if(!silent)setModeLoading(true);
+    if(!silent&&!state.bootstrap)setModeLoading(true);
 
+    setConnectionIndicator('checking','Checking');
     state.bootstrapPromise=(async()=>{
       try{
         const data=await jsonFetch('/api/admin/bootstrap',{cache:'no-store'},6000);
@@ -233,10 +332,12 @@
         saveBootstrapCache(data);
         renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
         updateLastUpdated('live');
+        setConnectionIndicator('success','Connected');
         if(showToast)toast('Backend status refreshed.');
         return data;
       }catch(error){
         state.bootstrapError=error;
+        setConnectionIndicator(state.bootstrap?'cached':'error',state.bootstrap?'Saved data':'Unavailable');
         if(state.bootstrap){
           renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
           updateLastUpdated('cache');
@@ -537,6 +638,48 @@
   $('#refreshPrivateEvents')?.addEventListener('click',loadPrivateEvents);
   $('#refreshMedia')?.addEventListener('click',loadMedia);
 
+
+  async function runDiagnosticTests(){
+    const button=document.getElementById('runDiagnosticTests');
+    if(button){button.disabled=true;button.textContent='Testing…';}
+    diagnosticEvent('diagnostic_suite_started',{result:'Running'});
+    try{
+      await loadBootstrap(false,{force:true,silent:true});
+      try{await jsonFetch('/api/admin/system-health',{cache:'no-store'},6000);}
+      catch(error){
+        if(error.status===401||error.status===403){
+          diagnosticEvent('health_endpoint_protected',{endpoint:'/api/admin/system-health',status:error.status,result:'Expected until Cloudflare Access is configured'});
+        }
+      }
+      diagnosticEvent('diagnostic_suite_completed',{result:'Finished'});
+      toast('Diagnostic tests completed.');
+    }finally{
+      if(button){button.disabled=false;button.textContent='Run tests';}
+    }
+  }
+
+  async function copyDiagnosticReport(){
+    const text=buildDiagnosticReport();
+    try{await navigator.clipboard.writeText(text);}
+    catch(_){
+      const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();
+    }
+    toast('Diagnostic report copied.');
+  }
+
+  document.getElementById('runDiagnosticTests')?.addEventListener('click',runDiagnosticTests);
+  document.getElementById('copyDiagnosticReport')?.addEventListener('click',copyDiagnosticReport);
+  document.getElementById('clearDiagnosticLog')?.addEventListener('click',()=>{
+    state.diagnostics=[];state.frontendErrors=0;
+    try{sessionStorage.removeItem('boot-scootin-hq-diagnostics');}catch(_){}
+    renderDiagnostics();toast('Diagnostic log cleared.');
+  });
+  try{
+    const previous=JSON.parse(sessionStorage.getItem('boot-scootin-hq-diagnostics')||'[]');
+    if(Array.isArray(previous))state.diagnostics=previous.slice(0,DIAGNOSTIC_LIMIT);
+  }catch(_){}
+  diagnosticEvent('hq_script_started',{result:'V92.4 loaded',online:navigator.onLine,visibility:document.visibilityState});
+
   showView('overview');
   const cachedBootstrap=readBootstrapCache();
   if(cachedBootstrap?.data){
@@ -546,6 +689,7 @@
     updateLastUpdated('cache');
   }
   loadBootstrap(false,{silent:Boolean(state.bootstrap)}).catch(()=>{});
+  renderDiagnostics();
   loadHealth();
   setTimeout(()=>{
     const replacements=[

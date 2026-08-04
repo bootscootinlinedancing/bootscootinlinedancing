@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.3"ranch-v91">
+  <link rel="stylesheet" href="styles.css?v=92.4"ranch-v91">
   <a class="skip-link" href="#ranchMain">Skip to HQ content</a>
 
   <div class="ranch91-backdrop" id="ranch91Backdrop" hidden></div>
@@ -32,6 +32,7 @@
       <button type="button" data-view="private-events">Private Events</button>
       <button type="button" data-view="media">Media</button>
       <button type="button" data-view="health">System Health</button>
+      <button type="button" data-view="diagnostics">Diagnostics</button>
       <button type="button" data-view="settings">Settings</button>
     </nav>
 
@@ -54,7 +55,8 @@
         <p>PRIVATE MANAGEMENT AREA</p>
         <h1 id="ranch91PageTitle">HQ Home</h1>
       </div>
-      <div class="ranch91-release">V92.3</div>
+      <div class="hq-connection-indicator checking" id="hqConnectionIndicator"><span></span><b>Checking</b></div>
+      <div class="ranch91-release">V92.4</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -317,6 +319,32 @@
             </ul>
           </div>
         </div>
+      </section>
+
+      
+      <section class="ranch-view" data-view-panel="diagnostics">
+        <section class="ranch91-card">
+          <div class="ranch91-card-head">
+            <div>
+              <p class="kicker red">Frontend diagnostics</p>
+              <h2>HQ Request Monitor</h2>
+              <p>Records HQ API timing, status codes and JavaScript errors without showing secret keys.</p>
+            </div>
+            <div class="diagnostic-actions">
+              <button id="runDiagnosticTests" class="button compact" type="button">Run tests</button>
+              <button id="copyDiagnosticReport" class="button secondary compact" type="button">Copy report</button>
+              <button id="clearDiagnosticLog" class="button secondary compact" type="button">Clear</button>
+            </div>
+          </div>
+          <div class="diagnostic-summary-grid">
+            <article><span>Bootstrap</span><strong id="diagBootstrap">Not tested</strong></article>
+            <article><span>Health</span><strong id="diagHealth">Not tested</strong></article>
+            <article><span>Last request</span><strong id="diagLastRequest">—</strong></article>
+            <article><span>Frontend errors</span><strong id="diagErrorCount">0</strong></article>
+          </div>
+          <div class="diagnostic-note"><strong>Privacy:</strong> no API keys, payment-card data or customer records are included.</div>
+          <div id="diagnosticLog" class="diagnostic-log"><div class="ranch-empty">No diagnostic events recorded yet.</div></div>
+        </section>
       </section>
 
       <section class="ranch-view" data-view-panel="settings">

@@ -6551,3 +6551,37 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
   .booking-admin-actions button{width:100%}
 }
 @media(max-width:430px){.booking-admin-card dl{grid-template-columns:1fr}}
+
+
+/* V92.4 — HQ DIAGNOSTICS */
+.ranch91-topbar{grid-template-columns:auto 1fr auto auto}
+.hq-connection-indicator{display:flex;align-items:center;gap:.35rem;padding:.4rem .5rem;border:1px solid #704044;font:700 .62rem Oswald,sans-serif;text-transform:uppercase}
+.hq-connection-indicator span{width:9px;height:9px;border-radius:50%;background:#c7923e}
+.hq-connection-indicator.success span{background:#38945b}
+.hq-connection-indicator.cached span{background:#4d7fa8}
+.hq-connection-indicator.error span{background:#b33a40}
+.diagnostic-actions{display:flex;gap:.5rem;flex-wrap:wrap}
+.diagnostic-summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.65rem;margin:1rem 0}
+.diagnostic-summary-grid article{padding:.8rem;border:1px solid #d3b996;background:#f4e6d1}
+.diagnostic-summary-grid span,.diagnostic-summary-grid strong{display:block}
+.diagnostic-summary-grid span{font:700 .62rem Oswald,sans-serif;text-transform:uppercase;color:#745e52}
+.diagnostic-summary-grid strong{margin-top:.25rem;font-size:.82rem}
+.diagnostic-note{padding:.8rem;border-left:4px solid #4d7fa8;background:#e7edf2;color:#344f65}
+.diagnostic-log{display:grid;gap:.55rem;margin-top:1rem}
+.diagnostic-row{display:grid;grid-template-columns:1fr auto;gap:.6rem;padding:.75rem;border:1px solid #d3b996;border-left:5px solid #4d7fa8;background:#fff}
+.diagnostic-row.success{border-left-color:#38945b}
+.diagnostic-row.protected{border-left-color:#c7923e}
+.diagnostic-row.error{border-left-color:#b33a40}
+.diagnostic-row strong,.diagnostic-row span{display:block}
+.diagnostic-row span{margin-top:.15rem;color:#6c554a;font-size:.7rem}
+.diagnostic-row p{grid-column:1/-1;margin:.2rem 0 0;color:#8d282e;font-size:.72rem}
+.diagnostic-meta{text-align:right}
+.diagnostic-meta b,.diagnostic-meta small{display:block}
+@media(max-width:760px){
+  .ranch91-topbar{grid-template-columns:auto 1fr auto}
+  .hq-connection-indicator{grid-column:1/-1;justify-self:start}
+  .diagnostic-summary-grid{grid-template-columns:1fr 1fr}
+  .diagnostic-actions{display:grid;width:100%}
+  .diagnostic-actions button{width:100%}
+}
+@media(max-width:430px){.diagnostic-summary-grid{grid-template-columns:1fr}}
