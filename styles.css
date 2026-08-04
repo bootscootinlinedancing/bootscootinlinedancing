@@ -6621,3 +6621,14 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
     width:100%;
   }
 }
+
+
+/* V92.4.4 — iOS MENU TAP REPAIR */
+#ranch91Menu{
+  isolation:isolate;
+  user-select:none;
+  -webkit-user-select:none;
+}
+#ranch91Menu *{
+  pointer-events:none;
+}

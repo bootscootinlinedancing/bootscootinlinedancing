@@ -1,5 +1,17 @@
 # Changelog
 
+## [V92.4.4 MENU & CLEANUP REPAIR] — 2026-08-04
+
+### Fixed
+- Inserted the standalone menu function that V92.4.3 referenced but did not contain.
+- Added an iOS touch fallback to the Menu button.
+- Prevented the Menu icon and label from intercepting taps.
+- Fixed the test-cleanup foreign-key error.
+- Test bookings are now deleted before their referenced booking holds.
+- Cleanup database errors now return readable details instead of a generic Worker exception.
+- Retains booking-derived availability, including 47 spaces while the three tests remain.
+
+
 ## [V92.4.3 MENU, CAPACITY & TEST CLEANUP] — 2026-08-04
 
 ### Fixed

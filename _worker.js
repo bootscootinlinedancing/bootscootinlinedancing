@@ -1061,9 +1061,21 @@ async function cleanupKnownAugustTestBookings(request, env) {
   }
 
   let deleted = 0;
-  for (const booking of results) {
-    const result = await deleteTestBooking(env, booking, 'public-pilot-known-test-cleanup');
-    if (result.ok) deleted += 1;
+
+  try {
+    for (const booking of results) {
+      const result = await deleteTestBooking(
+        env,
+        booking,
+        'public-pilot-known-test-cleanup'
+      );
+      if (result.ok) deleted += 1;
+    }
+  } catch (error) {
+    return json({
+      error: 'The test-booking cleanup could not be completed.',
+      detail: String(error && error.message ? error.message : error)
+    }, 500);
   }
 
   return json({
@@ -1204,31 +1216,43 @@ async function deleteTestBooking(env, booking, actor) {
     return { ok: false, error: 'Only unpaid manual pending test bookings can be deleted.' };
   }
 
-  await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`DELETE FROM attendance WHERE booking_id=?`).bind(booking.id),
-    env.BOOKINGS_DB.prepare(`DELETE FROM payments WHERE booking_id=?`).bind(booking.id),
-    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id || ''),
-    env.BOOKINGS_DB.prepare(`DELETE FROM audit_log WHERE target_type='booking' AND target_id=?`).bind(booking.id),
-    env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(booking.id),
-    env.BOOKINGS_DB.prepare(`
-      UPDATE classes
-      SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP
-      WHERE id=?
-    `).bind(Number(booking.quantity || 0), booking.class_id),
-    env.BOOKINGS_DB.prepare(`
-      INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
-      VALUES(?,?,?,?,?)
-    `).bind(
-      actor || 'hq',
-      'TEST_BOOKING_DELETED',
-      'class',
-      booking.class_id,
-      JSON.stringify({
-        reference: booking.reference,
-        quantity: Number(booking.quantity || 0)
-      })
-    )
-  ]);
+  const holdId = booking.hold_id || null;
+
+  await env.BOOKINGS_DB.prepare(
+    `DELETE FROM audit_log WHERE target_type='booking' AND target_id=?`
+  ).bind(booking.id).run();
+
+  // Delete the booking before its referenced booking hold.
+  // This avoids a D1 foreign-key constraint failure.
+  await env.BOOKINGS_DB.prepare(
+    `DELETE FROM bookings WHERE id=?`
+  ).bind(booking.id).run();
+
+  if (holdId) {
+    await env.BOOKINGS_DB.prepare(
+      `DELETE FROM booking_holds WHERE id=?`
+    ).bind(holdId).run();
+  }
+
+  await env.BOOKINGS_DB.prepare(`
+    UPDATE classes
+    SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).bind(Number(booking.quantity || 0), booking.class_id).run();
+
+  await env.BOOKINGS_DB.prepare(`
+    INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
+    VALUES(?,?,?,?,?)
+  `).bind(
+    actor || 'hq',
+    'TEST_BOOKING_DELETED',
+    'class',
+    booking.class_id,
+    JSON.stringify({
+      reference: booking.reference,
+      quantity: Number(booking.quantity || 0)
+    })
+  ).run();
 
   return { ok: true };
 }

@@ -6,9 +6,72 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.4.3">
+  <link rel="stylesheet" href="styles.css?v=92.4.4">
 </head>
 <body class="ranch-v91">
+
+  <script>
+    (function () {
+      function getHQMenuParts() {
+        return {
+          drawer: document.getElementById('ranch91Drawer'),
+          backdrop: document.getElementById('ranch91Backdrop'),
+          button: document.getElementById('ranch91Menu')
+        };
+      }
+
+      window.BootScootinHQSetMenu = function (open) {
+        var parts = getHQMenuParts();
+        if (!parts.drawer || !parts.button) return false;
+
+        open = Boolean(open);
+        parts.drawer.classList.toggle('open', open);
+        parts.drawer.setAttribute('aria-hidden', String(!open));
+        parts.button.setAttribute('aria-expanded', String(open));
+        document.body.classList.toggle('ranch91-drawer-open', open);
+
+        if (parts.backdrop) {
+          parts.backdrop.hidden = !open;
+          parts.backdrop.classList.toggle('open', open);
+        }
+
+        return false;
+      };
+
+      window.BootScootinHQMenuToggle = function (event) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        var parts = getHQMenuParts();
+        if (!parts.drawer) return false;
+
+        return window.BootScootinHQSetMenu(
+          !parts.drawer.classList.contains('open')
+        );
+      };
+
+      document.addEventListener('DOMContentLoaded', function () {
+        var closeButton = document.getElementById('ranch91Close');
+        var backdrop = document.getElementById('ranch91Backdrop');
+
+        if (closeButton) {
+          closeButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            window.BootScootinHQSetMenu(false);
+          });
+        }
+
+        if (backdrop) {
+          backdrop.addEventListener('click', function () {
+            window.BootScootinHQSetMenu(false);
+          });
+        }
+      });
+    }());
+  </script>
+
   <a class="skip-link" href="#ranchMain">Skip to HQ content</a>
 
   <div class="ranch91-backdrop" id="ranch91Backdrop" hidden></div>
@@ -49,7 +112,7 @@
 
   <div class="ranch91-app">
     <header class="ranch91-topbar">
-      <button id="ranch91Menu" class="ranch91-menu" type="button" onclick="return window.BootScootinHQMenuToggle(event)" aria-controls="ranch91Drawer" aria-expanded="false">
+      <button id="ranch91Menu" class="ranch91-menu" type="button" aria-controls="ranch91Drawer" aria-expanded="false" onclick="return window.BootScootinHQMenuToggle(event)" ontouchend="return window.BootScootinHQMenuToggle(event)">
         <span aria-hidden="true">☰</span>
         <span>Menu</span>
       </button>
@@ -58,7 +121,7 @@
         <h1 id="ranch91PageTitle">HQ Home</h1>
       </div>
       <div class="hq-connection-indicator checking" id="hqConnectionIndicator"><span></span><b>Checking</b></div>
-      <div class="ranch91-release">V92.4.3</div>
+      <div class="ranch91-release">V92.4.4</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -390,7 +453,7 @@
 
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="ranch.js?v=92.4.3"></script>
+  <script src="ranch.js?v=92.4.4"></script>
 
   <script>
   (function(){
