@@ -1,3 +1,12 @@
+# V92.6.7 — SumUp Refund Execution Hardening
+
+- Rebuilds the refund action as an isolated, early-return workflow so it cannot fall through into unrelated HQ actions.
+- Requires the official SumUp transaction UUID before a refund request is sent.
+- Separates transaction lookup, SumUp submission, D1 recording and customer notification into individually guarded stages.
+- Returns controlled JSON for missing transaction IDs, SumUp rejection, network failure and D1 recording failure.
+- Extends the HQ refund request timeout to 30 seconds for slower sandbox responses.
+- Rotates the HQ bootstrap and service-worker caches to V92.6.7.
+
 # V92.6.6 — SumUp Refund Route Hotfix
 
 - Re-resolves the official SumUp transaction UUID from the original checkout before sending a refund.

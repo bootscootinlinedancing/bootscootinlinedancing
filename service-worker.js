@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v92-6-6-refund-route-hotfix";
+const CACHE_NAME = "boot-scootin-v92-6-7-refund-hardening";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(

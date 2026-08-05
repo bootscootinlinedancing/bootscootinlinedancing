@@ -428,16 +428,19 @@ async function resolveSumUpTransactionId(env, booking) {
     }
   }
 
-  if (!transactionId) {
-    throw new Error('The SumUp transaction ID could not be found. Refresh the booking payment status and try again.');
+  if (!looksLikeSumUpTransactionId(transactionId)) {
+    throw new Error('The SumUp transaction UUID could not be found. Refresh the booking payment status and try again.');
   }
   return transactionId;
 }
 
 async function refundSumUpTransaction(env, transactionId, amountPence = null) {
   const transaction = clean(transactionId, 180);
-  if (!transaction) throw new Error('This booking does not have a SumUp transaction ID.');
+  if (!looksLikeSumUpTransactionId(transaction)) {
+    throw new Error('A valid SumUp transaction UUID could not be found for this payment.');
+  }
   if (!sumUpConfigured(env)) throw new Error('SumUp is not configured.');
+
   const options = { method: 'POST' };
   if (amountPence !== null) {
     const amount = Number(amountPence);
@@ -449,18 +452,23 @@ async function refundSumUpTransaction(env, transactionId, amountPence = null) {
   try {
     response = await sumUpFetch(env, `/v0.1/me/refund/${encodeURIComponent(transaction)}`, options);
   } catch (error) {
-    throw new Error(`SumUp could not be reached: ${clean(error?.message || error, 220)}`);
+    throw new Error(`SumUp could not be reached: ${clean(error && error.message ? error.message : error, 220)}`);
   }
 
-  if (!response.ok) {
-    const raw = await response.text().catch(() => '');
+  if (!response || !response.ok) {
+    let raw = '';
+    try { raw = response ? await response.text() : ''; } catch (_) {}
     let payload = {};
     try { payload = raw ? JSON.parse(raw) : {}; } catch (_) {}
     const detail = clean(
-      payload?.message || payload?.error_message || payload?.error || payload?.detail || raw || `HTTP ${response.status}`,
+      payload && (payload.message || payload.error_message || payload.error || payload.detail)
+        ? (payload.message || payload.error_message || payload.error || payload.detail)
+        : (raw || `HTTP ${response ? response.status : 502}`),
       300
     );
-    throw new Error(`SumUp refund failed: ${detail}`);
+    const failure = new Error(`SumUp refund failed: ${detail}`);
+    failure.status = response ? response.status : 502;
+    throw failure;
   }
   return { ok: true, status: response.status };
 }
@@ -520,7 +528,7 @@ async function sendTransactionalEmail(env, to, subject, html, text) {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.6'
+      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.7'
     },
     body: JSON.stringify({ from, to: [to], subject, html, text })
   });
@@ -1782,28 +1790,54 @@ async function adminBookings(request, env) {
     if(!['PAID','CANCELLED'].includes(booking.status)) return json({error:'Only paid or cancelled paid bookings can be refunded.'},409);
     if(booking.refund_status==='REFUNDED' || booking.status==='REFUNDED') return json({error:'This booking has already been refunded.'},409);
     if(booking.payment_provider!=='SUMUP') return json({error:'This booking was not paid through SumUp.'},409);
+
     const fullAmount=Math.max(0,Number(booking.amount_pence||0));
     const requested=body.refund_amount_pence===undefined||body.refund_amount_pence===null?fullAmount:Number(body.refund_amount_pence);
-    if(!Number.isFinite(requested)||requested<=0||requested>fullAmount)return json({error:'Enter a valid refund amount no greater than the original payment.'},400);
+    if(!Number.isFinite(requested)||requested<=0||requested>fullAmount){
+      return json({error:'Enter a valid refund amount no greater than the original payment.'},400);
+    }
     const isFull=requested===fullAmount;
+
+    let transactionId='';
     try {
-      const transactionId=await resolveSumUpTransactionId(env,booking);
-      await refundSumUpTransaction(env,transactionId,isFull?null:requested);
-      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,provider_transaction_id=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
-        .bind(isFull?'REFUNDED':'CANCELLED',requested,transactionId,clean(body.admin_notes,600),id).run();
-      const refunded=await bookingWithClass(env,id);
-      if(refunded){
-        try { await deliverBookingNotification(env,{...refunded,refund_amount_pence:requested},'REFUND_CONFIRMED'); }
-        catch(notificationError){ console.error('Refund notification failed',notificationError); }
-      }
+      transactionId=await resolveSumUpTransactionId(env,booking);
     } catch (error) {
-      const message=clean(error?.message||error,360)||'The refund could not be completed.';
+      const message=clean(error && error.message ? error.message : error,360)||'The SumUp transaction could not be resolved.';
+      return json({error:message,code:'SUMUP_TRANSACTION_NOT_FOUND'},409);
+    }
+
+    try {
+      await refundSumUpTransaction(env,transactionId,isFull?null:requested);
+    } catch (error) {
+      const message=clean(error && error.message ? error.message : error,360)||'The refund could not be completed.';
       try {
         await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-          .bind(check.state.email,'REFUND_SUMUP_FAILED','booking',id,JSON.stringify({error:message,requested_amount_pence:requested})).run();
-      } catch (auditError) { console.error('Refund failure audit could not be written',auditError); }
-      return json({error:message,code:'SUMUP_REFUND_FAILED'},502);
+          .bind(check.state.email,'REFUND_SUMUP_FAILED','booking',id,JSON.stringify({error:message,transaction_id:transactionId,requested_amount_pence:requested})).run();
+      } catch (_) {}
+      return json({error:message,code:'SUMUP_REFUND_REJECTED'},502);
     }
+
+    try {
+      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,provider_transaction_id=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
+        .bind(isFull?'REFUNDED':'CANCELLED',requested,transactionId,clean(body.admin_notes,600),id).run();
+      await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+        .bind(check.state.email,'REFUND_SUMUP','booking',id,JSON.stringify({requested_amount_pence:requested,transaction_id:transactionId,full_refund:isFull})).run();
+    } catch (error) {
+      return json({
+        error:'SumUp accepted the refund, but HQ could not update the booking record. Check SumUp before trying again.',
+        detail:clean(error && error.message ? error.message : error,300),
+        code:'REFUND_RECORDED_BY_SUMUP_HQ_UPDATE_FAILED'
+      },500);
+    }
+
+    try {
+      const refunded=await bookingWithClass(env,id);
+      if(refunded) await deliverBookingNotification(env,{...refunded,refund_amount_pence:requested},'REFUND_CONFIRMED');
+    } catch (notificationError) {
+      console.error('Refund notification failed',notificationError);
+    }
+
+    return json({ok:true,status:'REFUNDED',refund_amount_pence:requested,transaction_id:transactionId});
   }else if(action==='MARK_REFUNDED'){
     const refundAmount=Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence);
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)
@@ -2016,7 +2050,7 @@ export default {
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
       return env.ASSETS.fetch(request);
     } catch (error) {
-      if (path.startsWith('/api/') || incomingPath.startsWith('/ranch/api/')) return json({ error: 'Server error', detail: error.message }, 500);
+      if (path.startsWith('/api/') || incomingPath.startsWith('/ranch/api/')) return json({ error: 'Server error', detail: clean(error && error.message ? error.message : error, 500), code: 'UNHANDLED_API_ERROR' }, 500);
       return new Response('Boot Scootin’ is temporarily unavailable.', { status: 500 });
     }
   }
