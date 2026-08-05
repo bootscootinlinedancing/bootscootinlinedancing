@@ -398,14 +398,28 @@ function sumUpConfigured(env) {
   return Boolean(String(env.SUMUP_API_KEY || '').trim() && String(env.SUMUP_MERCHANT_CODE || '').trim());
 }
 
-async function sumUpFetch(env, pathname, options = {}) {
+async function sumUpFetch(env, pathname, options = {}, timeoutMs = 10000) {
   const key = String(env.SUMUP_API_KEY || '').trim();
   if (!key) throw new Error('SUMUP_API_KEY is not configured.');
   const headers = new Headers(options.headers || {});
   headers.set('Authorization', `Bearer ${key}`);
   headers.set('Accept', 'application/json');
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  return fetch(`https://api.sumup.com${pathname}`, { ...options, headers });
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort('SUMUP_TIMEOUT'), Math.max(1000, Number(timeoutMs) || 10000));
+  try {
+    return await fetch(`https://api.sumup.com${pathname}`, { ...options, headers, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      const timeoutError = new Error('SumUp did not respond within 10 seconds. No booking record was changed. Check the payment in SumUp before trying again.');
+      timeoutError.code = 'SUMUP_TIMEOUT';
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function looksLikeSumUpTransactionId(value) {
@@ -466,7 +480,10 @@ async function refundSumUpTransaction(env, transactionId, amountPence = null) {
         : (raw || `HTTP ${response ? response.status : 502}`),
       300
     );
-    const failure = new Error(`SumUp refund failed: ${detail}`);
+    const authHint = response && (response.status === 401 || response.status === 403)
+      ? ' SumUp refunds require a user-authorised OAuth access token with transaction permissions; a client-credentials token cannot issue refunds.'
+      : '';
+    const failure = new Error(`SumUp refund failed: ${detail}${authHint}`);
     failure.status = response ? response.status : 502;
     throw failure;
   }
@@ -528,7 +545,7 @@ async function sendTransactionalEmail(env, to, subject, html, text) {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.7'
+      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.8'
     },
     body: JSON.stringify({ from, to: [to], subject, html, text })
   });

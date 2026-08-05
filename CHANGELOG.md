@@ -1,3 +1,11 @@
+# V92.6.8 — SumUp Refund Timeout Guard
+
+- Adds a hard 10-second timeout to every SumUp API request so the Cloudflare Worker always returns a valid response.
+- Prevents stalled SumUp sandbox requests from producing Cloudflare invalid/incomplete origin responses.
+- Keeps a booking at REFUND DUE unless SumUp confirms the refund.
+- Adds a clear message when the configured SumUp credential cannot authorise refunds.
+- Rotates HQ and service-worker caches to V92.6.8.
+
 # V92.6.7 — SumUp Refund Execution Hardening
 
 - Rebuilds the refund action as an isolated, early-return workflow so it cannot fall through into unrelated HQ actions.

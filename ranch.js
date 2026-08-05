@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-6-7';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-6-8';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -660,7 +660,7 @@
     return jsonFetch(`${ADMIN_API_PREFIX}/bookings`,{
       method:'PATCH',
       body:JSON.stringify(payload)
-    },30000);
+    },20000);
   }
 
   async function cancelBooking(id){

@@ -1,5 +1,5 @@
 {
-  "release": "V92.6.7 SUMUP REFUND EXECUTION HARDENING",
+  "release": "V92.6.8 SUMUP REFUND TIMEOUT GUARD",
   "built_from": "boot-scootin-platform-v92.6.4-BOOKING-COMMS-STATS-SYNC.zip",
   "built_at": "2026-08-05T23:26:01.970784+00:00",
   "changes": [
@@ -44,6 +44,6 @@
       "sha256": "b8d7b05b1b3f71d4942c3cca02239749162d3c85222d3ddb558fbf0f1d9c5a1b"
     }
   },
-  "version": "92.6.7",
+  "version": "92.6.8",
   "release_name": "SumUp Refund Route Hotfix"
 }

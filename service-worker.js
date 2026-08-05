@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v92-6-7-refund-hardening";
+const CACHE_NAME = "boot-scootin-v92-6-8-refund-timeout-guard";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(
