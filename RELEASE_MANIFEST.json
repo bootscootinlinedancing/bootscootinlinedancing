@@ -1,13 +1,12 @@
 {
-  "release": "V92.6.0 HQ ACTION BUTTON REPAIR",
-  "built_from": "boot-scootin-platform-v92.5.0-SUMUP-SANDBOX-HOSTED-CHECKOUT(2).zip",
-  "built_at": "2026-08-05T18:22:02.613695+00:00",
+  "release": "V92.6.1 HQ ADD CLASS HOTFIX",
+  "built_from": "boot-scootin-platform-v92.6.0-HQ-ACTION-BUTTON-REPAIR.zip",
+  "built_at": "2026-08-05T22:36:43.717344+00:00",
   "changes": [
-    "Added mobile-friendly Create/Edit Class modal and connected class POST/PATCH routes.",
-    "Added class refresh, filters, summary totals, duplicate, open/close and safe delete actions.",
-    "Added working Bookings CSV and Customers CSV browser downloads.",
-    "Added R2 media connection check and multipart media upload handling.",
-    "Added button loading states, error messages, refreshed dashboards and versioned asset cache busting."
+    "Removed the bootstrap-mode gate that could block Add a class before HQ bootstrap completed.",
+    "Made the class editor open immediately while retaining Cloudflare Access enforcement on the protected save API.",
+    "Added resilient direct and delegated Add a class click handling.",
+    "Bumped ranch.js and service-worker cache versions to prevent stale v92.6.0 logic."
   ],
   "checks": {
     "javascript_syntax": [
@@ -15,6 +14,7 @@
       "node --check ranch.js",
       "node --check bookings.js"
     ],
+    "add_class_handler": "Editor opening no longer depends on bootstrap mode; direct and delegated handlers present.",
     "secret_scan": "No SumUp secret API key embedded"
   },
   "files": {
@@ -23,25 +23,25 @@
       "sha256": "8afca948eb6df3a513b8352d5a62b3ad9e1afc0658996302ded161c39eaafdcc"
     },
     "ranch.html": {
-      "size": 25583,
-      "sha256": "67b4da01f9342bf3ef1ff2b6a16f430b43eafa579486add24cc714ebde4d16d9"
+      "size": 27864,
+      "sha256": "617addbe2cbb233fd534f42fbebcb525b0127151310d5af7ed5b4a2d4c2413c5"
     },
     "ranch.js": {
-      "size": 41650,
-      "sha256": "1506af9677098df3b060317edc3dfe4be8fb9b65f79a5add742dacde74ef6392"
+      "size": 53239,
+      "sha256": "4d928277834986ac59180eae40d081d4edc25d23d31dffd93fadac16142731bd"
     },
     "service-worker.js": {
-      "size": 529,
-      "sha256": "5a2cc5b81a8c132daa1148b7fc50f36c7031ab3ba0de89230044c9c73b7850e4"
+      "size": 531,
+      "sha256": "b51535a99772de1ac746e964588bf292cb61a36612d8af0d94290019298229b1"
     },
     "CHANGELOG.md": {
-      "size": 11180,
-      "sha256": "d54d26d22a34180c71e33592e929cd8e30a569409c3465198daf90f21cf6e5da"
+      "size": 12324,
+      "sha256": "b41f73dfa9f7bdbef52518843d0510b04aa65209855b7dc9df1e8130dda2e5f6"
     },
     "SUMUP_SANDBOX_SETUP.md": {
       "size": 926,
       "sha256": "95fb55780636550bae5907ccca0e862ccc33bb139ac0c242060bfe1af8fe18e7"
     }
   },
-  "summary": "Repairs all previously unwired HQ actions across Classes, Bookings, Customers and Media on mobile and desktop."
+  "summary": "Hotfixes the Add a class control and invalidates stale cached HQ JavaScript."
 }

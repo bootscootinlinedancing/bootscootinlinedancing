@@ -517,8 +517,14 @@
     }
   }
   function openClassEditor(item=null){
-    if(state.bootstrap?.mode!=='protected'){toast('Cloudflare Access must authorise this HQ session.','error');return;}
-    const modal=$('#classEditorModal'),form=$('#classEditorForm');if(!modal||!form)return;
+    // Opening the editor is a local UI action and must never depend on the
+    // asynchronous bootstrap request. Cloudflare Access and the Worker still
+    // enforce authorisation when the form is submitted.
+    const modal=$('#classEditorModal'),form=$('#classEditorForm');
+    if(!modal||!form){
+      toast('The class editor could not be opened. Please refresh HQ.','error');
+      return;
+    }
     form.reset();
     form.elements.id.value=item?.id||'';
     form.elements.title.value=item?.title||'';
@@ -859,7 +865,19 @@
   $('#printOperationsRegister')?.addEventListener('click',()=>window.print());
   $('#refreshPrivateEvents')?.addEventListener('click',loadPrivateEvents);
   $('#refreshMedia')?.addEventListener('click',loadMedia);
-  $('[data-open-class]')?.addEventListener('click',()=>openClassEditor());
+  $$('[data-open-class]').forEach(button=>button.addEventListener('click',event=>{
+    event.preventDefault();
+    openClassEditor();
+  }));
+  // Delegated fallback protects the action if HQ markup is refreshed or a
+  // cached page is paired with the latest script.
+  document.addEventListener('click',event=>{
+    const button=event.target.closest?.('[data-open-class]');
+    if(!button||button.dataset.classOpenHandled==='1')return;
+    event.preventDefault();
+    openClassEditor();
+  });
+  $$('[data-open-class]').forEach(button=>button.dataset.classOpenHandled='1');
   $('#refreshRanch')?.addEventListener('click',loadClasses);
   $('#ranchClassFilter')?.addEventListener('change',renderClasses);
   $('#classEditorForm')?.addEventListener('submit',saveClass);

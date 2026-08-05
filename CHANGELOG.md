@@ -1,3 +1,10 @@
+# v92.6.1 — HQ Add Class hotfix
+
+- Removed the premature bootstrap-mode gate that could make **Add a class** appear unresponsive while HQ bootstrap was still loading or cached.
+- The class editor now opens immediately on mobile and desktop; Cloudflare Access remains enforced by the protected save API.
+- Added resilient direct and delegated click handling for the Add a class control.
+- Bumped the HQ script query and service-worker cache version to prevent stale v92.6.0 JavaScript being reused.
+
 # V92.6.0 — HQ Action Button Repair
 
 - Repaired all previously unwired HQ buttons on mobile and desktop.
