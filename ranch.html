@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.4.4">
+  <link rel="stylesheet" href="styles.css?v=92.4.5">
 </head>
 <body class="ranch-v91">
 
@@ -102,10 +102,15 @@
     </nav>
 
     <div class="ranch91-drawer-foot">
+      <div class="ranch91-drawer-user">
+        <strong id="ranch91DrawerWelcome">Welcome, Nora</strong>
+        <span>Authorised HQ administrator</span>
+      </div>
+      <a class="ranch91-logout ranch91-logout-menu" href="/cdn-cgi/access/logout" data-hq-logout>Log Out Securely</a>
       <a href="index.html">Back to Website</a>
-      <div class="ranch91-public-note">
-        <strong>Public until protected</strong>
-        <span>Cloudflare Access is not configured yet.</span>
+      <div class="ranch91-public-note" id="ranch91AccessNote">
+        <strong>Checking protection</strong>
+        <span>Confirming your Cloudflare Access session…</span>
       </div>
     </div>
   </aside>
@@ -121,7 +126,11 @@
         <h1 id="ranch91PageTitle">HQ Home</h1>
       </div>
       <div class="hq-connection-indicator checking" id="hqConnectionIndicator"><span></span><b>Checking</b></div>
-      <div class="ranch91-release">V92.4.4</div>
+      <div class="ranch91-user-actions" aria-label="Signed-in administrator actions">
+        <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
+        <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
+      </div>
+      <div class="ranch91-release">V92.4.5</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -130,9 +139,9 @@
         <span id="ranch92ModeDetail">Please wait.</span>
         <small id="ranch92LastUpdated"></small>
       </section>
-      <section class="ranch91-warning">
-        <strong>⚠ HQ is currently publicly accessible.</strong>
-        <span>Do not store sensitive customer information here until Cloudflare Access is enabled.</span>
+      <section class="ranch91-warning" id="ranch91AccessWarning" aria-live="polite">
+        <strong>Checking Cloudflare Access protection…</strong>
+        <span>Please wait while HQ verifies your secure session.</span>
       </section>
 
       <section class="ranch-view active" data-view-panel="overview">
@@ -453,7 +462,7 @@
 
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="ranch.js?v=92.4.4"></script>
+  <script src="ranch.js?v=92.4.5"></script>
 
   <script>
   (function(){

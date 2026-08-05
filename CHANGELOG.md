@@ -1,3 +1,17 @@
+## [V92.4.5 SECURE HQ LOGOUT & ACCESS STATUS] — 2026-08-05
+
+### Added
+- Added a quick **Log Out** button in the HQ header.
+- Added a second **Log Out Securely** button at the bottom of the HQ menu.
+- Added a visible **Welcome, Nora** administrator greeting in both locations.
+
+### Fixed
+- Moved every HQ admin API request beneath `/ranch/api/admin/*` so the requests are covered by the same Cloudflare Access policy as HQ.
+- Added Worker route aliases so existing admin handlers continue to work without duplication.
+- Replaced the permanent public-access warning with a live warning that disappears only after the protected bootstrap verifies the signed-in Access identity.
+- Updated the menu status to show **Protected by Cloudflare Access** after verification.
+- Cleared the cached HQ bootstrap state when logging out.
+
 # Changelog
 
 ## [V92.4.4 MENU & CLEANUP REPAIR] — 2026-08-04

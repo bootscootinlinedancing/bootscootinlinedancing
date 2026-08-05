@@ -1516,7 +1516,10 @@ async function serveMedia(request, env, pathname) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const path = url.pathname;
+    const incomingPath = url.pathname;
+    const path = incomingPath.startsWith('/ranch/api/admin/')
+      ? incomingPath.slice('/ranch'.length)
+      : incomingPath;
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
@@ -1543,7 +1546,7 @@ export default {
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
       return env.ASSETS.fetch(request);
     } catch (error) {
-      if (path.startsWith('/api/')) return json({ error: 'Server error', detail: error.message }, 500);
+      if (path.startsWith('/api/') || incomingPath.startsWith('/ranch/api/')) return json({ error: 'Server error', detail: error.message }, 500);
       return new Response('Boot Scootin’ is temporarily unavailable.', { status: 500 });
     }
   }

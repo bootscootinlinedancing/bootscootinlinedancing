@@ -6632,3 +6632,23 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
 #ranch91Menu *{
   pointer-events:none;
 }
+
+
+/* V92.4.5 — SECURE HQ STATUS + DUAL LOGOUT */
+.ranch91-user-actions{display:flex;align-items:center;gap:.65rem;justify-self:end}
+.ranch91-welcome{font:700 .72rem Oswald,sans-serif;color:#fff8ed;white-space:nowrap}
+.ranch91-logout{display:inline-flex!important;align-items:center;justify-content:center;min-height:42px;padding:.62rem .8rem;border:1px solid #d6454b!important;background:#8f242a;color:#fff!important;text-decoration:none;text-transform:uppercase;font:700 .68rem Oswald,sans-serif;letter-spacing:.04em}
+.ranch91-logout:hover,.ranch91-logout:focus{background:#b53037;outline:2px solid #fff8ed;outline-offset:2px}
+.ranch91-drawer-user{display:grid;gap:.2rem;padding:.75rem;border:1px solid #604044;background:#201011}
+.ranch91-drawer-user strong{color:#fff8ed}
+.ranch91-drawer-user span{font-size:.72rem;color:#d9c3b7}
+.ranch91-public-note.protected{border-left-color:#38945b;background:#102419}
+.ranch91-public-note.protected strong{color:#bce1c8}
+.ranch91-warning[hidden]{display:none!important}
+@media(min-width:1000px){.ranch91-topbar{grid-template-columns:1fr auto auto auto}}
+@media(max-width:760px){
+  .ranch91-user-actions{grid-column:1/-1;width:100%;justify-content:space-between;border-top:1px solid #4c292c;padding-top:.7rem}
+  .ranch91-topbar{grid-template-columns:auto 1fr auto}
+  .ranch91-release{grid-column:3;grid-row:1}
+}
+@media(max-width:420px){.ranch91-welcome{font-size:.66rem}.ranch91-logout-quick{padding:.55rem .65rem}}

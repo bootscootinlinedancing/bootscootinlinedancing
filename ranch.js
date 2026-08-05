@@ -28,7 +28,8 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-2';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-4-5';
+  const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
   function saveBootstrapCache(data){
@@ -146,8 +147,8 @@
     const box=document.getElementById('diagnosticLog');
     if(!box)return;
     const events=Array.isArray(state.diagnostics)?state.diagnostics:[];
-    const bootstrap=events.find(item=>item.endpoint==='/api/admin/bootstrap');
-    const health=events.find(item=>item.endpoint==='/api/admin/system-health');
+    const bootstrap=events.find(item=>item.endpoint===`${ADMIN_API_PREFIX}/bootstrap`);
+    const health=events.find(item=>item.endpoint===`${ADMIN_API_PREFIX}/system-health`);
     const latest=events[0];
     const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
     set('diagBootstrap',bootstrap?`${bootstrap.status||bootstrap.result||'Error'} · ${bootstrap.duration_ms||0}ms`:'Not tested');
@@ -248,10 +249,46 @@
     if(name==='media')loadMedia();
   }
   $$('.ranch91-nav [data-view]').forEach(button=>button.addEventListener('click',()=>showView(button.dataset.view)));
+  $$('[data-hq-logout]').forEach(link=>link.addEventListener('click',()=>{
+    try{sessionStorage.removeItem(BOOTSTRAP_CACHE_KEY);}catch{}
+  }));
   document.addEventListener('click',event=>{
     const open=event.target.closest('[data-open-settings]');
     if(open)showView('settings');
   });
+
+  function displayNameFromEmail(email){
+    if(!email)return 'Nora';
+    const local=String(email).split('@')[0].replace(/[._-]+/g,' ').trim();
+    if(!local)return 'Nora';
+    return local.split(/\s+/).map(part=>part.charAt(0).toUpperCase()+part.slice(1)).join(' ');
+  }
+
+  function setAccessPresentation(protectedMode,email){
+    const name=displayNameFromEmail(email);
+    const welcome=$('#ranch91Welcome');
+    const drawerWelcome=$('#ranch91DrawerWelcome');
+    if(welcome)welcome.textContent=`Welcome, ${name}`;
+    if(drawerWelcome)drawerWelcome.textContent=`Welcome, ${name}`;
+
+    const warning=$('#ranch91AccessWarning');
+    if(warning){
+      warning.hidden=protectedMode;
+      if(!protectedMode){
+        warning.querySelector('strong').textContent='⚠ HQ is currently publicly accessible.';
+        warning.querySelector('span').textContent='Do not store sensitive customer information here until Cloudflare Access is enabled.';
+      }
+    }
+
+    const note=$('#ranch91AccessNote');
+    if(note){
+      note.classList.toggle('protected',protectedMode);
+      note.querySelector('strong').textContent=protectedMode?'Protected by Cloudflare Access':'Public until protected';
+      note.querySelector('span').textContent=protectedMode
+        ?`Secure session verified for ${email||name}.`
+        :'Cloudflare Access is not configured yet.';
+    }
+  }
 
   function renderMode(){
     const b=state.bootstrap;
@@ -261,6 +298,7 @@
     const detail=$('#ranch92ModeDetail');
     modebar.classList.toggle('protected',b.mode==='protected');
     modebar.classList.toggle('pilot',b.mode!=='protected');
+    setAccessPresentation(b.mode==='protected',b.admin_email);
     title.textContent=b.mode==='protected'?'Protected HQ mode':'Public pilot mode';
     detail.textContent=b.mode==='protected'
       ?`Signed in${b.admin_email?` as ${b.admin_email}`:''}. Private administration is available.`
@@ -341,7 +379,7 @@
     setConnectionIndicator('checking','Checking');
     state.bootstrapPromise=(async()=>{
       try{
-        const data=await jsonFetch('/api/admin/bootstrap',{cache:'no-store'},6000);
+        const data=await jsonFetch(`${ADMIN_API_PREFIX}/bootstrap`,{cache:'no-store'},6000);
         state.bootstrap=data;
         state.bootstrapLoadedAt=Date.now();
         state.bootstrapError=null;
@@ -387,7 +425,7 @@
     box.innerHTML=setupPanel('Checking services','Running diagnostic checks…');
     button.disabled=true;button.textContent='Checking…';console.info('[HQ] Running health checks');
     try{
-      const h=await jsonFetch('/api/admin/system-health',{cache:'no-store'});state.health=h;
+      const h=await jsonFetch(`${ADMIN_API_PREFIX}/system-health`,{cache:'no-store'});state.health=h;
       box.innerHTML=[
         healthRow('Website',h.website),healthRow('Database',h.database),healthRow('Media storage',h.media),
         healthRow('Email routing',h.email),healthRow('Admin protection',h.access),healthRow('Payments',h.payments)
@@ -415,7 +453,7 @@
     box.innerHTML=emptyPanel('Loading classes…');
     if(!state.bootstrap?.configured.database){renderClasses();return;}
     try{
-      state.classes=await jsonFetch('/api/admin/classes',{cache:'no-store'});
+      state.classes=await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{cache:'no-store'});
       renderClasses();
     }catch(error){
       box.innerHTML=error.status===401?lockedPanel('Class editing is locked','Enable Cloudflare Access to create or edit classes.'):setupPanel('Classes unavailable',error.message);
@@ -480,7 +518,7 @@
   }
 
   async function bookingAdminAction(payload){
-    return jsonFetch('/api/admin/bookings',{
+    return jsonFetch(`${ADMIN_API_PREFIX}/bookings`,{
       method:'PATCH',
       body:JSON.stringify(payload)
     },8000);
@@ -545,7 +583,7 @@
     }
 
     try{
-      state.bookings=await jsonFetch('/api/admin/bookings',{cache:'no-store'},8000);
+      state.bookings=await jsonFetch(`${ADMIN_API_PREFIX}/bookings`,{cache:'no-store'},8000);
       renderBookingAdmin();
     }catch(error){
       if(state.bookings){
@@ -570,7 +608,7 @@
     }
     box.innerHTML='<div class="ranch91-loading">Loading customers…</div>';
     try{
-      state.customers=await jsonFetch('/api/admin/customers',{cache:'no-store'});
+      state.customers=await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{cache:'no-store'});
       const q=($('#customerAdminSearch')?.value||'').trim().toLowerCase();
       const rows=(state.customers.customers||[]).filter(c=>!q||String(c.customer_name||'').toLowerCase().includes(q)||String(c.customer_email||'').toLowerCase().includes(q));
       box.innerHTML=rows.length?rows.map(c=>`<article class="hq-customer-card"><div><h3>${esc(c.customer_name)}</h3><p>${esc(c.customer_email)}</p></div><dl><div><dt>Bookings</dt><dd>${esc(c.total_bookings)}</dd></div><div><dt>Attended</dt><dd>${esc(c.attended_classes)}</dd></div><div><dt>Loyalty</dt><dd>${esc(c.loyalty_progress)} / 9</dd></div></dl></article>`).join(''):emptyPanel('No customers found.');
@@ -610,7 +648,7 @@
     }
     box.innerHTML='<div class="ranch91-loading">Loading private events…</div>';
     try{
-      const data=await jsonFetch('/api/admin/private-events',{cache:'no-store'});
+      const data=await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{cache:'no-store'});
       state.privateEvents=data.items||[];
       box.innerHTML=state.privateEvents.length?state.privateEvents.map(i=>`<article class="private-admin-card"><header><div><span class="private-status">${esc(String(i.status).replaceAll('_',' '))}</span><h3>${esc(i.event_type)} · ${esc(i.reference)}</h3></div><strong>${esc(i.customer_name)}</strong></header><p>${esc(i.preferred_date)} · ${esc(i.venue_postcode)}</p></article>`).join(''):emptyPanel('No private-event inquiries yet.');
     }catch(error){box.innerHTML=lockedPanel('Private events unavailable',error.message);}
@@ -633,7 +671,7 @@
     }
     box.innerHTML='<div class="ranch91-loading">Loading media…</div>';
     try{
-      const data=await jsonFetch('/api/admin/media',{cache:'no-store'});
+      const data=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{cache:'no-store'});
       state.media=data.items||data.files||[];
       const count=$('#ranchMediaCount');if(count)count.textContent=state.media.length;
       box.innerHTML=state.media.length?state.media.map(m=>`<article class="ranch-media-item"><div><strong>${esc(m.title||m.original_name)}</strong><small>${esc(m.original_name||m.storage_key)}</small></div></article>`).join(''):emptyPanel('No media uploaded yet.');
@@ -666,7 +704,7 @@
     if(status)status.textContent='Deleting the three known test bookings and recalculating capacity…';
 
     try{
-      const result=await jsonFetch('/api/admin/cleanup-known-august-tests',{
+      const result=await jsonFetch(`${ADMIN_API_PREFIX}/cleanup-known-august-tests`,{
         method:'POST',
         body:JSON.stringify({confirmation})
       },10000);
@@ -695,10 +733,10 @@
     diagnosticEvent('diagnostic_suite_started',{result:'Running'});
     try{
       await loadBootstrap(false,{force:true,silent:true});
-      try{await jsonFetch('/api/admin/system-health',{cache:'no-store'},6000);}
+      try{await jsonFetch(`${ADMIN_API_PREFIX}/system-health`,{cache:'no-store'},6000);}
       catch(error){
         if(error.status===401||error.status===403){
-          diagnosticEvent('health_endpoint_protected',{endpoint:'/api/admin/system-health',status:error.status,result:'Expected until Cloudflare Access is configured'});
+          diagnosticEvent('health_endpoint_protected',{endpoint:`${ADMIN_API_PREFIX}/system-health`,status:error.status,result:'Expected until Cloudflare Access is configured'});
         }
       }
       diagnosticEvent('diagnostic_suite_completed',{result:'Finished'});

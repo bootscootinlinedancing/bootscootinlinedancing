@@ -1,56 +1,38 @@
 {
-  "release": "V92.4.4 MENU & CLEANUP REPAIR VERIFIED",
-  "built_from": "boot-scootin-platform-v92.4.3-MENU-CAPACITY-CLEANUP-VERIFIED.zip",
-  "built_at": "2026-08-04T19:29:56.816391+00:00",
-  "root_causes": [
-    "The Menu button referenced a fallback function that was not included.",
-    "The cleanup deleted a referenced booking hold before deleting its booking."
+  "release": "V92.4.5 SECURE HQ LOGOUT & ACCESS STATUS VERIFIED",
+  "built_from": "boot-scootin-platform-v92.4.4-MENU-CLEANUP-REPAIR-VERIFIED.zip",
+  "built_at": "2026-08-05T14:39:32.386156+00:00",
+  "changes": [
+    "dual logout buttons",
+    "Welcome Nora administrator greeting",
+    "protected-path admin APIs",
+    "dynamic Cloudflare Access status warning"
   ],
-  "checks": {
-    "version marker": true,
-    "menu function inserted": true,
-    "menu toggle inserted": true,
-    "click handler": true,
-    "ios touch handler": true,
-    "booking before hold": true,
-    "cleanup catches database error": true,
-    "capacity logic retained": true,
-    "cache version": true
-  },
-  "javascript_syntax": {
-    "ranch.js": {
-      "ok": true,
-      "output": ""
-    },
-    "_worker.js": {
-      "ok": true,
-      "output": ""
-    }
-  },
+  "checks": {},
   "files": {
     "ranch.html": {
-      "size": 24973,
-      "sha256": "b63a8a5a2ec4bc05cfefae2bc979ee17f6b9c36d933f420c8d3d1dab175b1f6c"
+      "size": 25583,
+      "sha256": "bc4c8c8de98d3ccb7feb477eb3599b0b1569edaf771694728e9160ea8b034ed9"
     },
     "ranch.js": {
-      "size": 38484,
-      "sha256": "014c7034ca4541879cf347d5147ba39955ef6e8ca51e4ca979d25551b588984c"
+      "size": 40226,
+      "sha256": "819e8e6050ec8db8b49f4c42fd49f2f8e0ddda6494cb3c5cd5e3c81222d101a2"
     },
     "_worker.js": {
-      "size": 79617,
-      "sha256": "6878843317b35ed837e4dec99a0a4a583167b7b8450e9aed8dd03e679860f3c8"
+      "size": 79795,
+      "sha256": "da8ca2ca53a36198be280d17523ea23615836c66d1dffa80e2ddfc38f38a375d"
     },
     "styles.css": {
-      "size": 252485,
-      "sha256": "f0071ac9e26c85f0a8b575b9a07bc53817c9faada3f7136db33bcdefca44411f"
+      "size": 253944,
+      "sha256": "e184798faf0b196971401e740da6371bc3cbc3668aa90cece1b7ebaa7602c73c"
     },
     "service-worker.js": {
       "size": 535,
-      "sha256": "ab940969c27c13fbe6b28fc380b07158a6c5de51ae1089de7a59bb1ca29d6743"
+      "sha256": "405dde1830730d654b8fb83c2f057dd0f100cc8b321f813e467d027e028c9926"
     },
     "CHANGELOG.md": {
-      "size": 8078,
-      "sha256": "2e8bb27de9c177e03fdc27928ffb5ce2aafc99275aa5a391a0d07cfa9420e8aa"
+      "size": 8903,
+      "sha256": "cfc6a256cfcf2250ba0b6039f905bad950491db309a901f83ed989afea06c080"
     }
   }
 }
