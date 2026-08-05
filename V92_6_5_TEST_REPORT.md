@@ -1,4 +1,4 @@
-# V92.6.5 static test report
+# V92.6.6 static test report
 
 ## Checks completed
 
@@ -11,7 +11,7 @@
 - Verified SumUp refund is restricted to SUMUP PAID/CANCELLED bookings with a transaction ID.
 - Verified D1 is only marked REFUNDED after an accepted SumUp API response.
 - Verified refund and cancellation notifications use the existing duplicate-safe notification layer.
-- Verified release/cache references use V92.6.5.
+- Verified release/cache references use V92.6.6.
 
 ## Deployment test required
 

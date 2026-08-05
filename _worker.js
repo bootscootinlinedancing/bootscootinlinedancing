@@ -408,6 +408,32 @@ async function sumUpFetch(env, pathname, options = {}) {
   return fetch(`https://api.sumup.com${pathname}`, { ...options, headers });
 }
 
+function looksLikeSumUpTransactionId(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clean(value, 180));
+}
+
+async function resolveSumUpTransactionId(env, booking) {
+  let transactionId = clean(booking?.provider_transaction_id, 180);
+  if (looksLikeSumUpTransactionId(transactionId)) return transactionId;
+
+  const checkoutId = clean(booking?.provider_checkout_id, 180);
+  if (checkoutId) {
+    const checkout = await retrieveSumUpCheckout(env, checkoutId);
+    const resolved = checkoutTransactionId(checkout);
+    if (resolved) {
+      transactionId = clean(resolved, 180);
+      await env.BOOKINGS_DB.prepare(
+        `UPDATE bookings SET provider_transaction_id=? WHERE id=?`
+      ).bind(transactionId, booking.id).run();
+    }
+  }
+
+  if (!transactionId) {
+    throw new Error('The SumUp transaction ID could not be found. Refresh the booking payment status and try again.');
+  }
+  return transactionId;
+}
+
 async function refundSumUpTransaction(env, transactionId, amountPence = null) {
   const transaction = clean(transactionId, 180);
   if (!transaction) throw new Error('This booking does not have a SumUp transaction ID.');
@@ -418,10 +444,23 @@ async function refundSumUpTransaction(env, transactionId, amountPence = null) {
     if (!Number.isFinite(amount) || amount <= 0) throw new Error('Refund amount must be greater than zero.');
     options.body = JSON.stringify({ amount: Number((amount / 100).toFixed(2)) });
   }
-  const response = await sumUpFetch(env, `/v0.1/me/refund/${encodeURIComponent(transaction)}`, options);
+
+  let response;
+  try {
+    response = await sumUpFetch(env, `/v0.1/me/refund/${encodeURIComponent(transaction)}`, options);
+  } catch (error) {
+    throw new Error(`SumUp could not be reached: ${clean(error?.message || error, 220)}`);
+  }
+
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(clean(payload?.message || payload?.error_message || payload?.error || `SumUp refund failed (HTTP ${response.status}).`, 260));
+    const raw = await response.text().catch(() => '');
+    let payload = {};
+    try { payload = raw ? JSON.parse(raw) : {}; } catch (_) {}
+    const detail = clean(
+      payload?.message || payload?.error_message || payload?.error || payload?.detail || raw || `HTTP ${response.status}`,
+      300
+    );
+    throw new Error(`SumUp refund failed: ${detail}`);
   }
   return { ok: true, status: response.status };
 }
@@ -481,7 +520,7 @@ async function sendTransactionalEmail(env, to, subject, html, text) {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.5'
+      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.6'
     },
     body: JSON.stringify({ from, to: [to], subject, html, text })
   });
@@ -1747,10 +1786,24 @@ async function adminBookings(request, env) {
     const requested=body.refund_amount_pence===undefined||body.refund_amount_pence===null?fullAmount:Number(body.refund_amount_pence);
     if(!Number.isFinite(requested)||requested<=0||requested>fullAmount)return json({error:'Enter a valid refund amount no greater than the original payment.'},400);
     const isFull=requested===fullAmount;
-    await refundSumUpTransaction(env,booking.provider_transaction_id,isFull?null:requested);
-    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
-      .bind(isFull?'REFUNDED':'CANCELLED',requested,clean(body.admin_notes,600),id).run();
-    const refunded=await bookingWithClass(env,id);if(refunded)await deliverBookingNotification(env,{...refunded,refund_amount_pence:requested},'REFUND_CONFIRMED');
+    try {
+      const transactionId=await resolveSumUpTransactionId(env,booking);
+      await refundSumUpTransaction(env,transactionId,isFull?null:requested);
+      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,provider_transaction_id=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
+        .bind(isFull?'REFUNDED':'CANCELLED',requested,transactionId,clean(body.admin_notes,600),id).run();
+      const refunded=await bookingWithClass(env,id);
+      if(refunded){
+        try { await deliverBookingNotification(env,{...refunded,refund_amount_pence:requested},'REFUND_CONFIRMED'); }
+        catch(notificationError){ console.error('Refund notification failed',notificationError); }
+      }
+    } catch (error) {
+      const message=clean(error?.message||error,360)||'The refund could not be completed.';
+      try {
+        await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+          .bind(check.state.email,'REFUND_SUMUP_FAILED','booking',id,JSON.stringify({error:message,requested_amount_pence:requested})).run();
+      } catch (auditError) { console.error('Refund failure audit could not be written',auditError); }
+      return json({error:message,code:'SUMUP_REFUND_FAILED'},502);
+    }
   }else if(action==='MARK_REFUNDED'){
     const refundAmount=Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence);
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)

@@ -1,3 +1,13 @@
+# V92.6.6 — SumUp Refund Route Hotfix
+
+- Re-resolves the official SumUp transaction UUID from the original checkout before sending a refund.
+- Prevents transaction codes or stale identifiers from being sent to the refund endpoint.
+- Catches SumUp network, API and D1 errors and returns a readable HQ message instead of an unhandled Cloudflare Worker exception.
+- Records failed refund attempts in the audit log without changing the booking from REFUND_DUE.
+- Updates the booking to REFUNDED only after SumUp accepts the refund.
+- Keeps notification failures separate so an email/SMS issue cannot undo a successful refund.
+- Rotates the service-worker cache to V92.6.6.
+
 # V92.6.2 — SumUp Payment Confirmation Sync
 
 - Added the official SumUp checkout-status webhook through `return_url` so successful hosted payments update D1 automatically.
@@ -263,7 +273,7 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Reduced indefinite loading placeholders.
 
 
-## V92.6.5 — Remaining places, cancellation and live SumUp refunds
+## V92.6.6 — Remaining places, cancellation and live SumUp refunds
 
 - Replaced booked/capacity wording on HQ class cards with a remaining-place countdown.
 - Full classes now display `FULL` and `Waiting list open`.
