@@ -271,6 +271,21 @@ async function ensureBookingSchema(env) {
 
     `CREATE INDEX IF NOT EXISTS idx_holds_class_expiry ON booking_holds(class_id, expires_at)`,
     `CREATE INDEX IF NOT EXISTS idx_bookings_class_status ON bookings(class_id,status)`,
+    `CREATE TABLE IF NOT EXISTS notification_log (
+      id TEXT PRIMARY KEY,
+      booking_id TEXT,
+      class_id TEXT,
+      event_type TEXT NOT NULL,
+      channel TEXT NOT NULL,
+      recipient TEXT NOT NULL,
+      provider_id TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      error_message TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      sent_at TEXT,
+      UNIQUE(booking_id,event_type,channel)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_notification_booking ON notification_log(booking_id,event_type)`,
     `CREATE INDEX IF NOT EXISTS idx_bookings_email ON bookings(customer_email)`,
     `CREATE INDEX IF NOT EXISTS idx_waiting_class_status ON waiting_list(class_id,status)`,
     `CREATE INDEX IF NOT EXISTS idx_private_event_status ON private_event_inquiries(status,created_at)`,
@@ -416,6 +431,131 @@ async function checkSumUpConnection(env) {
   } catch (error) {
     return { ready: false, status: 'attention', message: `SumUp connection test failed: ${error.message}` };
   }
+}
+
+
+function htmlEscape(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+}
+
+function notificationConfig(env) {
+  return {
+    emailReady: Boolean(String(env.RESEND_API_KEY || env.EMAIL_API_KEY || '').trim() && String(env.EMAIL_FROM || '').trim()),
+    smsReady: Boolean(String(env.TWILIO_ACCOUNT_SID || '').trim() && String(env.TWILIO_AUTH_TOKEN || '').trim() && (String(env.TWILIO_FROM_NUMBER || '').trim() || String(env.TWILIO_MESSAGING_SERVICE_SID || '').trim()))
+  };
+}
+
+function normaliseUkPhone(value) {
+  let phone = String(value || '').replace(/[^\d+]/g, '');
+  if (!phone) return '';
+  if (phone.startsWith('00')) phone = '+' + phone.slice(2);
+  if (phone.startsWith('0')) phone = '+44' + phone.slice(1);
+  if (!phone.startsWith('+')) phone = '+' + phone;
+  return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
+}
+
+async function sendTransactionalEmail(env, to, subject, html, text) {
+  const apiKey = String(env.RESEND_API_KEY || env.EMAIL_API_KEY || '').trim();
+  const from = String(env.EMAIL_FROM || '').trim();
+  if (!apiKey || !from) return { skipped: true, reason: 'Email provider is not configured.' };
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.4'
+    },
+    body: JSON.stringify({ from, to: [to], subject, html, text })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(clean(data?.message || data?.error || `Email HTTP ${response.status}`, 240));
+  return { id: clean(data?.id, 160) };
+}
+
+async function sendTransactionalSms(env, to, body) {
+  const accountSid = String(env.TWILIO_ACCOUNT_SID || '').trim();
+  const authToken = String(env.TWILIO_AUTH_TOKEN || '').trim();
+  const from = String(env.TWILIO_FROM_NUMBER || '').trim();
+  const messagingServiceSid = String(env.TWILIO_MESSAGING_SERVICE_SID || '').trim();
+  if (!accountSid || !authToken || (!from && !messagingServiceSid)) return { skipped: true, reason: 'SMS provider is not configured.' };
+  const phone = normaliseUkPhone(to);
+  if (!phone) return { skipped: true, reason: 'No valid mobile number was supplied.' };
+  const form = new URLSearchParams({ To: phone, Body: body });
+  if (messagingServiceSid) form.set('MessagingServiceSid', messagingServiceSid);
+  else form.set('From', from);
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    },
+    body: form.toString()
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(clean(data?.message || `SMS HTTP ${response.status}`, 240));
+  return { id: clean(data?.sid, 160) };
+}
+
+function notificationCopy(eventType, booking) {
+  const className = booking.class_title || booking.title || 'your Boot Scootin’ class';
+  const start = booking.starts_at ? new Date(booking.starts_at).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Europe/London' }) : '';
+  const venue = booking.venue || booking.location || '';
+  const amount = `£${(Number(booking.refund_amount_pence || booking.amount_pence || 0) / 100).toFixed(2)}`;
+  if (eventType === 'BOOKING_CONFIRMED') return {
+    subject: `Booking confirmed — ${className}`,
+    text: `Hi ${booking.customer_name}, your booking ${booking.reference} is confirmed for ${className}${start ? ` on ${start}` : ''}${venue ? ` at ${venue}` : ''}. Places: ${booking.quantity}. We can’t wait to dance with you!`,
+    heading: 'Your booking is confirmed',
+    detail: `Reference ${booking.reference} · ${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
+  };
+  if (eventType === 'CLASS_CANCELLED') return {
+    subject: `Class cancelled — ${className}`,
+    text: `Hi ${booking.customer_name}, unfortunately ${className}${start ? ` on ${start}` : ''} has been cancelled. Your booking reference is ${booking.reference}. ${booking.status === 'PAID' ? 'Your refund will be processed and confirmed separately.' : 'No payment will be taken.'}`,
+    heading: 'Your class has been cancelled',
+    detail: `${className}${start ? ` · ${start}` : ''}. Reference ${booking.reference}.`
+  };
+  if (eventType === 'REFUND_CONFIRMED') return {
+    subject: `Refund confirmed — ${booking.reference}`,
+    text: `Hi ${booking.customer_name}, your refund of ${amount} for ${className} has been recorded. Reference: ${booking.reference}. Your bank may take several working days to display the refund.`,
+    heading: 'Your refund has been confirmed',
+    detail: `${amount} · ${className} · Reference ${booking.reference}`
+  };
+  return { subject: 'Boot Scootin’ booking update', text: `Your booking ${booking.reference} has been updated.`, heading: 'Booking update', detail: booking.reference };
+}
+
+async function deliverBookingNotification(env, booking, eventType) {
+  if (!env.BOOKINGS_DB || !booking?.id) return { email: 'skipped', sms: 'skipped' };
+  const copy = notificationCopy(eventType, booking);
+  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#210b0d"><h1 style="color:#a71924">${htmlEscape(copy.heading)}</h1><p>Hi ${htmlEscape(booking.customer_name)},</p><p>${htmlEscape(copy.text.replace(`Hi ${booking.customer_name}, `, ''))}</p><p style="border-left:4px solid #a71924;padding:12px;background:#fff7ea">${htmlEscape(copy.detail)}</p><p>Boot Scootin’ Line Dancing</p></div>`;
+  const channels = [
+    { channel: 'EMAIL', recipient: clean(booking.customer_email, 160), send: () => sendTransactionalEmail(env, booking.customer_email, copy.subject, html, copy.text) },
+    { channel: 'SMS', recipient: normaliseUkPhone(booking.customer_phone), send: () => sendTransactionalSms(env, booking.customer_phone, copy.text) }
+  ];
+  const results = {};
+  for (const item of channels) {
+    if (!item.recipient) { results[item.channel.toLowerCase()] = 'skipped'; continue; }
+    const existing = await env.BOOKINGS_DB.prepare(`SELECT status FROM notification_log WHERE booking_id=? AND event_type=? AND channel=?`).bind(booking.id,eventType,item.channel).first();
+    if (existing?.status === 'SENT') { results[item.channel.toLowerCase()] = 'already_sent'; continue; }
+    const logId = crypto.randomUUID();
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO notification_log(id,booking_id,class_id,event_type,channel,recipient,status) VALUES(?,?,?,?,?,?,'PENDING')`).bind(logId,booking.id,booking.class_id,eventType,item.channel,item.recipient).run();
+    try {
+      const response = await item.send();
+      if (response?.skipped) {
+        await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='SKIPPED',error_message=? WHERE booking_id=? AND event_type=? AND channel=?`).bind(clean(response.reason,240),booking.id,eventType,item.channel).run();
+        results[item.channel.toLowerCase()] = 'setup_required';
+      } else {
+        await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='SENT',provider_id=?,sent_at=CURRENT_TIMESTAMP,error_message=NULL WHERE booking_id=? AND event_type=? AND channel=?`).bind(response?.id || null,booking.id,eventType,item.channel).run();
+        results[item.channel.toLowerCase()] = 'sent';
+      }
+    } catch (error) {
+      await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='FAILED',error_message=? WHERE booking_id=? AND event_type=? AND channel=?`).bind(clean(error?.message || error,240),booking.id,eventType,item.channel).run();
+      results[item.channel.toLowerCase()] = 'failed';
+    }
+  }
+  return results;
+}
+
+async function bookingWithClass(env, bookingId) {
+  return env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.id=?`).bind(bookingId).first();
 }
 
 async function createClassReservation(request, env) {
@@ -652,6 +792,8 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
           checkout_status: checkoutStatus
         }))
       ]);
+      const confirmedBooking = await bookingWithClass(env, booking.id);
+      if (confirmedBooking) await deliverBookingNotification(env, confirmedBooking, 'BOOKING_CONFIRMED');
     }
     booking.status = 'PAID';
     booking.provider_transaction_id = transactionId || booking.provider_transaction_id;
@@ -1001,7 +1143,9 @@ async function adminClasses(request, env) {
     try {
       const response=await env.BOOKINGS_DB.prepare(`
         SELECT
-          c.*,
+          c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
+          c.status,c.level,c.public_notes,c.created_at,c.updated_at,
+          COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS sold,
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
           COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count
         FROM classes c
@@ -1045,6 +1189,21 @@ async function adminClasses(request, env) {
     const id=clean(b.id,120);
     const status=clean(b.status,20);
     if(!['draft','open','closed','cancelled'].includes(status))return json({error:'Invalid class status.'},400);
+    if(status==='cancelled'){
+      const activeResult=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.class_id=? AND b.status IN ('PENDING','PAID')`).bind(id).all();
+      const active=activeResult?.results||[];
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE classes SET status='cancelled',sold=0,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id),
+        env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),refund_status=CASE WHEN payment_provider='SUMUP' AND paid_at IS NOT NULL THEN COALESCE(refund_status,'REFUND_DUE') ELSE COALESCE(refund_status,'NO_PAYMENT_TAKEN') END WHERE class_id=? AND status IN ('PENDING','PAID')`).bind(id),
+        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE class_id=?`).bind(id),
+        env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email,'CLASS_CANCELLED','class',id,JSON.stringify({affected_bookings:active.length}))
+      ]);
+      for(const original of active){
+        const cancelled={...original,status:'CANCELLED'};
+        await deliverBookingNotification(env,cancelled,'CLASS_CANCELLED');
+      }
+      return json({ok:true,id,status,notified:active.length});
+    }
     await env.BOOKINGS_DB.prepare(`UPDATE classes SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,id).run();
     return json({ok:true,id,status});
   }
@@ -1547,6 +1706,7 @@ async function adminBookings(request, env) {
   if(action==='MARK_PAID'){
     if(booking.status!=='PAID'){
       await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
+      const confirmed=await bookingWithClass(env,id);if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED');
     }
   }else if(action==='CANCEL'){
     if(['PENDING','PAID'].includes(booking.status)){
@@ -1554,10 +1714,13 @@ async function adminBookings(request, env) {
         env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),refund_status=COALESCE(refund_status,'ADMIN_REVIEW') WHERE id=?`).bind(id),
         env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(booking.quantity,booking.class_id)
       ]);
+      const cancelled=await bookingWithClass(env,id);if(cancelled)await deliverBookingNotification(env,cancelled,'CLASS_CANCELLED');
     }
   }else if(action==='MARK_REFUNDED'){
+    const refundAmount=Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence);
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)
-      .bind(Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence),clean(body.admin_notes,600),id).run();
+      .bind(refundAmount,clean(body.admin_notes,600),id).run();
+    const refunded=await bookingWithClass(env,id);if(refunded)await deliverBookingNotification(env,{...refunded,refund_amount_pence:refundAmount},'REFUND_CONFIRMED');
   }else if(action==='ISSUE_CREDIT'){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='CLASS_CREDIT_ISSUED',admin_notes=? WHERE id=?`).bind(clean(body.admin_notes,600),id).run();
   }else if(action==='CHECK_IN'){
@@ -1602,7 +1765,7 @@ async function health(request, env) {
     database: { status: 'setup', message: 'D1 booking database has not been connected yet.' },
     media: { status: 'setup', message: 'R2 media binding has not been detected yet.' },
     payments: { status: 'setup', message: 'SumUp sandbox is not connected yet.' },
-    email: { status: 'setup', message: 'Transactional email is not connected yet.' },
+    email: notificationConfig(env).emailReady ? { status: 'ready', message: 'Transactional email is configured.' } : { status: 'setup', message: 'Add RESEND_API_KEY and EMAIL_FROM for confirmations.' },
     backups: { status: 'setup', message: 'No tested export and restore record yet.' }
   };
 
@@ -1626,7 +1789,8 @@ async function health(request, env) {
   services.payments = sumupCheck.ready
     ? { status: 'test_mode', message: sumupCheck.message }
     : { status: sumupCheck.status, message: sumupCheck.message };
-  if (env.EMAIL_API_KEY && env.EMAIL_FROM) services.email = { status: 'ready', message: 'Email credentials are configured. A delivery test is still required.' };
+  if (notificationConfig(env).emailReady) services.email = { status: 'ready', message: 'Email credentials are configured.' };
+  services.sms = notificationConfig(env).smsReady ? { status: 'ready', message: 'SMS credentials are configured.' } : { status: 'setup', message: 'Add Twilio credentials to send optional text confirmations.' };
   if (env.BACKUP_LAST_TESTED) services.backups = { status: 'ready', message: `Last restore test recorded: ${String(env.BACKUP_LAST_TESTED).slice(0, 30)}` };
 
   return json({ mode: 'free-pilot', version: 76, checked_at: new Date().toISOString(), services });

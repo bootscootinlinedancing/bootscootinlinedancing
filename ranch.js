@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-5-0';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-6-4';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -588,6 +588,12 @@
     if(!box)return;
 
     const data=state.bookings||{bookings:[],waiting:[],stats:{}};
+    const setStat=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
+    setStat('bookingGuestTotal',Number(data.stats?.guests||0));
+    setStat('bookingRevenueTotal',money(data.stats?.paid||0));
+    setStat('bookingRefundTotal',Number(data.stats?.refunds_due||0));
+    setStat('bookingWaitTotal',Number(data.stats?.waiting||0));
+
     const filter=$('#bookingAdminFilter')?.value||'all';
     let rows=data.bookings||[];
 

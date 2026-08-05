@@ -1,11 +1,3 @@
-# V92.6.3 — HQ Classes and Summary Stability
-
-- Prevented SumUp reconciliation errors from crashing the HQ Classes endpoint.
-- Isolated each HQ bootstrap query so one unavailable table or query cannot blank every dashboard card.
-- Restored paid revenue, booked places, pending payments, waiting-list and upcoming-class totals independently.
-- Added safe D1 result handling and structured JSON errors instead of unhandled Worker exceptions.
-- Updated HQ, asset and service-worker cache versions to V92.6.3.
-
 # V92.6.2 — SumUp Payment Confirmation Sync
 
 - Added the official SumUp checkout-status webhook through `return_url` so successful hosted payments update D1 automatically.
@@ -269,3 +261,14 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Improved health check states.
 - Added console diagnostics.
 - Reduced indefinite loading placeholders.
+
+## V92.6.4 — Booking statistics, occupancy and customer communications
+- Class cards now calculate booked places directly from active D1 booking records, removing stale `classes.sold` display discrepancies.
+- Bookings HQ statistics now populate active guests, paid revenue, refund/credit reviews and waiting-list guests.
+- Added a durable notification log with duplicate-send protection.
+- Added automatic paid-booking confirmation email and optional SMS.
+- Added automatic class-cancellation email and optional SMS to every affected active booking.
+- Added automatic refund-confirmation email and optional SMS after a refund is recorded.
+- Added Resend-compatible transactional email delivery using `RESEND_API_KEY` (or legacy `EMAIL_API_KEY`) and `EMAIL_FROM`.
+- Added Twilio SMS delivery using `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`.
+- Notification delivery failures are logged and never block payment reconciliation, class management or booking updates.

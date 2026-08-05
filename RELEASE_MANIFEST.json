@@ -1,56 +1,66 @@
 {
-  "release": "V92.6.3 HQ CLASSES AND SUMMARY STABILITY",
-  "built_from": "boot-scootin-platform-v92.6.2-SUMUP-PAYMENT-CONFIRMATION-SYNC(1).zip",
-  "built_at": "2026-08-05T23:06:30.577948+00:00",
+  "release": "V92.6.4 BOOKING COMMUNICATIONS AND STATISTICS SYNC",
+  "built_from": "boot-scootin-platform-v92.6.3-HQ-CLASSES-SUMMARY-STABILITY.zip",
+  "built_at": "2026-08-05T23:15:19.106553+00:00",
   "changes": [
-    "Prevented SumUp reconciliation failures from crashing the HQ Classes route.",
-    "Separated HQ bootstrap queries so one failure cannot blank every summary card.",
-    "Added structured D1 errors and defensive result handling.",
-    "Updated release and cache identities to V92.6.3."
+    "Fixed per-class booked-place totals using active D1 booking quantities.",
+    "Populated all Bookings HQ statistic cards.",
+    "Added email and optional SMS confirmations for paid bookings.",
+    "Added cancellation and refund customer notifications.",
+    "Added durable notification logging and duplicate-send protection."
   ],
+  "provider_configuration": {
+    "email": [
+      "RESEND_API_KEY or EMAIL_API_KEY",
+      "EMAIL_FROM"
+    ],
+    "sms": [
+      "TWILIO_ACCOUNT_SID",
+      "TWILIO_AUTH_TOKEN",
+      "TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID"
+    ]
+  },
   "checks": {
     "javascript_syntax": [
       "node --check _worker.js",
       "node --check ranch.js",
-      "node --check booking-confirmation.js",
       "node --check service-worker.js"
     ],
-    "worker_exception_guard": "Classes reconciliation and D1 class reads are independently guarded",
-    "summary_resilience": "Classes, totals, waiting list, private events and activity load independently",
-    "live_environment_note": "Cloudflare Access, D1, R2 and SumUp require deployment for live verification"
+    "static_assertions": "passed",
+    "live_environment_note": "Cloudflare D1, Access, Resend and Twilio require deployment and credentials for live delivery testing."
   },
   "files": {
     "_worker.js": {
-      "size": 89042,
-      "sha256": "c47a2f19b2e9f3a746258877c723d6194d9fed1ff6fa260192b58b78395f42c8"
+      "size": 100371,
+      "sha256": "c2dc944d84c8d98525265b36b18e1d56d19d73baef82d422c296a0c5da962ddc"
     },
     "ranch.js": {
-      "size": 53239,
-      "sha256": "71926eb22355541207b24fb8a6f13ff729caaefa898daec83a6f270ca42de973"
+      "size": 53605,
+      "sha256": "e184e403546f393aab303656c774b9ff4534510595e95a72798bb5a34e2d6523"
     },
     "ranch.html": {
       "size": 27864,
-      "sha256": "849bcff2f82bbc44d9b9404b4d4951907a042c437e816a9edfccf2cd3bf64c97"
+      "sha256": "981d897ed8e93865e1353ad8b4d62502e8969f73b8fd32f2b137a19d320915c4"
     },
     "service-worker.js": {
-      "size": 528,
-      "sha256": "ff57ad18ff94ad0a0cf44673ccb8f0d11f4070a4515c48918472a5ae3f2ec346"
-    },
-    "booking-confirmation.html": {
-      "size": 2298,
-      "sha256": "6389e11d538f4f36bb515204d1939a707f4711964341f177aeada52df7dbb6c5"
-    },
-    "booking-confirmation.js": {
-      "size": 5275,
-      "sha256": "d487779aa6d689e0f4681ab1ae53624a98fbb0b95ee1ab31d9b8e70a38ddc22c"
+      "size": 529,
+      "sha256": "5eb8fdf93da5688b9602512bbf93bb83a113bb17c739de41313117e9e3793a4c"
     },
     "CHANGELOG.md": {
-      "size": 13564,
-      "sha256": "7377ff8c1d05e6c12f544021d3e6fb063e6daae9aeab82ecdeb48e1607a0f0ce"
+      "size": 14085,
+      "sha256": "4e4e406a44a78950e527dbd7cd94769f0578edc316e8f065520d05dccea450d7"
     },
-    "HQ_STABILITY_TEST_REPORT.md": {
-      "size": 1356,
-      "sha256": "20c140f2f93fc11814b3182eeed253a905447d2ffaeffefcef8dbd4762c7909e"
+    "BOOKING_COMMUNICATIONS_SETUP.md": {
+      "size": 1134,
+      "sha256": "bee8fc90a6bd93b529d725f77ee7c345226785f204056707e6f3b6079fba753d"
+    },
+    "V92_6_4_TEST_REPORT.md": {
+      "size": 808,
+      "sha256": "dc10c29a6d7c74354f8b15c072483d71085dd1d52cbaab45cedd03d5923388ad"
+    },
+    "migrations/0006_booking_notifications.sql": {
+      "size": 478,
+      "sha256": "b2248e7933e8ebed90d6f871d2240d19f9b731a23197c88c76ae3dd8d8208eaa"
     }
   }
 }
