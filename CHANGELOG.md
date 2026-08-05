@@ -235,3 +235,5 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Improved health check states.
 - Added console diagnostics.
 - Reduced indefinite loading placeholders.
+## V92.5
+- Trigger Cloudflare deployment after adding SumUp environment variables.
