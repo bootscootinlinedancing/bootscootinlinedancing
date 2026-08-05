@@ -989,16 +989,33 @@ async function adminClasses(request, env) {
   await ensureBookingSchema(env);
 
   if(request.method==='GET'){
-    await syncPendingSumUpBookings(env, 30);
-    const {results}=await env.BOOKINGS_DB.prepare(`
-      SELECT
-        c.*,
-        COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
-        COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count
-      FROM classes c
-      ORDER BY c.starts_at
-    `).all();
-    return json(results);
+    // Reconciliation is helpful, but a temporary SumUp/API problem must never
+    // take the Classes screen down. The class list remains available from D1.
+    let reconciliation_warning = '';
+    try {
+      await syncPendingSumUpBookings(env, 30);
+    } catch (error) {
+      reconciliation_warning = String(error?.message || error || 'Payment reconciliation unavailable.');
+    }
+
+    try {
+      const response=await env.BOOKINGS_DB.prepare(`
+        SELECT
+          c.*,
+          COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
+          COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count
+        FROM classes c
+        ORDER BY c.starts_at
+      `).all();
+      const rows=Array.isArray(response?.results)?response.results:[];
+      return json(rows,200);
+    } catch (error) {
+      return json({
+        error:'Classes could not be loaded from the booking database.',
+        detail:String(error?.message || error || 'Unknown D1 error.'),
+        reconciliation_warning
+      },500);
+    }
   }
 
   const b=await request.json().catch(()=>null);
@@ -1121,71 +1138,102 @@ async function adminBootstrap(request, env) {
     },
     classes: [],
     activity: [],
-    setup_steps: []
+    setup_steps: [],
+    warnings: []
   };
 
   if (!admin.email) result.setup_steps.push('Protect /ranch* and /api/admin/* with Cloudflare Access.');
   if (!env.BOOKINGS_DB) result.setup_steps.push('Create and bind a D1 database using the binding name BOOKINGS_DB.');
   if (!env.MEDIA_BUCKET) result.setup_steps.push('Create and bind an R2 bucket using the binding name MEDIA_BUCKET.');
   if (!String(env.ADMIN_EMAIL || '').trim() && !admin.email) result.setup_steps.push('Add ADMIN_EMAIL as an environment variable.');
-  if (!(sumUpConfigured(env))) result.setup_steps.push('Connect SumUp Sandbox after D1 and Access checks pass.');
+  if (!sumUpConfigured(env)) result.setup_steps.push('Connect SumUp Sandbox after D1 and Access checks pass.');
 
   if (env.BOOKINGS_DB) {
     try {
       await ensureBookingSchema(env);
+    } catch (error) {
+      result.database_error = String(error?.message || error || 'Database setup failed.');
+      result.warnings.push(`Database setup: ${result.database_error}`);
+    }
+
+    // Payment reconciliation is deliberately isolated. A SumUp timeout or an
+    // unexpected provider response must not blank all HQ summary cards.
+    try {
       await syncPendingSumUpBookings(env, 20);
-      const now = new Date().toISOString();
-      const [classesResult, stats, activityResult, privateResult] = await Promise.all([
-        env.BOOKINGS_DB.prepare(`
-          SELECT
-            c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
-            COALESCE((
-              SELECT SUM(b.quantity)
-              FROM bookings b
-              WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
-            ),0) AS sold,
-            c.status,c.level,c.public_notes
-          FROM classes c
-          WHERE c.starts_at >= ? AND c.status IN ('open','draft')
-          ORDER BY starts_at
-          LIMIT 20
-        `).bind(now).all(),
-        env.BOOKINGS_DB.prepare(`
-          SELECT
-            COALESCE(SUM(CASE WHEN status IN ('PENDING','PAID') THEN quantity ELSE 0 END),0) places_booked,
-            COALESCE(SUM(CASE WHEN status='PAID' THEN amount_pence ELSE 0 END),0) paid_revenue,
-            COALESCE(SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END),0) pending_payments,
-            COALESCE(SUM(CASE WHEN refund_status IN ('REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW') THEN 1 ELSE 0 END),0) refund_review
-          FROM bookings
-        `).first(),
-        env.BOOKINGS_DB.prepare(`
-          SELECT action,target_type,created_at
-          FROM audit_log
-          ORDER BY created_at DESC
-          LIMIT 10
-        `).all(),
-        env.BOOKINGS_DB.prepare(`SELECT COUNT(*) total FROM private_event_inquiries`).first()
-      ]);
+    } catch (error) {
+      result.warnings.push(`Payment reconciliation: ${String(error?.message || error || 'temporarily unavailable')}`);
+    }
 
-      const waiting = await env.BOOKINGS_DB.prepare(`
-        SELECT COALESCE(SUM(quantity),0) total FROM waiting_list WHERE status='WAITING'
-      `).first();
+    const now = new Date().toISOString();
 
-      result.classes = classesResult.results || [];
+    try {
+      const classesResult = await env.BOOKINGS_DB.prepare(`
+        SELECT
+          c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
+          COALESCE((
+            SELECT SUM(b.quantity)
+            FROM bookings b
+            WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
+          ),0) AS sold,
+          c.status,c.level,c.public_notes
+        FROM classes c
+        WHERE c.starts_at >= ? AND c.status IN ('open','draft')
+        ORDER BY starts_at
+        LIMIT 20
+      `).bind(now).all();
+      result.classes = Array.isArray(classesResult?.results) ? classesResult.results : [];
       result.summary.upcoming_classes = result.classes.filter(row => row.status === 'open').length;
+    } catch (error) {
+      result.warnings.push(`Upcoming classes: ${String(error?.message || error)}`);
+    }
+
+    try {
+      const stats = await env.BOOKINGS_DB.prepare(`
+        SELECT
+          COALESCE(SUM(CASE WHEN status IN ('PENDING','PAID') THEN quantity ELSE 0 END),0) places_booked,
+          COALESCE(SUM(CASE WHEN status='PAID' THEN amount_pence ELSE 0 END),0) paid_revenue,
+          COALESCE(SUM(CASE WHEN status='PENDING' THEN 1 ELSE 0 END),0) pending_payments,
+          COALESCE(SUM(CASE WHEN refund_status IN ('REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW') THEN 1 ELSE 0 END),0) refund_review
+        FROM bookings
+      `).first();
       result.summary.places_booked = Number(stats?.places_booked || 0);
       result.summary.paid_revenue = Number(stats?.paid_revenue || 0);
       result.summary.pending_payments = Number(stats?.pending_payments || 0);
       result.summary.refund_review = Number(stats?.refund_review || 0);
+    } catch (error) {
+      result.warnings.push(`Booking totals: ${String(error?.message || error)}`);
+    }
+
+    try {
+      const waiting = await env.BOOKINGS_DB.prepare(`
+        SELECT COALESCE(SUM(quantity),0) total FROM waiting_list WHERE status='WAITING'
+      `).first();
       result.summary.waiting_guests = Number(waiting?.total || 0);
+    } catch (error) {
+      result.warnings.push(`Waiting list: ${String(error?.message || error)}`);
+    }
+
+    try {
+      const privateResult = await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) total FROM private_event_inquiries`).first();
       result.summary.private_event_count = Number(privateResult?.total || 0);
-      result.activity = (activityResult.results || []).map(row => ({
+    } catch (error) {
+      result.warnings.push(`Private events: ${String(error?.message || error)}`);
+    }
+
+    try {
+      const activityResult = await env.BOOKINGS_DB.prepare(`
+        SELECT action,target_type,created_at
+        FROM audit_log
+        ORDER BY created_at DESC
+        LIMIT 10
+      `).all();
+      result.activity = (Array.isArray(activityResult?.results) ? activityResult.results : []).map(row => ({
         action: row.action,
         target_type: row.target_type,
         created_at: row.created_at
       }));
     } catch (error) {
-      result.database_error = error.message;
+      result.warnings.push(`Recent activity: ${String(error?.message || error)}`);
     }
   }
 
@@ -1194,13 +1242,13 @@ async function adminBootstrap(request, env) {
       const items = await readIndex(env);
       result.summary.media_files = items.length;
     } catch (error) {
-      result.media_error = error.message;
+      result.media_error = String(error?.message || error || 'Media index unavailable.');
+      result.warnings.push(`Media: ${result.media_error}`);
     }
   }
 
   return json(result);
 }
-
 
 async function cleanupKnownAugustTestBookings(request, env) {
   if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);

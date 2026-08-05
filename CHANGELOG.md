@@ -1,3 +1,11 @@
+# V92.6.3 — HQ Classes and Summary Stability
+
+- Prevented SumUp reconciliation errors from crashing the HQ Classes endpoint.
+- Isolated each HQ bootstrap query so one unavailable table or query cannot blank every dashboard card.
+- Restored paid revenue, booked places, pending payments, waiting-list and upcoming-class totals independently.
+- Added safe D1 result handling and structured JSON errors instead of unhandled Worker exceptions.
+- Updated HQ, asset and service-worker cache versions to V92.6.3.
+
 # V92.6.2 — SumUp Payment Confirmation Sync
 
 - Added the official SumUp checkout-status webhook through `return_url` so successful hosted payments update D1 automatically.

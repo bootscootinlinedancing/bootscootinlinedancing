@@ -1,56 +1,56 @@
 {
-  "release": "V92.6.2 SUMUP PAYMENT CONFIRMATION SYNC",
-  "built_from": "boot-scootin-platform-v92.6.1-HQ-ADD-CLASS-HOTFIX.zip",
-  "built_at": "2026-08-05T22:50:24.226613+00:00",
+  "release": "V92.6.3 HQ CLASSES AND SUMMARY STABILITY",
+  "built_from": "boot-scootin-platform-v92.6.2-SUMUP-PAYMENT-CONFIRMATION-SYNC(1).zip",
+  "built_at": "2026-08-05T23:06:30.577948+00:00",
   "changes": [
-    "Added SumUp return_url webhook processing and API verification.",
-    "Added pending-payment reconciliation on confirmation and HQ reads.",
-    "Made paid-state application idempotent.",
-    "Rebuilt confirmation URL handling and polling.",
-    "Fixed availability double-counting pending bookings and holds."
+    "Prevented SumUp reconciliation failures from crashing the HQ Classes route.",
+    "Separated HQ bootstrap queries so one failure cannot blank every summary card.",
+    "Added structured D1 errors and defensive result handling.",
+    "Updated release and cache identities to V92.6.3."
   ],
   "checks": {
     "javascript_syntax": [
       "node --check _worker.js",
+      "node --check ranch.js",
       "node --check booking-confirmation.js",
-      "node --check ranch.js"
+      "node --check service-worker.js"
     ],
-    "payment_webhook": "return_url and /api/sumup-webhook route present",
-    "idempotency": "Booking PAID update uses WHERE status!='PAID' and checks D1 changes before capacity increment",
-    "secret_scan": "No SumUp API secret embedded"
+    "worker_exception_guard": "Classes reconciliation and D1 class reads are independently guarded",
+    "summary_resilience": "Classes, totals, waiting list, private events and activity load independently",
+    "live_environment_note": "Cloudflare Access, D1, R2 and SumUp require deployment for live verification"
   },
   "files": {
     "_worker.js": {
-      "size": 87184,
-      "sha256": "0f9468258b9d8b82e6f1e9c1edc0f1900f45a589bf44e6fc435c470ad513b305"
+      "size": 89042,
+      "sha256": "c47a2f19b2e9f3a746258877c723d6194d9fed1ff6fa260192b58b78395f42c8"
+    },
+    "ranch.js": {
+      "size": 53239,
+      "sha256": "71926eb22355541207b24fb8a6f13ff729caaefa898daec83a6f270ca42de973"
+    },
+    "ranch.html": {
+      "size": 27864,
+      "sha256": "849bcff2f82bbc44d9b9404b4d4951907a042c437e816a9edfccf2cd3bf64c97"
+    },
+    "service-worker.js": {
+      "size": 528,
+      "sha256": "ff57ad18ff94ad0a0cf44673ccb8f0d11f4070a4515c48918472a5ae3f2ec346"
     },
     "booking-confirmation.html": {
       "size": 2298,
-      "sha256": "1e1f4837af7c4073056dd82163c22c93cb096dff02f4fc16448f0b9e0391483f"
+      "sha256": "6389e11d538f4f36bb515204d1939a707f4711964341f177aeada52df7dbb6c5"
     },
     "booking-confirmation.js": {
       "size": 5275,
       "sha256": "d487779aa6d689e0f4681ab1ae53624a98fbb0b95ee1ab31d9b8e70a38ddc22c"
     },
-    "ranch.html": {
-      "size": 27864,
-      "sha256": "2c93f39efa395622582fe1bcf8b62bf516089bf9daca7c104ccc22084be434a2"
-    },
-    "ranch.js": {
-      "size": 53239,
-      "sha256": "dfe37aa72af247f319c53d799d253bc98c16a6e198cc6d6fda554fab043013fd"
-    },
-    "service-worker.js": {
-      "size": 534,
-      "sha256": "85cedd0de6e2f4be7232eb2513cf97ab36c00ff9544743f1c3771e5620501509"
-    },
     "CHANGELOG.md": {
-      "size": 13055,
-      "sha256": "e36aa09ff3ffb0f2eaed997273f5f0a22973ce25fde077bbbab446ebd51d72ae"
+      "size": 13564,
+      "sha256": "7377ff8c1d05e6c12f544021d3e6fb063e6daae9aeab82ecdeb48e1607a0f0ce"
     },
-    "PAYMENT_SYNC_TEST_REPORT.md": {
-      "size": 1560,
-      "sha256": "c7ea66fffb5c87c4430b86956238f95c18acfc46838236fd25fe44a6d491d738"
+    "HQ_STABILITY_TEST_REPORT.md": {
+      "size": 1356,
+      "sha256": "20c140f2f93fc11814b3182eeed253a905447d2ffaeffefcef8dbd4762c7909e"
     }
   }
 }

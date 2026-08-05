@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v92-6-2-sumup-payment-sync";
+const CACHE_NAME = "boot-scootin-v92-6-3-hq-stability";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(
