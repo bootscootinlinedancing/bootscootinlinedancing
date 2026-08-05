@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-4-5';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-4-7';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 

@@ -18,9 +18,15 @@ const decodeAccessJwtEmail = token => {
     return String(data.email || data.common_name || data.sub || '').trim();
   } catch { return ''; }
 };
+const accessCookieToken = request => {
+  const cookie = request.headers.get('Cookie') || '';
+  const match = cookie.match(/(?:^|;\s*)CF_Authorization=([^;]+)/i);
+  return match ? decodeURIComponent(match[1]) : '';
+};
 const accessEmail = request =>
   request.headers.get('Cf-Access-Authenticated-User-Email') ||
   decodeAccessJwtEmail(request.headers.get('Cf-Access-Jwt-Assertion')) ||
+  decodeAccessJwtEmail(accessCookieToken(request)) ||
   '';
 const allowedTypes = new Set([
   'image/jpeg','image/png','image/webp',

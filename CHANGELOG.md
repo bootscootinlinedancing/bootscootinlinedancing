@@ -1,3 +1,11 @@
+## [V92.4.7 CLOUDFLARE ACCESS COOKIE DETECTION] — 2026-08-05
+
+- Fixed HQ falsely showing “Public pilot mode” after a successful Cloudflare Access one-time-code login.
+- Added detection of the signed `CF_Authorization` session cookie when Cloudflare does not forward the authenticated-email or JWT assertion headers to Pages/Workers.
+- HQ now correctly reports Protected HQ mode, Cloudflare Access Connected, and removes the Protect HQ task after login.
+- Updated Ranch asset and bootstrap cache versions to prevent stale V92.4.5/V92.4.6 status data.
+- Kept both secure logout buttons and verified logout still returns to the Cloudflare Access login screen.
+
 ## [V92.4.6 ACCESS SESSION DETECTION FIX] — 2026-08-05
 
 - Detects the authenticated administrator from either Cloudflare's email header or the signed Access JWT assertion.
