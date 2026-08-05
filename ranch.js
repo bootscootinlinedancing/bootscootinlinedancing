@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-6-4';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-6-5';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -489,7 +489,9 @@
     const rows=filteredClasses();
     box.innerHTML=rows.length?rows.map(c=>`<article class="ranch-class-row" data-class-id="${esc(c.id)}">
       <div class="ranch-class-main"><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)} · ${money(c.price_pence)}</span></div>
-      <div class="ranch-class-meta"><b>${Number(c.sold||0)} / ${Number(c.capacity||0)}</b><small>${esc(c.status)}</small></div>
+      <div class="ranch-class-meta">${Math.max(0,Number(c.capacity||0)-Number(c.sold||0))===0
+        ?`<b>FULL</b><small>Waiting list open</small>`
+        :`<b>${Math.max(0,Number(c.capacity||0)-Number(c.sold||0))} place${Math.max(0,Number(c.capacity||0)-Number(c.sold||0))===1?'':'s'} remaining</b><small>${esc(c.status)}</small>`}</div>
       <div class="ranch-class-actions">
         <button type="button" class="button secondary compact" data-edit-class="${esc(c.id)}">Edit</button>
         <button type="button" class="button secondary compact" data-duplicate-class="${esc(c.id)}">Duplicate</button>
@@ -620,7 +622,12 @@
           <div><dt>Payment</dt><dd>${esc(b.payment_provider)}</dd></div>
           <div><dt>Created</dt><dd>${fmt(b.created_at)}</dd></div>
         </dl>
-        ${b.is_test_candidate?`<div class="booking-admin-actions"><button type="button" class="danger-outline" data-delete-test-booking="${esc(b.id)}">Delete test booking</button></div>`:''}
+        <div class="booking-admin-actions">
+          ${['PENDING','PAID'].includes(b.status)?`<button type="button" class="danger-outline" data-cancel-booking="${esc(b.id)}">Cancel booking</button>`:''}
+          ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && b.refund_status!=='REFUNDED'?`<button type="button" class="ranch91-button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund ${money(b.amount_pence)}</button>`:''}
+          ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}
+          ${b.is_test_candidate?`<button type="button" class="danger-outline" data-delete-test-booking="${esc(b.id)}">Delete test booking</button>`:''}
+        </div>
       </article>
     `).join(''):emptyPanel('No bookings match this filter.');
 
@@ -635,6 +642,12 @@
     box.querySelectorAll('[data-delete-test-booking]').forEach(button=>{
       button.addEventListener('click',()=>deleteSingleTestBooking(button.dataset.deleteTestBooking));
     });
+    box.querySelectorAll('[data-cancel-booking]').forEach(button=>{
+      button.addEventListener('click',()=>cancelBooking(button.dataset.cancelBooking));
+    });
+    box.querySelectorAll('[data-refund-booking]').forEach(button=>{
+      button.addEventListener('click',()=>refundBooking(button.dataset.refundBooking,Number(button.dataset.refundPence||0)));
+    });
 
     if(waiting){
       waiting.innerHTML=(data.waiting||[]).length
@@ -648,6 +661,38 @@
       method:'PATCH',
       body:JSON.stringify(payload)
     },8000);
+  }
+
+  async function cancelBooking(id){
+    const booking=(state.bookings?.bookings||[]).find(item=>item.id===id);
+    if(!booking)return toast('Booking not found.','error');
+    const paid=booking.status==='PAID';
+    const message=paid
+      ?`Cancel ${booking.customer_name}'s booking for ${booking.class_title}? The place will be released. The payment will remain marked for refund until you press Refund.`
+      :`Cancel ${booking.customer_name}'s booking for ${booking.class_title}? The place will be released.`;
+    if(!confirm(message))return;
+    try{
+      await bookingAdminAction({id,action:'CANCEL'});
+      localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+      await Promise.all([loadBookings(true),loadClasses(),loadBootstrap(false,{force:true,silent:true})]);
+      toast(paid?'Booking cancelled. Refund is now due.':'Booking cancelled and place released.');
+    }catch(error){toast(error.message,'error');}
+  }
+
+  async function refundBooking(id,amountPence){
+    const booking=(state.bookings?.bookings||[]).find(item=>item.id===id);
+    if(!booking)return toast('Booking not found.','error');
+    const amount=money(amountPence);
+    const confirmation=prompt(`Refund ${amount} to ${booking.customer_name} through SumUp? This cannot be undone. The booking will be cancelled and the place released.
+
+Type REFUND to continue.`);
+    if(confirmation!=='REFUND')return;
+    try{
+      await bookingAdminAction({id,action:'REFUND_SUMUP',refund_amount_pence:amountPence,admin_notes:'Full refund issued from Boot Scootin HQ'});
+      localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+      await Promise.all([loadBookings(true),loadClasses(),loadBootstrap(false,{force:true,silent:true})]);
+      toast(`${amount} refund sent to SumUp and customer notified.`);
+    }catch(error){toast(error.message,'error');}
   }
 
   async function deleteSingleTestBooking(id){

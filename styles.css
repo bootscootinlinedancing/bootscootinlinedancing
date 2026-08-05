@@ -6541,7 +6541,7 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
 .booking-admin-card dd{margin:.15rem 0 0}
 .booking-status,.booking-test-badge{display:inline-block;margin-right:.35rem;padding:.25rem .4rem;border:1px solid #8f2b31;font:700 .58rem Oswald,sans-serif;text-transform:uppercase}
 .booking-test-badge{border-color:#b77f3b;color:#7a531f}
-.booking-admin-actions{display:flex;justify-content:flex-end}
+.booking-admin-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap}
 .danger-outline{padding:.6rem .75rem;border:1px solid #a72e35;background:#fff;color:#8d282e;font:700 .68rem Oswald,sans-serif;cursor:pointer}
 @media(max-width:700px){
   .booking-cleanup-panel{align-items:stretch;flex-direction:column}
@@ -6684,3 +6684,6 @@ body.hq-modal-open{overflow:hidden}
   .ranch-class-actions{justify-content:stretch;display:grid;grid-template-columns:1fr 1fr}
   .ranch-class-actions button{width:100%}
 }
+
+.booking-refund-state{display:inline-flex;align-items:center;padding:9px 12px;border:1px solid #9f252c;background:#fff8eb;font-weight:800;font-size:.82rem;letter-spacing:.04em;text-transform:uppercase}
+.ranch-class-meta b{display:block}.ranch-class-meta small{display:block;margin-top:5px}

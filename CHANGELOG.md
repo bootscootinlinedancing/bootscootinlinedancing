@@ -262,6 +262,18 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added console diagnostics.
 - Reduced indefinite loading placeholders.
 
+
+## V92.6.5 — Remaining places, cancellation and live SumUp refunds
+
+- Replaced booked/capacity wording on HQ class cards with a remaining-place countdown.
+- Full classes now display `FULL` and `Waiting list open`.
+- Added protected HQ `Cancel booking` actions that release the place and retain the booking audit record.
+- Added protected HQ full-refund actions for SumUp payments.
+- SumUp refunds use the stored provider transaction ID and only update D1 after SumUp accepts the refund.
+- Refunded bookings no longer count towards class occupancy or paid revenue.
+- Added cancellation and refund email/SMS notification triggers, using the existing communications provider setup.
+- Added typed confirmation before irreversible refunds.
+
 ## V92.6.4 — Booking statistics, occupancy and customer communications
 - Class cards now calculate booked places directly from active D1 booking records, removing stale `classes.sold` display discrepancies.
 - Bookings HQ statistics now populate active guests, paid revenue, refund/credit reviews and waiting-list guests.

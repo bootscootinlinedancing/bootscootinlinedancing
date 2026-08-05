@@ -408,6 +408,24 @@ async function sumUpFetch(env, pathname, options = {}) {
   return fetch(`https://api.sumup.com${pathname}`, { ...options, headers });
 }
 
+async function refundSumUpTransaction(env, transactionId, amountPence = null) {
+  const transaction = clean(transactionId, 180);
+  if (!transaction) throw new Error('This booking does not have a SumUp transaction ID.');
+  if (!sumUpConfigured(env)) throw new Error('SumUp is not configured.');
+  const options = { method: 'POST' };
+  if (amountPence !== null) {
+    const amount = Number(amountPence);
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Refund amount must be greater than zero.');
+    options.body = JSON.stringify({ amount: Number((amount / 100).toFixed(2)) });
+  }
+  const response = await sumUpFetch(env, `/v0.1/me/refund/${encodeURIComponent(transaction)}`, options);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(clean(payload?.message || payload?.error_message || payload?.error || `SumUp refund failed (HTTP ${response.status}).`, 260));
+  }
+  return { ok: true, status: response.status };
+}
+
 async function checkSumUpConnection(env) {
   if (!sumUpConfigured(env)) {
     return { ready: false, status: 'setup', message: 'Add SUMUP_API_KEY and SUMUP_MERCHANT_CODE in Cloudflare.' };
@@ -463,7 +481,7 @@ async function sendTransactionalEmail(env, to, subject, html, text) {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.4'
+      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.5'
     },
     body: JSON.stringify({ from, to: [to], subject, html, text })
   });
@@ -512,6 +530,12 @@ function notificationCopy(eventType, booking) {
     text: `Hi ${booking.customer_name}, unfortunately ${className}${start ? ` on ${start}` : ''} has been cancelled. Your booking reference is ${booking.reference}. ${booking.status === 'PAID' ? 'Your refund will be processed and confirmed separately.' : 'No payment will be taken.'}`,
     heading: 'Your class has been cancelled',
     detail: `${className}${start ? ` · ${start}` : ''}. Reference ${booking.reference}.`
+  };
+  if (eventType === 'BOOKING_CANCELLED') return {
+    subject: `Booking cancelled — ${booking.reference}`,
+    text: `Hi ${booking.customer_name}, your booking for ${className}${start ? ` on ${start}` : ''} has been cancelled. Reference: ${booking.reference}. ${booking.refund_status === 'REFUNDED' ? 'Your refund has also been processed.' : booking.status === 'CANCELLED' && booking.payment_provider === 'SUMUP' ? 'If a refund is due, it will be confirmed separately.' : 'No further payment will be taken.'}`,
+    heading: 'Your booking has been cancelled',
+    detail: `${className}${start ? ` · ${start}` : ''} · Reference ${booking.reference}`
   };
   if (eventType === 'REFUND_CONFIRMED') return {
     subject: `Refund confirmed — ${booking.reference}`,
@@ -1710,12 +1734,23 @@ async function adminBookings(request, env) {
     }
   }else if(action==='CANCEL'){
     if(['PENDING','PAID'].includes(booking.status)){
-      await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),refund_status=COALESCE(refund_status,'ADMIN_REVIEW') WHERE id=?`).bind(id),
-        env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(booking.quantity,booking.class_id)
-      ]);
-      const cancelled=await bookingWithClass(env,id);if(cancelled)await deliverBookingNotification(env,cancelled,'CLASS_CANCELLED');
+      const refundStatus = booking.status === 'PAID' && booking.payment_provider === 'SUMUP' ? 'REFUND_DUE' : 'NO_PAYMENT_TAKEN';
+      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),refund_status=? WHERE id=?`)
+        .bind(refundStatus,id).run();
+      const cancelled=await bookingWithClass(env,id);if(cancelled)await deliverBookingNotification(env,cancelled,'BOOKING_CANCELLED');
     }
+  }else if(action==='REFUND_SUMUP'){
+    if(!['PAID','CANCELLED'].includes(booking.status)) return json({error:'Only paid or cancelled paid bookings can be refunded.'},409);
+    if(booking.refund_status==='REFUNDED' || booking.status==='REFUNDED') return json({error:'This booking has already been refunded.'},409);
+    if(booking.payment_provider!=='SUMUP') return json({error:'This booking was not paid through SumUp.'},409);
+    const fullAmount=Math.max(0,Number(booking.amount_pence||0));
+    const requested=body.refund_amount_pence===undefined||body.refund_amount_pence===null?fullAmount:Number(body.refund_amount_pence);
+    if(!Number.isFinite(requested)||requested<=0||requested>fullAmount)return json({error:'Enter a valid refund amount no greater than the original payment.'},400);
+    const isFull=requested===fullAmount;
+    await refundSumUpTransaction(env,booking.provider_transaction_id,isFull?null:requested);
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
+      .bind(isFull?'REFUNDED':'CANCELLED',requested,clean(body.admin_notes,600),id).run();
+    const refunded=await bookingWithClass(env,id);if(refunded)await deliverBookingNotification(env,{...refunded,refund_amount_pence:requested},'REFUND_CONFIRMED');
   }else if(action==='MARK_REFUNDED'){
     const refundAmount=Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence);
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)

@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v92-6-4-booking-comms";
+const CACHE_NAME = "boot-scootin-v92-6-5-refund-cancellation";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(

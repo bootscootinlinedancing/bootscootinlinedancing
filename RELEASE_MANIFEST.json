@@ -1,66 +1,47 @@
 {
-  "release": "V92.6.4 BOOKING COMMUNICATIONS AND STATISTICS SYNC",
-  "built_from": "boot-scootin-platform-v92.6.3-HQ-CLASSES-SUMMARY-STABILITY.zip",
-  "built_at": "2026-08-05T23:15:19.106553+00:00",
+  "release": "V92.6.5 REMAINING PLACES CANCELLATION AND SUMUP REFUNDS",
+  "built_from": "boot-scootin-platform-v92.6.4-BOOKING-COMMS-STATS-SYNC.zip",
+  "built_at": "2026-08-05T23:26:01.970784+00:00",
   "changes": [
-    "Fixed per-class booked-place totals using active D1 booking quantities.",
-    "Populated all Bookings HQ statistic cards.",
-    "Added email and optional SMS confirmations for paid bookings.",
-    "Added cancellation and refund customer notifications.",
-    "Added durable notification logging and duplicate-send protection."
+    "Remaining-place countdown and FULL/waiting-list status.",
+    "HQ booking cancellation with automatic place release.",
+    "Live full refunds through the SumUp transaction refund endpoint.",
+    "Cancellation and refund customer notifications.",
+    "Refund-safe D1 status, revenue and occupancy updates."
   ],
-  "provider_configuration": {
-    "email": [
-      "RESEND_API_KEY or EMAIL_API_KEY",
-      "EMAIL_FROM"
-    ],
-    "sms": [
-      "TWILIO_ACCOUNT_SID",
-      "TWILIO_AUTH_TOKEN",
-      "TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID"
-    ]
-  },
   "checks": {
-    "javascript_syntax": [
-      "node --check _worker.js",
-      "node --check ranch.js",
-      "node --check service-worker.js"
-    ],
+    "javascript_syntax": "passed",
     "static_assertions": "passed",
-    "live_environment_note": "Cloudflare D1, Access, Resend and Twilio require deployment and credentials for live delivery testing."
+    "live_environment_note": "Deploy and use the \u00a31 sandbox transaction to test the live refund."
   },
   "files": {
     "_worker.js": {
-      "size": 100371,
-      "sha256": "c2dc944d84c8d98525265b36b18e1d56d19d73baef82d422c296a0c5da962ddc"
+      "size": 103345,
+      "sha256": "de2ed552045e66377fcc3882cb68f0c5a8e562d0356c99de6fbb789676b5a81b"
     },
     "ranch.js": {
-      "size": 53605,
-      "sha256": "e184e403546f393aab303656c774b9ff4534510595e95a72798bb5a34e2d6523"
+      "size": 56601,
+      "sha256": "cd46e93bf95617e60d7888ddee7b61d7cb0c703408105eb08790f0776efdb44e"
     },
     "ranch.html": {
       "size": 27864,
-      "sha256": "981d897ed8e93865e1353ad8b4d62502e8969f73b8fd32f2b137a19d320915c4"
+      "sha256": "e87105387e61000a2c49dfa0b87c485902d0d6f6230301b30fd9e31cb03685e9"
+    },
+    "styles.css": {
+      "size": 256457,
+      "sha256": "813bc529d4efb0644d727cd5b3b7cb2168ef65fd3c4d08b23550f11c77013f68"
     },
     "service-worker.js": {
-      "size": 529,
-      "sha256": "5eb8fdf93da5688b9602512bbf93bb83a113bb17c739de41313117e9e3793a4c"
+      "size": 535,
+      "sha256": "e8ff775452519b77e6f0201ab5c9a10a4496d089ff26eea4841a26736445d5ab"
     },
     "CHANGELOG.md": {
-      "size": 14085,
-      "sha256": "4e4e406a44a78950e527dbd7cd94769f0578edc316e8f065520d05dccea450d7"
+      "size": 14824,
+      "sha256": "2cd6abb867a2141de8f15a1631c77ba01141269b27f987154351e1fbd58a7fcb"
     },
-    "BOOKING_COMMUNICATIONS_SETUP.md": {
-      "size": 1134,
-      "sha256": "bee8fc90a6bd93b529d725f77ee7c345226785f204056707e6f3b6079fba753d"
-    },
-    "V92_6_4_TEST_REPORT.md": {
-      "size": 808,
-      "sha256": "dc10c29a6d7c74354f8b15c072483d71085dd1d52cbaab45cedd03d5923388ad"
-    },
-    "migrations/0006_booking_notifications.sql": {
-      "size": 478,
-      "sha256": "b2248e7933e8ebed90d6f871d2240d19f9b731a23197c88c76ae3dd8d8208eaa"
+    "V92_6_5_TEST_REPORT.md": {
+      "size": 907,
+      "sha256": "b8d7b05b1b3f71d4942c3cca02239749162d3c85222d3ddb558fbf0f1d9c5a1b"
     }
   }
 }
