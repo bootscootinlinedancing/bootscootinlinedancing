@@ -6652,3 +6652,35 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
   .ranch91-release{grid-column:3;grid-row:1}
 }
 @media(max-width:420px){.ranch91-welcome{font-size:.66rem}.ranch91-logout-quick{padding:.55rem .65rem}}
+
+/* V92.6.0 — HQ ACTION BUTTON REPAIR */
+.hq-modal[hidden]{display:none!important}
+.hq-modal{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:1rem}
+.hq-modal-backdrop{position:absolute;inset:0;background:rgba(12,5,6,.78)}
+.hq-modal-dialog{position:relative;z-index:1;width:min(760px,100%);max-height:92vh;overflow:auto;background:#fff8ed;border:2px solid #2b1718;box-shadow:0 20px 70px rgba(0,0,0,.5);padding:1.2rem}
+.hq-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;border-bottom:1px solid #d8c4b4;padding-bottom:.8rem;margin-bottom:1rem}
+.hq-modal-head h2{margin:.15rem 0 0}
+.hq-modal-close{width:44px;height:44px;border:1px solid #7a4b4e;background:#2b1718;color:#fff;font-size:1.8rem;line-height:1;cursor:pointer}
+.hq-class-form{display:grid;gap:.9rem}
+.hq-class-form label{display:grid;gap:.35rem;font-weight:700;color:#342122}
+.hq-class-form input,.hq-class-form select,.hq-class-form textarea{width:100%;min-height:44px;border:1px solid #9b7f70;background:#fff;padding:.7rem;font:inherit;color:#241617}
+.hq-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.hq-form-grid.three{grid-template-columns:1fr 1fr 1fr}
+.hq-modal-actions{display:flex;justify-content:flex-end;gap:.7rem;margin-top:.4rem}
+.ranch-class-row{gap:1rem;align-items:center}
+.ranch-class-main{min-width:0}
+.ranch-class-meta{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.ranch-class-actions{display:flex;gap:.45rem;flex-wrap:wrap;justify-content:flex-end}
+.ranch-class-actions button{min-height:38px}
+.button.danger,.danger-outline{border:1px solid #a8242c;background:#fff;color:#8f1f26}
+.button.danger:hover,.danger-outline:hover{background:#8f1f26;color:#fff}
+body.hq-modal-open{overflow:hidden}
+@media(max-width:700px){
+  .hq-form-grid,.hq-form-grid.three{grid-template-columns:1fr}
+  .hq-modal{padding:.4rem;align-items:end}
+  .hq-modal-dialog{max-height:96vh;padding:1rem}
+  .hq-modal-actions{display:grid;grid-template-columns:1fr 1fr}
+  .ranch-class-row{display:grid}
+  .ranch-class-actions{justify-content:stretch;display:grid;grid-template-columns:1fr 1fr}
+  .ranch-class-actions button{width:100%}
+}

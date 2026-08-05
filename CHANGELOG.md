@@ -1,3 +1,13 @@
+# V92.6.0 — HQ Action Button Repair
+
+- Repaired all previously unwired HQ buttons on mobile and desktop.
+- Added a complete class editor for creating and updating classes through the existing D1 admin API.
+- Added class refresh, filtering, summary totals, duplicate, open/close and protected delete actions.
+- Added working CSV exports for bookings and customers.
+- Connected the R2 media status check and media upload form.
+- Added mobile modal and class-action styling, loading states, error handling and refreshed cache-version references.
+- Kept Cloudflare Access, D1, R2 and SumUp connection names and backend configuration unchanged.
+
 # V92.5.0 — SumUp Sandbox Hosted Checkout
 
 - Added server-side SumUp Hosted Checkout creation for class bookings.
@@ -235,12 +245,3 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Improved health check states.
 - Added console diagnostics.
 - Reduced indefinite loading placeholders.
-## V92.5
-- Trigger Cloudflare deployment after adding SumUp environment variables.
-## V92.6
-- Regenerated SumUp sandbox API credentials.
-- Updated Cloudflare environment variables for the SumUp sandbox.
-- Triggered deployment to verify sandbox merchant authentication.
-- No functional UI changes.
-## V92.2
-- Trigger Cloudflare deployment after updating SumUp merchant configuration.

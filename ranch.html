@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.4.9">
+  <link rel="stylesheet" href="styles.css?v=92.6.0">
 </head>
 <body class="ranch-v91">
 
@@ -130,7 +130,7 @@
         <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
         <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
       </div>
-      <div class="ranch91-release">V92.5.0</div>
+      <div class="ranch91-release">V92.6.0</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -460,9 +460,44 @@
     </main>
   </div>
 
+
+  <div class="hq-modal" id="classEditorModal" hidden>
+    <div class="hq-modal-backdrop" data-close-class-modal></div>
+    <section class="hq-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="classEditorTitle">
+      <div class="hq-modal-head">
+        <div><p class="kicker red">Class manager</p><h2 id="classEditorTitle">Create class</h2></div>
+        <button type="button" class="hq-modal-close" data-close-class-modal aria-label="Close class editor">×</button>
+      </div>
+      <form id="classEditorForm" class="hq-class-form">
+        <input type="hidden" name="id">
+        <label>Class title<input name="title" type="text" required maxlength="160" placeholder="Friday Line Dancing"></label>
+        <div class="hq-form-grid">
+          <label>Venue<input name="venue" type="text" required maxlength="160" placeholder="Edgbaston Community Centre"></label>
+          <label>Location<input name="location" type="text" required maxlength="240" placeholder="Birmingham"></label>
+        </div>
+        <div class="hq-form-grid">
+          <label>Starts<input name="starts_at" type="datetime-local" required></label>
+          <label>Ends<input name="ends_at" type="datetime-local"></label>
+        </div>
+        <div class="hq-form-grid three">
+          <label>Price (£)<input name="price_gbp" type="number" min="0" step="0.01" value="6.00" required></label>
+          <label>Capacity<input name="capacity" type="number" min="1" step="1" value="20" required></label>
+          <label>Status<select name="status"><option value="draft">Draft</option><option value="open">Open</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label>
+        </div>
+        <label>Level<input name="level" type="text" maxlength="80" value="Beginner friendly"></label>
+        <label>Public notes<textarea name="public_notes" rows="4" maxlength="600"></textarea></label>
+        <p id="classEditorMessage" class="form-message" aria-live="polite"></p>
+        <div class="hq-modal-actions">
+          <button type="button" class="button secondary" data-close-class-modal>Cancel</button>
+          <button type="submit" class="button" id="saveClassButton">Save class</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="ranch.js?v=92.4.9"></script>
+  <script src="ranch.js?v=92.6.0"></script>
 
   <script>
   (function(){

@@ -176,7 +176,7 @@
       user_agent:navigator.userAgent,
       online:navigator.onLine,
       visibility:document.visibilityState,
-      version:'V92.4',
+      version:'V92.6.0',
       bootstrap_loaded:Boolean(state.bootstrap),
       bootstrap_loaded_at:state.bootstrapLoadedAt?new Date(state.bootstrapLoadedAt).toISOString():null,
       frontend_errors:state.frontendErrors,
@@ -456,14 +456,51 @@
   }
 
   // Classes
+  function classLocalValue(value){
+    if(!value)return '';
+    const d=new Date(value);
+    if(Number.isNaN(d.getTime()))return '';
+    const pad=n=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function updateClassSummary(rows){
+    const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
+    set('classLiveCount',rows.filter(c=>c.status==='open').length);
+    set('classDraftCount',rows.filter(c=>c.status==='draft').length);
+    set('classBookedCount',rows.reduce((n,c)=>n+Number(c.sold||0),0));
+    set('classWaitingCount',rows.reduce((n,c)=>n+Number(c.waiting||0),0));
+  }
+  function filteredClasses(){
+    const filter=$('#ranchClassFilter')?.value||'upcoming';
+    const now=Date.now();
+    if(filter==='all')return state.classes;
+    if(filter==='draft')return state.classes.filter(c=>c.status==='draft');
+    if(filter==='closed')return state.classes.filter(c=>['closed','cancelled'].includes(c.status));
+    return state.classes.filter(c=>new Date(c.starts_at).getTime()>=now && !['cancelled'].includes(c.status));
+  }
   function renderClasses(){
     const box=$('#ranchClasses');if(!box)return;
     if(!state.bootstrap?.configured.database){
       box.innerHTML=setupPanel('Class database is not connected','Bind D1 as BOOKINGS_DB. The class manager will become available automatically.');
+      updateClassSummary([]);
       return;
     }
-    const rows=state.classes;
-    box.innerHTML=rows.length?rows.map(c=>`<article class="ranch-class-row"><div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div><div><b>${Number(c.sold||0)} / ${Number(c.capacity||0)}</b><small>${esc(c.status)}</small></div></article>`).join(''):emptyPanel('No classes have been created yet.');
+    updateClassSummary(state.classes);
+    const rows=filteredClasses();
+    box.innerHTML=rows.length?rows.map(c=>`<article class="ranch-class-row" data-class-id="${esc(c.id)}">
+      <div class="ranch-class-main"><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)} · ${money(c.price_pence)}</span></div>
+      <div class="ranch-class-meta"><b>${Number(c.sold||0)} / ${Number(c.capacity||0)}</b><small>${esc(c.status)}</small></div>
+      <div class="ranch-class-actions">
+        <button type="button" class="button secondary compact" data-edit-class="${esc(c.id)}">Edit</button>
+        <button type="button" class="button secondary compact" data-duplicate-class="${esc(c.id)}">Duplicate</button>
+        ${c.status==='open'?`<button type="button" class="button secondary compact" data-class-status="closed" data-class-id="${esc(c.id)}">Close</button>`:`<button type="button" class="button secondary compact" data-class-status="open" data-class-id="${esc(c.id)}">Open</button>`}
+        <button type="button" class="button danger compact" data-delete-class="${esc(c.id)}">Delete</button>
+      </div>
+    </article>`).join(''):emptyPanel('No classes match this filter.');
+    box.querySelectorAll('[data-edit-class]').forEach(btn=>btn.addEventListener('click',()=>openClassEditor(state.classes.find(c=>c.id===btn.dataset.editClass))));
+    box.querySelectorAll('[data-duplicate-class]').forEach(btn=>btn.addEventListener('click',()=>duplicateClass(btn.dataset.duplicateClass)));
+    box.querySelectorAll('[data-class-status]').forEach(btn=>btn.addEventListener('click',()=>changeClassStatus(btn.dataset.classId,btn.dataset.classStatus)));
+    box.querySelectorAll('[data-delete-class]').forEach(btn=>btn.addEventListener('click',()=>deleteClass(btn.dataset.deleteClass)));
   }
   async function loadClasses(){
     if(!state.bootstrap){
@@ -476,8 +513,65 @@
       state.classes=await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{cache:'no-store'});
       renderClasses();
     }catch(error){
-      box.innerHTML=error.status===401?lockedPanel('Class editing is locked','Enable Cloudflare Access to create or edit classes.'):setupPanel('Classes unavailable',error.message);
+      box.innerHTML=(error.status===401||error.status===403)?lockedPanel('Class editing is locked','Cloudflare Access must authorise this HQ session.'):setupPanel('Classes unavailable',error.message);
     }
+  }
+  function openClassEditor(item=null){
+    if(state.bootstrap?.mode!=='protected'){toast('Cloudflare Access must authorise this HQ session.','error');return;}
+    const modal=$('#classEditorModal'),form=$('#classEditorForm');if(!modal||!form)return;
+    form.reset();
+    form.elements.id.value=item?.id||'';
+    form.elements.title.value=item?.title||'';
+    form.elements.venue.value=item?.venue||'';
+    form.elements.location.value=item?.location||'';
+    form.elements.starts_at.value=classLocalValue(item?.starts_at);
+    form.elements.ends_at.value=classLocalValue(item?.ends_at);
+    form.elements.price_gbp.value=((Number(item?.price_pence??600))/100).toFixed(2);
+    form.elements.capacity.value=Number(item?.capacity||20);
+    form.elements.status.value=item?.status||'draft';
+    form.elements.level.value=item?.level||'Beginner friendly';
+    form.elements.public_notes.value=item?.public_notes||'';
+    $('#classEditorTitle').textContent=item?'Edit class':'Create class';
+    $('#classEditorMessage').textContent='';
+    modal.hidden=false;document.body.classList.add('hq-modal-open');
+    setTimeout(()=>form.elements.title.focus(),0);
+  }
+  function closeClassEditor(){
+    const modal=$('#classEditorModal');if(modal)modal.hidden=true;
+    document.body.classList.remove('hq-modal-open');
+  }
+  async function saveClass(event){
+    event.preventDefault();
+    const form=event.currentTarget,button=$('#saveClassButton'),message=$('#classEditorMessage');
+    const id=form.elements.id.value;
+    const payload={
+      id:id||undefined,title:form.elements.title.value.trim(),venue:form.elements.venue.value.trim(),location:form.elements.location.value.trim(),
+      starts_at:form.elements.starts_at.value,ends_at:form.elements.ends_at.value||null,
+      price_pence:Math.round(Number(form.elements.price_gbp.value||0)*100),capacity:Number(form.elements.capacity.value||0),
+      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim()
+    };
+    button.disabled=true;button.textContent='Saving…';message.textContent='Saving class…';
+    try{
+      await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{method:id?'PATCH':'POST',body:JSON.stringify(payload)},10000);
+      closeClassEditor();
+      await loadClasses();
+      await loadBootstrap(false,{force:true,silent:true});
+      toast(id?'Class updated.':'Class created.');
+    }catch(error){message.textContent=error.message;toast(error.message,'error');}
+    finally{button.disabled=false;button.textContent='Save class';}
+  }
+  async function duplicateClass(id){
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{method:'POST',body:JSON.stringify({id,action:'DUPLICATE'})});await loadClasses();toast('Class duplicated as a draft one week later.');}
+    catch(error){toast(error.message,'error');}
+  }
+  async function changeClassStatus(id,status){
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{method:'PATCH',body:JSON.stringify({id,action:'STATUS',status})});await loadClasses();await loadBootstrap(false,{force:true,silent:true});toast(`Class ${status}.`);}
+    catch(error){toast(error.message,'error');}
+  }
+  async function deleteClass(id){
+    if(!confirm('Delete this class? Classes with bookings cannot be deleted and should be cancelled instead.'))return;
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{method:'DELETE',body:JSON.stringify({id})});await loadClasses();await loadBootstrap(false,{force:true,silent:true});toast('Class deleted.');}
+    catch(error){toast(error.message,'error');}
   }
 
   // Bookings
@@ -698,6 +792,59 @@
     }catch(error){box.innerHTML=lockedPanel('Media unavailable',error.message);}
   }
 
+  function csvCell(value){
+    const text=String(value??'');
+    return /[",\n\r]/.test(text)?`"${text.replaceAll('\"','\"\"')}"`:text;
+  }
+  function downloadCsv(filename,headers,rows){
+    const csv='\uFEFF'+[headers,...rows].map(row=>row.map(csvCell).join(',')).join('\r\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  async function exportBookingsCsv(){
+    if(!state.bookings)await loadBookings(true);
+    const rows=state.bookings?.bookings||[];
+    if(!rows.length){toast('There are no bookings to export.','error');return;}
+    downloadCsv(`boot-scootin-bookings-${new Date().toISOString().slice(0,10)}.csv`,
+      ['Reference','Customer name','Email','Phone','Class','Starts','Venue','Places','Status','Payment provider','Amount GBP','Refund status','Created'],
+      rows.map(b=>[b.reference,b.customer_name,b.customer_email,b.customer_phone,b.class_title,b.starts_at,b.venue,b.quantity,b.status,b.payment_provider,(Number(b.amount_pence||0)/100).toFixed(2),b.refund_status,b.created_at]));
+    toast('Bookings CSV downloaded.');
+  }
+  async function exportCustomersCsv(){
+    if(!state.customers)await loadCustomers();
+    const rows=state.customers?.customers||[];
+    if(!rows.length){toast('There are no customers to export.','error');return;}
+    downloadCsv(`boot-scootin-customers-${new Date().toISOString().slice(0,10)}.csv`,
+      ['Customer name','Email','Phone','Total bookings','Paid bookings','Cancelled bookings','Attended classes','Loyalty progress','Reward ready','Marketing consent','Last booking'],
+      rows.map(c=>[c.customer_name,c.customer_email,c.customer_phone,c.total_bookings,c.paid_bookings,c.cancelled_bookings,c.attended_classes,c.loyalty_progress,c.reward_ready?'Yes':'No',c.marketing_consent?'Yes':'No',c.last_booking_at]));
+    toast('Customers CSV downloaded.');
+  }
+  async function checkMediaBackend(){
+    const node=$('#mediaBackendStatus'),button=$('#checkMediaBackend');
+    if(button){button.disabled=true;button.textContent='Checking…';}
+    if(node)node.innerHTML='<strong>Checking media connection…</strong><span>Please wait.</span>';
+    try{
+      const data=await jsonFetch(`${ADMIN_API_PREFIX}/media-status`,{cache:'no-store'});
+      if(node)node.innerHTML=`<strong>${data.ready?'Media is ready':'Media needs attention'}</strong><span>${esc(data.error||Object.values(data.checks||{}).map(i=>i.message).join(' '))}</span>`;
+      toast(data.ready?'R2 media connection is ready.':'Media connection needs attention.',data.ready?'success':'error');
+    }catch(error){if(node)node.innerHTML=`<strong>Media check failed</strong><span>${esc(error.message)}</span>`;toast(error.message,'error');}
+    finally{if(button){button.disabled=false;button.textContent='Check connection';}}
+  }
+  async function uploadMedia(event){
+    event.preventDefault();
+    const form=event.currentTarget,file=form.elements.file.files?.[0],message=$('#mediaUploadMessage'),progress=$('#mediaUploadProgress'),button=form.querySelector('[type=submit]');
+    if(!file){message.textContent='Please choose a file.';return;}
+    const body=new FormData(form);
+    button.disabled=true;button.textContent='Uploading…';message.textContent='Uploading to HQ…';if(progress)progress.hidden=false;
+    try{
+      const result=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'POST',body},120000);
+      message.textContent=result.note||'Upload complete.';form.reset();await loadMedia();toast('Media uploaded to HQ.');
+    }catch(error){message.textContent=error.message;toast(error.message,'error');}
+    finally{button.disabled=false;button.textContent='Upload to HQ';if(progress)progress.hidden=true;}
+  }
+
   // Events
   $('#ranch91RunChecks')?.addEventListener('click',loadHealth);
   $('#refreshHealth')?.addEventListener('click',loadHealth);
@@ -712,6 +859,16 @@
   $('#printOperationsRegister')?.addEventListener('click',()=>window.print());
   $('#refreshPrivateEvents')?.addEventListener('click',loadPrivateEvents);
   $('#refreshMedia')?.addEventListener('click',loadMedia);
+  $('[data-open-class]')?.addEventListener('click',()=>openClassEditor());
+  $('#refreshRanch')?.addEventListener('click',loadClasses);
+  $('#ranchClassFilter')?.addEventListener('change',renderClasses);
+  $('#classEditorForm')?.addEventListener('submit',saveClass);
+  $$('[data-close-class-modal]').forEach(node=>node.addEventListener('click',closeClassEditor));
+  $('#exportBookingsCsv')?.addEventListener('click',exportBookingsCsv);
+  $('#exportCustomersCsv')?.addEventListener('click',exportCustomersCsv);
+  $('#checkMediaBackend')?.addEventListener('click',checkMediaBackend);
+  $('#mediaUploadForm')?.addEventListener('submit',uploadMedia);
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#classEditorModal')?.hidden)closeClassEditor();});
 
 
 
@@ -788,7 +945,7 @@
     if(Array.isArray(previous))state.diagnostics=previous.slice(0,DIAGNOSTIC_LIMIT);
     else state.diagnostics=[];
   }catch(_){}
-  diagnosticEvent('hq_script_started',{result:'V92.4 loaded',online:navigator.onLine,visibility:document.visibilityState});
+  diagnosticEvent('hq_script_started',{result:'V92.6.0 loaded',online:navigator.onLine,visibility:document.visibilityState});
 
   showView('overview');
   const cachedBootstrap=readBootstrapCache();
