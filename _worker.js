@@ -340,7 +340,7 @@ async function publicClasses(env) {
       COALESCE((
         SELECT SUM(b.quantity)
         FROM bookings b
-        WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
+        WHERE b.class_id=c.id AND b.status='PAID'
       ),0) AS sold,
       c.status,c.level,c.public_notes,
       MAX(
@@ -349,7 +349,7 @@ async function publicClasses(env) {
         - COALESCE((
             SELECT SUM(b.quantity)
             FROM bookings b
-            WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
+            WHERE b.class_id=c.id AND b.status='PAID'
           ),0)
         - COALESCE((
             SELECT SUM(h.quantity)
@@ -531,6 +531,7 @@ async function createClassReservation(request, env) {
         merchant_code: String(env.SUMUP_MERCHANT_CODE),
         description: `${classRow.title} — ${quantity} place${quantity === 1 ? '' : 's'}`,
         redirect_url: `${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}&customer=${encodeURIComponent(customerToken)}`,
+        return_url: `${origin}/api/sumup-webhook`,
         valid_until: holdExpiry,
         hosted_checkout: { enabled: true }
       };
@@ -615,26 +616,116 @@ async function createClassReservation(request, env) {
   }, 201);
 }
 
-async function syncSumUpBooking(env, booking) {
-  if(!booking?.provider_checkout_id||!sumUpConfigured(env)) return booking;
-  const response=await sumUpFetch(env, `/v0.1/checkouts/${encodeURIComponent(booking.provider_checkout_id)}`, { method: 'GET' });
-  if(!response.ok)return booking;
-  const checkout=await response.json();
-  if(checkout.status==='PAID'&&booking.status!=='PAID'){
-    await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP,provider_transaction_id=COALESCE(?,provider_transaction_id) WHERE id=?`).bind(checkout.transaction_id||null,booking.id),
-      env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND sold+?<=capacity`).bind(booking.quantity,booking.class_id,booking.quantity),
-      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id)
-    ]);
-    booking.status='PAID';
-  }else if(['FAILED','EXPIRED'].includes(checkout.status)&&booking.status==='PENDING'){
-    await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='FAILED' WHERE id=?`).bind(booking.id),
-      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id)
-    ]);
-    booking.status='FAILED';
+function checkoutTransactionId(checkout) {
+  if (checkout?.transaction_id) return String(checkout.transaction_id);
+  const transactions = Array.isArray(checkout?.transactions) ? checkout.transactions : [];
+  const successful = transactions.find(item => item && item.status === 'SUCCESSFUL') || transactions[0];
+  return successful?.id ? String(successful.id) : null;
+}
+
+async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RECONCILIATION') {
+  if (!booking || !checkout) return booking;
+  const checkoutStatus = String(checkout.status || '').toUpperCase();
+  const transactionId = checkoutTransactionId(checkout);
+
+  if (checkoutStatus === 'PAID' && booking.status !== 'PAID') {
+    const paid = await env.BOOKINGS_DB.prepare(
+      `UPDATE bookings
+       SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),
+           provider_transaction_id=COALESCE(?,provider_transaction_id)
+       WHERE id=? AND status!='PAID'`
+    ).bind(transactionId, booking.id).run();
+
+    if (Number(paid?.meta?.changes || 0) > 0) {
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(
+          `UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP
+           WHERE id=? AND sold+?<=capacity`
+        ).bind(booking.quantity, booking.class_id, booking.quantity),
+        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
+        env.BOOKINGS_DB.prepare(
+          `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
+           VALUES(?,?,?,?,?)`
+        ).bind(actor, 'SUMUP_PAYMENT_CONFIRMED', 'booking', booking.id, JSON.stringify({
+          checkout_id: booking.provider_checkout_id,
+          transaction_id: transactionId,
+          checkout_status: checkoutStatus
+        }))
+      ]);
+    }
+    booking.status = 'PAID';
+    booking.provider_transaction_id = transactionId || booking.provider_transaction_id;
+    return booking;
+  }
+
+  if (['FAILED','EXPIRED'].includes(checkoutStatus) && booking.status === 'PENDING') {
+    const failed = await env.BOOKINGS_DB.prepare(
+      `UPDATE bookings SET status=? WHERE id=? AND status='PENDING'`
+    ).bind(checkoutStatus, booking.id).run();
+    if (Number(failed?.meta?.changes || 0) > 0) {
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
+        env.BOOKINGS_DB.prepare(
+          `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
+           VALUES(?,?,?,?,?)`
+        ).bind(actor, `SUMUP_${checkoutStatus}`, 'booking', booking.id, JSON.stringify({
+          checkout_id: booking.provider_checkout_id,
+          checkout_status: checkoutStatus
+        }))
+      ]);
+    }
+    booking.status = checkoutStatus;
   }
   return booking;
+}
+
+async function retrieveSumUpCheckout(env, checkoutId) {
+  if (!checkoutId || !sumUpConfigured(env)) return null;
+  const response = await sumUpFetch(env, `/v0.1/checkouts/${encodeURIComponent(checkoutId)}`, { method: 'GET' });
+  if (!response.ok) return null;
+  return response.json().catch(() => null);
+}
+
+async function syncSumUpBooking(env, booking, actor = 'SUMUP_STATUS_CHECK') {
+  if (!booking?.provider_checkout_id || !sumUpConfigured(env)) return booking;
+  const checkout = await retrieveSumUpCheckout(env, booking.provider_checkout_id);
+  if (!checkout) return booking;
+  return applySumUpCheckoutState(env, booking, checkout, actor);
+}
+
+async function syncPendingSumUpBookings(env, limit = 20) {
+  if (!env.BOOKINGS_DB || !sumUpConfigured(env)) return 0;
+  const { results } = await env.BOOKINGS_DB.prepare(
+    `SELECT * FROM bookings
+     WHERE status='PENDING' AND payment_provider='SUMUP' AND provider_checkout_id IS NOT NULL
+     ORDER BY created_at DESC LIMIT ?`
+  ).bind(Math.max(1, Math.min(50, Number(limit) || 20))).all();
+  let updated = 0;
+  for (const booking of results || []) {
+    const before = booking.status;
+    const after = await syncSumUpBooking(env, booking, 'SUMUP_HQ_RECONCILIATION');
+    if (after?.status !== before) updated += 1;
+  }
+  return updated;
+}
+
+async function sumUpWebhook(request, env) {
+  if (!env.BOOKINGS_DB || !sumUpConfigured(env)) return new Response(null, { status: 204 });
+  await ensureBookingSchema(env);
+  const payload = await request.json().catch(() => null);
+  const checkoutId = clean(payload?.id, 160);
+  if (!checkoutId || clean(payload?.event_type, 80) !== 'CHECKOUT_STATUS_CHANGED') {
+    return new Response(null, { status: 204 });
+  }
+
+  const booking = await env.BOOKINGS_DB.prepare(
+    `SELECT * FROM bookings WHERE provider_checkout_id=?`
+  ).bind(checkoutId).first();
+  if (!booking) return new Response(null, { status: 204 });
+
+  const checkout = await retrieveSumUpCheckout(env, checkoutId);
+  if (checkout) await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
+  return new Response(null, { status: 204 });
 }
 
 async function bookingStatus(request,env,url){
@@ -898,6 +989,7 @@ async function adminClasses(request, env) {
   await ensureBookingSchema(env);
 
   if(request.method==='GET'){
+    await syncPendingSumUpBookings(env, 30);
     const {results}=await env.BOOKINGS_DB.prepare(`
       SELECT
         c.*,
@@ -1041,6 +1133,7 @@ async function adminBootstrap(request, env) {
   if (env.BOOKINGS_DB) {
     try {
       await ensureBookingSchema(env);
+      await syncPendingSumUpBookings(env, 20);
       const now = new Date().toISOString();
       const [classesResult, stats, activityResult, privateResult] = await Promise.all([
         env.BOOKINGS_DB.prepare(`
@@ -1600,6 +1693,7 @@ export default {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
+      if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
       if (path === '/api/booking-cancel' && request.method === 'POST') return cancelBooking(request, env);
       if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);

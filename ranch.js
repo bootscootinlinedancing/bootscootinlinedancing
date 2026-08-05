@@ -176,7 +176,7 @@
       user_agent:navigator.userAgent,
       online:navigator.onLine,
       visibility:document.visibilityState,
-      version:'V92.6.0',
+      version:'V92.6.2',
       bootstrap_loaded:Boolean(state.bootstrap),
       bootstrap_loaded_at:state.bootstrapLoadedAt?new Date(state.bootstrapLoadedAt).toISOString():null,
       frontend_errors:state.frontendErrors,
@@ -963,7 +963,7 @@
     if(Array.isArray(previous))state.diagnostics=previous.slice(0,DIAGNOSTIC_LIMIT);
     else state.diagnostics=[];
   }catch(_){}
-  diagnosticEvent('hq_script_started',{result:'V92.6.0 loaded',online:navigator.onLine,visibility:document.visibilityState});
+  diagnosticEvent('hq_script_started',{result:'V92.6.2 loaded',online:navigator.onLine,visibility:document.visibilityState});
 
   showView('overview');
   const cachedBootstrap=readBootstrapCache();

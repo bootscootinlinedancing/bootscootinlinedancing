@@ -1,47 +1,56 @@
 {
-  "release": "V92.6.1 HQ ADD CLASS HOTFIX",
-  "built_from": "boot-scootin-platform-v92.6.0-HQ-ACTION-BUTTON-REPAIR.zip",
-  "built_at": "2026-08-05T22:36:43.717344+00:00",
+  "release": "V92.6.2 SUMUP PAYMENT CONFIRMATION SYNC",
+  "built_from": "boot-scootin-platform-v92.6.1-HQ-ADD-CLASS-HOTFIX.zip",
+  "built_at": "2026-08-05T22:50:24.226613+00:00",
   "changes": [
-    "Removed the bootstrap-mode gate that could block Add a class before HQ bootstrap completed.",
-    "Made the class editor open immediately while retaining Cloudflare Access enforcement on the protected save API.",
-    "Added resilient direct and delegated Add a class click handling.",
-    "Bumped ranch.js and service-worker cache versions to prevent stale v92.6.0 logic."
+    "Added SumUp return_url webhook processing and API verification.",
+    "Added pending-payment reconciliation on confirmation and HQ reads.",
+    "Made paid-state application idempotent.",
+    "Rebuilt confirmation URL handling and polling.",
+    "Fixed availability double-counting pending bookings and holds."
   ],
   "checks": {
     "javascript_syntax": [
       "node --check _worker.js",
-      "node --check ranch.js",
-      "node --check bookings.js"
+      "node --check booking-confirmation.js",
+      "node --check ranch.js"
     ],
-    "add_class_handler": "Editor opening no longer depends on bootstrap mode; direct and delegated handlers present.",
-    "secret_scan": "No SumUp secret API key embedded"
+    "payment_webhook": "return_url and /api/sumup-webhook route present",
+    "idempotency": "Booking PAID update uses WHERE status!='PAID' and checks D1 changes before capacity increment",
+    "secret_scan": "No SumUp API secret embedded"
   },
   "files": {
     "_worker.js": {
-      "size": 83382,
-      "sha256": "8afca948eb6df3a513b8352d5a62b3ad9e1afc0658996302ded161c39eaafdcc"
+      "size": 87184,
+      "sha256": "0f9468258b9d8b82e6f1e9c1edc0f1900f45a589bf44e6fc435c470ad513b305"
+    },
+    "booking-confirmation.html": {
+      "size": 2298,
+      "sha256": "1e1f4837af7c4073056dd82163c22c93cb096dff02f4fc16448f0b9e0391483f"
+    },
+    "booking-confirmation.js": {
+      "size": 5275,
+      "sha256": "d487779aa6d689e0f4681ab1ae53624a98fbb0b95ee1ab31d9b8e70a38ddc22c"
     },
     "ranch.html": {
       "size": 27864,
-      "sha256": "617addbe2cbb233fd534f42fbebcb525b0127151310d5af7ed5b4a2d4c2413c5"
+      "sha256": "2c93f39efa395622582fe1bcf8b62bf516089bf9daca7c104ccc22084be434a2"
     },
     "ranch.js": {
       "size": 53239,
-      "sha256": "4d928277834986ac59180eae40d081d4edc25d23d31dffd93fadac16142731bd"
+      "sha256": "dfe37aa72af247f319c53d799d253bc98c16a6e198cc6d6fda554fab043013fd"
     },
     "service-worker.js": {
-      "size": 531,
-      "sha256": "b51535a99772de1ac746e964588bf292cb61a36612d8af0d94290019298229b1"
+      "size": 534,
+      "sha256": "85cedd0de6e2f4be7232eb2513cf97ab36c00ff9544743f1c3771e5620501509"
     },
     "CHANGELOG.md": {
-      "size": 12324,
-      "sha256": "b41f73dfa9f7bdbef52518843d0510b04aa65209855b7dc9df1e8130dda2e5f6"
+      "size": 13055,
+      "sha256": "e36aa09ff3ffb0f2eaed997273f5f0a22973ce25fde077bbbab446ebd51d72ae"
     },
-    "SUMUP_SANDBOX_SETUP.md": {
-      "size": 926,
-      "sha256": "95fb55780636550bae5907ccca0e862ccc33bb139ac0c242060bfe1af8fe18e7"
+    "PAYMENT_SYNC_TEST_REPORT.md": {
+      "size": 1560,
+      "sha256": "c7ea66fffb5c87c4430b86956238f95c18acfc46838236fd25fe44a6d491d738"
     }
-  },
-  "summary": "Hotfixes the Add a class control and invalidates stale cached HQ JavaScript."
+  }
 }

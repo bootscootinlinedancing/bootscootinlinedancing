@@ -1,3 +1,12 @@
+# V92.6.2 — SumUp Payment Confirmation Sync
+
+- Added the official SumUp checkout-status webhook through `return_url` so successful hosted payments update D1 automatically.
+- Added server-side reconciliation when the confirmation page, HQ dashboard or HQ bookings list checks a pending SumUp payment.
+- Made payment confirmation idempotent so repeated redirects, refreshes and webhooks cannot add class capacity twice.
+- Rebuilt the booking confirmation script with safe URL construction, clear fallback messaging and short automatic polling while SumUp finalises the checkout.
+- Fixed public availability double-counting the same pending booking and its active booking hold.
+- Updated all release and cache versions to V92.6.2.
+
 # v92.6.1 — HQ Add Class hotfix
 
 - Removed the premature bootstrap-mode gate that could make **Add a class** appear unresponsive while HQ bootstrap was still loading or cached.
