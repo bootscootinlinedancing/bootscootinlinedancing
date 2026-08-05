@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-4-8';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-4-9';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -420,19 +420,39 @@
     const status=item?.status||'setup';
     return `<article class="ranch91-health-row ${esc(status)}"><span class="ranch91-health-dot"></span><div><strong>${esc(title)}</strong><small>${esc(item?.detail||item?.label||'No detail available.')}</small></div><b>${status==='ready'?'Ready':status==='info'?'Info':status==='error'?'Error':'Setup'}</b></article>`;
   }
+  function healthCard(title,item){
+    const status=item?.status||'setup';
+    const label=status==='ready'?'Ready':status==='info'?'Info':status==='error'?'Error':'Setup';
+    return `<article class="hq-health-card ${esc(status)}"><span class="health-dot ${esc(status)}"></span><div><strong>${esc(title)}</strong><small>${esc(item?.detail||item?.label||'No detail available.')}</small></div><b>${label}</b></article>`;
+  }
+  function renderHealthPanels(h){
+    const rows=[
+      ['Website',h.website],['Database',h.database],['Media storage',h.media],
+      ['Email routing',h.email],['Admin protection',h.access],['Payments',h.payments]
+    ];
+    const summary=$('#ranch91HealthSummary');
+    const grid=$('#hqHealthGrid');
+    if(summary)summary.innerHTML=rows.map(([title,item])=>healthRow(title,item)).join('');
+    if(grid)grid.innerHTML=rows.map(([title,item])=>healthCard(title,item)).join('');
+  }
   async function loadHealth(){
-    const box=$('#ranch91HealthSummary'),button=$('#ranch91RunChecks');
-    box.innerHTML=setupPanel('Checking services','Running diagnostic checks…');
-    button.disabled=true;button.textContent='Checking…';console.info('[HQ] Running health checks');
+    const summary=$('#ranch91HealthSummary');
+    const grid=$('#hqHealthGrid');
+    const buttons=[$('#ranch91RunChecks'),$('#refreshHealth')].filter(Boolean);
+    if(summary)summary.innerHTML=setupPanel('Checking services','Running diagnostic checks…');
+    if(grid)grid.innerHTML='<article class="hq-health-card"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>Please wait.</small></div><b>Checking</b></article>';
+    buttons.forEach(button=>{button.disabled=true;button.textContent='Checking…';});
+    console.info('[HQ] Running health checks');
     try{
-      const h=await jsonFetch(`${ADMIN_API_PREFIX}/system-health`,{cache:'no-store'});state.health=h;
-      box.innerHTML=[
-        healthRow('Website',h.website),healthRow('Database',h.database),healthRow('Media storage',h.media),
-        healthRow('Email routing',h.email),healthRow('Admin protection',h.access),healthRow('Payments',h.payments)
-      ].join('');
+      const h=await jsonFetch(`${ADMIN_API_PREFIX}/system-health`,{cache:'no-store'},10000);state.health=h;
+      renderHealthPanels(h);
     }catch(error){
-      box.innerHTML=setupPanel('Live check unavailable',error.message);
-    }finally{console.info('[HQ] Health checks complete');button.disabled=false;button.textContent='Run checks';}
+      if(summary)summary.innerHTML=setupPanel('Live check unavailable',error.message);
+      if(grid)grid.innerHTML=`<article class="hq-health-card attention"><span class="health-dot attention"></span><div><strong>Live check unavailable</strong><small>${esc(error.message||'The check did not finish. Tap Run checks to retry.')}</small></div><b>Error</b></article>`;
+    }finally{
+      console.info('[HQ] Health checks complete');
+      buttons.forEach(button=>{button.disabled=false;button.textContent='Run checks';});
+    }
   }
 
   // Classes
@@ -680,6 +700,7 @@
 
   // Events
   $('#ranch91RunChecks')?.addEventListener('click',loadHealth);
+  $('#refreshHealth')?.addEventListener('click',loadHealth);
   $('#ranch91RefreshOverview')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
   $('#ranch92RefreshSetup')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
   $('#refreshBookings')?.addEventListener('click',()=>loadBookings(true));
