@@ -653,7 +653,11 @@ async function systemHealth(request, env) {
     database: { status: 'setup', label: 'D1 database connected' },
     media: { status: 'setup', label: 'R2 media connected' },
     email: { status: 'info', label: 'Cloudflare email routing configured' },
-    access: { status: 'setup', label: 'Cloudflare Access not configured yet' },
+    access: {
+      status: 'ready',
+      label: 'Cloudflare Access protecting HQ',
+      detail: `Secure administrator session verified${access.state.email ? ` for ${access.state.email}` : ''}`
+    },
     payments: { status: 'setup', label: 'SumUp sandbox connected' },
     checked_at: new Date().toISOString()
   };

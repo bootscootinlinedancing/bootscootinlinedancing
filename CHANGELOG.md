@@ -1,3 +1,10 @@
+## [V92.4.8 ADMIN PROTECTION HEALTH CHECK] — 2026-08-05
+
+- Fixed the System Health panel incorrectly reporting **Admin protection — SETUP** after a successful Cloudflare Access login.
+- The health endpoint now marks Cloudflare Access as **READY** whenever the protected administrator request has passed the Access and authorised-email checks.
+- Added a clear verified-session detail to the Admin protection health card.
+- Updated Ranch asset and bootstrap cache versions to prevent stale health results.
+
 ## [V92.4.7 CLOUDFLARE ACCESS COOKIE DETECTION] — 2026-08-05
 
 - Fixed HQ falsely showing “Public pilot mode” after a successful Cloudflare Access one-time-code login.

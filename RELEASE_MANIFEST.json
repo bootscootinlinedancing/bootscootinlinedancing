@@ -1,38 +1,37 @@
 {
-  "release": "V92.4.6 SECURE HQ LOGOUT & ACCESS STATUS VERIFIED",
-  "built_from": "boot-scootin-platform-v92.4.4-MENU-CLEANUP-REPAIR-VERIFIED.zip",
-  "built_at": "2026-08-05T14:39:32.386156+00:00",
+  "release": "V92.4.8 ADMIN PROTECTION HEALTH CHECK",
+  "built_from": "boot-scootin-platform-v92.4.7-ACCESS-COOKIE-DETECTION-FIX.zip",
+  "built_at": "2026-08-05T16:48:01.593293+00:00",
   "changes": [
-    "dual logout buttons",
-    "Welcome Nora administrator greeting",
-    "protected-path admin APIs",
-    "dynamic Cloudflare Access status warning"
+    "admin protection health check reports READY after verified Access login",
+    "verified administrator session detail",
+    "asset and bootstrap cache bump"
   ],
   "checks": {},
   "files": {
     "ranch.html": {
       "size": 25583,
-      "sha256": "bc4c8c8de98d3ccb7feb477eb3599b0b1569edaf771694728e9160ea8b034ed9"
+      "sha256": "68260f9065a2a53022dfa1ec9005dd018ec20a8bd86c9ed528066af70cdc692e"
     },
     "ranch.js": {
       "size": 40226,
-      "sha256": "819e8e6050ec8db8b49f4c42fd49f2f8e0ddda6494cb3c5cd5e3c81222d101a2"
+      "sha256": "62427e9f4c376d75439b4b08523bfcb77d8634eff9b747e647298f27e5abd569"
     },
     "_worker.js": {
-      "size": 79795,
-      "sha256": "da8ca2ca53a36198be280d17523ea23615836c66d1dffa80e2ddfc38f38a375d"
+      "size": 80733,
+      "sha256": "dfd13b9d4376d9755752946b8ea9bf52a0af7bc99a5e76f1000d76a0461431f8"
     },
     "styles.css": {
       "size": 253944,
       "sha256": "e184798faf0b196971401e740da6371bc3cbc3668aa90cece1b7ebaa7602c73c"
     },
     "service-worker.js": {
-      "size": 535,
-      "sha256": "405dde1830730d654b8fb83c2f057dd0f100cc8b321f813e467d027e028c9926"
+      "size": 539,
+      "sha256": "441a95300575b26fad3440b2cac73d754c982b513d1121bae4bf34083972990f"
     },
     "CHANGELOG.md": {
-      "size": 8903,
-      "sha256": "cfc6a256cfcf2250ba0b6039f905bad950491db309a901f83ed989afea06c080"
+      "size": 10542,
+      "sha256": "f496e092ea78f0edef819d4f88df4709ad62f4cb6e0b4b2ba9c8adf87d992fb2"
     }
   }
 }
