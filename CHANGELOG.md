@@ -1,3 +1,13 @@
+# V92.5.0 — SumUp Sandbox Hosted Checkout
+
+- Added server-side SumUp Hosted Checkout creation for class bookings.
+- Added `valid_until` so each payment checkout expires with its 15-minute booking hold.
+- Added live server-side SumUp credential verification through `/v0.1/me`.
+- System Health now reports Payments READY only after SumUp accepts the configured API key.
+- Added safe checkout failure cleanup so a failed payment-page launch does not leave a booking or hold behind.
+- Kept API keys out of the archive and GitHub; Cloudflare secrets are required.
+- Added `SUMUP_SANDBOX_SETUP.md` with the exact Cloudflare variable names.
+
 ## [V92.4.8 ADMIN PROTECTION HEALTH CHECK] — 2026-08-05
 
 - Fixed the System Health panel incorrectly reporting **Admin protection — SETUP** after a successful Cloudflare Access login.

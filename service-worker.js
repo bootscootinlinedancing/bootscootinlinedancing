@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v92-4-7-access-cookie-detection";
+const CACHE_NAME = "boot-scootin-v92-5-0-sumup-sandbox";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(

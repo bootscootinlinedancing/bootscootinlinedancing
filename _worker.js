@@ -379,6 +379,45 @@ function requireAccessAdmin(request, env) {
   return { response: null, state };
 }
 
+function sumUpConfigured(env) {
+  return Boolean(String(env.SUMUP_API_KEY || '').trim() && String(env.SUMUP_MERCHANT_CODE || '').trim());
+}
+
+async function sumUpFetch(env, pathname, options = {}) {
+  const key = String(env.SUMUP_API_KEY || '').trim();
+  if (!key) throw new Error('SUMUP_API_KEY is not configured.');
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${key}`);
+  headers.set('Accept', 'application/json');
+  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  return fetch(`https://api.sumup.com${pathname}`, { ...options, headers });
+}
+
+async function checkSumUpConnection(env) {
+  if (!sumUpConfigured(env)) {
+    return { ready: false, status: 'setup', message: 'Add SUMUP_API_KEY and SUMUP_MERCHANT_CODE in Cloudflare.' };
+  }
+  try {
+    const response = await sumUpFetch(env, '/v0.1/me', { method: 'GET' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { ready: false, status: 'attention', message: `SumUp rejected the configured API key (HTTP ${response.status}).` };
+    }
+    const configuredCode = String(env.SUMUP_MERCHANT_CODE).trim().toUpperCase();
+    const returnedCode = String(data.merchant_code || data.merchant_profile?.merchant_code || '').trim().toUpperCase();
+    if (returnedCode && returnedCode !== configuredCode) {
+      return { ready: false, status: 'attention', message: 'The SumUp API key belongs to a different merchant account than SUMUP_MERCHANT_CODE.' };
+    }
+    return {
+      ready: true,
+      status: 'test_mode',
+      message: `SumUp sandbox connection verified for merchant ${configuredCode}. No real money is processed in sandbox.`
+    };
+  } catch (error) {
+    return { ready: false, status: 'attention', message: `SumUp connection test failed: ${error.message}` };
+  }
+}
+
 async function createClassReservation(request, env) {
   if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
   await ensureBookingSchema(env);
@@ -438,7 +477,7 @@ async function createClassReservation(request, env) {
   }
 
   const amount = Number(classRow.price_pence || 0) * quantity;
-  const paymentReady = Boolean(env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE);
+  const paymentReady = sumUpConfigured(env);
   const holdId = crypto.randomUUID();
   const holdExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
@@ -492,15 +531,12 @@ async function createClassReservation(request, env) {
         merchant_code: String(env.SUMUP_MERCHANT_CODE),
         description: `${classRow.title} — ${quantity} place${quantity === 1 ? '' : 's'}`,
         redirect_url: `${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}&customer=${encodeURIComponent(customerToken)}`,
+        valid_until: holdExpiry,
         hosted_checkout: { enabled: true }
       };
 
-      const sumup = await fetch('https://api.sumup.com/v0.1/checkouts', {
+      const sumup = await sumUpFetch(env, '/v0.1/checkouts', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${env.SUMUP_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify(checkoutPayload)
       });
 
@@ -528,12 +564,32 @@ async function createClassReservation(request, env) {
           checkout_url: checkoutUrl
         }, 201);
       }
-    } catch (_) {
-      // Fall through to manual reservation.
+
+      const providerMessage = clean(checkout?.message || checkout?.error_message || checkout?.error || '', 180);
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId),
+        env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
+        env.BOOKINGS_DB.prepare(
+          `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`
+        ).bind(email, 'SUMUP_CHECKOUT_FAILED', 'booking', id, JSON.stringify({ status: sumup.status, providerMessage }))
+      ]);
+      return json({
+        error: 'SumUp could not open the secure payment page. No payment or booking has been taken. Please try again.',
+        reference
+      }, 502);
+    } catch (error) {
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId),
+        env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id)
+      ]);
+      return json({
+        error: 'The secure payment service is temporarily unavailable. No payment or booking has been taken. Please try again.',
+        reference
+      }, 502);
     }
   }
 
-  // Safe fallback: reserve the space and let Nora confirm payment manually.
+  // Safe fallback before SumUp has been configured: reserve the space and let Nora confirm payment manually.
   await env.BOOKINGS_DB.batch([
     env.BOOKINGS_DB.prepare(
       `UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP
@@ -560,10 +616,8 @@ async function createClassReservation(request, env) {
 }
 
 async function syncSumUpBooking(env, booking) {
-  if(!booking?.provider_checkout_id||!env.SUMUP_API_KEY) return booking;
-  const response=await fetch(`https://api.sumup.com/v0.1/checkouts/${encodeURIComponent(booking.provider_checkout_id)}`,{
-    headers:{Authorization:`Bearer ${env.SUMUP_API_KEY}`,Accept:'application/json'}
-  });
+  if(!booking?.provider_checkout_id||!sumUpConfigured(env)) return booking;
+  const response=await sumUpFetch(env, `/v0.1/checkouts/${encodeURIComponent(booking.provider_checkout_id)}`, { method: 'GET' });
   if(!response.ok)return booking;
   const checkout=await response.json();
   if(checkout.status==='PAID'&&booking.status!=='PAID'){
@@ -602,7 +656,7 @@ async function bookingStatus(request,env,url){
   return json({
     reference:booking.reference,status:booking.status,class_title:booking.class_title,starts_at:booking.starts_at,
     venue:booking.venue,location:booking.location,quantity:booking.quantity,amount_pence:booking.amount_pence,
-    payment_enabled:Boolean(env.SUMUP_API_KEY&&env.SUMUP_MERCHANT_CODE),can_cancel:['PENDING','PAID'].includes(booking.status),
+    payment_enabled:sumUpConfigured(env),can_cancel:['PENDING','PAID'].includes(booking.status),
     cancellation_guidance:guidance,refund_outcome:booking.refund_status||''
   });
 }
@@ -687,9 +741,10 @@ async function systemHealth(request, env) {
     result.media = { status: 'error', label: 'R2 media check failed', detail: error.message };
   }
 
-  result.payments = env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE
-    ? { status: 'ready', label: 'SumUp sandbox connected' }
-    : { status: 'setup', label: 'SumUp sandbox not connected yet' };
+  const sumupCheck = await checkSumUpConnection(env);
+  result.payments = sumupCheck.ready
+    ? { status: 'ready', label: 'SumUp sandbox connected', detail: sumupCheck.message }
+    : { status: sumupCheck.status === 'setup' ? 'setup' : 'error', label: 'SumUp sandbox needs attention', detail: sumupCheck.message };
 
   result.email = {
     status: 'info',
@@ -960,7 +1015,7 @@ async function adminBootstrap(request, env) {
       admin_email: Boolean(String(env.ADMIN_EMAIL || '').trim()) || Boolean(admin.email),
       database: Boolean(env.BOOKINGS_DB),
       media: Boolean(env.MEDIA_BUCKET),
-      sumup: Boolean(env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE)
+      sumup: sumUpConfigured(env)
     },
     summary: {
       upcoming_classes: 0,
@@ -981,7 +1036,7 @@ async function adminBootstrap(request, env) {
   if (!env.BOOKINGS_DB) result.setup_steps.push('Create and bind a D1 database using the binding name BOOKINGS_DB.');
   if (!env.MEDIA_BUCKET) result.setup_steps.push('Create and bind an R2 bucket using the binding name MEDIA_BUCKET.');
   if (!String(env.ADMIN_EMAIL || '').trim() && !admin.email) result.setup_steps.push('Add ADMIN_EMAIL as an environment variable.');
-  if (!(env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE)) result.setup_steps.push('Connect SumUp Sandbox after D1 and Access checks pass.');
+  if (!(sumUpConfigured(env))) result.setup_steps.push('Connect SumUp Sandbox after D1 and Access checks pass.');
 
   if (env.BOOKINGS_DB) {
     try {
@@ -1426,16 +1481,14 @@ async function health(request, env) {
       services.media = { status: 'attention', message: `R2 is bound, but its test request failed: ${error.message}` };
     }
   }
-  if (env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE) {
-    const test = String(env.SUMUP_API_KEY).startsWith('sk_test_');
-    services.payments = test
-      ? { status: 'test_mode', message: 'SumUp sandbox credentials are present. Live payments remain disabled.' }
-      : { status: 'attention', message: 'A live-looking SumUp key is present. Do not launch before full payment testing.' };
-  }
+  const sumupCheck = await checkSumUpConnection(env);
+  services.payments = sumupCheck.ready
+    ? { status: 'test_mode', message: sumupCheck.message }
+    : { status: sumupCheck.status, message: sumupCheck.message };
   if (env.EMAIL_API_KEY && env.EMAIL_FROM) services.email = { status: 'ready', message: 'Email credentials are configured. A delivery test is still required.' };
   if (env.BACKUP_LAST_TESTED) services.backups = { status: 'ready', message: `Last restore test recorded: ${String(env.BACKUP_LAST_TESTED).slice(0, 30)}` };
 
-  return json({ mode: 'free-pilot', version: 75, checked_at: new Date().toISOString(), services });
+  return json({ mode: 'free-pilot', version: 76, checked_at: new Date().toISOString(), services });
 }
 
 async function mediaStatus(request, env) {
@@ -1463,7 +1516,7 @@ async function mediaStatus(request, env) {
       : !checks.adminEmail.ready
         ? 'Cloudflare Access is active, but this email is not authorised.'
         : '';
-  return json({ ready, authorised: admin.authorised, checks, error, version: 75 });
+  return json({ ready, authorised: admin.authorised, checks, error, version: 76 });
 }
 
 async function mediaCollection(request, env) {

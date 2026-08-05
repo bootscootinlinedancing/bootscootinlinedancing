@@ -1,37 +1,47 @@
 {
-  "release": "V92.4.9 SYSTEM HEALTH PANEL COMPLETION FIX",
-  "built_from": "boot-scootin-platform-v92.4.7-ACCESS-COOKIE-DETECTION-FIX.zip",
-  "built_at": "2026-08-05T16:48:01.593293+00:00",
+  "release": "V92.5.0 SUMUP SANDBOX HOSTED CHECKOUT",
+  "built_from": "boot-scootin-platform-v92.4.9-SYSTEM-HEALTH-CHECK-COMPLETION-FIX.zip",
+  "built_at": "2026-08-05T18:22:02.613695+00:00",
   "changes": [
-    "admin protection health check reports READY after verified Access login",
-    "verified administrator session detail",
-    "asset and bootstrap cache bump"
+    "server-side SumUp Hosted Checkout integration enabled",
+    "SumUp credentials verified against official /v0.1/me endpoint",
+    "payment checkouts expire with the 15-minute booking hold",
+    "failed checkout creation removes the temporary booking and hold",
+    "System Health reports Payments READY only after successful API verification",
+    "Cloudflare setup instructions added without embedding secrets"
   ],
-  "checks": {},
+  "checks": {
+    "javascript_syntax": [
+      "node --check _worker.js",
+      "node --check ranch.js",
+      "node --check bookings.js"
+    ],
+    "secret_scan": "No SumUp secret API key embedded"
+  },
   "files": {
+    "_worker.js": {
+      "size": 83382,
+      "sha256": "8afca948eb6df3a513b8352d5a62b3ad9e1afc0658996302ded161c39eaafdcc"
+    },
     "ranch.html": {
       "size": 25583,
-      "sha256": "68260f9065a2a53022dfa1ec9005dd018ec20a8bd86c9ed528066af70cdc692e"
+      "sha256": "67b4da01f9342bf3ef1ff2b6a16f430b43eafa579486add24cc714ebde4d16d9"
     },
     "ranch.js": {
-      "size": 40226,
-      "sha256": "62427e9f4c376d75439b4b08523bfcb77d8634eff9b747e647298f27e5abd569"
-    },
-    "_worker.js": {
-      "size": 80733,
-      "sha256": "dfd13b9d4376d9755752946b8ea9bf52a0af7bc99a5e76f1000d76a0461431f8"
-    },
-    "styles.css": {
-      "size": 253944,
-      "sha256": "e184798faf0b196971401e740da6371bc3cbc3668aa90cece1b7ebaa7602c73c"
+      "size": 41650,
+      "sha256": "1506af9677098df3b060317edc3dfe4be8fb9b65f79a5add742dacde74ef6392"
     },
     "service-worker.js": {
-      "size": 539,
-      "sha256": "441a95300575b26fad3440b2cac73d754c982b513d1121bae4bf34083972990f"
+      "size": 529,
+      "sha256": "5a2cc5b81a8c132daa1148b7fc50f36c7031ab3ba0de89230044c9c73b7850e4"
     },
     "CHANGELOG.md": {
-      "size": 10542,
-      "sha256": "f496e092ea78f0edef819d4f88df4709ad62f4cb6e0b4b2ba9c8adf87d992fb2"
+      "size": 11180,
+      "sha256": "d54d26d22a34180c71e33592e929cd8e30a569409c3465198daf90f21cf6e5da"
+    },
+    "SUMUP_SANDBOX_SETUP.md": {
+      "size": 926,
+      "sha256": "95fb55780636550bae5907ccca0e862ccc33bb139ac0c242060bfe1af8fe18e7"
     }
   }
 }
