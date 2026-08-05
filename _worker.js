@@ -8,7 +8,20 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
   }
 });
 
-const accessEmail = request => request.headers.get('Cf-Access-Authenticated-User-Email') || '';
+const decodeAccessJwtEmail = token => {
+  try {
+    const payload = String(token || '').split('.')[1];
+    if (!payload) return '';
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
+    const data = JSON.parse(atob(padded));
+    return String(data.email || data.common_name || data.sub || '').trim();
+  } catch { return ''; }
+};
+const accessEmail = request =>
+  request.headers.get('Cf-Access-Authenticated-User-Email') ||
+  decodeAccessJwtEmail(request.headers.get('Cf-Access-Jwt-Assertion')) ||
+  '';
 const allowedTypes = new Set([
   'image/jpeg','image/png','image/webp',
   'video/mp4','video/webm','video/quicktime',
@@ -934,7 +947,7 @@ async function adminBootstrap(request, env) {
     admin_email: admin.authorised ? admin.email : null,
     configured: {
       access: Boolean(admin.email),
-      admin_email: Boolean(String(env.ADMIN_EMAIL || '').trim()),
+      admin_email: Boolean(String(env.ADMIN_EMAIL || '').trim()) || Boolean(admin.email),
       database: Boolean(env.BOOKINGS_DB),
       media: Boolean(env.MEDIA_BUCKET),
       sumup: Boolean(env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE)
@@ -957,7 +970,7 @@ async function adminBootstrap(request, env) {
   if (!admin.email) result.setup_steps.push('Protect /ranch* and /api/admin/* with Cloudflare Access.');
   if (!env.BOOKINGS_DB) result.setup_steps.push('Create and bind a D1 database using the binding name BOOKINGS_DB.');
   if (!env.MEDIA_BUCKET) result.setup_steps.push('Create and bind an R2 bucket using the binding name MEDIA_BUCKET.');
-  if (!String(env.ADMIN_EMAIL || '').trim()) result.setup_steps.push('Add ADMIN_EMAIL as an environment variable.');
+  if (!String(env.ADMIN_EMAIL || '').trim() && !admin.email) result.setup_steps.push('Add ADMIN_EMAIL as an environment variable.');
   if (!(env.SUMUP_API_KEY && env.SUMUP_MERCHANT_CODE)) result.setup_steps.push('Connect SumUp Sandbox after D1 and Access checks pass.');
 
   if (env.BOOKINGS_DB) {

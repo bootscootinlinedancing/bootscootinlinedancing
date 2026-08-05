@@ -1,4 +1,11 @@
-## [V92.4.5 SECURE HQ LOGOUT & ACCESS STATUS] — 2026-08-05
+## [V92.4.6 ACCESS SESSION DETECTION FIX] — 2026-08-05
+
+- Detects the authenticated administrator from either Cloudflare's email header or the signed Access JWT assertion.
+- Corrects the HQ protection banner and Cloudflare Access connection card after a successful one-time-code login.
+- Treats the Access allow policy as the active administrator restriction when the optional ADMIN_EMAIL variable is not present.
+- Keeps both secure logout buttons from V92.4.5.
+
+## [V92.4.6 SECURE HQ LOGOUT & ACCESS STATUS] — 2026-08-05
 
 ### Added
 - Added a quick **Log Out** button in the HQ header.
