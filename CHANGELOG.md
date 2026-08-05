@@ -237,3 +237,8 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Reduced indefinite loading placeholders.
 ## V92.5
 - Trigger Cloudflare deployment after adding SumUp environment variables.
+## V92.6
+- Regenerated SumUp sandbox API credentials.
+- Updated Cloudflare environment variables for the SumUp sandbox.
+- Triggered deployment to verify sandbox merchant authentication.
+- No functional UI changes.
