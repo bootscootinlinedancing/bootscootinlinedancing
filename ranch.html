@@ -1,17 +1,17 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#120808">
-  <title>Boot Scootin’ HQ</title>
-  <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=98.4.0">
-  <link rel="stylesheet" href="honky-theme.css?v=98.4.0">
-</head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#120808" name="theme-color"/>
+<title>Boot Scootin’ HQ</title>
+<link href="favicon.png" rel="icon"/>
+<link href="styles.css?v=99.0.0" rel="stylesheet"/>
+<link href="honky-theme.css?v=98.3.0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/></head>
 <body class="ranch-v91">
-
-  <script>
+<script>
     (function () {
       function getHQMenuParts() {
         return {
@@ -72,593 +72,537 @@
       });
     }());
   </script>
-
-  <a class="skip-link" href="#ranchMain">Skip to HQ content</a>
-
-  <div class="ranch91-backdrop" id="ranch91Backdrop" hidden></div>
-
-  <aside class="ranch91-drawer" id="ranch91Drawer" aria-hidden="true">
-    <div class="ranch91-drawer-head">
-      <div class="ranch91-brand">
-        <img src="favicon.png" alt="" width="52" height="52">
-        <div>
-          <strong>BOOT SCOOTIN’</strong>
-          <span>HQ MANAGEMENT</span>
-        </div>
-      </div>
-      <button id="ranch91Close" class="ranch91-close" type="button" aria-label="Close HQ menu">×</button>
-    </div>
-
-    <nav class="ranch91-nav" aria-label="HQ sections">
-      <button type="button" data-view="overview" class="active">Overview</button>
-      <button type="button" data-view="classes">Classes</button>
-      <button type="button" data-view="bookings">Bookings</button>
-      <button type="button" data-view="customers">Customers</button>
-      <button type="button" data-view="emails">Emails &amp; Mailing List</button>
-      <button type="button" data-view="promotions">Promotions &amp; Rewards</button>
-      <button type="button" data-view="operations">Operations</button>
-      <button type="button" data-view="private-events">Private Events</button>
-      <button type="button" data-view="media">Media</button>
-      <button type="button" data-view="health">System Health</button>
-      <button type="button" data-view="diagnostics">Diagnostics</button>
-      <button type="button" data-view="settings">Settings</button>
-    </nav>
-
-    <div class="ranch91-drawer-foot">
-      <div class="ranch91-drawer-user">
-        <strong id="ranch91DrawerWelcome">Welcome, Nora</strong>
-        <span>Authorised HQ administrator</span>
-      </div>
-      <a class="ranch91-logout ranch91-logout-menu" href="/cdn-cgi/access/logout" data-hq-logout>Log Out Securely</a>
-      <a href="index.html">Back to Website</a>
-      <div class="ranch91-public-note" id="ranch91AccessNote">
-        <strong>Checking protection</strong>
-        <span>Confirming your Cloudflare Access session…</span>
-      </div>
-    </div>
-  </aside>
-
-  <div class="ranch91-app">
-    <header class="ranch91-topbar">
-      <button id="ranch91Menu" class="ranch91-menu" type="button" aria-controls="ranch91Drawer" aria-expanded="false" onclick="return window.BootScootinHQMenuToggle(event)" ontouchend="return window.BootScootinHQMenuToggle(event)">
-        <span aria-hidden="true"></span>
-        <span>Menu</span>
-      </button>
-      <div class="ranch91-title">
-        <p>PRIVATE MANAGEMENT AREA</p>
-        <h1 id="ranch91PageTitle">HQ Home</h1>
-      </div>
-      <div class="hq-connection-indicator checking" id="hqConnectionIndicator"><span></span><b>Checking</b></div>
-      <div class="ranch91-user-actions" aria-label="Signed-in administrator actions">
-        <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
-        <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
-      </div>
-      <div class="ranch91-release">V96.0.0</div>
-    </header>
-
-    <main id="ranchMain" class="ranch91-main">
-      <section class="ranch91-modebar" id="ranch92Modebar">
-        <strong id="ranch92ModeTitle">Checking backend configuration…</strong>
-        <span id="ranch92ModeDetail">Please wait.</span>
-        <small id="ranch92LastUpdated"></small>
-      </section>
-      <section class="ranch91-warning" id="ranch91AccessWarning" aria-live="polite">
-        <strong>Checking Cloudflare Access protection…</strong>
-        <span>Please wait while HQ verifies your secure session.</span>
-      </section>
-
-      <section class="ranch-view active" data-view-panel="overview">
-        <div class="ranch91-summary">
-          <article><span>Upcoming classes</span><strong id="overviewUpcoming">—</strong></article>
-          <article><span>Places booked</span><strong id="overviewBooked">—</strong></article>
-          <article><span>Revenue</span><strong id="overviewRevenue">—</strong></article>
-          <article><span>Media files</span><strong id="overviewMedia">—</strong></article>
-        </div>
-
-        
-        <section class="ranch91-card known-test-cleanup" id="knownTestCleanupCard">
-          <div class="ranch91-card-head">
-            <div>
-              <p class="kicker red">Temporary test cleanup</p>
-              <h2>Remove the three 26 August test bookings</h2>
-              <p>This control targets only the three unpaid manual bookings created on 3 August for Boot Scootin’ Special. It cannot delete other bookings.</p>
-            </div>
-            <button id="cleanupKnownAugustTests" class="button" type="button">Delete 3 test bookings</button>
-          </div>
-          <div id="knownTestCleanupStatus" class="known-test-cleanup-status">
+<a class="skip-link" href="#ranchMain">Skip to HQ content</a>
+<div class="ranch91-backdrop" hidden="" id="ranch91Backdrop"></div>
+<aside aria-hidden="true" class="ranch91-drawer" id="ranch91Drawer">
+<div class="ranch91-drawer-head">
+<div class="ranch91-brand">
+<img alt="" height="52" src="favicon.png" width="52"/>
+<div>
+<strong>BOOT SCOOTIN’</strong>
+<span>HQ MANAGEMENT</span>
+</div>
+</div>
+<button aria-label="Close HQ menu" class="ranch91-close" id="ranch91Close" type="button">×</button>
+</div>
+<nav aria-label="HQ sections" class="ranch91-nav">
+<button class="active" data-view="overview" type="button">Overview</button>
+<button data-view="classes" type="button">Classes</button>
+<button data-view="bookings" type="button">Bookings</button>
+<button data-view="customers" type="button">Customers</button>
+<button data-view="emails" type="button">Emails &amp; Mailing List</button>
+<button data-view="promotions" type="button">Promotions &amp; Rewards</button>
+<button data-view="operations" type="button">Operations</button>
+<button data-view="private-events" type="button">Private Events</button>
+<button data-view="media" type="button">Media</button>
+<button data-view="health" type="button">System Health</button>
+<button data-view="diagnostics" type="button">Diagnostics</button>
+<button data-view="settings" type="button">Settings</button>
+</nav>
+<div class="ranch91-drawer-foot">
+<div class="ranch91-drawer-user">
+<strong id="ranch91DrawerWelcome">Welcome, Nora</strong>
+<span>Authorised HQ administrator</span>
+</div>
+<a class="ranch91-logout ranch91-logout-menu" data-hq-logout="" href="/cdn-cgi/access/logout">Log Out Securely</a>
+<a href="index.html">Back to Website</a>
+<div class="ranch91-public-note" id="ranch91AccessNote">
+<strong>Checking protection</strong>
+<span>Confirming your Cloudflare Access session…</span>
+</div>
+</div>
+</aside>
+<div class="ranch91-app">
+<header class="ranch91-topbar">
+<button aria-controls="ranch91Drawer" aria-expanded="false" class="ranch91-menu" id="ranch91Menu" onclick="return window.BootScootinHQMenuToggle(event)" ontouchend="return window.BootScootinHQMenuToggle(event)" type="button">
+<span aria-hidden="true"></span>
+<span>Menu</span>
+</button>
+<div class="ranch91-title">
+<p>PRIVATE MANAGEMENT AREA</p>
+<h1 id="ranch91PageTitle">HQ Home</h1>
+</div>
+<div class="hq-connection-indicator checking" id="hqConnectionIndicator"><span></span><b>Checking</b></div>
+<div aria-label="Signed-in administrator actions" class="ranch91-user-actions">
+<span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
+<a class="ranch91-logout ranch91-logout-quick" data-hq-logout="" href="/cdn-cgi/access/logout">Log Out</a>
+</div>
+<div class="ranch91-release">V96.0.0</div>
+</header>
+<main class="ranch91-main" id="ranchMain">
+<section class="ranch91-modebar" id="ranch92Modebar">
+<strong id="ranch92ModeTitle">Checking backend configuration…</strong>
+<span id="ranch92ModeDetail">Please wait.</span>
+<small id="ranch92LastUpdated"></small>
+</section>
+<section aria-live="polite" class="ranch91-warning" id="ranch91AccessWarning">
+<strong>Checking Cloudflare Access protection…</strong>
+<span>Please wait while HQ verifies your secure session.</span>
+</section>
+<section class="ranch-view active" data-view-panel="overview">
+<div class="ranch91-summary">
+<article><span>Upcoming classes</span><strong id="overviewUpcoming">—</strong></article>
+<article><span>Places booked</span><strong id="overviewBooked">—</strong></article>
+<article><span>Revenue</span><strong id="overviewRevenue">—</strong></article>
+<article><span>Media files</span><strong id="overviewMedia">—</strong></article>
+</div>
+<section class="ranch91-card known-test-cleanup" id="knownTestCleanupCard">
+<div class="ranch91-card-head">
+<div>
+<p class="kicker red">Temporary test cleanup</p>
+<h2>Remove the three 26 August test bookings</h2>
+<p>This control targets only the three unpaid manual bookings created on 3 August for Boot Scootin’ Special. It cannot delete other bookings.</p>
+</div>
+<button class="button" id="cleanupKnownAugustTests" type="button">Delete 3 test bookings</button>
+</div>
+<div class="known-test-cleanup-status" id="knownTestCleanupStatus">
             The dashboard currently reports three pending test payments.
           </div>
-        </section>
-
-
-        <section class="ranch91-card">
-          <div class="ranch91-card-head">
-            <div>
-              <p class="kicker red">System Health</p>
-              <h2>Free pilot status</h2>
-              <p>Live checks show which services are ready, in test mode or still need setup.</p>
-            </div>
-            <button id="ranch91RunChecks" class="button" type="button">Run checks</button>
-          </div>
-          <div id="ranch91HealthSummary" class="ranch91-health-summary">
-            <div class="ranch91-loading">Waiting to run checks.</div>
-          </div>
-        </section>
-
-        <section class="ranch91-card">
-          <div class="ranch91-card-head">
-            <div>
-              <p class="kicker red">Command Centre</p>
-              <h2>What needs your attention</h2>
-              <p>Important setup tasks and recent activity in one place.</p>
-            </div>
-            <button id="ranch91RefreshOverview" class="button secondary compact" type="button">Refresh</button>
-          </div>
-          <div id="ranch91Attention" class="ranch91-attention">
-            <div class="ranch91-loading">Loading operational data…</div>
-          </div>
-        </section>
-
-        <section class="ranch91-card">
-          <div class="ranch91-card-head">
-            <div>
-              <p class="kicker red">Coming up</p>
-              <h2>Upcoming classes</h2>
-            </div>
-          </div>
-          <div id="ranchUpcoming" class="ranch-list">Loading…</div>
-        </section>
-
-        <section class="ranch91-card">
-          <div class="ranch91-card-head">
-            <div>
-              <p class="kicker red">Activity</p>
-              <h2>Recent changes</h2>
-            </div>
-          </div>
-          <div id="ranchRecent" class="ranch-list">Loading…</div>
-        </section>
-      </section>
-
-      <section class="ranch-view" data-view-panel="classes">
-        <div class="ranch-panel">
-          <div class="ranch-panel-head">
-            <div><p class="kicker red">Manage schedule</p><h2>Classes</h2><p>Create, edit, close or cancel classes without changing website files.</p></div>
-            <button class="button" data-open-class>Add a class</button>
-          </div>
-          <div class="ranch-filter-row">
-            <select id="ranchClassFilter" aria-label="Filter classes"><option value="upcoming">Upcoming</option><option value="all">All classes</option><option value="draft">Drafts</option><option value="closed">Closed</option></select>
-            <button class="button secondary compact" id="refreshRanch">Refresh</button>
-          </div>
-          <div id="classManagerSummary" class="class-manager-summary">
-            <article><span>Live</span><strong id="classLiveCount">—</strong></article>
-            <article><span>Drafts</span><strong id="classDraftCount">—</strong></article>
-            <article><span>Booked places</span><strong id="classBookedCount">—</strong></article>
-            <article><span>Waiting</span><strong id="classWaitingCount">—</strong></article>
-          </div>
-          <div id="ranchClasses" class="ranch-class-table">Loading…</div>
-        </div>
-      </section>
-
-      <section class="ranch-view" data-view-panel="bookings">
-        <div class="ranch-panel">
-          <div class="ranch-panel-head">
-            <div>
-              <p class="kicker red">Live class bookings</p>
-              <h2>Bookings, payments &amp; attendance</h2>
-              <p>Review every reservation, waiting-list place, payment state, cancellation and refund or credit action.</p>
-            </div>
-            <button class="button secondary compact" id="refreshBookings">Refresh</button>
-          </div>
-
-          <div class="booking-admin-stats">
-            <article><span>Active guests</span><strong id="bookingGuestTotal">—</strong></article>
-            <article><span>Paid revenue</span><strong id="bookingRevenueTotal">—</strong></article>
-            <article><span>Refunds / credits to review</span><strong id="bookingRefundTotal">—</strong></article>
-            <article><span>Waiting-list guests</span><strong id="bookingWaitTotal">—</strong></article>
-          </div>
-
-          <div id="refundConnectionNotice" class="refund-connection-notice" role="status">Checking SumUp refund connection…</div>
-
-          <div class="booking-admin-tools">
-            <label>Filter
+</section>
+<section class="ranch91-card">
+<div class="ranch91-card-head">
+<div>
+<p class="kicker red">System Health</p>
+<h2>Free pilot status</h2>
+<p>Live checks show which services are ready, in test mode or still need setup.</p>
+</div>
+<button class="button" id="ranch91RunChecks" type="button">Run checks</button>
+</div>
+<div class="ranch91-health-summary" id="ranch91HealthSummary">
+<div class="ranch91-loading">Waiting to run checks.</div>
+</div>
+</section>
+<section class="ranch91-card">
+<div class="ranch91-card-head">
+<div>
+<p class="kicker red">Command Centre</p>
+<h2>What needs your attention</h2>
+<p>Important setup tasks and recent activity in one place.</p>
+</div>
+<button class="button secondary compact" id="ranch91RefreshOverview" type="button">Refresh</button>
+</div>
+<div class="ranch91-attention" id="ranch91Attention">
+<div class="ranch91-loading">Loading operational data…</div>
+</div>
+</section>
+<section class="ranch91-card">
+<div class="ranch91-card-head">
+<div>
+<p class="kicker red">Coming up</p>
+<h2>Upcoming classes</h2>
+</div>
+</div>
+<div class="ranch-list" id="ranchUpcoming">Loading…</div>
+</section>
+<section class="ranch91-card">
+<div class="ranch91-card-head">
+<div>
+<p class="kicker red">Activity</p>
+<h2>Recent changes</h2>
+</div>
+</div>
+<div class="ranch-list" id="ranchRecent">Loading…</div>
+</section>
+</section>
+<section class="ranch-view" data-view-panel="classes">
+<div class="ranch-panel">
+<div class="ranch-panel-head">
+<div><p class="kicker red">Manage schedule</p><h2>Classes</h2><p>Create, edit, close or cancel classes without changing website files.</p></div>
+<button class="button" data-open-class="">Add a class</button>
+</div>
+<div class="ranch-filter-row">
+<select aria-label="Filter classes" id="ranchClassFilter"><option value="upcoming">Upcoming</option><option value="all">All classes</option><option value="draft">Drafts</option><option value="closed">Closed</option></select>
+<button class="button secondary compact" id="refreshRanch">Refresh</button>
+</div>
+<div class="class-manager-summary" id="classManagerSummary">
+<article><span>Live</span><strong id="classLiveCount">—</strong></article>
+<article><span>Drafts</span><strong id="classDraftCount">—</strong></article>
+<article><span>Booked places</span><strong id="classBookedCount">—</strong></article>
+<article><span>Waiting</span><strong id="classWaitingCount">—</strong></article>
+</div>
+<div class="ranch-class-table" id="ranchClasses">Loading…</div>
+</div>
+</section>
+<section class="ranch-view" data-view-panel="bookings">
+<div class="ranch-panel">
+<div class="ranch-panel-head">
+<div>
+<p class="kicker red">Live class bookings</p>
+<h2>Bookings, payments &amp; attendance</h2>
+<p>Review every reservation, waiting-list place, payment state, cancellation and refund or credit action.</p>
+</div>
+<button class="button secondary compact" id="refreshBookings">Refresh</button>
+</div>
+<div class="booking-admin-stats">
+<article><span>Active guests</span><strong id="bookingGuestTotal">—</strong></article>
+<article><span>Paid revenue</span><strong id="bookingRevenueTotal">—</strong></article>
+<article><span>Refunds / credits to review</span><strong id="bookingRefundTotal">—</strong></article>
+<article><span>Waiting-list guests</span><strong id="bookingWaitTotal">—</strong></article>
+</div>
+<div class="refund-connection-notice" id="refundConnectionNotice" role="status">Checking SumUp refund connection…</div>
+<div class="booking-admin-tools">
+<label>Filter
               <select id="bookingAdminFilter">
-                <option value="all">All bookings</option>
-                <option value="active">Active</option>
-                <option value="PAID">Paid</option>
-                <option value="PENDING">Pending payment</option>
-                <option value="CANCELLED">Cancelled</option>
-                <option value="REFUNDED">Refunded</option>
-                <option value="REFUND_DUE">Refund due</option>
-                <option value="REFUND_PROCESSING">Refund processing</option>
-                <option value="REFUND_FAILED">Refund failed</option>
-                <option value="refund-review">Refund / credit review</option>
-              </select>
-            </label>
-            <button class="button secondary compact" id="exportBookingsCsv" type="button">Export CSV</button>
-          </div>
-
-          
-          <section class="booking-cleanup-panel" id="bookingCleanupPanel" hidden>
-            <div>
-              <p class="kicker red">Test data cleanup</p>
-              <h3>Remove unsuccessful test bookings</h3>
-              <p>Only unpaid manual pending bookings can be removed. Their class spaces will be restored automatically.</p>
-            </div>
-            <div class="booking-cleanup-actions">
-              <strong id="testBookingCount">0 test bookings found</strong>
-              <button class="button secondary compact" id="deleteAllTestBookings" type="button">Delete all test bookings</button>
-            </div>
-          </section>
-
-          <div id="ranchBookings">Loading…</div>
-
-          <div class="ranch-panel-head waiting-list-head">
-            <div><p class="kicker red">Waiting list</p><h3>People waiting for a place</h3></div>
-          </div>
-          <div id="ranchWaitingList">Loading…</div>
-        </div>
-      </section>
-
-      
-      <section class="ranch-view" data-view-panel="customers">
-        <div class="ranch-panel">
-          <div class="ranch-panel-head">
-            <div>
-              <p class="kicker red">Customer register</p>
-              <h2>Customer CRM</h2>
-              <p>Open a complete customer profile with bookings, attendance, loyalty, spending, communications, tags and private instructor notes.</p>
-            </div>
-            <button class="button secondary compact" id="refreshCustomers">Refresh</button>
-          </div>
-          <div class="customer-admin-tools">
-            <label>Search
-              <input id="customerAdminSearch" type="search" placeholder="Name or email">
-            </label>
-            <button class="button secondary compact" id="exportCustomersCsv" type="button">Export CSV</button>
-          </div>
-          <div id="ranchCustomers">Loading…</div>
-        </div>
-      </section>
-
-      <section class="ranch-view" data-view-panel="emails">
-        <div class="ranch-panel">
-          <div class="ranch-panel-head">
-            <div>
-              <p class="kicker red">Customer communications</p>
-              <h2>Emails &amp; Mailing List</h2>
-              <p>Create reusable messages, contact customers who opted in, send class information and schedule campaigns.</p>
-            </div>
-            <button class="button secondary compact" id="refreshEmailCentre" type="button">Refresh</button>
-          </div>
-
-          <div class="email-centre-status" id="emailProviderStatus">Checking email connection…</div>
-
-          <div class="email-centre-grid">
-            <section class="email-centre-card">
-              <p class="kicker red">Compose</p>
-              <h3>Create an email</h3>
-              <label>Template
+<option value="all">All bookings</option>
+<option value="active">Active</option>
+<option value="PAID">Paid</option>
+<option value="PENDING">Pending payment</option>
+<option value="CANCELLED">Cancelled</option>
+<option value="REFUNDED">Refunded</option>
+<option value="REFUND_DUE">Refund due</option>
+<option value="REFUND_PROCESSING">Refund processing</option>
+<option value="REFUND_FAILED">Refund failed</option>
+<option value="refund-review">Refund / credit review</option>
+</select>
+</label>
+<button class="button secondary compact" id="exportBookingsCsv" type="button">Export CSV</button>
+</div>
+<section class="booking-cleanup-panel" hidden="" id="bookingCleanupPanel">
+<div>
+<p class="kicker red">Test data cleanup</p>
+<h3>Remove unsuccessful test bookings</h3>
+<p>Only unpaid manual pending bookings can be removed. Their class spaces will be restored automatically.</p>
+</div>
+<div class="booking-cleanup-actions">
+<strong id="testBookingCount">0 test bookings found</strong>
+<button class="button secondary compact" id="deleteAllTestBookings" type="button">Delete all test bookings</button>
+</div>
+</section>
+<div id="ranchBookings">Loading…</div>
+<div class="ranch-panel-head waiting-list-head">
+<div><p class="kicker red">Waiting list</p><h3>People waiting for a place</h3></div>
+</div>
+<div id="ranchWaitingList">Loading…</div>
+</div>
+</section>
+<section class="ranch-view" data-view-panel="customers">
+<div class="ranch-panel">
+<div class="ranch-panel-head">
+<div>
+<p class="kicker red">Customer register</p>
+<h2>Customer CRM</h2>
+<p>Open a complete customer profile with bookings, attendance, loyalty, spending, communications, tags and private instructor notes.</p>
+</div>
+<button class="button secondary compact" id="refreshCustomers">Refresh</button>
+</div>
+<div class="customer-admin-tools">
+<label>Search
+              <input id="customerAdminSearch" placeholder="Name or email" type="search"/>
+</label>
+<button class="button secondary compact" id="exportCustomersCsv" type="button">Export CSV</button>
+</div>
+<div id="ranchCustomers">Loading…</div>
+</div>
+</section>
+<section class="ranch-view" data-view-panel="emails">
+<div class="ranch-panel">
+<div class="ranch-panel-head">
+<div>
+<p class="kicker red">Customer communications</p>
+<h2>Emails &amp; Mailing List</h2>
+<p>Create reusable messages, contact customers who opted in, send class information and schedule campaigns.</p>
+</div>
+<button class="button secondary compact" id="refreshEmailCentre" type="button">Refresh</button>
+</div>
+<div class="email-centre-status" id="emailProviderStatus">Checking email connection…</div>
+<div class="email-centre-grid">
+<section class="email-centre-card">
+<p class="kicker red">Compose</p>
+<h3>Create an email</h3>
+<label>Template
                 <select id="emailTemplateSelect"><option value="">Start from blank</option></select>
-              </label>
-              <label>Audience
+</label>
+<label>Audience
                 <select id="emailAudienceType">
-                  <option value="subscribers">All mailing-list subscribers</option>
-                  <option value="all_customers">All customers</option>
-                  <option value="class_bookings">People booked onto a class</option>
-                  <option value="class_attendees">People who attended a class</option>
-                  <option value="waiting_list">People on a class waiting list</option>
-                  <option value="selected_customers">Choose individual customers</option>
-                  <option value="selected">Manual email addresses</option>
-                </select>
-              </label>
-              <label>Send from
+<option value="subscribers">All mailing-list subscribers</option>
+<option value="all_customers">All customers</option>
+<option value="class_bookings">People booked onto a class</option>
+<option value="class_attendees">People who attended a class</option>
+<option value="waiting_list">People on a class waiting list</option>
+<option value="selected_customers">Choose individual customers</option>
+<option value="selected">Manual email addresses</option>
+</select>
+</label>
+<label>Send from
                 <select id="emailSenderType">
-                  <option value="general">General / newsletter</option>
-                  <option value="bookings">Bookings</option>
-                  <option value="events">Events</option>
-                  <option value="members">Memberships</option>
-                </select>
-              </label>
-              <label id="emailClassPickerWrap" hidden>Class
+<option value="general">General / newsletter</option>
+<option value="bookings">Bookings</option>
+<option value="events">Events</option>
+<option value="members">Memberships</option>
+</select>
+</label>
+<label hidden="" id="emailClassPickerWrap">Class
                 <select id="emailClassPicker"><option value="">Choose a class</option></select>
-              </label>
-              <div id="emailCustomerPickerWrap" class="email-customer-picker" hidden>
-                <label>Find customers
-                  <input id="emailCustomerSearch" type="search" placeholder="Search by name or email">
-                </label>
-                <div class="email-picker-actions"><button type="button" id="selectAllEmailCustomers">Select all</button><button type="button" id="clearEmailCustomers">Clear</button></div>
-                <div id="emailCustomerPickerList" class="email-customer-picker-list"></div>
-              </div>
-              <label id="emailSelectedWrap" hidden>Manual email addresses
-                <textarea id="emailSelectedRecipients" rows="3" placeholder="name@example.com, another@example.com"></textarea>
-              </label>
-              <div class="email-audience-result" id="emailAudienceResult">Choose an audience to preview recipients.</div>
-              <label>Subject
-                <input id="emailSubject" maxlength="160" placeholder="Your next Boot Scootin’ class">
-              </label>
-              <label>Message
-                <textarea id="emailBody" rows="12" placeholder="Hi {{first_name}}, …"></textarea>
-              </label>
-              <p class="email-placeholder-help">Available placeholders: <code>{{first_name}}</code>, <code>{{full_name}}</code>, <code>{{class_name}}</code>, <code>{{class_date}}</code>, <code>{{class_time}}</code>, <code>{{venue}}</code>, <code>{{booking_link}}</code>, <code>{{places_remaining}}</code>.</p>
-              <label>Send time
-                <input id="emailScheduleAt" type="datetime-local">
-              </label>
-              <div class="email-compose-actions">
-                <button class="button secondary compact" id="previewEmailAudience" type="button">Preview audience</button>
-                <button class="button secondary compact" id="sendEmailTest" type="button">Send test to me</button>
-                <button class="button" id="sendEmailNow" type="button">Send now</button>
-                <button class="button secondary compact" id="scheduleEmail" type="button">Schedule</button>
-              </div>
-              <div id="emailComposeStatus" class="email-compose-status" role="status"></div>
-            </section>
-
-            <section class="email-centre-card">
-              <p class="kicker red">Templates</p>
-              <h3>Reusable messages</h3>
-              <div id="emailTemplatesList" class="email-template-list">Loading templates…</div>
-              <details class="email-template-editor">
-                <summary>Create or edit a template</summary>
-                <input id="templateId" type="hidden">
-                <label>Template name<input id="templateName" maxlength="80"></label>
-                <label>Subject<input id="templateSubject" maxlength="160"></label>
-                <label>Message<textarea id="templateBody" rows="8"></textarea></label>
-                <div class="email-compose-actions">
-                  <button class="button" id="saveEmailTemplate" type="button">Save template</button>
-                  <button class="button secondary compact" id="clearEmailTemplate" type="button">Clear</button>
-                </div>
-              </details>
-            </section>
-          </div>
-
-          <section class="email-centre-card">
-            <p class="kicker red">Automations</p>
-            <h3>Automatic customer journeys</h3>
-            <p>Marketing emails include an unsubscribe link. Essential booking and safety updates are still sent when needed.</p>
-            <div id="emailAutomationSettings" class="email-automation-settings">Loading automations…</div>
-            <button class="button" id="saveEmailAutomations" type="button">Save automation settings</button>
-            <details><summary>Recent automatic emails</summary><div id="emailAutomationHistory">No automatic emails yet.</div></details>
-          </section>
-
-          <section class="email-centre-card email-campaign-history">
-            <div class="ranch-panel-head">
-              <div><p class="kicker red">Campaigns</p><h3>Scheduled and sent emails</h3></div>
-              <button class="button secondary compact" id="processDueEmails" type="button">Process due emails</button>
-            </div>
-            <div id="emailCampaignList">Loading campaigns…</div>
-          </section>
-
-          <section class="email-centre-card">
-            <p class="kicker red">Consent register</p>
-            <h3>Mailing-list subscribers</h3>
-            <p>Only customers who opted in receive marketing campaigns. Essential booking emails remain separate.</p>
-            <div id="emailSubscriberList">Loading subscribers…</div>
-          </section>
-        </div>
-      </section>
-
+</label>
+<div class="email-customer-picker" hidden="" id="emailCustomerPickerWrap">
+<label>Find customers
+                  <input id="emailCustomerSearch" placeholder="Search by name or email" type="search"/>
+</label>
+<div class="email-picker-actions"><button id="selectAllEmailCustomers" type="button">Select all</button><button id="clearEmailCustomers" type="button">Clear</button></div>
+<div class="email-customer-picker-list" id="emailCustomerPickerList"></div>
+</div>
+<label hidden="" id="emailSelectedWrap">Manual email addresses
+                <textarea id="emailSelectedRecipients" placeholder="name@example.com, another@example.com" rows="3"></textarea>
+</label>
+<div class="email-audience-result" id="emailAudienceResult">Choose an audience to preview recipients.</div>
+<label>Subject
+                <input id="emailSubject" maxlength="160" placeholder="Your next Boot Scootin’ class"/>
+</label>
+<label>Message
+                <textarea id="emailBody" placeholder="Hi {{first_name}}, …" rows="12"></textarea>
+</label>
+<p class="email-placeholder-help">Available placeholders: <code>{{first_name}}</code>, <code>{{full_name}}</code>, <code>{{class_name}}</code>, <code>{{class_date}}</code>, <code>{{class_time}}</code>, <code>{{venue}}</code>, <code>{{booking_link}}</code>, <code>{{places_remaining}}</code>.</p>
+<label>Send time
+                <input id="emailScheduleAt" type="datetime-local"/>
+</label>
+<div class="email-compose-actions">
+<button class="button secondary compact" id="previewEmailAudience" type="button">Preview audience</button>
+<button class="button secondary compact" id="sendEmailTest" type="button">Send test to me</button>
+<button class="button" id="sendEmailNow" type="button">Send now</button>
+<button class="button secondary compact" id="scheduleEmail" type="button">Schedule</button>
+</div>
+<div class="email-compose-status" id="emailComposeStatus" role="status"></div>
+</section>
+<section class="email-centre-card">
+<p class="kicker red">Templates</p>
+<h3>Reusable messages</h3>
+<div class="email-template-list" id="emailTemplatesList">Loading templates…</div>
+<details class="email-template-editor">
+<summary>Create or edit a template</summary>
+<input id="templateId" type="hidden"/>
+<label>Template name<input id="templateName" maxlength="80"/></label>
+<label>Subject<input id="templateSubject" maxlength="160"/></label>
+<label>Message<textarea id="templateBody" rows="8"></textarea></label>
+<div class="email-compose-actions">
+<button class="button" id="saveEmailTemplate" type="button">Save template</button>
+<button class="button secondary compact" id="clearEmailTemplate" type="button">Clear</button>
+</div>
+</details>
+</section>
+</div>
+<section class="email-centre-card">
+<p class="kicker red">Automations</p>
+<h3>Automatic customer journeys</h3>
+<p>Marketing emails include an unsubscribe link. Essential booking and safety updates are still sent when needed.</p>
+<div class="email-automation-settings" id="emailAutomationSettings">Loading automations…</div>
+<button class="button" id="saveEmailAutomations" type="button">Save automation settings</button>
+<details><summary>Recent automatic emails</summary><div id="emailAutomationHistory">No automatic emails yet.</div></details>
+</section>
+<section class="email-centre-card email-campaign-history">
+<div class="ranch-panel-head">
+<div><p class="kicker red">Campaigns</p><h3>Scheduled and sent emails</h3></div>
+<button class="button secondary compact" id="processDueEmails" type="button">Process due emails</button>
+</div>
+<div id="emailCampaignList">Loading campaigns…</div>
+</section>
+<section class="email-centre-card">
+<p class="kicker red">Consent register</p>
+<h3>Mailing-list subscribers</h3>
+<p>Only customers who opted in receive marketing campaigns. Essential booking emails remain separate.</p>
+<div id="emailSubscriberList">Loading subscribers…</div>
+</section>
+</div>
+</section>
 <section class="ranch-view" data-view-panel="promotions">
-        <div class="ranch-section-head"><div><p class="kicker">Marketing tools</p><h2>Promotions &amp; Rewards</h2><p>Create public promo codes and monitor automatic birthday and loyalty rewards.</p></div><button type="button" id="refreshPromotions" class="ranch-button secondary">Refresh</button></div>
-        <div class="ranch-grid two">
-          <article class="ranch-card">
-            <h3>Create a promotion</h3>
-            <div class="ranch-form-grid">
-              <label>Promotion name<input id="promoAdminName" placeholder="e.g. Anniversary offer"></label>
-              <label>Public code<input id="promoAdminCode" placeholder="e.g. BOOTS20"></label>
-              <label>Discount type<select id="promoAdminType"><option value="PERCENT">Percentage</option><option value="FIXED">Fixed amount</option><option value="FREE">Free class</option></select></label>
-              <label>Discount value<input id="promoAdminValue" type="number" min="1" value="20"><small>Percentage, or pence for a fixed discount.</small></label>
-              <label>Start date<input id="promoAdminStart" type="datetime-local"></label>
-              <label>End date<input id="promoAdminEnd" type="datetime-local"></label>
-              <label>Maximum uses<input id="promoAdminMaxUses" type="number" min="1" placeholder="Unlimited"></label>
-              <label>Uses per customer<input id="promoAdminPerCustomer" type="number" min="1" value="1"></label>
-            </div>
-            <button type="button" id="createPromotion" class="ranch-button">Create promotion</button>
-          </article>
-          <article class="ranch-card">
-            <h3>Automatic rewards</h3>
-            <p><strong>Birthday:</strong> personal 20% code, one use, valid for 30 days.</p>
-            <p><strong>Loyalty:</strong> after nine attended classes, a personal free-class code valid for 90 days.</p>
-            <p>Personal codes are tied to the customer email address and cannot be used by someone else.</p>
-          </article>
-        </div>
-        <div id="promotionList" class="ranch-stack"><div class="ranch-loading">Loading promotions…</div></div>
-      </section>
-
-      <section class="ranch-view" data-view-panel="operations">
-        <div class="ranch-panel">
-          <div class="ranch-panel-head">
-            <div>
-              <p class="kicker red">V90.2 verified release</p>
-              <h2>Daily Operations Centre</h2>
-              <p>Today’s classes, guests, revenue, pending payments, waiting-list pressure and operational actions in one place.</p>
-            </div>
-            <button class="button secondary compact" id="refreshOperations" type="button">Refresh</button>
-          </div>
-
-          <div class="operations-summary-grid">
-            <article><span>Today’s classes</span><strong id="opsTodayClasses">—</strong></article>
-            <article><span>Today’s guests</span><strong id="opsTodayGuests">—</strong></article>
-            <article><span>Paid revenue</span><strong id="opsPaidRevenue">—</strong></article>
-            <article><span>Pending payments</span><strong id="opsPendingPayments">—</strong></article>
-            <article><span>Waiting-list guests</span><strong id="opsWaitingGuests">—</strong></article>
-            <article><span>Refund / credit review</span><strong id="opsRefundReview">—</strong></article>
-          </div>
-
-          <div class="operations-grid">
-            <section class="operations-card">
-              <div class="ranch-panel-head">
-                <div><p class="kicker red">Action queue</p><h3>Needs attention</h3></div>
-              </div>
-              <div id="operationsQueue">Loading…</div>
-            </section>
-
-            <section class="operations-card">
-              <div class="ranch-panel-head">
-                <div><p class="kicker red">Recent activity</p><h3>Latest changes</h3></div>
-              </div>
-              <div id="operationsActivity">Loading…</div>
-            </section>
-          </div>
-
-          <section class="operations-card operations-register">
-            <div class="ranch-panel-head">
-              <div><p class="kicker red">Class register</p><h3>Today and next up</h3></div>
-              <button class="button secondary compact" id="printOperationsRegister" type="button">Print register</button>
-            </div>
-            <div id="operationsClasses">Loading…</div>
-          </section>
-        </div>
-      </section>
-
-      <section class="ranch-view" data-view-panel="private-events">
-        <div class="ranch-panel">
-          <div class="ranch-panel-head"><div><p class="kicker red">Inquiries, quotes & confirmed events</p><h2>Private Event Dashboard</h2><p>Review each request, negotiate details, prepare an itemised quote and track deposit, balance and confirmation status. Customer details stay hidden until Cloudflare Access protects HQ.</p></div><button class="button secondary compact" id="refreshPrivateEvents">Refresh</button></div>
-          <div class="private-dashboard-flow" aria-label="Private event workflow"><span>1. Inquiry</span><b>›</b><span>2. Review</span><b>›</b><span>3. Quote</span><b>›</b><span>4. Deposit or Full Payment</span><b>›</b><span>5. Confirmed</span></div>
-          <div class="travel-policy"><strong>Default travel policy</strong><span>15 miles each way from B5 included. Beyond that, add an agreed travel fee. Journeys over 30 miles each way should be quoted individually.</span></div>
-          <div id="ranchPrivateEvents" class="private-event-admin-list">Loading…</div>
-        </div>
-      </section>
-
-
-      <section class="ranch-view" data-view-panel="media">
-        <div class="ranch-grid-2 ranch-media-layout">
-          <section class="ranch-panel">
-            <div class="ranch-panel-head"><div><p class="kicker red">Media Manager</p><h2>Upload a file</h2><p>Upload photos, videos and PDFs without adding them to GitHub.</p></div><button class="button secondary compact" id="checkMediaBackend" type="button">Check connection</button></div><div id="mediaBackendStatus" class="hq-backend-status" aria-live="polite"><strong>Checking media connection…</strong><span>HQ will show exactly what needs configuring.</span></div>
-            <form id="mediaUploadForm" class="ranch-media-form">
-              <label>Choose file<input id="mediaFile" name="file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov,application/pdf" required></label>
-              <label>Display name<input name="title" type="text" required placeholder="Summer Stomp video"></label>
-              <label>Use on the website<select name="placement"><option value="library">Media library only</option><option value="summer-stomp-story">Summer Stomp story video</option><option value="country-guide">Country Guide</option><option value="homepage">Homepage</option><option value="dance-library">Dance Library</option></select></label>
-              <label>Alternative text / description<textarea name="description" rows="3" placeholder="Describe the image or video for accessibility."></textarea></label>
-              <label class="community-rules-check"><input name="published" type="checkbox" value="1" checked><span>Publish this file for use on the website</span></label>
-              <div class="ranch-upload-progress" id="mediaUploadProgress" hidden><span></span></div>
-              <p id="mediaUploadMessage" class="form-message" aria-live="polite"></p>
-              <button class="button booking-submit" type="submit">Upload to HQ</button>
-              <p class="ranch-media-help">Supported: JPG, PNG, WebP, MP4, WebM, MOV and PDF. Maximum 80 MB per upload. MP4 is recommended for reliable playback on every device. Videos remain on your own website and never open iCloud.</p>
-            </form>
-          </section>
-          <section class="ranch-panel">
-            <div class="ranch-panel-head"><div><p class="kicker red">Library</p><h2>Your media</h2><p>Copy a file link, change its placement or remove it.</p></div><button class="button secondary compact" id="refreshMedia">Refresh</button></div>
-            <div id="ranchMedia" class="ranch-media-list">Loading…</div>
-          </section>
-        </div>
-      </section>
-
-      
-      <section class="ranch-view" data-view-panel="health">
-        <div class="ranch-panel">
-          <div class="ranch-panel-head"><div><p class="kicker red">Live checks</p><h2>System Health</h2><p>This page never displays secret keys. It only confirms whether each free-pilot service is configured and responding.</p></div><button class="button secondary compact" id="refreshHealth">Run checks</button></div>
-          <div class="hq-health-grid" id="hqHealthGrid">
-            <article class="hq-health-card"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>Please wait.</small></div></article>
-          </div>
-          <div class="hq-pilot-rules">
-            <h3>Free pilot safeguards</h3>
-            <ul>
-              <li>Collect only name, email, class, quantity and payment status.</li>
-              <li>Do not collect medical details or sensitive free-text notes.</li>
-              <li>Keep payments in SumUp sandbox until all tests pass.</li>
-              <li>Do not invite public member sign-ups during the owner-only alpha.</li>
-              <li>Use Cloudflare Access for HQ and never commit secrets to GitHub.</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      
-      <section class="ranch-view" data-view-panel="diagnostics">
-        <section class="ranch91-card">
-          <div class="ranch91-card-head">
-            <div>
-              <p class="kicker red">Frontend diagnostics</p>
-              <h2>HQ Request Monitor</h2>
-              <p>Records HQ API timing, status codes and JavaScript errors without showing secret keys.</p>
-            </div>
-            <div class="diagnostic-actions">
-              <button id="runDiagnosticTests" class="button compact" type="button">Run tests</button>
-              <button id="copyDiagnosticReport" class="button secondary compact" type="button">Copy report</button>
-              <button id="clearDiagnosticLog" class="button secondary compact" type="button">Clear</button>
-            </div>
-          </div>
-          <div class="diagnostic-summary-grid">
-            <article><span>Bootstrap</span><strong id="diagBootstrap">Not tested</strong></article>
-            <article><span>Health</span><strong id="diagHealth">Not tested</strong></article>
-            <article><span>Last request</span><strong id="diagLastRequest">—</strong></article>
-            <article><span>Frontend errors</span><strong id="diagErrorCount">0</strong></article>
-          </div>
-          <div class="diagnostic-note"><strong>Privacy:</strong> no API keys, payment-card data or customer records are included.</div>
-          <div id="diagnosticLog" class="diagnostic-log"><div class="ranch-empty">No diagnostic events recorded yet.</div></div>
-        </section>
-      </section>
-
-      <section class="ranch-view" data-view-panel="settings">
-        <section class="ranch91-card ranch92-setup-card">
-          <div class="ranch91-card-head">
-            <div>
-              <p class="kicker red">Backend integration</p>
-              <h2>Connection status</h2>
-              <p>This section shows exactly which Cloudflare and SumUp connections are available.</p>
-            </div>
-            <button id="ranch92RefreshSetup" class="button secondary compact" type="button">Refresh</button>
-          </div>
-          <div id="ranch92SetupStatus" class="ranch92-setup-status">Loading…</div>
-        </section>
-
-        <div class="ranch-grid-2">
-          <section class="ranch-panel"><p class="kicker red">Free pilot</p><h2>Low-cost launch checklist</h2><ul class="ranch-checklist"><li>Protect HQ pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Use test data and test every booking and capacity rule</li><li>Connect SumUp Sandbox before any live payments</li><li>Review ICO fee status before public member accounts launch</li></ul></section>
-          <section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Not connected yet. This is safe: no card details are collected and no live booking is confirmed.</p><div class="ranch-connection"><span></span> Awaiting sandbox connection</div></section>
-        </div>
-      </section>
-    
-      
-    </main>
-  </div>
-
-
-  <div class="hq-modal" id="classEditorModal" hidden>
-    <div class="hq-modal-backdrop" data-close-class-modal></div>
-    <section class="hq-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="classEditorTitle">
-      <div class="hq-modal-head">
-        <div><p class="kicker red">Class manager</p><h2 id="classEditorTitle">Create class</h2></div>
-        <button type="button" class="hq-modal-close" data-close-class-modal aria-label="Close class editor">×</button>
-      </div>
-      <form id="classEditorForm" class="hq-class-form">
-        <input type="hidden" name="id">
-        <label>Class title<input name="title" type="text" required maxlength="160" placeholder="Friday Line Dancing"></label>
-        <div class="hq-form-grid">
-          <label>Venue<input name="venue" type="text" required maxlength="160" placeholder="Edgbaston Community Centre"></label>
-          <label>Location<input name="location" type="text" required maxlength="240" placeholder="Birmingham"></label>
-        </div>
-        <div class="hq-form-grid">
-          <label>Starts<input name="starts_at" type="datetime-local" required></label>
-          <label>Ends<input name="ends_at" type="datetime-local"></label>
-        </div>
-        <div class="hq-form-grid three">
-          <label>Price (£)<input name="price_gbp" type="number" min="0" step="0.01" value="6.00" required></label>
-          <label>Capacity<input name="capacity" type="number" min="1" step="1" value="20" required></label>
-          <label>Status<select name="status"><option value="draft">Draft</option><option value="open">Open</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label>
-        </div>
-        <label>Level<input name="level" type="text" maxlength="80" value="Beginner friendly"></label>
-        <label>Public notes<textarea name="public_notes" rows="4" maxlength="600"></textarea></label>
-        <p id="classEditorMessage" class="form-message" aria-live="polite"></p>
-        <div class="hq-modal-actions">
-          <button type="button" class="button secondary" data-close-class-modal>Cancel</button>
-          <button type="submit" class="button" id="saveClassButton">Save class</button>
-        </div>
-      </form>
-    </section>
-  </div>
-
-  <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
-
-
-  <dialog id="customerCrmDialog" class="crm-dialog">
-    <div class="crm-dialog-shell">
-      <button type="button" class="crm-close" id="closeCustomerCrm" aria-label="Close customer profile">×</button>
-      <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
-    </div>
-  </dialog>
-  <script src="ranch.js?v=95.0.0"></script>
-
-  <script>
+<div class="ranch-section-head"><div><p class="kicker">Marketing tools</p><h2>Promotions &amp; Rewards</h2><p>Create public promo codes and monitor automatic birthday and loyalty rewards.</p></div><button class="ranch-button secondary" id="refreshPromotions" type="button">Refresh</button></div>
+<div class="ranch-grid two">
+<article class="ranch-card">
+<h3>Create a promotion</h3>
+<div class="ranch-form-grid">
+<label>Promotion name<input id="promoAdminName" placeholder="e.g. Anniversary offer"/></label>
+<label>Public code<input id="promoAdminCode" placeholder="e.g. BOOTS20"/></label>
+<label>Discount type<select id="promoAdminType"><option value="PERCENT">Percentage</option><option value="FIXED">Fixed amount</option><option value="FREE">Free class</option></select></label>
+<label>Discount value<input id="promoAdminValue" min="1" type="number" value="20"/><small>Percentage, or pence for a fixed discount.</small></label>
+<label>Start date<input id="promoAdminStart" type="datetime-local"/></label>
+<label>End date<input id="promoAdminEnd" type="datetime-local"/></label>
+<label>Maximum uses<input id="promoAdminMaxUses" min="1" placeholder="Unlimited" type="number"/></label>
+<label>Uses per customer<input id="promoAdminPerCustomer" min="1" type="number" value="1"/></label>
+</div>
+<button class="ranch-button" id="createPromotion" type="button">Create promotion</button>
+</article>
+<article class="ranch-card">
+<h3>Automatic rewards</h3>
+<p><strong>Birthday:</strong> personal 20% code, one use, valid for 30 days.</p>
+<p><strong>Loyalty:</strong> after nine attended classes, a personal free-class code valid for 90 days.</p>
+<p>Personal codes are tied to the customer email address and cannot be used by someone else.</p>
+</article>
+</div>
+<div class="ranch-stack" id="promotionList"><div class="ranch-loading">Loading promotions…</div></div>
+</section>
+<section class="ranch-view" data-view-panel="operations">
+<div class="ranch-panel">
+<div class="ranch-panel-head">
+<div>
+<p class="kicker red">V90.2 verified release</p>
+<h2>Daily Operations Centre</h2>
+<p>Today’s classes, guests, revenue, pending payments, waiting-list pressure and operational actions in one place.</p>
+</div>
+<button class="button secondary compact" id="refreshOperations" type="button">Refresh</button>
+</div>
+<div class="operations-summary-grid">
+<article><span>Today’s classes</span><strong id="opsTodayClasses">—</strong></article>
+<article><span>Today’s guests</span><strong id="opsTodayGuests">—</strong></article>
+<article><span>Paid revenue</span><strong id="opsPaidRevenue">—</strong></article>
+<article><span>Pending payments</span><strong id="opsPendingPayments">—</strong></article>
+<article><span>Waiting-list guests</span><strong id="opsWaitingGuests">—</strong></article>
+<article><span>Refund / credit review</span><strong id="opsRefundReview">—</strong></article>
+</div>
+<div class="operations-grid">
+<section class="operations-card">
+<div class="ranch-panel-head">
+<div><p class="kicker red">Action queue</p><h3>Needs attention</h3></div>
+</div>
+<div id="operationsQueue">Loading…</div>
+</section>
+<section class="operations-card">
+<div class="ranch-panel-head">
+<div><p class="kicker red">Recent activity</p><h3>Latest changes</h3></div>
+</div>
+<div id="operationsActivity">Loading…</div>
+</section>
+</div>
+<section class="operations-card operations-register">
+<div class="ranch-panel-head">
+<div><p class="kicker red">Class register</p><h3>Today and next up</h3></div>
+<button class="button secondary compact" id="printOperationsRegister" type="button">Print register</button>
+</div>
+<div id="operationsClasses">Loading…</div>
+</section>
+</div>
+</section>
+<section class="ranch-view" data-view-panel="private-events">
+<div class="ranch-panel">
+<div class="ranch-panel-head"><div><p class="kicker red">Inquiries, quotes &amp; confirmed events</p><h2>Private Event Dashboard</h2><p>Review each request, negotiate details, prepare an itemised quote and track deposit, balance and confirmation status. Customer details stay hidden until Cloudflare Access protects HQ.</p></div><button class="button secondary compact" id="refreshPrivateEvents">Refresh</button></div>
+<div aria-label="Private event workflow" class="private-dashboard-flow"><span>1. Inquiry</span><b>›</b><span>2. Review</span><b>›</b><span>3. Quote</span><b>›</b><span>4. Deposit or Full Payment</span><b>›</b><span>5. Confirmed</span></div>
+<div class="travel-policy"><strong>Default travel policy</strong><span>15 miles each way from B5 included. Beyond that, add an agreed travel fee. Journeys over 30 miles each way should be quoted individually.</span></div>
+<div class="private-event-admin-list" id="ranchPrivateEvents">Loading…</div>
+</div>
+</section>
+<section class="ranch-view" data-view-panel="media">
+<div class="ranch-grid-2 ranch-media-layout">
+<section class="ranch-panel">
+<div class="ranch-panel-head"><div><p class="kicker red">Media Manager</p><h2>Upload a file</h2><p>Upload photos, videos and PDFs without adding them to GitHub.</p></div><button class="button secondary compact" id="checkMediaBackend" type="button">Check connection</button></div><div aria-live="polite" class="hq-backend-status" id="mediaBackendStatus"><strong>Checking media connection…</strong><span>HQ will show exactly what needs configuring.</span></div>
+<form class="ranch-media-form" id="mediaUploadForm">
+<label>Choose file<input accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov,application/pdf" id="mediaFile" name="file" required="" type="file"/></label>
+<label>Display name<input name="title" placeholder="Summer Stomp video" required="" type="text"/></label>
+<label>Use on the website<select name="placement"><option value="library">Media library only</option><option value="summer-stomp-story">Summer Stomp story video</option><option value="country-guide">Country Guide</option><option value="homepage">Homepage</option><option value="dance-library">Dance Library</option></select></label>
+<label>Alternative text / description<textarea name="description" placeholder="Describe the image or video for accessibility." rows="3"></textarea></label>
+<label class="community-rules-check"><input checked="" name="published" type="checkbox" value="1"/><span>Publish this file for use on the website</span></label>
+<div class="ranch-upload-progress" hidden="" id="mediaUploadProgress"><span></span></div>
+<p aria-live="polite" class="form-message" id="mediaUploadMessage"></p>
+<button class="button booking-submit" type="submit">Upload to HQ</button>
+<p class="ranch-media-help">Supported: JPG, PNG, WebP, MP4, WebM, MOV and PDF. Maximum 80 MB per upload. MP4 is recommended for reliable playback on every device. Videos remain on your own website and never open iCloud.</p>
+</form>
+</section>
+<section class="ranch-panel">
+<div class="ranch-panel-head"><div><p class="kicker red">Library</p><h2>Your media</h2><p>Copy a file link, change its placement or remove it.</p></div><button class="button secondary compact" id="refreshMedia">Refresh</button></div>
+<div class="ranch-media-list" id="ranchMedia">Loading…</div>
+</section>
+</div>
+</section>
+<section class="ranch-view" data-view-panel="health">
+<div class="ranch-panel">
+<div class="ranch-panel-head"><div><p class="kicker red">Live checks</p><h2>System Health</h2><p>This page never displays secret keys. It only confirms whether each free-pilot service is configured and responding.</p></div><button class="button secondary compact" id="refreshHealth">Run checks</button></div>
+<div class="hq-health-grid" id="hqHealthGrid">
+<article class="hq-health-card"><span class="health-dot checking"></span><div><strong>Checking services…</strong><small>Please wait.</small></div></article>
+</div>
+<div class="hq-pilot-rules">
+<h3>Free pilot safeguards</h3>
+<ul>
+<li>Collect only name, email, class, quantity and payment status.</li>
+<li>Do not collect medical details or sensitive free-text notes.</li>
+<li>Keep payments in SumUp sandbox until all tests pass.</li>
+<li>Do not invite public member sign-ups during the owner-only alpha.</li>
+<li>Use Cloudflare Access for HQ and never commit secrets to GitHub.</li>
+</ul>
+</div>
+</div>
+</section>
+<section class="ranch-view" data-view-panel="diagnostics">
+<section class="ranch91-card">
+<div class="ranch91-card-head">
+<div>
+<p class="kicker red">Frontend diagnostics</p>
+<h2>HQ Request Monitor</h2>
+<p>Records HQ API timing, status codes and JavaScript errors without showing secret keys.</p>
+</div>
+<div class="diagnostic-actions">
+<button class="button compact" id="runDiagnosticTests" type="button">Run tests</button>
+<button class="button secondary compact" id="copyDiagnosticReport" type="button">Copy report</button>
+<button class="button secondary compact" id="clearDiagnosticLog" type="button">Clear</button>
+</div>
+</div>
+<div class="diagnostic-summary-grid">
+<article><span>Bootstrap</span><strong id="diagBootstrap">Not tested</strong></article>
+<article><span>Health</span><strong id="diagHealth">Not tested</strong></article>
+<article><span>Last request</span><strong id="diagLastRequest">—</strong></article>
+<article><span>Frontend errors</span><strong id="diagErrorCount">0</strong></article>
+</div>
+<div class="diagnostic-note"><strong>Privacy:</strong> no API keys, payment-card data or customer records are included.</div>
+<div class="diagnostic-log" id="diagnosticLog"><div class="ranch-empty">No diagnostic events recorded yet.</div></div>
+</section>
+</section>
+<section class="ranch-view" data-view-panel="settings">
+<section class="ranch91-card ranch92-setup-card">
+<div class="ranch91-card-head">
+<div>
+<p class="kicker red">Backend integration</p>
+<h2>Connection status</h2>
+<p>This section shows exactly which Cloudflare and SumUp connections are available.</p>
+</div>
+<button class="button secondary compact" id="ranch92RefreshSetup" type="button">Refresh</button>
+</div>
+<div class="ranch92-setup-status" id="ranch92SetupStatus">Loading…</div>
+</section>
+<div class="ranch-grid-2">
+<section class="ranch-panel"><p class="kicker red">Free pilot</p><h2>Low-cost launch checklist</h2><ul class="ranch-checklist"><li>Protect HQ pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Use test data and test every booking and capacity rule</li><li>Connect SumUp Sandbox before any live payments</li><li>Review ICO fee status before public member accounts launch</li></ul></section>
+<section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Not connected yet. This is safe: no card details are collected and no live booking is confirmed.</p><div class="ranch-connection"><span></span> Awaiting sandbox connection</div></section>
+</div>
+</section>
+</main>
+</div>
+<div class="hq-modal" hidden="" id="classEditorModal">
+<div class="hq-modal-backdrop" data-close-class-modal=""></div>
+<section aria-labelledby="classEditorTitle" aria-modal="true" class="hq-modal-dialog" role="dialog">
+<div class="hq-modal-head">
+<div><p class="kicker red">Class manager</p><h2 id="classEditorTitle">Create class</h2></div>
+<button aria-label="Close class editor" class="hq-modal-close" data-close-class-modal="" type="button">×</button>
+</div>
+<form class="hq-class-form" id="classEditorForm">
+<input name="id" type="hidden"/>
+<label>Class title<input maxlength="160" name="title" placeholder="Friday Line Dancing" required="" type="text"/></label>
+<div class="hq-form-grid">
+<label>Venue<input maxlength="160" name="venue" placeholder="Edgbaston Community Centre" required="" type="text"/></label>
+<label>Location<input maxlength="240" name="location" placeholder="Birmingham" required="" type="text"/></label>
+</div>
+<div class="hq-form-grid">
+<label>Starts<input name="starts_at" required="" type="datetime-local"/></label>
+<label>Ends<input name="ends_at" type="datetime-local"/></label>
+</div>
+<div class="hq-form-grid three">
+<label>Price (£)<input min="0" name="price_gbp" required="" step="0.01" type="number" value="6.00"/></label>
+<label>Capacity<input min="1" name="capacity" required="" step="1" type="number" value="20"/></label>
+<label>Status<select name="status"><option value="draft">Draft</option><option value="open">Open</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label>
+</div>
+<label>Level<input maxlength="80" name="level" type="text" value="Beginner friendly"/></label>
+<label>Public notes<textarea maxlength="600" name="public_notes" rows="4"></textarea></label>
+<p aria-live="polite" class="form-message" id="classEditorMessage"></p>
+<div class="hq-modal-actions">
+<button class="button secondary" data-close-class-modal="" type="button">Cancel</button>
+<button class="button" id="saveClassButton" type="submit">Save class</button>
+</div>
+</form>
+</section>
+</div>
+<div aria-live="polite" class="ranch91-toast" hidden="" id="ranch91Toast" role="status"></div>
+<dialog class="crm-dialog" id="customerCrmDialog">
+<div class="crm-dialog-shell">
+<button aria-label="Close customer profile" class="crm-close" id="closeCustomerCrm" type="button">×</button>
+<div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
+</div>
+</dialog>
+<script src="ranch.js?v=95.0.0"></script>
+<script>
   (function(){
     function initEmergencyMenu(){
       var button=document.getElementById('ranch91Menu');
