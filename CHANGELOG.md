@@ -1,6 +1,6 @@
-# Latest: v98.3.0
+# Latest: v98.4.0
 
-See CHANGELOG_v98.3.0.md.
+See CHANGELOG_v98.4.0.md.
 
 # v98.2.0 — Broadway Honky-Tonk Repair
 
@@ -570,3 +570,9 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added a neon closing statement and simplified footer.
 - Rebuilt mobile navigation as contained drill-down sections: only the selected section remains visible until the user goes back.
 - Preserved the original Boot Scootin’ silhouette logo throughout.
+
+## v98.4.0 — Full Neon Honky-Tonk Background Refresh
+- Continuous black, dark-red and subtle brick website background.
+- Dark Broadway-style homepage content sections replacing the remaining cream panels.
+- Stronger neon highlights, borders, buttons, cards and ambient bar lighting.
+- Existing functionality and responsive mobile design preserved.

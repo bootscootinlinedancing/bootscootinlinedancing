@@ -171,3 +171,56 @@ body .booking-content,body .booking-arrival-section{background:linear-gradient(r
  .neon-guitar-marquee{grid-template-columns:120px minmax(0,1fr)!important}.neon-guitar-svg{height:165px!important}.neon-guitar-marquee a span{font-size:clamp(24px,7vw,36px)!important}
 }
 @media(max-width:420px){.honky-logo-established span{font-size:8.5px!important;max-width:105px!important}.honky-header{padding-inline:14px!important}.menu45-section summary strong{font-size:22px!important}}
+
+/* =========================================================
+   v98.4.0 — FULL NEON HONKY-TONK BACKGROUND REFRESH
+   Recreates the dark Broadway bar atmosphere without using
+   a flattened screenshot, keeping all content interactive.
+   ========================================================= */
+:root{--bs-neon-red:#ff3038;--bs-deep-red:#1a0305;--bs-cream:#f4e4ca;--bs-black:#050303}
+html,body{background:#050303!important}
+body.honky-home{
+  color:var(--bs-cream);
+  background-image:
+    radial-gradient(circle at 50% -8%,rgba(190,0,13,.30),rgba(87,0,7,.14) 30%,transparent 58%),
+    radial-gradient(circle at 100% 30%,rgba(150,15,9,.15),transparent 36%),
+    radial-gradient(circle at 0% 70%,rgba(115,0,7,.14),transparent 38%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 35px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.009) 0 1px,transparent 1px 70px),
+    linear-gradient(180deg,#080303,#120304 30%,#080303 64%,#030202)!important;
+  background-attachment:fixed!important;
+}
+body.honky-home:before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.72),transparent 17%,transparent 83%,rgba(0,0,0,.72)),linear-gradient(180deg,rgba(0,0,0,.10),transparent 32%,rgba(0,0,0,.42))}
+body.honky-home:after{content:"";position:fixed;width:80vw;height:420px;top:-270px;left:10vw;z-index:-1;pointer-events:none;background:rgba(255,0,20,.20);filter:blur(100px);border-radius:50%}
+.home-v963 main{background:transparent!important}
+.home-v963 .cream-home{
+  color:var(--bs-cream)!important;
+  background:
+    radial-gradient(circle at 78% 12%,rgba(190,20,25,.14),transparent 32%),
+    linear-gradient(145deg,rgba(35,5,6,.96),rgba(7,2,2,.98)),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 1px,transparent 1px 34px)!important;
+  border-block:1px solid rgba(255,58,63,.28)!important;
+  box-shadow:inset 0 0 70px rgba(124,0,7,.14),0 0 25px rgba(196,0,15,.10)!important;
+}
+.home-v963 .meet-copy>p:not(.section-label):not(.handwritten),
+.home-v963 .private-home p,
+.home-v963 .home-class-card p{color:rgba(255,237,215,.82)!important}
+.home-v963 .section-label,.home-v963 .home-class-card h3{color:#fff0dc!important}
+.home-v963 .meet-copy h2,.home-v963 .private-home h2,.home-v963 .handwritten{color:#ff4049!important;text-shadow:0 0 8px rgba(255,39,50,.42),0 0 22px rgba(255,39,50,.20)}
+.home-v963 .paper-link,.home-v963 .home-title-row>a{color:#ffe8d4!important;border-color:#ff3c45!important;text-shadow:0 0 7px rgba(255,48,56,.35)}
+.home-v963 .paper-link{background:rgba(80,3,8,.34)!important;box-shadow:0 0 12px rgba(255,34,43,.15),inset 0 0 14px rgba(255,34,43,.08)}
+.home-v963 .nora-polaroid{background:linear-gradient(145deg,#2a0b0c,#100404)!important;border:1px solid #76252a!important;box-shadow:0 0 0 1px rgba(255,70,77,.05),0 16px 34px rgba(0,0,0,.55),0 0 24px rgba(196,0,15,.16)!important}
+.home-v963 .nora-polaroid figcaption{color:#ffe9d4!important;text-shadow:0 0 7px rgba(255,47,56,.24)}
+.home-v963 .home-class-card{background:linear-gradient(145deg,#1a0908,#070202)!important;border:1px solid #6f262b!important;box-shadow:0 9px 24px rgba(0,0,0,.48),0 0 18px rgba(180,0,15,.10)!important}
+.home-v963 .home-class-card a{background:linear-gradient(180deg,#c30c18,#71050b)!important;border:1px solid #ff4a51!important;box-shadow:0 0 9px rgba(255,28,40,.34)!important}
+.home-v963 .day-tag{background:#220708!important;border:1px solid #74262b!important;color:#ffe9d4!important}
+.home-v963 .lower-home{border-top:1px solid rgba(255,58,63,.24)!important}
+.home-v963 .private-home{border-top-color:#5c2024!important}
+.home-v963 .mini-gallery img,.home-v963 .event-polaroids img{border-color:#2a0b0c!important;background:#2a0b0c!important;box-shadow:0 8px 24px rgba(0,0,0,.58),0 0 14px rgba(180,0,15,.12)!important}
+.home-v963 .why-strip,.home-v963 .review-wall,.home-v963 .community-neon,.home-v963 .saloon-signoff{position:relative;isolation:isolate}
+.home-v963 .why-strip:before,.home-v963 .review-wall:before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.010) 0 1px,transparent 1px 35px)}
+.home-v963 .primary-cta,.home-v963 .secondary-cta{border-radius:5px;box-shadow:0 0 8px rgba(255,28,40,.42),0 0 22px rgba(192,0,15,.22),inset 0 1px rgba(255,255,255,.12)}
+.home-v963 .secondary-cta{border-color:rgba(255,240,220,.74)!important;background:rgba(3,2,2,.66)!important}
+.home-v963 .section-label:after{box-shadow:0 0 7px rgba(255,32,42,.9),0 0 18px rgba(255,25,37,.45)}
+.home-v963 .professional-footer{box-shadow:inset 0 20px 50px rgba(0,0,0,.48)}
+@media(max-width:700px){body.honky-home{background-attachment:scroll!important;background-size:auto,auto,auto,100% 28px,56px 28px,auto!important}.home-v963 .cream-home{box-shadow:inset 0 0 45px rgba(124,0,7,.12)!important}}
