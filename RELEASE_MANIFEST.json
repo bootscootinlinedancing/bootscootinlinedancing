@@ -1,18 +1,16 @@
 {
-  "release": "V93.0.0 AUTOMATIC SUMUP REFUNDS OAUTH",
-  "version": "93.1.0",
-  "release_name": "Booking Management & Email Centre",
-  "description": "Adds the complete SumUp authorization-code OAuth connection, encrypted D1 token storage and refresh handling, exact-transaction refunds, and clearer booking/customer payment details in HQ.",
+  "release": "V93.1.1 EMAIL TEMPLATES & SUMUP APPROVAL GUARD",
+  "version": "93.1.1",
+  "release_name": "Email Templates & SumUp Approval Guard",
+  "description": "Expands the HQ Email Centre template library and prevents premature SumUp OAuth reconnection while the payments scope is awaiting manual approval.",
   "built_from": "boot-scootin-platform-v92.7.2-UPDATE-SPEC(2).zip",
   "built_at": "2026-08-06T11:48:13.120967+00:00",
   "changes": [
-    "Connect, reconnect and disconnect SumUp refunds from HQ.",
-    "Public callback endpoint at https://bootscootinlinedancing.co.uk/api/sumup/callback.",
-    "OAuth state verification and authorization-code token exchange.",
-    "Encrypted access and refresh token storage in D1 with automatic refresh.",
-    "Automatic refund uses the exact SumUp transaction UUID attached to the booking.",
-    "Customer name, email, phone, places, amount, booking reference and payment identifiers shown in HQ.",
-    "Root folder kept below the GitHub web-upload limit."
+    "Adds eleven additional reusable HQ email templates.",
+    "Shows a waiting-for-approval state while the SumUp payments scope is missing.",
+    "Makes reconnect available only after explicit post-approval confirmation.",
+    "Updates HQ and service-worker caches to v93.1.1.",
+    "Keeps the root folder below 100 files."
   ],
   "cloudflare": {
     "required": [
@@ -30,46 +28,36 @@
     "json_validation": "passed",
     "oauth_routes": "passed",
     "root_file_count": 85,
-    "live_environment_note": "Deploy, connect SumUp from HQ, then retry the \u00a31 sandbox refund."
+    "live_environment_note": "Deploy, connect SumUp from HQ, then retry the \u00a31 sandbox refund.",
+    "sumup_approval_guard": "passed",
+    "email_template_count": 19
   },
   "files": {
     "_worker.js": {
-      "size": 123590,
-      "sha256": "544fa79fd014f3f0e7b88f4cbb6c130eb5fb4a78df65bd08d1895b3116ce44c4"
+      "size": 146387,
+      "sha256": "881de5ef8228c80e173d2e7093c4145b519068c6acc226270ad34a8641f0ac96"
     },
     "ranch.js": {
-      "size": 63605,
-      "sha256": "2b54f9115e968bb06225b1f30903fb0ebaaf662d5af4852f51b8dada00d8261a"
+      "size": 75454,
+      "sha256": "8f9426e6919086773c075351804125a93173cee364f09ff6f2e5933cfb4234f5"
     },
     "ranch.html": {
-      "size": 27997,
-      "sha256": "7101b0bb09a53140654cdf70e330b2419426454cadb4c73c52127138d98f55ce"
+      "size": 33441,
+      "sha256": "da1bfb7d2ad8787f410aa07cbf4a082f29b91300b4f143ccd9875543f0a93fe7"
     },
     "styles.css": {
-      "size": 257390,
-      "sha256": "12eee65bd1e693df7ee6dee62925b1b41b83a1322fef803c8826222d2c07f370"
+      "size": 261962,
+      "sha256": "5918a7372c6dfa9311f1232daf989cb7d359cf19607f40348dbd9537cef112e9"
     },
     "service-worker.js": {
-      "size": 535,
-      "sha256": "a4a956cab7ce9d43d7f2f2c6f7bbbf38b8796de2e606e5796761851ca9413a58"
+      "size": 552,
+      "sha256": "aa61d4c98f6667c0590c000741ea98ef3ffe94ec2be379e1259facc1f7f75e1e"
     },
     "CHANGELOG.md": {
-      "size": 21242,
-      "sha256": "937f405b0ed4e82f31269ffd94ef845da7b1cc3e8c2a774f58a081bd215071bf"
-    },
-    "bookings.html": {
-      "size": 23755,
-      "sha256": "af3177bbe0b711cccd2be0f658e88770cf78afe9b13e42563775d5c83ca581bd"
-    },
-    "docs/setup/SUMUP_OAUTH_SETUP.md": {
-      "size": 1417,
-      "sha256": "f835fac34a881f89522c5b158639269e0fcc18805e585fbbaed51451572d2655"
-    },
-    "docs/reports/V93_0_0_TEST_REPORT.md": {
-      "size": 926,
-      "sha256": "4409944e5267f99bf00f26a72ae3051f161a9f29863b54b9bdbbc5d1e1ed6364"
+      "size": 24078,
+      "sha256": "a0ef5577ba0e1ecd750d0e57b872883c1c05d7cea5990818d531f9b3ede6da20"
     }
   },
   "root_file_count": 85,
-  "total_file_count": 122
+  "total_file_count": 124
 }

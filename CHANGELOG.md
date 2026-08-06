@@ -1,3 +1,12 @@
+# v93.1.1 — Email Templates & SumUp Approval Guard
+
+- Added reusable templates for booking follow-ups, cancellation updates, refund confirmations, waiting-list places, birthdays, re-engagement, newsletters, new dances, instructor announcements, holiday closures and weather cancellations.
+- Prevents accidental SumUp reconnection attempts while the OAuth `payments` scope is still awaiting manual activation.
+- Replaces the reconnect action with a disabled **Waiting for SumUp approval** state.
+- Keeps a protected **Reconnect now** action for use only after SumUp support confirms activation.
+- Updates HQ and service-worker cache versions to v93.1.1.
+- Keeps the root folder below the GitHub browser-upload limit.
+
 # v93.1.0 — Booking Management & Email Centre
 
 - Added a new HQ **Emails & Mailing List** area.

@@ -29,7 +29,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v93-1-0';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v93-1-1';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -617,9 +617,12 @@
             <b>Granted permissions</b>
             <ul>${scopeRows}</ul>
           </div>
-          ${refundConnection.refund_ready?'':`<p class="sumup-scope-help">Reconnect once after SumUp activates the <code>payments</code> scope for your Client ID. Until then, automatic refunds cannot move money.</p>`}
+          ${refundConnection.refund_ready?'':`<p class="sumup-scope-help">SumUp support must activate the <code>payments</code> scope for your Client ID. Reconnecting before they confirm approval may show an “application is misconfigured” page.</p>`}
           <div class="refund-connection-actions">
-            <a class="button secondary compact" href="${ADMIN_API_PREFIX}/sumup-oauth/connect?fresh=1">${refundConnection.refund_ready?'Reconnect SumUp':'Reconnect for payments permission'}</a>
+            ${refundConnection.refund_ready
+              ?`<a class="button secondary compact" href="${ADMIN_API_PREFIX}/sumup-oauth/connect?fresh=1">Reconnect SumUp</a>`
+              :`<button type="button" class="button secondary compact sumup-waiting-button" disabled>Waiting for SumUp approval</button>
+                 <details class="sumup-approval-reconnect"><summary>SumUp has confirmed the payments scope is active</summary><p>Only continue after SumUp support confirms activation for your Client ID.</p><a class="button secondary compact" href="${ADMIN_API_PREFIX}/sumup-oauth/connect?fresh=1">Reconnect now</a></details>`}
             <button type="button" class="danger-outline compact" id="disconnectSumUpRefunds">Disconnect</button>
           </div>`;
       }else if(refundConnection.configured){

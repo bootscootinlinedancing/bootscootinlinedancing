@@ -853,7 +853,7 @@ async function sendTransactionalEmail(env, to, subject, html, text) {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.1.0'
+      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.1.1'
     },
     body: JSON.stringify({ from, to: [to], subject, html, text })
   });
@@ -1882,7 +1882,96 @@ const DEFAULT_EMAIL_TEMPLATES = [
   ['venue-update','Venue update','Important venue update — {{class_name}}',`Hi {{first_name}},\n\nThere is an update to the venue for {{class_name}} on {{class_date}}. The class will now take place at {{venue}}.\n\nNora`],
   ['special-event','Special event announcement','A special Boot Scootin’ event is coming',`Hi {{first_name}},\n\nWe have a special Boot Scootin’ event coming up and would love you to join us.\n\n[Add your event details here]\n\nNora`],
   ['thank-you','Thank you for coming','Thank you for dancing with us',`Hi {{first_name}},\n\nThank you for coming to {{class_name}}. I hope you had a brilliant time and I would love to see you again soon.\n\nNora`],
-  ['welcome-list','Mailing-list welcome','Welcome to the Boot Scootin’ mailing list',`Hi {{first_name}},\n\nWelcome to the Boot Scootin’ mailing list. You’ll receive class dates, reminders, special events and the latest Boot Scootin’ news.\n\nNora`]
+  ['welcome-list','Mailing-list welcome','Welcome to the Boot Scootin’ mailing list',`Hi {{first_name}},
+
+Welcome to the Boot Scootin’ mailing list. You’ll receive class dates, reminders, special events and the latest Boot Scootin’ news.
+
+Nora`],
+  ['booking-confirmation-marketing','Booking confirmation follow-up','Your Boot Scootin’ booking is confirmed',`Hi {{first_name}},
+
+Your place for {{class_name}} on {{class_date}} at {{class_time}} is confirmed.
+
+Venue: {{venue}}
+
+We can’t wait to dance with you!
+
+Nora
+Boot Scootin’ Line Dancing`],
+  ['cancellation-update','Class cancellation update','Important update about {{class_name}}',`Hi {{first_name}},
+
+Unfortunately, {{class_name}} on {{class_date}} at {{class_time}} has been cancelled.
+
+Please accept our apologies for the inconvenience. Any payment or credit arrangements will be confirmed separately.
+
+Nora`],
+  ['refund-confirmation-marketing','Refund confirmation','Your Boot Scootin’ refund update',`Hi {{first_name}},
+
+Your refund for {{class_name}} has been processed. Please allow the usual card-provider processing time for it to appear in your account.
+
+Nora
+Boot Scootin’ Line Dancing`],
+  ['waiting-list-place','Waiting-list place available','A place is available for {{class_name}}',`Hi {{first_name}},
+
+Good news — a place has become available for {{class_name}} on {{class_date}} at {{class_time}}.
+
+Book here: {{booking_link}}
+
+Places may be offered on a first-come, first-served basis.
+
+Nora`],
+  ['birthday','Happy birthday','Happy birthday from Boot Scootin’',`Hi {{first_name}},
+
+Happy birthday from everyone at Boot Scootin’ Line Dancing! We hope you have a brilliant day filled with music, dancing and good times.
+
+Nora`],
+  ['miss-you','We haven’t seen you for a while','We miss you at Boot Scootin’',`Hi {{first_name}},
+
+We haven’t seen you on the dance floor for a little while and wanted to say hello. We would love to welcome you back at an upcoming class.
+
+See the latest dates here: {{booking_link}}
+
+Nora`],
+  ['monthly-newsletter','Monthly newsletter','Boot Scootin’ news and upcoming dates',`Hi {{first_name}},
+
+Here is your latest Boot Scootin’ update.
+
+[Add this month’s news, upcoming dates, dances and special announcements here.]
+
+Book upcoming classes: {{booking_link}}
+
+Nora`],
+  ['new-dance','New dance learned','This week’s Boot Scootin’ dance',`Hi {{first_name}},
+
+This week we learned a new dance at Boot Scootin’: [add dance name here].
+
+[Add a recap, song name or practice link here.]
+
+Happy practising!
+
+Nora`],
+  ['instructor-announcement','Instructor announcement','A message from Nora at Boot Scootin’',`Hi {{first_name}},
+
+[Add your announcement here.]
+
+Nora
+Boot Scootin’ Line Dancing`],
+  ['holiday-closure','Holiday closure','Boot Scootin’ holiday dates',`Hi {{first_name}},
+
+Boot Scootin’ classes will pause for the following holiday dates:
+
+[Add closure dates here.]
+
+Classes return on [add return date].
+
+Nora`],
+  ['weather-cancellation','Weather cancellation','Weather update for {{class_name}}',`Hi {{first_name}},
+
+Due to unsafe weather conditions, {{class_name}} on {{class_date}} has been cancelled.
+
+Please do not travel to the venue. We will contact affected customers separately about payment or credit arrangements.
+
+Stay safe,
+Nora`]
 ];
 
 async function ensureEmailCentreSchema(env){
