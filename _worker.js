@@ -173,6 +173,24 @@ async function ensureBookingSchema(env) {
       metadata_json TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS oauth_connections (
+      provider TEXT PRIMARY KEY,
+      access_token_cipher TEXT NOT NULL,
+      refresh_token_cipher TEXT,
+      expires_at TEXT,
+      scope TEXT,
+      merchant_code TEXT,
+      connected_by TEXT,
+      connected_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS oauth_states (
+      state TEXT PRIMARY KEY,
+      provider TEXT NOT NULL,
+      actor TEXT,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS private_event_inquiries (
       id TEXT PRIMARY KEY, reference TEXT NOT NULL UNIQUE, secure_token TEXT NOT NULL UNIQUE,
       customer_name TEXT NOT NULL, customer_email TEXT NOT NULL, customer_phone TEXT,
@@ -450,8 +468,229 @@ async function resolveSumUpTransactionId(env, booking) {
   return transactionId;
 }
 
-function sumUpRefundToken(env) {
-  return clean(env.SUMUP_REFUND_ACCESS_TOKEN || env.SUMUP_OAUTH_ACCESS_TOKEN, 4096);
+const SUMUP_OAUTH_PROVIDER = 'sumup';
+const DEFAULT_SUMUP_OAUTH_REDIRECT_URI = 'https://bootscootinlinedancing.co.uk/api/sumup/callback';
+
+function sumUpOAuthConfig(env) {
+  const clientId = clean(env.SUMUP_OAUTH_CLIENT_ID, 500);
+  const clientSecret = clean(env.SUMUP_OAUTH_CLIENT_SECRET, 1000);
+  // A dedicated encryption key is preferred. For simpler first-time setup,
+  // derive the token-encryption key from the OAuth client secret when the
+  // optional SUMUP_OAUTH_ENCRYPTION_KEY secret has not been added.
+  const encryptionKey = clean(env.SUMUP_OAUTH_ENCRYPTION_KEY, 1000) || clientSecret;
+  const redirectUri = clean(env.SUMUP_OAUTH_REDIRECT_URI, 1000) || DEFAULT_SUMUP_OAUTH_REDIRECT_URI;
+  const scope = clean(env.SUMUP_OAUTH_SCOPES, 500) || 'transactions.history user.profile_readonly';
+  return {
+    clientId,
+    clientSecret,
+    encryptionKey,
+    redirectUri,
+    scope,
+    ready: Boolean(clientId && clientSecret && encryptionKey)
+  };
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function base64ToBytes(value) {
+  const binary = atob(String(value || ''));
+  return Uint8Array.from(binary, ch => ch.charCodeAt(0));
+}
+
+async function sumUpOAuthCryptoKey(env) {
+  const secret = sumUpOAuthConfig(env).encryptionKey;
+  if (!secret) throw new Error('SUMUP_OAUTH_ENCRYPTION_KEY is not configured.');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function encryptOAuthSecret(env, value) {
+  if (!value) return '';
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await sumUpOAuthCryptoKey(env);
+  const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(String(value))));
+  return `${bytesToBase64(iv)}.${bytesToBase64(encrypted)}`;
+}
+
+async function decryptOAuthSecret(env, value) {
+  if (!value) return '';
+  const [ivPart, cipherPart] = String(value).split('.');
+  if (!ivPart || !cipherPart) throw new Error('Stored SumUp OAuth token is invalid. Reconnect SumUp.');
+  const key = await sumUpOAuthCryptoKey(env);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(ivPart) }, key, base64ToBytes(cipherPart));
+  return new TextDecoder().decode(decrypted);
+}
+
+async function readSumUpOAuthConnection(env) {
+  await ensureBookingSchema(env);
+  return env.BOOKINGS_DB.prepare(`SELECT * FROM oauth_connections WHERE provider=?`).bind(SUMUP_OAUTH_PROVIDER).first();
+}
+
+async function saveSumUpOAuthConnection(env, tokenData, actor = '') {
+  const expiresIn = Math.max(60, Number(tokenData.expires_in || 3600));
+  const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+  const previous = await readSumUpOAuthConnection(env);
+  const refreshToken = clean(tokenData.refresh_token, 4096) || (previous ? await decryptOAuthSecret(env, previous.refresh_token_cipher).catch(() => '') : '');
+  const accessCipher = await encryptOAuthSecret(env, clean(tokenData.access_token, 4096));
+  const refreshCipher = refreshToken ? await encryptOAuthSecret(env, refreshToken) : '';
+  await env.BOOKINGS_DB.prepare(`
+    INSERT INTO oauth_connections(provider,access_token_cipher,refresh_token_cipher,expires_at,scope,merchant_code,connected_by,connected_at,updated_at)
+    VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+    ON CONFLICT(provider) DO UPDATE SET
+      access_token_cipher=excluded.access_token_cipher,
+      refresh_token_cipher=excluded.refresh_token_cipher,
+      expires_at=excluded.expires_at,
+      scope=excluded.scope,
+      merchant_code=COALESCE(excluded.merchant_code,oauth_connections.merchant_code),
+      connected_by=excluded.connected_by,
+      updated_at=CURRENT_TIMESTAMP
+  `).bind(
+    SUMUP_OAUTH_PROVIDER,
+    accessCipher,
+    refreshCipher || null,
+    expiresAt,
+    clean(tokenData.scope, 500),
+    clean(tokenData.merchant_code, 120) || null,
+    clean(actor, 320)
+  ).run();
+  return { expiresAt, refreshToken: Boolean(refreshToken) };
+}
+
+async function exchangeSumUpOAuthToken(env, form) {
+  const config = sumUpOAuthConfig(env);
+  if (!config.ready) throw new Error('SumUp OAuth client settings are incomplete in Cloudflare.');
+  const response = await fetch('https://api.sumup.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+    body: new URLSearchParams({
+      ...form,
+      client_id: config.clientId,
+      client_secret: config.clientSecret
+    })
+  });
+  const raw = await response.text();
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch {}
+  if (!response.ok || !data.access_token) {
+    const detail = clean(data.error_description || data.error || raw || `HTTP ${response.status}`, 400);
+    const error = new Error(`SumUp OAuth failed: ${detail}`);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+async function getSumUpOAuthAccessToken(env) {
+  const legacy = clean(env.SUMUP_REFUND_ACCESS_TOKEN || env.SUMUP_OAUTH_ACCESS_TOKEN, 4096);
+  if (legacy) return legacy;
+  const connection = await readSumUpOAuthConnection(env);
+  if (!connection) return '';
+  const expiresAt = connection.expires_at ? new Date(connection.expires_at).getTime() : 0;
+  if (expiresAt > Date.now() + 120000) return decryptOAuthSecret(env, connection.access_token_cipher);
+  const refreshToken = await decryptOAuthSecret(env, connection.refresh_token_cipher).catch(() => '');
+  if (!refreshToken) return '';
+  try {
+    const tokenData = await exchangeSumUpOAuthToken(env, { grant_type: 'refresh_token', refresh_token: refreshToken });
+    await saveSumUpOAuthConnection(env, tokenData, connection.connected_by || 'oauth-refresh');
+    return clean(tokenData.access_token, 4096);
+  } catch (error) {
+    await env.BOOKINGS_DB.prepare(`DELETE FROM oauth_connections WHERE provider=?`).bind(SUMUP_OAUTH_PROVIDER).run().catch(() => {});
+    throw error;
+  }
+}
+
+async function sumUpOAuthStatus(env) {
+  const config = sumUpOAuthConfig(env);
+  const legacy = Boolean(clean(env.SUMUP_REFUND_ACCESS_TOKEN || env.SUMUP_OAUTH_ACCESS_TOKEN, 4096));
+  let connection = null;
+  try { connection = await readSumUpOAuthConnection(env); } catch {}
+  return {
+    automatic: legacy || Boolean(connection),
+    mode: legacy ? 'legacy-token' : connection ? 'oauth' : 'manual',
+    configured: config.ready,
+    connected: legacy || Boolean(connection),
+    redirect_uri: config.redirectUri,
+    expires_at: connection?.expires_at || null,
+    connected_at: connection?.connected_at || null,
+    merchant_code: connection?.merchant_code || clean(env.SUMUP_MERCHANT_CODE, 120) || null,
+    missing: [
+      !config.clientId ? 'SUMUP_OAUTH_CLIENT_ID' : '',
+      !config.clientSecret ? 'SUMUP_OAUTH_CLIENT_SECRET' : ''
+    ].filter(Boolean)
+  };
+}
+
+async function sumUpOAuthStart(request, env) {
+  const check = requireAccessAdmin(request, env);
+  if (check.response) return check.response;
+  await ensureBookingSchema(env);
+  const config = sumUpOAuthConfig(env);
+  if (!config.ready) {
+    return json({ error: 'Add the SumUp OAuth Client ID, Client Secret and encryption key in Cloudflare before connecting.', missing: (await sumUpOAuthStatus(env)).missing }, 409);
+  }
+  const state = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
+  await env.BOOKINGS_DB.prepare(`DELETE FROM oauth_states WHERE expires_at < CURRENT_TIMESTAMP`).run();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO oauth_states(state,provider,actor,expires_at) VALUES(?,?,?,datetime('now','+10 minutes'))`)
+    .bind(state, SUMUP_OAUTH_PROVIDER, check.state.email).run();
+  const authorize = new URL('https://api.sumup.com/authorize');
+  authorize.searchParams.set('response_type', 'code');
+  authorize.searchParams.set('client_id', config.clientId);
+  authorize.searchParams.set('redirect_uri', config.redirectUri);
+  authorize.searchParams.set('scope', config.scope);
+  authorize.searchParams.set('state', state);
+  return Response.redirect(authorize.toString(), 302);
+}
+
+async function sumUpOAuthCallback(request, env, url) {
+  await ensureBookingSchema(env);
+  const config = sumUpOAuthConfig(env);
+  const stateValue = clean(url.searchParams.get('state'), 300);
+  const code = clean(url.searchParams.get('code'), 2000);
+  const oauthError = clean(url.searchParams.get('error_description') || url.searchParams.get('error'), 500);
+  const failureRedirect = message => Response.redirect(`https://bootscootinlinedancing.co.uk/ranch.html?sumup=error&message=${encodeURIComponent(clean(message, 300))}#bookings`, 302);
+  if (oauthError) return failureRedirect(oauthError);
+  if (!stateValue || !code) return failureRedirect('SumUp did not return a valid authorisation code.');
+  const stateRow = await env.BOOKINGS_DB.prepare(`SELECT * FROM oauth_states WHERE state=? AND provider=? AND expires_at >= CURRENT_TIMESTAMP`)
+    .bind(stateValue, SUMUP_OAUTH_PROVIDER).first();
+  if (!stateRow) return failureRedirect('The SumUp connection request expired or could not be verified. Please try again.');
+  await env.BOOKINGS_DB.prepare(`DELETE FROM oauth_states WHERE state=?`).bind(stateValue).run();
+  try {
+    const tokenData = await exchangeSumUpOAuthToken(env, {
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: config.redirectUri
+    });
+    let merchantCode = clean(env.SUMUP_MERCHANT_CODE, 120);
+    try {
+      const me = await fetch('https://api.sumup.com/v0.1/me', { headers: { Authorization: `Bearer ${tokenData.access_token}`, Accept: 'application/json' } });
+      const profile = await me.json().catch(() => ({}));
+      merchantCode = clean(profile.merchant_code || profile.merchant_profile?.merchant_code || merchantCode, 120);
+    } catch {}
+    await saveSumUpOAuthConnection(env, { ...tokenData, merchant_code: merchantCode }, stateRow.actor || 'hq');
+    await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+      .bind(stateRow.actor || 'hq', 'SUMUP_OAUTH_CONNECTED', 'integration', 'sumup', JSON.stringify({ merchant_code: merchantCode, scope: tokenData.scope || '' })).run().catch(() => {});
+    return Response.redirect('https://bootscootinlinedancing.co.uk/ranch.html?sumup=connected#bookings', 302);
+  } catch (error) {
+    return failureRedirect(error.message || 'SumUp could not be connected.');
+  }
+}
+
+async function sumUpOAuthAdmin(request, env) {
+  const check = requireAccessAdmin(request, env);
+  if (check.response) return check.response;
+  await ensureBookingSchema(env);
+  if (request.method === 'GET') return json(await sumUpOAuthStatus(env));
+  if (request.method === 'DELETE' || request.method === 'POST') {
+    await env.BOOKINGS_DB.prepare(`DELETE FROM oauth_connections WHERE provider=?`).bind(SUMUP_OAUTH_PROVIDER).run();
+    await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+      .bind(check.state.email, 'SUMUP_OAUTH_DISCONNECTED', 'integration', 'sumup', '{}').run().catch(() => {});
+    return json({ ok: true, connected: false });
+  }
+  return json({ error: 'Method not allowed.' }, 405);
 }
 
 async function refundSumUpTransaction(env, transactionId, amountPence = null) {
@@ -464,9 +703,9 @@ async function refundSumUpTransaction(env, transactionId, amountPence = null) {
 
   // SumUp transaction refunds require a user-authorised OAuth token. The API key
   // used to create/retrieve hosted checkouts is intentionally not reused here.
-  const refundToken = sumUpRefundToken(env);
+  const refundToken = await getSumUpOAuthAccessToken(env);
   if (!refundToken) {
-    const error = new Error('Automatic refunds are not connected yet. Add a user-authorised SumUp OAuth token as SUMUP_REFUND_ACCESS_TOKEN, or refund in SumUp and use “Record manual refund” in HQ.');
+    const error = new Error('Automatic refunds are not connected yet. Open HQ and use Connect SumUp refunds, or complete the refund in SumUp and then record it in HQ.');
     error.code = 'SUMUP_REFUND_OAUTH_REQUIRED';
     error.status = 409;
     throw error;
@@ -1805,13 +2044,7 @@ async function adminBookings(request, env) {
       })),
       waiting,
       stats,
-      refund_connection:{
-        automatic:Boolean(sumUpRefundToken(env)),
-        mode:sumUpRefundToken(env)?'oauth':'manual',
-        message:sumUpRefundToken(env)
-          ?'Automatic SumUp refunds are connected. Refunds use the exact transaction attached to each booking.'
-          :'Automatic refunds need a user-authorised SumUp OAuth access token saved as SUMUP_REFUND_ACCESS_TOKEN. Until connected, complete the refund in SumUp first and only then record it in HQ.'
-      }
+      refund_connection: await sumUpOAuthStatus(env)
     });
   }
 
@@ -2121,6 +2354,7 @@ export default {
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
       if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);
+      if (path === '/api/sumup/callback' && request.method === 'GET') return sumUpOAuthCallback(request, env, url);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
       if (path === '/api/booking-cancel' && request.method === 'POST') return cancelBooking(request, env);
       if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);
@@ -2133,6 +2367,8 @@ export default {
       if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
+      if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env);
       if (path === '/api/admin/customers' && request.method === 'GET') return adminCustomers(request, env);
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);

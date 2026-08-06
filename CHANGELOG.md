@@ -1,3 +1,44 @@
+# V93.0.0 — Automatic SumUp Refunds OAuth
+
+- Adds a real **Connect SumUp refunds** action in HQ.
+- Adds the OAuth start route at `/api/admin/sumup-oauth/connect`.
+- Adds the public SumUp callback route at `/api/sumup/callback`.
+- Exchanges the SumUp authorisation code for access and refresh tokens.
+- Encrypts OAuth tokens before storing them in D1. A separate `SUMUP_OAUTH_ENCRYPTION_KEY` may be used, but the existing OAuth Client Secret is used securely as the encryption source when no separate key is configured.
+- Automatically refreshes expired SumUp access tokens.
+- Adds connected, reconnect and disconnect states in HQ.
+- Enables **Refund payment** only after the merchant has completed the SumUp authorisation flow.
+- Refunds the exact SumUp transaction UUID attached to the selected booking.
+- Shows customer name, email, phone, places, amount paid, booking reference, checkout ID, transaction code, transaction UUID and paid date.
+- Keeps the manual refund-recording option clearly separate; it never moves money.
+- Moves historical setup and test reports into `docs/` so the root remains below the GitHub web-upload limit.
+- Rotates HQ and service-worker caches to V93.0.0.
+
+## Cloudflare values required
+
+- `SUMUP_OAUTH_CLIENT_ID` — Secret
+- `SUMUP_OAUTH_CLIENT_SECRET` — Secret
+- `SUMUP_OAUTH_REDIRECT_URI` — Text, value `https://bootscootinlinedancing.co.uk/api/sumup/callback`
+- Optional: `SUMUP_OAUTH_ENCRYPTION_KEY` — Secret, for an independently rotated token-encryption key
+
+After deployment, open HQ → Bookings and press **Connect SumUp refunds**.
+
+---
+
+# V92.7.2 — SumUp OAuth Connect & Booking Details
+
+- Adds **Connect SumUp refunds** directly inside HQ.
+- Adds the registered callback route: `https://bootscootinlinedancing.co.uk/api/sumup/callback`.
+- Implements SumUp authorization-code OAuth with state validation.
+- Stores access and refresh tokens encrypted in D1.
+- Refreshes expired access tokens automatically before a refund.
+- Adds reconnect and disconnect controls in HQ.
+- Enables **Refund payment** only when the merchant OAuth connection is active.
+- Shows customer name, email and phone prominently on each booking.
+- Shows amount paid, payment status, booking reference, checkout ID and transaction identifiers.
+- Consolidates setup and historical test reports into `docs/` so the top-level GitHub folder remains below 100 files.
+- Rotates HQ and service-worker caches to V92.7.2.
+
 # V92.7.1 — Customer Identification & Refund Connection Status
 
 - Shows the customer name prominently and labels it clearly on every HQ booking card.
@@ -342,11 +383,3 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added Resend-compatible transactional email delivery using `RESEND_API_KEY` (or legacy `EMAIL_API_KEY`) and `EMAIL_FROM`.
 - Added Twilio SMS delivery using `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`.
 - Notification delivery failures are logged and never block payment reconciliation, class management or booking updates.
-## v92.7.2 – SumUp OAuth credentials connected
-
-- Added the SumUp OAuth Client ID and Client Secret securely in Cloudflare.
-- Added the authorised callback URL:
-  https://bootscootinlinedancing.co.uk/api/sumup/callback
-- Prepared HQ for secure SumUp refund authorisation.
-- Automatic refunds remain linked to the exact SumUp transaction stored against each booking.
-- No credentials or secrets are stored in GitHub.

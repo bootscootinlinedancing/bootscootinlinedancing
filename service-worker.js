@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v92-7-1-customer-identification-refund-connection";
+const CACHE_NAME = "boot-scootin-v93-0-0-sumup-oauth-connect";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(

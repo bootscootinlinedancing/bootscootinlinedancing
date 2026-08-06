@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-7-1';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v93-0-0';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -599,12 +599,37 @@
     const refundConnection=data.refund_connection||{automatic:false,mode:'manual'};
     const refundNotice=$('#refundConnectionNotice');
     if(refundNotice){
-      refundNotice.classList.toggle('is-ready',Boolean(refundConnection.automatic));
-      refundNotice.classList.toggle('needs-setup',!refundConnection.automatic);
-      refundNotice.innerHTML=refundConnection.automatic
-        ?'<strong>Automatic SumUp refunds connected</strong><span>HQ will refund the exact transaction attached to the selected booking.</span>'
-        :'<strong>Automatic SumUp refunds need connecting</strong><span>Refunds cannot move money from HQ until <code>SUMUP_REFUND_ACCESS_TOKEN</code> is configured. The manual record button only updates HQ after you have refunded in SumUp.</span>';
+      refundNotice.classList.toggle('is-ready',Boolean(refundConnection.connected));
+      refundNotice.classList.toggle('needs-setup',!refundConnection.connected);
+      if(refundConnection.connected){
+        refundNotice.innerHTML=`
+          <strong>SumUp refunds connected</strong>
+          <span>Refunds are sent to the exact SumUp transaction attached to the selected booking.${refundConnection.merchant_code?` Merchant: ${esc(refundConnection.merchant_code)}.`:''}</span>
+          <div class="refund-connection-actions">
+            <a class="ranch91-button compact" href="${ADMIN_API_PREFIX}/sumup-oauth/connect">Reconnect SumUp</a>
+            <button type="button" class="danger-outline compact" id="disconnectSumUpRefunds">Disconnect</button>
+          </div>`;
+      }else if(refundConnection.configured){
+        refundNotice.innerHTML=`
+          <strong>Connect SumUp refunds</strong>
+          <span>Sign in to SumUp once to authorise secure one-click refunds from HQ.</span>
+          <a class="ranch91-button" href="${ADMIN_API_PREFIX}/sumup-oauth/connect">Connect SumUp refunds</a>`;
+      }else{
+        refundNotice.innerHTML=`
+          <strong>SumUp OAuth setup required</strong>
+          <span>Add the OAuth Client ID and Client Secret to Cloudflare, deploy the latest version, then return here to connect your SumUp account.</span>
+          <small>Registered callback URL: <code>${esc(refundConnection.redirect_uri||'https://bootscootinlinedancing.co.uk/api/sumup/callback')}</code></small>`;
+      }
     }
+
+    document.getElementById('disconnectSumUpRefunds')?.addEventListener('click',async()=>{
+      if(!confirm('Disconnect SumUp refunds from HQ? Existing bookings and payments will not be changed.'))return;
+      try{
+        await jsonFetch(`${ADMIN_API_PREFIX}/sumup-oauth`,{method:'DELETE'},10000);
+        await loadBookings();
+        toast('SumUp refunds disconnected.');
+      }catch(error){toast(error.message,'error');}
+    });
 
     const filter=$('#bookingAdminFilter')?.value||'all';
     let rows=data.bookings||[];
@@ -619,9 +644,10 @@
           <div>
             <span class="booking-status">${esc(b.status)}</span>
             ${b.is_test_candidate?'<span class="booking-test-badge">TEST CANDIDATE</span>':''}
-            <span class="booking-customer-label">Customer name</span>
+            <span class="booking-customer-label">Customer</span>
             <h3 class="booking-customer-name">${esc(b.customer_name||'Name not supplied')}</h3>
-            <p class="booking-customer-contact">${esc(b.customer_email)}${b.customer_phone?` · ${esc(b.customer_phone)}`:''}</p>
+            <p class="booking-customer-contact"><strong>Email:</strong> ${esc(b.customer_email||'Not supplied')}</p>
+            <p class="booking-customer-contact"><strong>Phone:</strong> ${esc(b.customer_phone||'Not supplied')}</p>
           </div>
           <strong>${money(b.amount_pence)}</strong>
         </header>
@@ -630,8 +656,10 @@
           <div><dt>Date</dt><dd>${fmt(b.starts_at)}</dd></div>
           <div><dt>Places</dt><dd>${esc(b.quantity)}</dd></div>
           <div><dt>Reference</dt><dd>${esc(b.reference)}</dd></div>
-          <div><dt>Payment</dt><dd>${esc(b.payment_provider)}</dd></div>
-          <div><dt>Created</dt><dd>${fmt(b.created_at)}</dd></div>
+          <div><dt>Payment status</dt><dd>${esc(b.status)}</dd></div>
+          <div><dt>Amount paid</dt><dd>${money(b.amount_pence)}</dd></div>
+          <div><dt>Payment provider</dt><dd>${esc(b.payment_provider)}</dd></div>
+          <div><dt>Booked</dt><dd>${fmt(b.created_at)}</dd></div>
         </dl>
         ${b.payment_provider==='SUMUP'?`<details class="payment-details"><summary>View payment details</summary><dl>
           <div><dt>Customer</dt><dd>${esc(b.customer_name)} · ${esc(b.customer_email)}${b.customer_phone?` · ${esc(b.customer_phone)}`:''}</dd></div>
@@ -645,8 +673,8 @@
           ${['PENDING','PAID'].includes(b.status)?`<button type="button" class="danger-outline" data-cancel-booking="${esc(b.id)}">Cancel booking</button>`:''}
           ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && b.refund_status!=='REFUNDED'
             ?(refundConnection.automatic
-              ?`<button type="button" class="ranch91-button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund ${money(b.amount_pence)} to ${esc(b.customer_name)}</button>`
-              :`<button type="button" class="ranch91-button refund-not-connected" data-refund-not-connected="1" disabled title="Connect SUMUP_REFUND_ACCESS_TOKEN to enable automatic refunds">Automatic refund not connected</button>`)
+              ?`<button type="button" class="ranch91-button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund payment</button>`
+              :`<button type="button" class="ranch91-button refund-not-connected" data-refund-not-connected="1" disabled title="Connect your SumUp account to enable automatic refunds">Connect SumUp refunds</button>`)
             :''}
           ${b.payment_provider==='SUMUP' && b.status==='CANCELLED' && b.refund_status==='REFUND_DUE'?`<button type="button" class="danger-outline" data-record-manual-refund="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Record refund already completed in SumUp</button>`:''}
           ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}
@@ -966,6 +994,17 @@ Type REFUNDED to continue.`);
   $('#ranch92RefreshSetup')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
   $('#refreshBookings')?.addEventListener('click',()=>loadBookings(true));
   $('#bookingAdminFilter')?.addEventListener('change',()=>renderBookingAdmin());
+
+  const oauthResult=new URLSearchParams(location.search).get('sumup');
+  if(oauthResult){
+    const message=new URLSearchParams(location.search).get('message');
+    setTimeout(()=>toast(oauthResult==='connected'?'SumUp refunds connected successfully.':(message||'SumUp could not be connected.'),oauthResult==='connected'?'success':'error'),500);
+    try{
+      const cleanUrl=new URL(location.href);
+      cleanUrl.searchParams.delete('sumup');cleanUrl.searchParams.delete('message');
+      history.replaceState(null,'',cleanUrl.pathname+cleanUrl.search+cleanUrl.hash);
+    }catch(_){}
+  }
   $('#deleteAllTestBookings')?.addEventListener('click',deleteAllTestBookings);
   $('#refreshCustomers')?.addEventListener('click',loadCustomers);
   $('#customerAdminSearch')?.addEventListener('input',loadCustomers);

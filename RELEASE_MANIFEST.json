@@ -1,56 +1,73 @@
 {
-  "release": "V92.7.1 CUSTOMER IDENTIFICATION & REFUND CONNECTION STATUS",
-  "built_from": "boot-scootin-platform-v92.7.0-TRANSACTION-DETAILS-OAUTH-REFUNDS.zip",
-  "built_at": "2026-08-06T10:15:23.303107+00:00",
+  "release": "V93.0.0 AUTOMATIC SUMUP REFUNDS OAUTH",
+  "version": "93.0.0",
+  "release_name": "Automatic SumUp Refunds OAuth",
+  "description": "Adds the complete SumUp authorization-code OAuth connection, encrypted D1 token storage and refresh handling, exact-transaction refunds, and clearer booking/customer payment details in HQ.",
+  "built_from": "boot-scootin-platform-v92.7.2-UPDATE-SPEC(2).zip",
+  "built_at": "2026-08-06T11:48:13.120967+00:00",
   "changes": [
-    "Prominent labelled customer name, email and phone on HQ booking cards.",
-    "First name and surname required for all new bookings.",
-    "Visible automatic-refund connection status and safe disabled state until OAuth is configured.",
-    "Exact booking-to-SumUp transaction identifiers retained for correct-person refunds."
+    "Connect, reconnect and disconnect SumUp refunds from HQ.",
+    "Public callback endpoint at https://bootscootinlinedancing.co.uk/api/sumup/callback.",
+    "OAuth state verification and authorization-code token exchange.",
+    "Encrypted access and refresh token storage in D1 with automatic refresh.",
+    "Automatic refund uses the exact SumUp transaction UUID attached to the booking.",
+    "Customer name, email, phone, places, amount, booking reference and payment identifiers shown in HQ.",
+    "Root folder kept below the GitHub web-upload limit."
   ],
+  "cloudflare": {
+    "required": [
+      "SUMUP_OAUTH_CLIENT_ID",
+      "SUMUP_OAUTH_CLIENT_SECRET",
+      "SUMUP_OAUTH_REDIRECT_URI"
+    ],
+    "optional": [
+      "SUMUP_OAUTH_ENCRYPTION_KEY",
+      "SUMUP_OAUTH_SCOPES"
+    ]
+  },
   "checks": {
     "javascript_syntax": "passed",
-    "static_assertions": "passed",
-    "live_environment_note": "Deploy and use the \u00a31 sandbox transaction to test the live refund."
+    "json_validation": "passed",
+    "oauth_routes": "passed",
+    "root_file_count": 85,
+    "live_environment_note": "Deploy, connect SumUp from HQ, then retry the \u00a31 sandbox refund."
   },
   "files": {
     "_worker.js": {
-      "size": 111906,
-      "sha256": "59d49a75899bdc4dae6244a4c5051d033f15406d8e9fb91064c8daa9777b4a9a"
+      "size": 123590,
+      "sha256": "544fa79fd014f3f0e7b88f4cbb6c130eb5fb4a78df65bd08d1895b3116ce44c4"
     },
     "ranch.js": {
-      "size": 61470,
-      "sha256": "72d56a5d535a1de69bed107ed9464721f2af73b30a65ab62d8f36c381ab8ad32"
+      "size": 63605,
+      "sha256": "2b54f9115e968bb06225b1f30903fb0ebaaf662d5af4852f51b8dada00d8261a"
     },
     "ranch.html": {
       "size": 27997,
-      "sha256": "9177e60d9ebb46ee22afe4d6e3087c9f21d97987031c021746f3624e7cc809d2"
+      "sha256": "7101b0bb09a53140654cdf70e330b2419426454cadb4c73c52127138d98f55ce"
     },
     "styles.css": {
       "size": 257390,
       "sha256": "12eee65bd1e693df7ee6dee62925b1b41b83a1322fef803c8826222d2c07f370"
     },
     "service-worker.js": {
-      "size": 557,
-      "sha256": "cb31c3c842dacba66994a251c61834287324d6c25a32ce29554173406aae513d"
+      "size": 535,
+      "sha256": "a4a956cab7ce9d43d7f2f2c6f7bbbf38b8796de2e606e5796761851ca9413a58"
     },
     "CHANGELOG.md": {
-      "size": 18802,
-      "sha256": "c0c5dda50955341aa9fa4ad5d6d8a89b4732826f171bfe243a64c2c4945def3e"
-    },
-    "V92_6_5_TEST_REPORT.md": {
-      "size": 907,
-      "sha256": "b8d7b05b1b3f71d4942c3cca02239749162d3c85222d3ddb558fbf0f1d9c5a1b"
+      "size": 21242,
+      "sha256": "937f405b0ed4e82f31269ffd94ef845da7b1cc3e8c2a774f58a081bd215071bf"
     },
     "bookings.html": {
       "size": 23755,
       "sha256": "af3177bbe0b711cccd2be0f658e88770cf78afe9b13e42563775d5c83ca581bd"
     },
-    "SUMUP_REFUNDS_SETUP.md": {
-      "size": 1057,
-      "sha256": "2cd2b12a856a3848651b14049d600ea6df8240f3d450b8aba508601ad864e7a2"
+    "docs/setup/SUMUP_OAUTH_SETUP.md": {
+      "size": 1417,
+      "sha256": "f835fac34a881f89522c5b158639269e0fcc18805e585fbbaed51451572d2655"
+    },
+    "docs/reports/V93_0_0_TEST_REPORT.md": {
+      "size": 926,
+      "sha256": "4409944e5267f99bf00f26a72ae3051f161a9f29863b54b9bdbbc5d1e1ed6364"
     }
-  },
-  "version": "92.7.1",
-  "release_name": "Customer Identification & Refund Connection Status"
+  }
 }
