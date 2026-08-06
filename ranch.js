@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-7-0';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-7-1';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -596,6 +596,16 @@
     setStat('bookingRefundTotal',Number(data.stats?.refunds_due||0));
     setStat('bookingWaitTotal',Number(data.stats?.waiting||0));
 
+    const refundConnection=data.refund_connection||{automatic:false,mode:'manual'};
+    const refundNotice=$('#refundConnectionNotice');
+    if(refundNotice){
+      refundNotice.classList.toggle('is-ready',Boolean(refundConnection.automatic));
+      refundNotice.classList.toggle('needs-setup',!refundConnection.automatic);
+      refundNotice.innerHTML=refundConnection.automatic
+        ?'<strong>Automatic SumUp refunds connected</strong><span>HQ will refund the exact transaction attached to the selected booking.</span>'
+        :'<strong>Automatic SumUp refunds need connecting</strong><span>Refunds cannot move money from HQ until <code>SUMUP_REFUND_ACCESS_TOKEN</code> is configured. The manual record button only updates HQ after you have refunded in SumUp.</span>';
+    }
+
     const filter=$('#bookingAdminFilter')?.value||'all';
     let rows=data.bookings||[];
 
@@ -609,8 +619,9 @@
           <div>
             <span class="booking-status">${esc(b.status)}</span>
             ${b.is_test_candidate?'<span class="booking-test-badge">TEST CANDIDATE</span>':''}
-            <h3>${esc(b.customer_name)}</h3>
-            <p>${esc(b.customer_email)}</p>
+            <span class="booking-customer-label">Customer name</span>
+            <h3 class="booking-customer-name">${esc(b.customer_name||'Name not supplied')}</h3>
+            <p class="booking-customer-contact">${esc(b.customer_email)}${b.customer_phone?` · ${esc(b.customer_phone)}`:''}</p>
           </div>
           <strong>${money(b.amount_pence)}</strong>
         </header>
@@ -632,7 +643,11 @@
         </dl><button type="button" class="danger-outline" data-refresh-payment="${esc(b.id)}">Refresh SumUp details</button></details>`:''}
         <div class="booking-admin-actions">
           ${['PENDING','PAID'].includes(b.status)?`<button type="button" class="danger-outline" data-cancel-booking="${esc(b.id)}">Cancel booking</button>`:''}
-          ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && b.refund_status!=='REFUNDED'?`<button type="button" class="ranch91-button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund ${money(b.amount_pence)}</button>`:''}
+          ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && b.refund_status!=='REFUNDED'
+            ?(refundConnection.automatic
+              ?`<button type="button" class="ranch91-button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund ${money(b.amount_pence)} to ${esc(b.customer_name)}</button>`
+              :`<button type="button" class="ranch91-button refund-not-connected" data-refund-not-connected="1" disabled title="Connect SUMUP_REFUND_ACCESS_TOKEN to enable automatic refunds">Automatic refund not connected</button>`)
+            :''}
           ${b.payment_provider==='SUMUP' && b.status==='CANCELLED' && b.refund_status==='REFUND_DUE'?`<button type="button" class="danger-outline" data-record-manual-refund="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Record refund already completed in SumUp</button>`:''}
           ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}
           ${b.is_test_candidate?`<button type="button" class="danger-outline" data-delete-test-booking="${esc(b.id)}">Delete test booking</button>`:''}

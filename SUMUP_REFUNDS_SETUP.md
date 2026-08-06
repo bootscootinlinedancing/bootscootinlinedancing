@@ -1,30 +1,24 @@
-# SumUp Refund Setup — V92.6.9
+# SumUp automatic refunds — V92.7.1
 
-## Why a separate refund token is required
+## Why the HQ refund button is disabled
 
-Creating and retrieving hosted checkouts can use the existing `SUMUP_API_KEY`. SumUp transaction refunds act on a merchant user account and require a user-authorised OAuth access token obtained through the authorisation-code flow. A client-credentials token or ordinary checkout API key must not be used for this action.
+Taking Hosted Checkout payments and refunding transactions use different authorisation. The existing `SUMUP_API_KEY` can create and inspect checkouts, but HQ will not attempt to move refund money until a user-authorised OAuth access token is available.
 
-## Automatic refund option
+## Required Cloudflare secret
 
-Add the following encrypted Cloudflare Worker secret:
+Save the user-authorised OAuth access token as:
 
-- `SUMUP_REFUND_ACCESS_TOKEN`
+```
+SUMUP_REFUND_ACCESS_TOKEN
+```
 
-The Worker also accepts `SUMUP_OAUTH_ACCESS_TOKEN` as an alternate name.
+The token must belong to the same SumUp merchant account as `SUMUP_MERCHANT_CODE` and must have the permissions required by SumUp for transaction refunds. Access tokens expire, so a production connection should use the OAuth authorization-code flow and securely refresh tokens.
 
-The token must be issued by SumUp through the authorisation-code OAuth flow and include the transaction permissions required by SumUp. Do not place the token in website JavaScript, HTML or the ZIP.
+## Current safe fallback
 
-After adding the secret, redeploy the Worker and use **Refund £x.xx** in HQ.
+1. Open the exact booking in HQ and expand **View payment details**.
+2. Use the stored transaction code/UUID to identify the transaction in SumUp.
+3. Refund the money in SumUp.
+4. Only after SumUp confirms it, press **Record refund already completed in SumUp**.
 
-## Safe manual option
-
-Until OAuth refund access is configured:
-
-1. Refund the payment in the SumUp dashboard or SumUp app.
-2. Return to the cancelled booking in Boot Scootin HQ.
-3. Press **Record manual refund**.
-4. Type `REFUNDED` exactly.
-
-HQ will then mark the booking refunded, remove it from paid revenue, retain the audit trail and trigger the configured refund email/SMS notification.
-
-Never press **Record manual refund** before the refund has actually been completed in SumUp.
+That record button does not move money.

@@ -701,7 +701,10 @@ async function createClassReservation(request, env) {
   const requestedWaitlist = clean(body.bookingMode, 20) === 'waitlist';
 
   if (!name || !emailOk(email) || !classId) {
-    return json({ error: 'Please enter your name, a valid email address and choose a class.' }, 400);
+    return json({ error: 'Please enter your full name, a valid email address and choose a class.' }, 400);
+  }
+  if (!/\S+\s+\S+/.test(name)) {
+    return json({ error: 'Please enter your first name and surname so your booking can be identified correctly.' }, 400);
   }
   if (!body.terms_accepted) {
     return json({ error: 'Please accept the booking and cancellation terms.' }, 400);
@@ -1802,7 +1805,13 @@ async function adminBookings(request, env) {
       })),
       waiting,
       stats,
-      refund_connection:{automatic:Boolean(sumUpRefundToken(env)),mode:sumUpRefundToken(env)?'oauth':'manual'}
+      refund_connection:{
+        automatic:Boolean(sumUpRefundToken(env)),
+        mode:sumUpRefundToken(env)?'oauth':'manual',
+        message:sumUpRefundToken(env)
+          ?'Automatic SumUp refunds are connected. Refunds use the exact transaction attached to each booking.'
+          :'Automatic refunds need a user-authorised SumUp OAuth access token saved as SUMUP_REFUND_ACCESS_TOKEN. Until connected, complete the refund in SumUp first and only then record it in HQ.'
+      }
     });
   }
 

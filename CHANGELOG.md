@@ -1,3 +1,14 @@
+# V92.7.1 — Customer Identification & Refund Connection Status
+
+- Shows the customer name prominently and labels it clearly on every HQ booking card.
+- Shows email and phone beside the customer name for safer cancellation and refund decisions.
+- Requires first name and surname on all new public bookings so future records are identifiable.
+- Adds an explicit SumUp refund-connection panel in HQ.
+- Disables the automatic refund action until a user-authorised `SUMUP_REFUND_ACCESS_TOKEN` is configured, preventing it from looking like a broken button.
+- Clarifies that the manual refund action records a refund only after money has already been returned through SumUp.
+- Automatic refunds remain tied to the exact checkout and transaction UUID stored against that booking.
+- Rotates HQ and service-worker caches to V92.7.1.
+
 # V92.7.0 — Transaction Details & OAuth Refunds
 
 - Adds customer-linked SumUp payment details to every HQ booking.

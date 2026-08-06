@@ -6687,3 +6687,14 @@ body.hq-modal-open{overflow:hidden}
 
 .booking-refund-state{display:inline-flex;align-items:center;padding:9px 12px;border:1px solid #9f252c;background:#fff8eb;font-weight:800;font-size:.82rem;letter-spacing:.04em;text-transform:uppercase}
 .ranch-class-meta b{display:block}.ranch-class-meta small{display:block;margin-top:5px}
+
+/* V92.7.1 customer identification and refund connection */
+.refund-connection-notice{margin:1rem 0;padding:1rem;border:1px solid #9f252c;background:#fff3f0;display:grid;gap:.35rem}
+.refund-connection-notice strong{font:800 .92rem Oswald,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:#8d2027}
+.refund-connection-notice span{line-height:1.45;color:#5d4640}
+.refund-connection-notice.is-ready{border-left:6px solid #2f7c4a;background:#edf8f0}
+.refund-connection-notice.is-ready strong{color:#25643c}
+.booking-customer-label{display:block;margin-top:.55rem;font:700 .68rem Oswald,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#8d2027}
+.booking-admin-card .booking-customer-name{font-size:1.45rem;line-height:1.15;margin:.2rem 0 .35rem}
+.booking-customer-contact{overflow-wrap:anywhere}
+.refund-not-connected[disabled]{opacity:.72;cursor:not-allowed;background:#d8d8dc;color:#291b1b;border-color:#aaa}

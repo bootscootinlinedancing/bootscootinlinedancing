@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v92-7-0-transaction-details-oauth-refunds";
+const CACHE_NAME = "boot-scootin-v92-7-1-customer-identification-refund-connection";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(

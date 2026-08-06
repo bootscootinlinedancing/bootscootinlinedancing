@@ -1,13 +1,12 @@
 {
-  "release": "V92.7.0 TRANSACTION DETAILS & OAUTH REFUNDS",
-  "built_from": "boot-scootin-platform-v92.6.4-BOOKING-COMMS-STATS-SYNC.zip",
-  "built_at": "2026-08-05T23:26:01.970784+00:00",
+  "release": "V92.7.1 CUSTOMER IDENTIFICATION & REFUND CONNECTION STATUS",
+  "built_from": "boot-scootin-platform-v92.7.0-TRANSACTION-DETAILS-OAUTH-REFUNDS.zip",
+  "built_at": "2026-08-06T10:15:23.303107+00:00",
   "changes": [
-    "Remaining-place countdown and FULL/waiting-list status.",
-    "HQ booking cancellation with automatic place release.",
-    "Live full refunds through the SumUp transaction refund endpoint.",
-    "Cancellation and refund customer notifications.",
-    "Refund-safe D1 status, revenue and occupancy updates."
+    "Prominent labelled customer name, email and phone on HQ booking cards.",
+    "First name and surname required for all new bookings.",
+    "Visible automatic-refund connection status and safe disabled state until OAuth is configured.",
+    "Exact booking-to-SumUp transaction identifiers retained for correct-person refunds."
   ],
   "checks": {
     "javascript_syntax": "passed",
@@ -16,34 +15,42 @@
   },
   "files": {
     "_worker.js": {
-      "size": 103345,
-      "sha256": "de2ed552045e66377fcc3882cb68f0c5a8e562d0356c99de6fbb789676b5a81b"
+      "size": 111906,
+      "sha256": "59d49a75899bdc4dae6244a4c5051d033f15406d8e9fb91064c8daa9777b4a9a"
     },
     "ranch.js": {
-      "size": 56601,
-      "sha256": "cd46e93bf95617e60d7888ddee7b61d7cb0c703408105eb08790f0776efdb44e"
+      "size": 61470,
+      "sha256": "72d56a5d535a1de69bed107ed9464721f2af73b30a65ab62d8f36c381ab8ad32"
     },
     "ranch.html": {
-      "size": 27864,
-      "sha256": "e87105387e61000a2c49dfa0b87c485902d0d6f6230301b30fd9e31cb03685e9"
+      "size": 27997,
+      "sha256": "9177e60d9ebb46ee22afe4d6e3087c9f21d97987031c021746f3624e7cc809d2"
     },
     "styles.css": {
-      "size": 256457,
-      "sha256": "813bc529d4efb0644d727cd5b3b7cb2168ef65fd3c4d08b23550f11c77013f68"
+      "size": 257390,
+      "sha256": "12eee65bd1e693df7ee6dee62925b1b41b83a1322fef803c8826222d2c07f370"
     },
     "service-worker.js": {
-      "size": 535,
-      "sha256": "e8ff775452519b77e6f0201ab5c9a10a4496d089ff26eea4841a26736445d5ab"
+      "size": 557,
+      "sha256": "cb31c3c842dacba66994a251c61834287324d6c25a32ce29554173406aae513d"
     },
     "CHANGELOG.md": {
-      "size": 14824,
-      "sha256": "2cd6abb867a2141de8f15a1631c77ba01141269b27f987154351e1fbd58a7fcb"
+      "size": 18802,
+      "sha256": "c0c5dda50955341aa9fa4ad5d6d8a89b4732826f171bfe243a64c2c4945def3e"
     },
     "V92_6_5_TEST_REPORT.md": {
       "size": 907,
       "sha256": "b8d7b05b1b3f71d4942c3cca02239749162d3c85222d3ddb558fbf0f1d9c5a1b"
+    },
+    "bookings.html": {
+      "size": 23755,
+      "sha256": "af3177bbe0b711cccd2be0f658e88770cf78afe9b13e42563775d5c83ca581bd"
+    },
+    "SUMUP_REFUNDS_SETUP.md": {
+      "size": 1057,
+      "sha256": "2cd2b12a856a3848651b14049d600ea6df8240f3d450b8aba508601ad864e7a2"
     }
   },
-  "version": "92.7.0",
-  "release_name": "SumUp Refund Route Hotfix"
+  "version": "92.7.1",
+  "release_name": "Customer Identification & Refund Connection Status"
 }
