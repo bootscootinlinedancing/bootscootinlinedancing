@@ -439,3 +439,13 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added Resend-compatible transactional email delivery using `RESEND_API_KEY` (or legacy `EMAIL_API_KEY`) and `EMAIL_FROM`.
 - Added Twilio SMS delivery using `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`.
 - Notification delivery failures are logged and never block payment reconciliation, class management or booking updates.
+## v93.2.1 – Resend email configuration
+
+- Connected the Resend email provider using a secure Cloudflare secret.
+- Added separate sender identities for general, booking, event and membership emails.
+- Configured general emails to use hello@bootscootinlinedancing.co.uk.
+- Configured booking confirmations, reminders, cancellations, waiting-list and refund emails to use bookings@bootscootinlinedancing.co.uk.
+- Configured event and workshop communications to use events@bootscootinlinedancing.co.uk.
+- Configured loyalty and membership communications to use members@bootscootinlinedancing.co.uk.
+- Kept API keys and email credentials securely stored in Cloudflare and out of GitHub.
+- Prepared HQ for automatic sender selection and customer recipient lists.
