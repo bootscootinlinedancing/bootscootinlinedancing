@@ -1,3 +1,15 @@
+## V93.5.0 — Branded Emails & Automatic Reminders
+
+- Added the Boot Scootin’ logo and full branded styling to transactional and campaign emails.
+- Added Manage My Booking, Google Calendar, Apple/Outlook calendar and venue directions buttons.
+- Added website, Instagram and WhatsApp Community links to email footers.
+- Improved class date and time formatting for UK customers.
+- Routed booking-related emails through the bookings sender address.
+- Added automatic 24-hour class reminders and same-day reminders.
+- Added automatic thank-you emails after attended classes.
+- Kept notification delivery idempotent so reminders are not sent twice.
+- Updated HQ, Worker and service-worker versions to V93.5.0.
+
 ## V93.4.0 — Email Centre Reliability & Smart Recipients
 
 - Prevented Email Centre API failures from becoming unhandled Worker exceptions.

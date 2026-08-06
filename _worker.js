@@ -855,6 +855,69 @@ function htmlEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 }
 
+
+const SITE_ORIGIN = 'https://bootscootinlinedancing.co.uk';
+const BRAND_LOGO_URL = `${SITE_ORIGIN}/brand-logo-v60.webp`;
+const BRAND_SOCIALS = {
+  website: SITE_ORIGIN,
+  instagram: 'https://www.instagram.com/boot.scootin.linedancing/',
+  whatsapp: 'https://chat.whatsapp.com/FpM532ZPN6VJHwotIaaCRM'
+};
+
+function londonDateParts(value) {
+  if (!value) return { date: '', time: '' };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { date: '', time: '' };
+  return {
+    date: date.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'Europe/London' }),
+    time: date.toLocaleTimeString('en-GB', { hour:'numeric', minute:'2-digit', hour12:true, timeZone:'Europe/London' }).replace(/\s/g, ' ').toLowerCase()
+  };
+}
+
+function emailButton(label, href, secondary=false) {
+  if (!href) return '';
+  const background = secondary ? '#fff8ed' : '#a71924';
+  const colour = secondary ? '#a71924' : '#ffffff';
+  const border = secondary ? '2px solid #a71924' : '2px solid #a71924';
+  return `<a href="${htmlEscape(href)}" style="display:inline-block;margin:6px 8px 6px 0;padding:13px 18px;background:${background};color:${colour};border:${border};text-decoration:none;font-weight:700;border-radius:3px">${htmlEscape(label)}</a>`;
+}
+
+function emailSocialFooter(unsubscribeUrl='') {
+  return `<div style="margin-top:28px;padding-top:20px;border-top:1px solid #d8c3a5;font-size:13px;color:#705f55">
+    <p style="margin:0 0 12px"><a href="${BRAND_SOCIALS.website}" style="color:#a71924">Website</a> &nbsp;·&nbsp; <a href="${BRAND_SOCIALS.instagram}" style="color:#a71924">Instagram</a> &nbsp;·&nbsp; <a href="${BRAND_SOCIALS.whatsapp}" style="color:#a71924">WhatsApp Community</a></p>
+    <p style="margin:0">You are receiving this because you booked with Boot Scootin’ or joined the mailing list.${unsubscribeUrl ? ` <a href="${htmlEscape(unsubscribeUrl)}" style="color:#a71924">Unsubscribe from marketing emails</a>.` : ''}</p>
+  </div>`;
+}
+
+function bookingActionLinks(booking) {
+  const calendar = booking.secure_token ? `${SITE_ORIGIN}/api/booking-calendar?token=${encodeURIComponent(booking.secure_token)}` : '';
+  const manage = booking.secure_token ? `${SITE_ORIGIN}/booking-confirmation.html?reference=${encodeURIComponent(booking.reference || '')}&token=${encodeURIComponent(booking.secure_token)}&customer=${encodeURIComponent(booking.customer_token || '')}` : `${SITE_ORIGIN}/my-bookings.html`;
+  const location = [booking.venue, booking.location].filter(Boolean).join(', ');
+  const directions = location ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}` : '';
+  const start = booking.starts_at ? new Date(booking.starts_at) : null;
+  const end = booking.ends_at ? new Date(booking.ends_at) : (start ? new Date(start.getTime()+3600000) : null);
+  const gdate = d => d ? d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z') : '';
+  const google = start ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.class_title || booking.title || 'Boot Scootin’ class')}&dates=${gdate(start)}/${gdate(end)}&location=${encodeURIComponent(location)}&details=${encodeURIComponent(`Boot Scootin’ booking ${booking.reference || ''}`)}` : '';
+  return { calendar, manage, directions, google };
+}
+
+function brandedEmailHtml({ heading, greeting='', paragraphs=[], detail='', buttons=[], unsubscribeUrl='' }) {
+  const paragraphHtml = paragraphs.filter(Boolean).map(text => `<p style="font-size:17px;line-height:1.65;margin:0 0 18px">${htmlEscape(text)}</p>`).join('');
+  const buttonHtml = buttons.map(button => emailButton(button.label, button.href, button.secondary)).join('');
+  return `<div style="background:#f2eadc;padding:24px 10px;font-family:Arial,sans-serif;color:#211515">
+    <div style="max-width:640px;margin:auto;background:#fff8ed;border-top:8px solid #c6232c;padding:30px;box-sizing:border-box">
+      <img src="${BRAND_LOGO_URL}" alt="Boot Scootin’ Line Dancing" width="180" style="display:block;max-width:180px;height:auto;margin:0 0 22px">
+      <h1 style="font-size:29px;line-height:1.2;margin:0 0 22px;color:#211515">${htmlEscape(heading)}</h1>
+      ${greeting ? `<p style="font-size:18px;margin:0 0 22px">${htmlEscape(greeting)}</p>` : ''}
+      ${paragraphHtml}
+      ${detail ? `<div style="border-left:5px solid #a71924;background:#f7ead5;padding:15px 16px;margin:22px 0;font-size:16px;line-height:1.55">${htmlEscape(detail)}</div>` : ''}
+      ${buttonHtml ? `<div style="margin:24px 0">${buttonHtml}</div>` : ''}
+      <p style="font-size:17px;line-height:1.6;margin:24px 0 0">Nora<br><strong>Boot Scootin’ Line Dancing</strong></p>
+      ${emailSocialFooter(unsubscribeUrl)}
+    </div>
+  </div>`;
+}
+
 function emailSender(env, type='general') {
   const senders = {
     general: String(env.EMAIL_FROM_GENERAL || env.EMAIL_FROM || '').trim(),
@@ -892,7 +955,7 @@ async function sendTransactionalEmail(env, to, subject, html, text, senderType='
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.4.0'
+        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.5.0'
       },
       body: JSON.stringify({ from, to: [to], subject, html, text })
     });
@@ -935,7 +998,8 @@ async function sendTransactionalSms(env, to, body) {
 
 function notificationCopy(eventType, booking) {
   const className = booking.class_title || booking.title || 'your Boot Scootin’ class';
-  const start = booking.starts_at ? new Date(booking.starts_at).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Europe/London' }) : '';
+  const parts = londonDateParts(booking.starts_at);
+  const start = parts.date ? `${parts.date} at ${parts.time}` : '';
   const venue = booking.venue || booking.location || '';
   const amount = `£${(Number(booking.refund_amount_pence || booking.amount_pence || 0) / 100).toFixed(2)}`;
   if (eventType === 'BOOKING_CONFIRMED') return {
@@ -962,15 +1026,50 @@ function notificationCopy(eventType, booking) {
     heading: 'Your refund has been confirmed',
     detail: `${amount} · ${className} · Reference ${booking.reference}`
   };
+  if (eventType === 'CLASS_REMINDER_24H') return {
+    subject: `Tomorrow — ${className}`,
+    text: `Hi ${booking.customer_name}, this is your reminder that ${className}${start ? ` is on ${start}` : ''}${venue ? ` at ${venue}` : ''}. Your booking reference is ${booking.reference}. We can’t wait to dance with you!`,
+    heading: 'Your class is tomorrow',
+    detail: `${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
+  };
+  if (eventType === 'CLASS_REMINDER_3H') return {
+    subject: `Today — ${className}`,
+    text: `Hi ${booking.customer_name}, your Boot Scootin’ class starts soon.${start ? ` Start time: ${start}.` : ''}${venue ? ` Venue: ${venue}.` : ''} Your booking reference is ${booking.reference}.`,
+    heading: 'Your class starts soon',
+    detail: `${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
+  };
+  if (eventType === 'THANK_YOU_AFTER_CLASS') return {
+    subject: `Thank you for dancing with us — ${className}`,
+    text: `Hi ${booking.customer_name}, thank you for coming to ${className}. We hope you had a brilliant time. You can view and book upcoming classes through the Boot Scootin’ website.`,
+    heading: 'Thank you for dancing with us',
+    detail: `${className}${start ? ` · ${start}` : ''}`
+  };
   return { subject: 'Boot Scootin’ booking update', text: `Your booking ${booking.reference} has been updated.`, heading: 'Booking update', detail: booking.reference };
 }
 
 async function deliverBookingNotification(env, booking, eventType) {
   if (!env.BOOKINGS_DB || !booking?.id) return { email: 'skipped', sms: 'skipped' };
   const copy = notificationCopy(eventType, booking);
-  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#210b0d"><h1 style="color:#a71924">${htmlEscape(copy.heading)}</h1><p>Hi ${htmlEscape(booking.customer_name)},</p><p>${htmlEscape(copy.text.replace(`Hi ${booking.customer_name}, `, ''))}</p><p style="border-left:4px solid #a71924;padding:12px;background:#fff7ea">${htmlEscape(copy.detail)}</p><p>Boot Scootin’ Line Dancing</p></div>`;
+  const links = bookingActionLinks(booking);
+  const bodyText = copy.text.replace(`Hi ${booking.customer_name}, `, '');
+  const buttons = [];
+  if (!['CLASS_CANCELLED','BOOKING_CANCELLED','REFUND_CONFIRMED'].includes(eventType)) {
+    buttons.push({ label: 'Manage my booking', href: links.manage });
+    buttons.push({ label: 'Add to Google Calendar', href: links.google, secondary: true });
+    buttons.push({ label: 'Add to Apple / Outlook Calendar', href: links.calendar, secondary: true });
+    if (links.directions) buttons.push({ label: 'Get directions', href: links.directions, secondary: true });
+  } else {
+    buttons.push({ label: 'View my bookings', href: links.manage });
+  }
+  const html = brandedEmailHtml({
+    heading: copy.heading,
+    greeting: `Hi ${booking.customer_name},`,
+    paragraphs: [bodyText],
+    detail: copy.detail,
+    buttons
+  });
   const channels = [
-    { channel: 'EMAIL', recipient: clean(booking.customer_email, 160), send: () => sendTransactionalEmail(env, booking.customer_email, copy.subject, html, copy.text) },
+    { channel: 'EMAIL', recipient: clean(booking.customer_email, 160), send: () => sendTransactionalEmail(env, booking.customer_email, copy.subject, html, copy.text, 'bookings') },
     { channel: 'SMS', recipient: normaliseUkPhone(booking.customer_phone), send: () => sendTransactionalSms(env, booking.customer_phone, copy.text) }
   ];
   const results = {};
@@ -2047,11 +2146,15 @@ async function validMailingToken(env,email,token){const expected=await mailingTo
 function mergeEmailText(text,recipient,klass){
   const full=String(recipient.name||'').trim(); const first=full.split(/\s+/)[0]||'there';
   const date=klass?.starts_at?new Date(klass.starts_at).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Europe/London'}):'';
-  const time=klass?.starts_at?new Date(klass.starts_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}):'';
+  const time=klass?.starts_at?londonDateParts(klass.starts_at).time:'';
   const replacements={first_name:first,full_name:full||first,class_name:klass?.title||'',class_date:date,class_time:time,venue:klass?.venue||'',booking_link:klass?.booking_url||'https://bootscootinlinedancing.co.uk/bookings.html',places_remaining:String(Math.max(0,Number(klass?.capacity||0)-Number(klass?.sold||0)))};
   return String(text||'').replace(/\{\{\s*([a-z_]+)\s*\}\}/gi,(_,key)=>replacements[key]??'');
 }
-function emailHtmlFromText(text,unsubscribeUrl){return `<div style="font-family:Arial,sans-serif;line-height:1.65;color:#211515;max-width:640px;margin:auto"><div style="border-top:8px solid #a71920;padding:26px;background:#fff8ed"><h1 style="font-size:24px">Boot Scootin’ Line Dancing</h1>${htmlEscape(text).replace(/\n/g,'<br>')}<hr style="border:0;border-top:1px solid #d8c3a5;margin:28px 0"><p style="font-size:12px;color:#705f55">You are receiving this because you booked with Boot Scootin’ or joined the mailing list.${unsubscribeUrl?` <a href="${htmlEscape(unsubscribeUrl)}">Unsubscribe from marketing emails</a>.`:''}</p></div></div>`}
+function emailHtmlFromText(text,unsubscribeUrl){
+  const lines=String(text||'').split(/\n{2,}/).map(part=>part.trim()).filter(Boolean);
+  const heading=lines.shift()||'Boot Scootin’ Line Dancing';
+  return brandedEmailHtml({heading,paragraphs:lines,buttons:[{label:'View upcoming classes',href:`${SITE_ORIGIN}/bookings.html`}],unsubscribeUrl});
+}
 
 async function resolveEmailAudience(env,type,payload={}){
   await ensureEmailCentreSchema(env);
@@ -2117,6 +2220,28 @@ async function sendCampaign(env,campaignId){
   const finalStatus=sent>0?(failed?'PARTIAL':'SENT'):'FAILED';
   await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status=?,sent_at=CURRENT_TIMESTAMP,provider_message=?,error_message=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(finalStatus,`${sent} sent`,failed?`${failed} failed`:null,campaignId).run();
   return {sent,failed,status:finalStatus};
+}
+
+async function processAutomaticBookingNotifications(env){
+  if(!env.BOOKINGS_DB || !notificationConfig(env).emailReady) return { skipped:true };
+  await ensureBookingSchema(env);
+  const now=Date.now();
+  const ranges=[
+    {event:'CLASS_REMINDER_24H',from:23*3600000,to:25*3600000},
+    {event:'CLASS_REMINDER_3H',from:2*3600000,to:4*3600000}
+  ];
+  let processed=0;
+  for(const range of ranges){
+    const from=new Date(now+range.from).toISOString();
+    const to=new Date(now+range.to).toISOString();
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.ends_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.status IN ('PAID','PENDING') AND c.status<>'cancelled' AND c.starts_at>=? AND c.starts_at<? LIMIT 250`).bind(from,to).all();
+    for(const booking of rows.results||[]){await deliverBookingNotification(env,booking,range.event);processed++;}
+  }
+  const thankFrom=new Date(now-36*3600000).toISOString();
+  const thankTo=new Date(now-2*3600000).toISOString();
+  const attended=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.ends_at,c.venue,c.location FROM attendance a JOIN bookings b ON b.id=a.booking_id JOIN classes c ON c.id=b.class_id WHERE c.starts_at>=? AND c.starts_at<? LIMIT 250`).bind(thankFrom,thankTo).all();
+  for(const booking of attended.results||[]){await deliverBookingNotification(env,booking,'THANK_YOU_AFTER_CLASS');processed++;}
+  return {processed};
 }
 
 async function processDueCampaigns(env){
@@ -2767,7 +2892,7 @@ async function serveMedia(request, env, pathname) {
 }
 
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(processDueCampaigns(env)); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env)])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
