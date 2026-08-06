@@ -1,3 +1,33 @@
+# Boot Scootin’ Platform v93.7.0
+
+## Protected Email Automation Scheduler Bridge
+
+- Added a protected `POST /api/automation/run` endpoint for the standalone Cloudflare scheduler Worker.
+- Added shared-secret authentication using `EMAIL_AUTOMATION_SECRET`.
+- Added SHA-256 digest comparison so secrets are not compared directly or returned.
+- Added structured success and failure responses for scheduled campaigns and automatic customer journeys.
+- Added a ready-to-paste standalone Worker in `scheduler-worker/worker.js`.
+- Added scheduler health output without exposing secret values.
+- Added a 55-second request timeout and clear Cloudflare logs.
+- Preserved duplicate protection for reminders, birthdays, welcome emails and follow-ups.
+- Updated HQ and Worker versions to v93.7.0.
+
+# Boot Scootin’ Platform v93.6.0
+
+## Automated Customer Journeys & Unsubscribe
+
+- Sends a welcome email automatically after a customer opts into the mailing list.
+- Sends class reminders approximately 48 hours before class and again on the class-day morning.
+- Sends birthday emails automatically to opted-in customers with a birthday saved in CRM.
+- Prepares a draft mailing-list announcement whenever a new class is created.
+- Emails booked customers automatically when class date, time, venue or title changes.
+- Retains automatic class-cancellation and booking-update emails.
+- Keeps dance recap emails editable for the instructor to add dances and links manually.
+- Adds HQ automation on/off controls and recent automation history.
+- Adds signed unsubscribe links to every marketing email and immediately records opt-outs.
+- Essential booking, cancellation and safety messages remain separate from marketing consent.
+- Uses duplicate-protection logs so automatic messages are not sent twice.
+- Requires an hourly Cloudflare Cron Trigger: `0 * * * *`.
 ## V93.5.0 — Branded Emails & Automatic Reminders
 
 - Added the Boot Scootin’ logo and full branded styling to transactional and campaign emails.

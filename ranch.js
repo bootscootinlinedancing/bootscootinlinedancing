@@ -1040,6 +1040,9 @@ Type REFUNDED to continue.`);
     const data=state.emailCentre;if(!data)return;
     const provider=$('#emailProviderStatus');
     if(provider){provider.className=`email-centre-status ${data.provider?.ready?'ready':'setup'}`;provider.innerHTML=data.provider?.ready?`<strong>Email sending connected</strong><br>General: ${esc(data.provider.senders?.general||data.provider.from||'configured')}<br>Bookings: ${esc(data.provider.senders?.bookings||'configured')}<br>Events: ${esc(data.provider.senders?.events||'configured')}<br>Members: ${esc(data.provider.senders?.members||'configured')}<br>Scheduled campaigns are supported.`:`<strong>Email setup required</strong><br>Add RESEND_API_KEY and at least EMAIL_FROM_GENERAL or EMAIL_FROM in Cloudflare before sending.`;}
+    const automationWrap=$('#emailAutomationSettings');
+    if(automationWrap){const labels={welcome:'Welcome email after opt-in',reminder_48h:'Reminder about 48 hours before class',class_day_morning:'Reminder on the morning of the class',birthday:'Birthday email',thank_you:'Thank-you email after attendance',new_class_draft:'Prepare new-class announcement as a draft',class_updates:'Email booked customers when class details change'};const settings=Object.fromEntries((data.automations||[]).map(x=>[x.setting_key,Number(x.enabled)!==0]));automationWrap.innerHTML=Object.entries(labels).map(([key,label])=>`<label class="email-customer-option"><input type="checkbox" data-email-automation="${key}" ${settings[key]!==false?'checked':''}><span><strong>${esc(label)}</strong></span></label>`).join('');}
+    const history=$('#emailAutomationHistory');if(history){history.innerHTML=(data.automation_history||[]).length?(data.automation_history||[]).map(x=>`<div class="email-campaign-item"><strong>${esc(x.automation_type)}</strong><span>${esc(x.email||'')} · ${esc(fmt(x.created_at))} · ${esc(x.status)}</span></div>`).join(''):'No automatic emails yet.';}
     const templateSelect=$('#emailTemplateSelect');if(templateSelect){templateSelect.innerHTML='<option value="">Start from blank</option>'+data.templates.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');}
     const classPicker=$('#emailClassPicker');if(classPicker){classPicker.innerHTML='<option value="">Choose a class</option>'+data.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.title)} — ${esc(fmt(c.starts_at))}</option>`).join('');}
     const list=$('#emailTemplatesList');if(list){list.innerHTML=data.templates.length?data.templates.map(t=>`<article class="email-template-item"><strong>${esc(t.name)}</strong><span>${esc(t.subject)}</span><div class="email-template-actions"><button type="button" data-use-template="${esc(t.id)}">Use</button>${t.is_system?'':`<button type="button" data-edit-template="${esc(t.id)}">Edit</button><button type="button" data-delete-template="${esc(t.id)}">Delete</button>`}</div></article>`).join(''):'<div class="email-empty">No templates yet.</div>';}
@@ -1084,6 +1087,10 @@ Type REFUNDED to continue.`);
     try{const preview=await previewEmailAudience();if(!preview)return;const response=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,...draft})},30000);if(status)status.textContent=response.message||'Saved.';toast(response.message||'Email action completed.','success');setTimeout(loadEmailCentre,1500);}
     catch(error){if(status)status.textContent=error.message;toast(error.message,'error');}
   }
+  async function saveEmailAutomations(){
+    const settings={};document.querySelectorAll('[data-email-automation]').forEach(el=>settings[el.dataset.emailAutomation]=el.checked);
+    try{const r=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'SAVE_AUTOMATIONS',settings})});toast(r.message||'Automation settings saved.','success');await loadEmailCentre();}catch(error){toast(error.message,'error');}
+  }
   async function saveEmailTemplate(){
     const payload={action:'SAVE_TEMPLATE',id:$('#templateId').value,name:$('#templateName').value,subject:$('#templateSubject').value,body_text:$('#templateBody').value};
     try{await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Template saved.','success');clearEmailTemplate();await loadEmailCentre();}catch(error){toast(error.message,'error');}
@@ -1124,6 +1131,7 @@ Type REFUNDED to continue.`);
   $('#sendEmailNow')?.addEventListener('click',()=>emailCampaignAction('SEND_NOW'));
   $('#scheduleEmail')?.addEventListener('click',()=>emailCampaignAction('SCHEDULE'));
   $('#saveEmailTemplate')?.addEventListener('click',saveEmailTemplate);
+  $('#saveEmailAutomations')?.addEventListener('click',saveEmailAutomations);
   $('#clearEmailTemplate')?.addEventListener('click',clearEmailTemplate);
   $('#emailTemplateSelect')?.addEventListener('change',event=>event.target.value&&applyEmailTemplate(event.target.value));
   $('#closeCustomerCrm')?.addEventListener('click',()=>$('#customerCrmDialog')?.close());

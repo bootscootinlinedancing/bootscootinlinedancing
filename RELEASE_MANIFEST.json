@@ -1,7 +1,7 @@
 {
   "release": "V93.5.0 BRANDED EMAILS & AUTOMATIC REMINDERS",
-  "version": "93.5.0",
-  "release_name": "Customer CRM",
+  "version": "93.7.0",
+  "release_name": "Protected Email Automation Scheduler Bridge",
   "description": "Adds complete customer profiles, activity, bookings, loyalty, spending, communications, tags and private instructor notes to protected HQ.",
   "built_from": "boot-scootin-platform-v93.3.0-EMAIL-RELIABILITY.zip",
   "built_at": "2026-08-06T13:38:35.541206+00:00",
@@ -54,5 +54,7 @@
     "Searchable individual customer picker",
     "Departmental sender selection",
     "Unsubscribe exclusions"
-  ]
+  ],
+  "name": "Automated Customer Journeys & Unsubscribe",
+  "generated_at": "2026-08-06T18:36:00+01:00"
 }

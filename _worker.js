@@ -955,7 +955,7 @@ async function sendTransactionalEmail(env, to, subject, html, text, senderType='
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.5.0'
+        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.7.0'
       },
       body: JSON.stringify({ from, to: [to], subject, html, text })
     });
@@ -1025,6 +1025,24 @@ function notificationCopy(eventType, booking) {
     text: `Hi ${booking.customer_name}, your refund of ${amount} for ${className} has been recorded. Reference: ${booking.reference}. Your bank may take several working days to display the refund.`,
     heading: 'Your refund has been confirmed',
     detail: `${amount} · ${className} · Reference ${booking.reference}`
+  };
+  if (eventType === 'CLASS_UPDATED') return {
+    subject: `Class details updated — ${className}`,
+    text: `Hi ${booking.customer_name}, the details for ${className} have changed.${start ? ` The class is now on ${start}.` : ''}${venue ? ` Venue: ${venue}.` : ''} Please check your booking and contact us if you have any questions.`,
+    heading: 'Your class details have changed',
+    detail: `${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
+  };
+  if (eventType === 'CLASS_REMINDER_48H') return {
+    subject: `Coming up — ${className}`,
+    text: `Hi ${booking.customer_name}, this is your reminder that ${className}${start ? ` is on ${start}` : ''}${venue ? ` at ${venue}` : ''}. Your booking reference is ${booking.reference}. We can’t wait to dance with you!`,
+    heading: 'Your class is coming up',
+    detail: `${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
+  };
+  if (eventType === 'CLASS_DAY_MORNING') return {
+    subject: `Today — ${className}`,
+    text: `Hi ${booking.customer_name}, your Boot Scootin’ class is today.${start ? ` Start time: ${start}.` : ''}${venue ? ` Venue: ${venue}.` : ''} Your booking reference is ${booking.reference}. See you on the dance floor!`,
+    heading: 'Your class is today',
+    detail: `${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
   };
   if (eventType === 'CLASS_REMINDER_24H') return {
     subject: `Tomorrow — ${className}`,
@@ -1196,6 +1214,10 @@ async function createClassReservation(request, env) {
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken,
       Number(Boolean(body.marketing_consent))
     ).run();
+  }
+
+  if(Number(Boolean(body.marketing_consent))){
+    try{await sendMailingWelcome(env,email,name);}catch(error){console.error('WELCOME_EMAIL_FAILED',error?.message||error);}
   }
 
   await env.BOOKINGS_DB.prepare(
@@ -1806,11 +1828,13 @@ async function adminClasses(request, env) {
       INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes)
       VALUES(?,?,?,?,?,?,?,?,?,?,?)
     `).bind(id,...vals).run();
-    return json({ok:true,id},201);
+    const created=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(id).first();
+    try{await createNewClassDraft(env,created,check.state.email||'hq');}catch(error){console.error('NEW_CLASS_DRAFT_FAILED',error?.message||error);}
+    return json({ok:true,id,email_draft_created:true},201);
   }
 
   if(request.method==='PATCH'){
-    const existing=await env.BOOKINGS_DB.prepare(`SELECT sold FROM classes WHERE id=?`).bind(id).first();
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(id).first();
     if(!existing)return json({error:'The class could not be found.'},404);
     if(Number(b.capacity)<Number(existing.sold||0)){
       return json({error:`Capacity cannot be lower than the ${existing.sold} places already booked.`},409);
@@ -1820,7 +1844,13 @@ async function adminClasses(request, env) {
       SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,updated_at=CURRENT_TIMESTAMP
       WHERE id=?
     `).bind(...vals,id).run();
-    return json({ok:true,id});
+    const detailsChanged=existing && (existing.starts_at!==starts.toISOString() || String(existing.venue||'')!==venue || String(existing.location||'')!==location || String(existing.title||'')!==title);
+    let notified=0;
+    if(detailsChanged && await automationEnabled(env,'class_updates')){
+      const active=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.ends_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.class_id=? AND b.status IN ('PENDING','PAID')`).bind(id).all();
+      for(const booking of active.results||[]){await deliverBookingNotification(env,booking,'CLASS_UPDATED');notified++;}
+    }
+    return json({ok:true,id,notified});
   }
 
   return json({error:'Method not allowed.'},405);
@@ -2126,11 +2156,16 @@ async function ensureEmailCentreSchema(env){
     `CREATE TABLE IF NOT EXISTS email_templates (id TEXT PRIMARY KEY,name TEXT NOT NULL,subject TEXT NOT NULL,body_text TEXT NOT NULL,is_system INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS email_campaigns (id TEXT PRIMARY KEY,subject TEXT NOT NULL,body_text TEXT NOT NULL,audience_type TEXT NOT NULL,audience_json TEXT,recipient_count INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'DRAFT',scheduled_at TEXT,sent_at TEXT,created_by TEXT,provider_message TEXT,error_message TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS email_campaign_recipients (id TEXT PRIMARY KEY,campaign_id TEXT NOT NULL,email TEXT NOT NULL,name TEXT,status TEXT NOT NULL DEFAULT 'PENDING',provider_id TEXT,error_message TEXT,sent_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(campaign_id,email))`,
-    `CREATE TABLE IF NOT EXISTS mailing_unsubscribes (email TEXT PRIMARY KEY,unsubscribed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,source TEXT)`
+    `CREATE TABLE IF NOT EXISTS mailing_unsubscribes (email TEXT PRIMARY KEY,unsubscribed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,source TEXT)`,
+    `CREATE TABLE IF NOT EXISTS email_automation_log (automation_key TEXT PRIMARY KEY,automation_type TEXT NOT NULL,email TEXT,class_id TEXT,booking_id TEXT,provider_id TEXT,status TEXT NOT NULL DEFAULT 'SENT',error_message TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS email_automation_settings (setting_key TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`
   ];
   for(const sql of statements) await env.BOOKINGS_DB.prepare(sql).run();
   for(const [id,name,subject,body] of DEFAULT_EMAIL_TEMPLATES){
     await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_templates(id,name,subject,body_text,is_system) VALUES(?,?,?,?,1)`).bind(id,name,subject,body).run();
+  }
+  for(const key of ['welcome','reminder_48h','class_day_morning','birthday','thank_you','new_class_draft','class_updates']){
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_automation_settings(setting_key,enabled) VALUES(?,1)`).bind(key).run();
   }
 }
 
@@ -2154,6 +2189,67 @@ function emailHtmlFromText(text,unsubscribeUrl){
   const lines=String(text||'').split(/\n{2,}/).map(part=>part.trim()).filter(Boolean);
   const heading=lines.shift()||'Boot Scootin’ Line Dancing';
   return brandedEmailHtml({heading,paragraphs:lines,buttons:[{label:'View upcoming classes',href:`${SITE_ORIGIN}/bookings.html`}],unsubscribeUrl});
+}
+
+
+async function automationEnabled(env,key){
+  await ensureEmailCentreSchema(env);
+  const row=await env.BOOKINGS_DB.prepare(`SELECT enabled FROM email_automation_settings WHERE setting_key=?`).bind(key).first();
+  return row ? Number(row.enabled)!==0 : true;
+}
+async function automationAlreadySent(env,key){
+  const row=await env.BOOKINGS_DB.prepare(`SELECT status FROM email_automation_log WHERE automation_key=?`).bind(key).first();
+  return row?.status==='SENT';
+}
+async function recordAutomation(env,key,type,email,meta={},result=null,error=null){
+  await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_automation_log(automation_key,automation_type,email,class_id,booking_id,provider_id,status,error_message,created_at) VALUES(?,?,?,?,?,?,?, ?,CURRENT_TIMESTAMP)`)
+    .bind(key,type,String(email||'').toLowerCase(),meta.class_id||null,meta.booking_id||null,result?.id||null,error?'FAILED':'SENT',error?clean(error?.message||error,400):null).run();
+}
+async function sendMarketingAutomation(env,{key,type,email,name,subject,text,senderType='general',klass=null,meta={}}){
+  if(!email || await automationAlreadySent(env,key)) return {skipped:true,reason:'Already sent or missing email.'};
+  const unsub=await env.BOOKINGS_DB.prepare(`SELECT email FROM mailing_unsubscribes WHERE lower(email)=lower(?)`).bind(email).first();
+  if(unsub) return {skipped:true,reason:'Unsubscribed.'};
+  const token=await mailingToken(env,email);
+  const unsubscribeUrl=token?`${SITE_ORIGIN}/api/email/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`:'';
+  const recipient={email,name:name||'there'};
+  const mergedSubject=mergeEmailText(subject,recipient,klass);
+  const mergedText=mergeEmailText(text,recipient,klass);
+  try{
+    const result=await sendTransactionalEmail(env,email,mergedSubject,emailHtmlFromText(mergedText,unsubscribeUrl),mergedText,senderType);
+    if(result?.skipped) return result;
+    await recordAutomation(env,key,type,email,meta,result,null);
+    return result;
+  }catch(error){await recordAutomation(env,key,type,email,meta,null,error);throw error;}
+}
+async function sendMailingWelcome(env,email,name){
+  if(!(await automationEnabled(env,'welcome'))) return {skipped:true};
+  const key=`WELCOME:${String(email).toLowerCase()}`;
+  return sendMarketingAutomation(env,{key,type:'WELCOME',email,name,subject:'Welcome to the Boot Scootin’ mailing list',text:`Hi {{first_name}},\n\nWelcome to the Boot Scootin’ mailing list. You’ll receive class dates, reminders, special events and the latest Boot Scootin’ news.\n\nView upcoming classes: ${SITE_ORIGIN}/bookings.html\n\nNora\nBoot Scootin’ Line Dancing`});
+}
+function londonPartsNow(date=new Date()){
+  const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hour12:false}).formatToParts(date);
+  return Object.fromEntries(parts.map(p=>[p.type,p.value]));
+}
+async function processBirthdayEmails(env){
+  if(!(await automationEnabled(env,'birthday'))) return {processed:0};
+  const nowParts=londonPartsNow();
+  if(Number(nowParts.hour)<8 || Number(nowParts.hour)>10) return {processed:0};
+  const md=`${nowParts.month}-${nowParts.day}`; const year=nowParts.year;
+  const rows=await env.BOOKINGS_DB.prepare(`SELECT p.customer_key email,p.birthday,MAX(b.customer_name) name FROM customer_crm_profiles p JOIN bookings b ON lower(b.customer_email)=lower(p.customer_key) LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(p.customer_key) WHERE p.birthday IS NOT NULL AND substr(p.birthday,6,5)=? AND b.marketing_consent=1 AND u.email IS NULL GROUP BY p.customer_key,p.birthday LIMIT 250`).bind(md).all();
+  let processed=0;
+  for(const row of rows.results||[]){
+    const key=`BIRTHDAY:${year}:${String(row.email).toLowerCase()}`;
+    const r=await sendMarketingAutomation(env,{key,type:'BIRTHDAY',email:row.email,name:row.name,subject:'Happy birthday from Boot Scootin’',text:`Hi {{first_name}},\n\nHappy birthday from everyone at Boot Scootin’ Line Dancing! We hope you have a brilliant day filled with music, dancing and good times.\n\nNora\nBoot Scootin’ Line Dancing`,senderType:'members'});
+    if(!r?.skipped) processed++;
+  }
+  return {processed};
+}
+async function createNewClassDraft(env,klass,createdBy='hq'){
+  if(!(await automationEnabled(env,'new_class_draft')) || !klass || klass.status==='cancelled') return;
+  const exists=await env.BOOKINGS_DB.prepare(`SELECT id FROM email_campaigns WHERE audience_type='subscribers' AND json_extract(audience_json,'$.automation_class_id')=? AND status='DRAFT'`).bind(klass.id).first();
+  if(exists) return;
+  const id=crypto.randomUUID();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO email_campaigns(id,subject,body_text,audience_type,audience_json,status,created_by) VALUES(?,?,?,?,?,'DRAFT',?)`).bind(id,'New Boot Scootin’ class added — {{class_date}}',`Hi {{first_name}},\n\nA new Boot Scootin’ class has been added.\n\n{{class_name}}\n{{class_date}} at {{class_time}}\n{{venue}}\n\nBook here: {{booking_link}}\n\nNora\nBoot Scootin’ Line Dancing`,'subscribers',JSON.stringify({class_id:klass.id,automation_class_id:klass.id,sender_type:'bookings'}),createdBy).run();
 }
 
 async function resolveEmailAudience(env,type,payload={}){
@@ -2224,24 +2320,28 @@ async function sendCampaign(env,campaignId){
 
 async function processAutomaticBookingNotifications(env){
   if(!env.BOOKINGS_DB || !notificationConfig(env).emailReady) return { skipped:true };
-  await ensureBookingSchema(env);
-  const now=Date.now();
-  const ranges=[
-    {event:'CLASS_REMINDER_24H',from:23*3600000,to:25*3600000},
-    {event:'CLASS_REMINDER_3H',from:2*3600000,to:4*3600000}
-  ];
-  let processed=0;
-  for(const range of ranges){
-    const from=new Date(now+range.from).toISOString();
-    const to=new Date(now+range.to).toISOString();
+  await ensureBookingSchema(env); await ensureEmailCentreSchema(env);
+  const now=Date.now(); let processed=0;
+  if(await automationEnabled(env,'reminder_48h')){
+    const from=new Date(now+47*3600000).toISOString(),to=new Date(now+49*3600000).toISOString();
     const rows=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.ends_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.status IN ('PAID','PENDING') AND c.status<>'cancelled' AND c.starts_at>=? AND c.starts_at<? LIMIT 250`).bind(from,to).all();
-    for(const booking of rows.results||[]){await deliverBookingNotification(env,booking,range.event);processed++;}
+    for(const booking of rows.results||[]){await deliverBookingNotification(env,booking,'CLASS_REMINDER_48H');processed++;}
   }
-  const thankFrom=new Date(now-36*3600000).toISOString();
-  const thankTo=new Date(now-2*3600000).toISOString();
-  const attended=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.ends_at,c.venue,c.location FROM attendance a JOIN bookings b ON b.id=a.booking_id JOIN classes c ON c.id=b.class_id WHERE c.starts_at>=? AND c.starts_at<? LIMIT 250`).bind(thankFrom,thankTo).all();
-  for(const booking of attended.results||[]){await deliverBookingNotification(env,booking,'THANK_YOU_AFTER_CLASS');processed++;}
-  return {processed};
+  if(await automationEnabled(env,'class_day_morning')){
+    const p=londonPartsNow();
+    if(Number(p.hour)>=8 && Number(p.hour)<=10){
+      const from=new Date(now).toISOString(),to=new Date(now+20*3600000).toISOString();
+      const rows=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.ends_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.status IN ('PAID','PENDING') AND c.status<>'cancelled' AND c.starts_at>=? AND c.starts_at<? LIMIT 250`).bind(from,to).all();
+      for(const booking of rows.results||[]){const cp=londonPartsNow(new Date(booking.starts_at));if(cp.year===p.year&&cp.month===p.month&&cp.day===p.day){await deliverBookingNotification(env,booking,'CLASS_DAY_MORNING');processed++;}}
+    }
+  }
+  if(await automationEnabled(env,'thank_you')){
+    const thankFrom=new Date(now-36*3600000).toISOString(),thankTo=new Date(now-2*3600000).toISOString();
+    const attended=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.ends_at,c.venue,c.location FROM attendance a JOIN bookings b ON b.id=a.booking_id JOIN classes c ON c.id=b.class_id WHERE c.starts_at>=? AND c.starts_at<? LIMIT 250`).bind(thankFrom,thankTo).all();
+    for(const booking of attended.results||[]){await deliverBookingNotification(env,booking,'THANK_YOU_AFTER_CLASS');processed++;}
+  }
+  const birthdays=await processBirthdayEmails(env);
+  return {processed,birthdays:birthdays.processed||0};
 }
 
 async function processDueCampaigns(env){
@@ -2249,6 +2349,55 @@ async function processDueCampaigns(env){
   const r=await env.BOOKINGS_DB.prepare(`SELECT id FROM email_campaigns WHERE status='SCHEDULED' AND scheduled_at<=CURRENT_TIMESTAMP ORDER BY scheduled_at LIMIT 10`).all();
   const results=[]; for(const row of r.results||[]){try{results.push({id:row.id,...await sendCampaign(env,row.id)})}catch(error){await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='FAILED',error_message=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(clean(error.message||error,300),row.id).run();results.push({id:row.id,error:error.message});}}
   return results;
+}
+
+
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(String(value || ''));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function secureSecretMatch(provided, expected) {
+  if (!provided || !expected) return false;
+  const [left, right] = await Promise.all([sha256Hex(provided), sha256Hex(expected)]);
+  if (left.length !== right.length) return false;
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+async function runProtectedEmailAutomations(request, env) {
+  if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
+  const expected = String(env.EMAIL_AUTOMATION_SECRET || '').trim();
+  if (!expected) return json({ error: 'EMAIL_AUTOMATION_SECRET is not configured on the main Pages project.', code: 'AUTOMATION_SECRET_MISSING' }, 503);
+  const authorization = String(request.headers.get('authorization') || '');
+  const provided = authorization.toLowerCase().startsWith('bearer ') ? authorization.slice(7).trim() : String(request.headers.get('x-automation-secret') || '').trim();
+  if (!(await secureSecretMatch(provided, expected))) return json({ error: 'Not authorised.', code: 'AUTOMATION_NOT_AUTHORISED' }, 401);
+
+  const startedAt = new Date().toISOString();
+  try {
+    const [campaigns, journeys] = await Promise.all([
+      processDueCampaigns(env),
+      processAutomaticBookingNotifications(env)
+    ]);
+    return json({
+      ok: true,
+      started_at: startedAt,
+      finished_at: new Date().toISOString(),
+      scheduled_campaigns: campaigns,
+      automatic_journeys: journeys
+    });
+  } catch (error) {
+    console.error('PROTECTED_EMAIL_AUTOMATION_ERROR', error?.stack || error);
+    return json({
+      error: `Email automation failed: ${clean(error?.message || error, 500)}`,
+      code: 'EMAIL_AUTOMATION_FAILED',
+      started_at: startedAt
+    }, 500);
+  }
 }
 
 async function adminEmailCentre(request,env,ctx){
@@ -2270,11 +2419,20 @@ async function adminEmailCentreInner(request,env,ctx){
       env.BOOKINGS_DB.prepare(`SELECT id,title,starts_at,venue,capacity,sold FROM classes ORDER BY starts_at DESC LIMIT 100`).all()
     ]);
     const customers=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name,MAX(created_at) last_booking_at FROM bookings WHERE customer_email IS NOT NULL AND customer_email<>'' GROUP BY lower(customer_email) ORDER BY last_booking_at DESC LIMIT 1000`).all();
-    return json({provider:{ready:notificationConfig(env).emailReady,from:emailSender(env,'general'),senders:{general:emailSender(env,'general'),bookings:emailSender(env,'bookings'),events:emailSender(env,'events'),members:emailSender(env,'members')},scheduling_ready:true,cron_note:'Scheduled campaigns are sent by the Worker scheduled handler or the Process due emails button.'},templates:templates.results||[],campaigns:campaigns.results||[],subscribers:subscribers.results||[],customers:customers.results||[],classes:classes.results||[]});
+    const automations=await env.BOOKINGS_DB.prepare(`SELECT setting_key,enabled FROM email_automation_settings ORDER BY setting_key`).all();
+    const automationHistory=await env.BOOKINGS_DB.prepare(`SELECT * FROM email_automation_log ORDER BY created_at DESC LIMIT 50`).all();
+    return json({provider:{ready:notificationConfig(env).emailReady,from:emailSender(env,'general'),senders:{general:emailSender(env,'general'),bookings:emailSender(env,'bookings'),events:emailSender(env,'events'),members:emailSender(env,'members')},scheduling_ready:true,cron_note:'Scheduled campaigns are sent by the Worker scheduled handler or the Process due emails button.'},templates:templates.results||[],campaigns:campaigns.results||[],subscribers:subscribers.results||[],customers:customers.results||[],classes:classes.results||[],automations:automations.results||[],automation_history:automationHistory.results||[]});
   }
   if(request.method!=='POST')return json({error:'Method not allowed.'},405);
   let body;try{body=await request.json()}catch{return json({error:'Invalid request.'},400)}
   const action=String(body.action||'');
+  if(action==='SAVE_AUTOMATIONS'){
+    const settings=body.settings||{};
+    for(const key of ['welcome','reminder_48h','class_day_morning','birthday','thank_you','new_class_draft','class_updates']){
+      await env.BOOKINGS_DB.prepare(`INSERT INTO email_automation_settings(setting_key,enabled,updated_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO UPDATE SET enabled=excluded.enabled,updated_at=CURRENT_TIMESTAMP`).bind(key,settings[key]===false?0:1).run();
+    }
+    return json({ok:true,message:'Email automation settings saved.'});
+  }
   if(action==='AUDIENCE_PREVIEW'){
     const r=await resolveEmailAudience(env,body.audience_type,body.audience||{});return json({count:r.recipients.length,sample:r.recipients.slice(0,10)});
   }
@@ -2923,6 +3081,7 @@ export default {
       if (path === '/api/admin/customers') return adminCustomers(request, env);
       if (path === '/api/admin/emails') return adminEmailCentre(request, env, ctx);
       if (path === '/api/email/unsubscribe' && request.method === 'GET') return unsubscribeEmail(request, env, url);
+      if (path === '/api/automation/run') return runProtectedEmailAutomations(request, env);
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);
       if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);
       if (path === '/api/admin/media-status' && request.method === 'GET') return mediaStatus(request, env);
