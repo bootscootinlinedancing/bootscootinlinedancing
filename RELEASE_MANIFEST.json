@@ -1,7 +1,7 @@
 {
   "release": "V95.0.0 CUSTOMER PORTAL & ACHIEVEMENTS",
-  "version": "96.3.0",
-  "release_name": "LIFE'S BETTER IN COWBOY BOOTS HOMEPAGE",
+  "version": "96.4.0",
+  "release_name": "BROADWAY NEON + NORA PHOTO UPDATE",
   "description": "Expands the secure customer portal with personal rewards, achievements, lifetime spend and engagement status.",
   "built_from": "boot-scootin-platform-v94.0.0-PROMOTIONS-REWARDS-ENGINE.zip",
   "built_at": "2026-08-06T18:49:56.842081+00:00",
@@ -44,5 +44,11 @@
       "sha256": "0ced25c5d752b213b74d50766e95fb864871537db1dea05335ba9ab73f35389a"
     }
   },
-  "homepage_refresh": true
+  "homepage_refresh": true,
+  "notes": [
+    "Added Nora\u2019s supplied portrait to the Meet Nora section",
+    "Reduced white/cream areas in favour of black, deep red and dark timber textures",
+    "Added Broadway-style neon sign details and glow treatments",
+    "Retained all existing booking, loyalty, waiting-list and HQ functionality"
+  ]
 }

@@ -16,3 +16,41 @@
 @media(max-width:1050px){.intro-grid{grid-template-columns:1fr .75fr}.upcoming-home{grid-column:1/-1}.why-grid{grid-template-columns:repeat(3,1fr)}.new-home-footer{grid-template-columns:1fr 1fr}.footer-script{text-align:left}}
 @media(max-width:700px){.better-hero{min-height:660px;background-position:64% center}.better-hero:before{background:linear-gradient(0deg,rgba(0,0,0,.94) 0%,rgba(0,0,0,.58) 75%),linear-gradient(90deg,rgba(0,0,0,.75),transparent)}.better-hero-copy{margin:0;padding:260px 22px 52px;width:100%}.better-hero h1{width:100%;text-align:center}.hero-small,.hero-lead{text-align:center}.hero-actions{flex-direction:column}.primary-cta,.secondary-cta{width:100%}.intro-grid{grid-template-columns:1fr;padding:44px 22px}.nora-polaroid{max-width:320px;margin:auto}.upcoming-home{grid-column:auto;width:100%}.class-card-grid{grid-template-columns:1fr}.why-grid{grid-template-columns:1fr 1fr}.mini-gallery{grid-template-columns:1fr 1fr}.mini-gallery img{height:145px}.private-home{grid-template-columns:1fr;gap:20px}.event-polaroids{min-height:230px}.event-polaroids img{height:190px}.new-home-footer{grid-template-columns:1fr;text-align:center}.new-home-footer img{margin:auto}.footer-script{text-align:center}.home-title-row{align-items:flex-end}.section-label{font-size:22px}}
 @media(max-width:430px){.why-grid{grid-template-columns:1fr}.mini-gallery{grid-template-columns:1fr 1fr}.mini-gallery img{height:125px}.better-hero h1 span{font-size:44px}.better-hero h1 em{font-size:52px}}
+
+/* v96.4.0 — darker Broadway honky-tonk homepage */
+.home-v963{background:#030202;color:#f7eee8}
+.home-v963 .cream-home{background:
+  radial-gradient(circle at 12% 12%,rgba(210,20,31,.12),transparent 25%),
+  radial-gradient(circle at 88% 78%,rgba(255,40,48,.08),transparent 28%),
+  repeating-linear-gradient(0deg,#0b0606 0 31px,#120808 32px,#120808 33px);
+  color:#f6eee9;border-top:1px solid #4c1519;border-bottom:1px solid #4c1519}
+.home-v963 .intro-grid{position:relative;overflow:hidden}
+.home-v963 .intro-grid:before{content:"BROADWAY NIGHTS";position:absolute;right:4%;top:18px;padding:10px 18px;border:2px solid #ff2632;border-radius:10px;color:#ff404a;font:400 19px/1 Oswald,sans-serif;letter-spacing:.22em;text-shadow:0 0 5px #ff2732,0 0 17px #ff2732;box-shadow:inset 0 0 12px rgba(255,39,50,.45),0 0 16px rgba(255,39,50,.36);transform:rotate(1deg);opacity:.9}
+.home-v963 .section-label{color:#fff}
+.home-v963 .section-label:after{background:#ff2732;box-shadow:0 0 8px #ff2732,0 0 18px rgba(255,39,50,.75)}
+.home-v963 .meet-copy h2,.home-v963 .private-home h2{color:#ff3843;text-shadow:0 0 6px rgba(255,39,50,.7),0 0 18px rgba(255,39,50,.35)}
+.home-v963 .meet-copy>p:not(.section-label):not(.handwritten),.home-v963 .private-home p{color:#cbbab0}
+.home-v963 .handwritten{color:#ff3843;text-shadow:0 0 6px rgba(255,39,50,.55)}
+.home-v963 .paper-link{border-color:#ff313b;color:#fff;background:#1a090a;box-shadow:0 0 12px rgba(255,39,50,.18)}
+.home-v963 .paper-link:hover{background:#d51a24;box-shadow:0 0 18px rgba(255,39,50,.5)}
+.home-v963 .nora-polaroid{background:#130909;border:1px solid #6e2026;box-shadow:0 18px 45px rgba(0,0,0,.62),0 0 20px rgba(213,26,36,.12)}
+.home-v963 .nora-polaroid img{object-position:50% 28%}
+.home-v963 .nora-polaroid figcaption{color:#ff4650;text-shadow:0 0 5px #ff2732,0 0 14px rgba(255,39,50,.55)}
+.home-v963 .home-title-row>a{color:#ff5b63}
+.home-v963 .home-class-card{background:#100909;border-color:#5c2428;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.home-v963 .home-class-card>img{filter:saturate(.9) contrast(1.04) brightness(.82)}
+.home-v963 .home-class-card h3{color:#fff}
+.home-v963 .home-class-card p{color:#c6b4aa}
+.home-v963 .day-tag{background:#050303;border:1px solid #7b242a;color:#ff626a}
+.home-v963 .home-class-card a{background:#c91721;box-shadow:0 0 12px rgba(255,31,42,.25)}
+.home-v963 .lower-home{position:relative}
+.home-v963 .lower-home:before{content:"GOOD TIMES";position:absolute;left:50%;top:18px;transform:translateX(-50%) rotate(-1deg);color:#ff303b;font:400 clamp(26px,3vw,42px)/1 Yellowtail,cursive;text-shadow:0 0 6px #ff2632,0 0 20px rgba(255,38,50,.85);opacity:.55;pointer-events:none}
+.home-v963 .mini-gallery img{border-color:#160a0b;box-shadow:0 10px 26px rgba(0,0,0,.55);filter:saturate(.95) contrast(1.03) brightness(.82)}
+.home-v963 .private-home{border-top-color:#4e1a1e}
+.home-v963 .event-polaroids img{background:#14090a;border:1px solid #6c2429;box-shadow:0 18px 38px rgba(0,0,0,.58);filter:saturate(.95) brightness(.86)}
+.home-v963 .why-strip{background:radial-gradient(circle at 50% 0,rgba(215,25,35,.12),transparent 45%),#050303}
+.home-v963 .saloon-signoff{background:repeating-linear-gradient(0deg,#050303 0 31px,#100606 32px)}
+.home-v963 .better-hero:after{background:radial-gradient(circle at 67% 48%,rgba(224,20,31,.35),transparent 34%),linear-gradient(90deg,transparent 70%,rgba(255,22,34,.08))}
+.home-v963 .hero-small{color:#ffb3b7;text-shadow:0 0 8px rgba(255,39,50,.7)}
+.home-v963 .new-home-footer{border-top:1px solid #4b1519}
+@media(max-width:700px){.home-v963 .intro-grid:before{font-size:12px;right:18px;top:12px;padding:8px 11px}.home-v963 .lower-home:before{top:10px}}
