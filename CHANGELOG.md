@@ -1,3 +1,14 @@
+## v96.0.0 – Honky Tonk visual redesign
+
+- Rebuilt the visual identity around matte black, warm cream and neon red.
+- Preserved the Boot Scootin’ silhouette logo and made it more prominent.
+- Added a professional Western SVG icon system to replace standalone emojis.
+- Added richer cards, buttons, typography, textures and subtle neon motion.
+- Converted the mobile navigation into contained drill-down sections.
+- Prevented users from rolling through unrelated menu groups; each group now has an intentional back action.
+- Applied the new visual system across public pages, The Boot Room and HQ pages.
+- Updated visible platform versioning and asset cache references to v96.0.0.
+
 # V95.0.0 – Customer Portal, Rewards Wallet & Achievements
 
 - Expanded My Bookings into a personal Boot Scootin’ customer portal.
