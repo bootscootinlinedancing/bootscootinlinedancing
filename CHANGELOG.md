@@ -493,3 +493,12 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added Resend-compatible transactional email delivery using `RESEND_API_KEY` (or legacy `EMAIL_API_KEY`) and `EMAIL_FROM`.
 - Added Twilio SMS delivery using `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`.
 - Notification delivery failures are logged and never block payment reconciliation, class management or booking updates.
+## v93.7.1 – Protected email scheduler configuration
+
+- Added the protected email automation endpoint to the main Boot Scootin’ platform.
+- Connected the separate Cloudflare email scheduler Worker to HQ.
+- Added shared secret authentication using `EMAIL_AUTOMATION_SECRET`.
+- Prevented unauthorised requests from triggering automated emails.
+- Added secure hourly processing for class reminders, birthday emails, mailing-list welcomes and scheduled campaigns.
+- Added scheduler health-check support and clearer automation logging.
+- Kept all secret values securely in Cloudflare and out of GitHub.
