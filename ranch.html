@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=93.2.0">
+  <link rel="stylesheet" href="styles.css?v=93.4.0">
 </head>
 <body class="ranch-v91">
 
@@ -131,7 +131,7 @@
         <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
         <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
       </div>
-      <div class="ranch91-release">V93.2.0</div>
+      <div class="ranch91-release">V93.4.0</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -342,15 +342,33 @@
               <label>Audience
                 <select id="emailAudienceType">
                   <option value="subscribers">All mailing-list subscribers</option>
+                  <option value="all_customers">All customers</option>
                   <option value="class_bookings">People booked onto a class</option>
                   <option value="class_attendees">People who attended a class</option>
-                  <option value="selected">Selected email addresses</option>
+                  <option value="waiting_list">People on a class waiting list</option>
+                  <option value="selected_customers">Choose individual customers</option>
+                  <option value="selected">Manual email addresses</option>
+                </select>
+              </label>
+              <label>Send from
+                <select id="emailSenderType">
+                  <option value="general">General / newsletter</option>
+                  <option value="bookings">Bookings</option>
+                  <option value="events">Events</option>
+                  <option value="members">Memberships</option>
                 </select>
               </label>
               <label id="emailClassPickerWrap" hidden>Class
                 <select id="emailClassPicker"><option value="">Choose a class</option></select>
               </label>
-              <label id="emailSelectedWrap" hidden>Email addresses
+              <div id="emailCustomerPickerWrap" class="email-customer-picker" hidden>
+                <label>Find customers
+                  <input id="emailCustomerSearch" type="search" placeholder="Search by name or email">
+                </label>
+                <div class="email-picker-actions"><button type="button" id="selectAllEmailCustomers">Select all</button><button type="button" id="clearEmailCustomers">Clear</button></div>
+                <div id="emailCustomerPickerList" class="email-customer-picker-list"></div>
+              </div>
+              <label id="emailSelectedWrap" hidden>Manual email addresses
                 <textarea id="emailSelectedRecipients" rows="3" placeholder="name@example.com, another@example.com"></textarea>
               </label>
               <div class="email-audience-result" id="emailAudienceResult">Choose an audience to preview recipients.</div>
@@ -600,7 +618,7 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=93.2.0"></script>
+  <script src="ranch.js?v=93.4.0"></script>
 
   <script>
   (function(){

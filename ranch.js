@@ -1029,8 +1029,9 @@ Type REFUNDED to continue.`);
   }
 
 
+  function selectedCustomerEmails(){return [...document.querySelectorAll('[data-email-customer]:checked')].map(el=>el.value);}
   function emailAudiencePayload(){
-    return {class_id:$('#emailClassPicker')?.value||'',emails:$('#emailSelectedRecipients')?.value||''};
+    return {class_id:$('#emailClassPicker')?.value||'',emails:$('#emailSelectedRecipients')?.value||'',selected_emails:selectedCustomerEmails(),sender_type:$('#emailSenderType')?.value||'general'};
   }
   function currentEmailDraft(){
     return {subject:$('#emailSubject')?.value.trim()||'',body_text:$('#emailBody')?.value.trim()||'',audience_type:$('#emailAudienceType')?.value||'subscribers',audience:emailAudiencePayload()};
@@ -1038,10 +1039,11 @@ Type REFUNDED to continue.`);
   function renderEmailCentre(){
     const data=state.emailCentre;if(!data)return;
     const provider=$('#emailProviderStatus');
-    if(provider){provider.className=`email-centre-status ${data.provider?.ready?'ready':'setup'}`;provider.innerHTML=data.provider?.ready?`<strong>Email sending connected</strong><br>Sending from ${esc(data.provider.from||'configured sender')}. Scheduled campaigns are supported.`:`<strong>Email setup required</strong><br>Add RESEND_API_KEY and EMAIL_FROM in Cloudflare before sending. You can still prepare templates and campaigns.`;}
+    if(provider){provider.className=`email-centre-status ${data.provider?.ready?'ready':'setup'}`;provider.innerHTML=data.provider?.ready?`<strong>Email sending connected</strong><br>General: ${esc(data.provider.senders?.general||data.provider.from||'configured')}<br>Bookings: ${esc(data.provider.senders?.bookings||'configured')}<br>Events: ${esc(data.provider.senders?.events||'configured')}<br>Members: ${esc(data.provider.senders?.members||'configured')}<br>Scheduled campaigns are supported.`:`<strong>Email setup required</strong><br>Add RESEND_API_KEY and at least EMAIL_FROM_GENERAL or EMAIL_FROM in Cloudflare before sending.`;}
     const templateSelect=$('#emailTemplateSelect');if(templateSelect){templateSelect.innerHTML='<option value="">Start from blank</option>'+data.templates.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');}
     const classPicker=$('#emailClassPicker');if(classPicker){classPicker.innerHTML='<option value="">Choose a class</option>'+data.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.title)} — ${esc(fmt(c.starts_at))}</option>`).join('');}
     const list=$('#emailTemplatesList');if(list){list.innerHTML=data.templates.length?data.templates.map(t=>`<article class="email-template-item"><strong>${esc(t.name)}</strong><span>${esc(t.subject)}</span><div class="email-template-actions"><button type="button" data-use-template="${esc(t.id)}">Use</button>${t.is_system?'':`<button type="button" data-edit-template="${esc(t.id)}">Edit</button><button type="button" data-delete-template="${esc(t.id)}">Delete</button>`}</div></article>`).join(''):'<div class="email-empty">No templates yet.</div>';}
+    renderEmailCustomerPicker();
     const campaigns=$('#emailCampaignList');if(campaigns){campaigns.innerHTML=data.campaigns.length?data.campaigns.map(c=>`<article class="email-campaign-row"><div><strong>${esc(c.subject)}</strong><br><small>${esc(c.audience_type.replaceAll('_',' '))}</small></div><span>${Number(c.recipient_count||0)} recipient${Number(c.recipient_count||0)===1?'':'s'}</span><span class="email-status-pill ${esc(String(c.status||'').toLowerCase())}">${esc(c.status)}</span><div>${c.scheduled_at?esc(fmt(c.scheduled_at)):c.sent_at?esc(fmt(c.sent_at)):esc(fmt(c.created_at))}${c.status==='SCHEDULED'?`<br><button type="button" data-cancel-campaign="${esc(c.id)}">Cancel</button>`:''}${c.error_message?`<br><small>${esc(c.error_message)}</small>`:''}</div></article>`).join(''):'<div class="email-empty">No campaigns yet.</div>';}
     const subscribers=$('#emailSubscriberList');if(subscribers){subscribers.innerHTML=data.subscribers.length?data.subscribers.map(r=>`<article class="email-subscriber-row"><strong>${esc(r.name||'Customer')}</strong><span>${esc(r.email)}</span><small>Last booking ${esc(fmt(r.last_booking_at))}</small></article>`).join(''):'<div class="email-empty">No mailing-list subscribers yet.</div>';}
   }
@@ -1050,15 +1052,24 @@ Type REFUNDED to continue.`);
     try{state.emailCentre=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{},15000);renderEmailCentre();}
     catch(error){if(provider){provider.className='email-centre-status setup';provider.textContent=error.message;}toast(error.message,'error');}
   }
+  function renderEmailCustomerPicker(){
+    const list=$('#emailCustomerPickerList');if(!list)return;
+    const search=String($('#emailCustomerSearch')?.value||'').toLowerCase();
+    const selected=new Set(selectedCustomerEmails());
+    const customers=(state.emailCentre?.customers||[]).filter(c=>!search||String(c.name||'').toLowerCase().includes(search)||String(c.email||'').toLowerCase().includes(search));
+    list.innerHTML=customers.length?customers.map(c=>`<label class="email-customer-option"><input type="checkbox" data-email-customer value="${esc(c.email)}" ${selected.has(c.email)?'checked':''}><span><strong>${esc(c.name||'Customer')}</strong><small>${esc(c.email)}</small></span></label>`).join(''):'<div class="email-empty">No matching customers.</div>';
+  }
   function updateEmailAudienceFields(){
     const type=$('#emailAudienceType')?.value;
-    if($('#emailClassPickerWrap'))$('#emailClassPickerWrap').hidden=!['class_bookings','class_attendees'].includes(type);
+    if($('#emailClassPickerWrap'))$('#emailClassPickerWrap').hidden=!['class_bookings','class_attendees','waiting_list'].includes(type);
     if($('#emailSelectedWrap'))$('#emailSelectedWrap').hidden=type!=='selected';
+    if($('#emailCustomerPickerWrap'))$('#emailCustomerPickerWrap').hidden=type!=='selected_customers';
+    renderEmailCustomerPicker();
   }
   async function previewEmailAudience(){
     const result=$('#emailAudienceResult');if(result)result.textContent='Checking recipients…';
     try{const d=currentEmailDraft();const response=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'AUDIENCE_PREVIEW',audience_type:d.audience_type,audience:d.audience})});if(result)result.innerHTML=`<strong>${response.count} eligible recipient${response.count===1?'':'s'}</strong>${response.sample?.length?`<br>${response.sample.map(r=>esc(r.name||r.email)).join(', ')}`:''}`;return response;}
-    catch(error){if(result)result.textContent=error.message;throw error;}
+    catch(error){if(result)result.textContent=error.message;toast(error.message,'error');return null;}
   }
   function applyEmailTemplate(id,edit=false){
     const t=state.emailCentre?.templates?.find(x=>String(x.id)===String(id));if(!t)return;
@@ -1070,7 +1081,7 @@ Type REFUNDED to continue.`);
     if(!draft.subject||!draft.body_text){toast('Add a subject and message first.','error');return;}
     if(action==='SCHEDULE')draft.scheduled_at=$('#emailScheduleAt')?.value?new Date($('#emailScheduleAt').value).toISOString():'';
     if(status)status.textContent=action==='SEND_NOW'?'Queueing email…':'Saving schedule…';
-    try{await previewEmailAudience();const response=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,...draft})},30000);if(status)status.textContent=response.message||'Saved.';toast(response.message||'Email action completed.','success');setTimeout(loadEmailCentre,1500);}
+    try{const preview=await previewEmailAudience();if(!preview)return;const response=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,...draft})},30000);if(status)status.textContent=response.message||'Saved.';toast(response.message||'Email action completed.','success');setTimeout(loadEmailCentre,1500);}
     catch(error){if(status)status.textContent=error.message;toast(error.message,'error');}
   }
   async function saveEmailTemplate(){
@@ -1105,6 +1116,9 @@ Type REFUNDED to continue.`);
   $('#refreshCustomers')?.addEventListener('click',loadCustomers);
   $('#refreshEmailCentre')?.addEventListener('click',loadEmailCentre);
   $('#emailAudienceType')?.addEventListener('change',updateEmailAudienceFields);
+  $('#emailCustomerSearch')?.addEventListener('input',renderEmailCustomerPicker);
+  $('#selectAllEmailCustomers')?.addEventListener('click',()=>{document.querySelectorAll('[data-email-customer]').forEach(el=>el.checked=true);});
+  $('#clearEmailCustomers')?.addEventListener('click',()=>{document.querySelectorAll('[data-email-customer]').forEach(el=>el.checked=false);});
   $('#previewEmailAudience')?.addEventListener('click',()=>previewEmailAudience().catch(()=>{}));
   $('#sendEmailTest')?.addEventListener('click',sendEmailTest);
   $('#sendEmailNow')?.addEventListener('click',()=>emailCampaignAction('SEND_NOW'));

@@ -1,3 +1,15 @@
+## V93.4.0 — Email Centre Reliability & Smart Recipients
+
+- Prevented Email Centre API failures from becoming unhandled Worker exceptions.
+- Added clear Resend HTTP and provider error messages.
+- Added automatic customer audiences from the CRM and booking database.
+- Added all-customer, waiting-list and individual customer audience options.
+- Added searchable customer selection with Select all and Clear controls.
+- Kept manual email entry only as an optional audience.
+- Added departmental sender selection for general, bookings, events and memberships.
+- Added automatic exclusion of unsubscribed email addresses.
+- Updated HQ and asset cache versions to V93.4.0.
+
 ## V93.2.0 — Customer CRM
 
 - Added a complete Cloudflare-protected customer profile for every customer.

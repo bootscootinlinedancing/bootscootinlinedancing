@@ -1,9 +1,9 @@
 {
-  "release": "V93.2.0 CUSTOMER CRM",
-  "version": "93.2.0",
+  "release": "V93.4.0 EMAIL CENTRE RELIABILITY & SMART RECIPIENTS",
+  "version": "93.4.0",
   "release_name": "Customer CRM",
   "description": "Adds complete customer profiles, activity, bookings, loyalty, spending, communications, tags and private instructor notes to protected HQ.",
-  "built_from": "boot-scootin-platform-v93.1.1-EMAIL-TEMPLATES-SUMUP-APPROVAL-GUARD(1).zip",
+  "built_from": "boot-scootin-platform-v93.3.0-EMAIL-RELIABILITY.zip",
   "built_at": "2026-08-06T13:38:35.541206+00:00",
   "changes": [
     "Complete customer profiles",
@@ -47,5 +47,12 @@
       "size": 986,
       "sha256": "a59a14564fb26c415a04b4d7300a4e3a8a20e099a7c04b45b1440f15d04daa70"
     }
-  }
+  },
+  "features": [
+    "Email API exception containment and diagnostics",
+    "Automatic CRM recipient audiences",
+    "Searchable individual customer picker",
+    "Departmental sender selection",
+    "Unsubscribe exclusions"
+  ]
 }

@@ -855,9 +855,19 @@ function htmlEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 }
 
+function emailSender(env, type='general') {
+  const senders = {
+    general: String(env.EMAIL_FROM_GENERAL || env.EMAIL_FROM || '').trim(),
+    bookings: String(env.EMAIL_FROM_BOOKINGS || env.EMAIL_FROM_GENERAL || env.EMAIL_FROM || '').trim(),
+    events: String(env.EMAIL_FROM_EVENTS || env.EMAIL_FROM_GENERAL || env.EMAIL_FROM || '').trim(),
+    members: String(env.EMAIL_FROM_MEMBERS || env.EMAIL_FROM_GENERAL || env.EMAIL_FROM || '').trim()
+  };
+  return senders[type] || senders.general;
+}
+
 function notificationConfig(env) {
   return {
-    emailReady: Boolean(String(env.RESEND_API_KEY || env.EMAIL_API_KEY || '').trim() && String(env.EMAIL_FROM || '').trim()),
+    emailReady: Boolean(String(env.RESEND_API_KEY || env.EMAIL_API_KEY || '').trim() && emailSender(env, 'general')),
     smsReady: Boolean(String(env.TWILIO_ACCOUNT_SID || '').trim() && String(env.TWILIO_AUTH_TOKEN || '').trim() && (String(env.TWILIO_FROM_NUMBER || '').trim() || String(env.TWILIO_MESSAGING_SERVICE_SID || '').trim()))
   };
 }
@@ -871,22 +881,32 @@ function normaliseUkPhone(value) {
   return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
 }
 
-async function sendTransactionalEmail(env, to, subject, html, text) {
+async function sendTransactionalEmail(env, to, subject, html, text, senderType='general') {
   const apiKey = String(env.RESEND_API_KEY || env.EMAIL_API_KEY || '').trim();
-  const from = String(env.EMAIL_FROM || '').trim();
+  const from = emailSender(env, senderType);
   if (!apiKey || !from) return { skipped: true, reason: 'Email provider is not configured.' };
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.1.1'
-    },
-    body: JSON.stringify({ from, to: [to], subject, html, text })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(clean(data?.message || data?.error || `Email HTTP ${response.status}`, 240));
-  return { id: clean(data?.id, 160) };
+  let response;
+  try {
+    response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.4.0'
+      },
+      body: JSON.stringify({ from, to: [to], subject, html, text })
+    });
+  } catch (error) {
+    throw new Error(`Email provider connection failed: ${clean(error?.message || error, 220)}`);
+  }
+  const raw = await response.text().catch(() => '');
+  let data = {};
+  try { data = raw ? JSON.parse(raw) : {}; } catch { data = {}; }
+  if (!response.ok) {
+    const providerMessage = clean(data?.message || data?.error || raw || `HTTP ${response.status}`, 400);
+    throw new Error(`Resend rejected the email (HTTP ${response.status}): ${providerMessage}`);
+  }
+  return { id: clean(data?.id, 160), from };
 }
 
 async function sendTransactionalSms(env, to, body) {
@@ -2036,17 +2056,36 @@ function emailHtmlFromText(text,unsubscribeUrl){return `<div style="font-family:
 async function resolveEmailAudience(env,type,payload={}){
   await ensureEmailCentreSchema(env);
   let rows=[]; let klass=null;
+  const classId=String(payload.class_id||'').trim();
   if(type==='subscribers'){
     const r=await env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name FROM bookings b LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(b.customer_email) WHERE b.marketing_consent=1 AND u.email IS NULL GROUP BY lower(b.customer_email) ORDER BY MAX(b.created_at) DESC`).all(); rows=r.results||[];
+  }else if(type==='all_customers'){
+    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name FROM bookings WHERE customer_email IS NOT NULL AND customer_email<>'' GROUP BY lower(customer_email) ORDER BY MAX(created_at) DESC`).all(); rows=r.results||[];
   }else if(type==='class_bookings'){
-    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name FROM bookings WHERE class_id=? AND status IN ('PAID','PENDING') GROUP BY lower(customer_email)`).bind(payload.class_id||'').all(); rows=r.results||[];
+    if(!classId) throw new Error('Choose a class first.');
+    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name FROM bookings WHERE class_id=? AND status IN ('PAID','PENDING') GROUP BY lower(customer_email)`).bind(classId).all(); rows=r.results||[];
   }else if(type==='class_attendees'){
-    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.class_id=? GROUP BY lower(b.customer_email)`).bind(payload.class_id||'').all(); rows=r.results||[];
+    if(!classId) throw new Error('Choose a class first.');
+    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.class_id=? GROUP BY lower(b.customer_email)`).bind(classId).all(); rows=r.results||[];
+  }else if(type==='waiting_list'){
+    if(!classId) throw new Error('Choose a class first.');
+    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name FROM waiting_list WHERE class_id=? AND status='WAITING' GROUP BY lower(customer_email)`).bind(classId).all(); rows=r.results||[];
+  }else if(type==='selected_customers'){
+    const selected=Array.isArray(payload.selected_emails)?payload.selected_emails:[];
+    rows=selected.map(email=>({email:String(email||'').trim().toLowerCase(),name:''}));
+    if(rows.length){
+      const all=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name FROM bookings GROUP BY lower(customer_email)`).all();
+      const names=new Map((all.results||[]).map(r=>[r.email,r.name])); rows=rows.map(r=>({...r,name:names.get(r.email)||r.email.split('@')[0]}));
+    }
   }else if(type==='selected'){
     rows=String(payload.emails||'').split(/[\s,;]+/).filter(Boolean).map(email=>({email:email.toLowerCase(),name:email.split('@')[0]}));
+  }else{
+    throw new Error('Choose a valid audience.');
   }
-  if(payload.class_id){klass=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(payload.class_id).first();}
-  const seen=new Set(); rows=rows.filter(r=>/^\S+@\S+\.\S+$/.test(r.email)&&!seen.has(r.email)&&(seen.add(r.email),true));
+  if(classId){klass=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(classId).first();}
+  const unsub=await env.BOOKINGS_DB.prepare(`SELECT lower(email) email FROM mailing_unsubscribes`).all().catch(()=>({results:[]}));
+  const blocked=new Set((unsub.results||[]).map(r=>r.email));
+  const seen=new Set(); rows=rows.filter(r=>/^\S+@\S+\.\S+$/.test(String(r.email||''))&&!blocked.has(r.email)&&!seen.has(r.email)&&(seen.add(r.email),true));
   return {recipients:rows,klass};
 }
 
@@ -2067,7 +2106,8 @@ async function sendCampaign(env,campaignId){
       const body=mergeEmailText(campaign.body_text,recipient,resolved.klass);
       const token=campaign.audience_type==='subscribers'?await mailingToken(env,recipient.email):'';
       const unsubscribe=token?`https://bootscootinlinedancing.co.uk/api/email/unsubscribe?email=${encodeURIComponent(recipient.email)}&token=${encodeURIComponent(token)}`:'';
-      const result=await sendTransactionalEmail(env,recipient.email,subject,emailHtmlFromText(body,unsubscribe),body);
+      const senderType=String(audience.sender_type||'general');
+      const result=await sendTransactionalEmail(env,recipient.email,subject,emailHtmlFromText(body,unsubscribe),body,senderType);
       if(result.skipped)throw new Error(result.reason||'Email provider is not configured.');
       await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_campaign_recipients(id,campaign_id,email,name,status,provider_id,sent_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)`).bind(rid,campaignId,recipient.email,recipient.name||'', 'SENT',result.id||'').run(); sent++;
     }catch(error){
@@ -2087,6 +2127,14 @@ async function processDueCampaigns(env){
 }
 
 async function adminEmailCentre(request,env,ctx){
+  try { return await adminEmailCentreInner(request,env,ctx); }
+  catch(error){
+    console.error('EMAIL_CENTRE_ERROR', error?.stack || error);
+    return json({error:`Email Centre error: ${clean(error?.message || error, 500)}`,code:'EMAIL_CENTRE_ERROR'},500);
+  }
+}
+
+async function adminEmailCentreInner(request,env,ctx){
   const check=requireAccessAdmin(request,env);if(check.response)return check.response;
   await ensureBookingSchema(env); await ensureEmailCentreSchema(env);
   if(request.method==='GET'){
@@ -2096,7 +2144,8 @@ async function adminEmailCentre(request,env,ctx){
       env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name,MAX(b.customer_phone) phone,MAX(b.created_at) last_booking_at FROM bookings b LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(b.customer_email) WHERE b.marketing_consent=1 AND u.email IS NULL GROUP BY lower(b.customer_email) ORDER BY last_booking_at DESC`).all(),
       env.BOOKINGS_DB.prepare(`SELECT id,title,starts_at,venue,capacity,sold FROM classes ORDER BY starts_at DESC LIMIT 100`).all()
     ]);
-    return json({provider:{ready:notificationConfig(env).emailReady,from:String(env.EMAIL_FROM||''),scheduling_ready:true,cron_note:'Scheduled campaigns are sent by the Worker scheduled handler or the Process due emails button.'},templates:templates.results||[],campaigns:campaigns.results||[],subscribers:subscribers.results||[],classes:classes.results||[]});
+    const customers=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name,MAX(created_at) last_booking_at FROM bookings WHERE customer_email IS NOT NULL AND customer_email<>'' GROUP BY lower(customer_email) ORDER BY last_booking_at DESC LIMIT 1000`).all();
+    return json({provider:{ready:notificationConfig(env).emailReady,from:emailSender(env,'general'),senders:{general:emailSender(env,'general'),bookings:emailSender(env,'bookings'),events:emailSender(env,'events'),members:emailSender(env,'members')},scheduling_ready:true,cron_note:'Scheduled campaigns are sent by the Worker scheduled handler or the Process due emails button.'},templates:templates.results||[],campaigns:campaigns.results||[],subscribers:subscribers.results||[],customers:customers.results||[],classes:classes.results||[]});
   }
   if(request.method!=='POST')return json({error:'Method not allowed.'},405);
   let body;try{body=await request.json()}catch{return json({error:'Invalid request.'},400)}
@@ -2115,7 +2164,7 @@ async function adminEmailCentre(request,env,ctx){
   if(action==='SEND_TEST'){
     const email=check.state.email; if(!email)return json({error:'Your Cloudflare Access email is unavailable.'},400);
     const recipient={email,name:'Nora'};let klass=null;if(body.audience?.class_id)klass=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(body.audience.class_id).first();
-    const subject=mergeEmailText(body.subject,recipient,klass),text=mergeEmailText(body.body_text,recipient,klass);const result=await sendTransactionalEmail(env,email,`TEST — ${subject}`,emailHtmlFromText(text,''),text);if(result.skipped)return json({error:result.reason},503);return json({ok:true,message:`Test sent to ${email}.`});
+    const subject=mergeEmailText(body.subject,recipient,klass),text=mergeEmailText(body.body_text,recipient,klass);const senderType=String(body.audience?.sender_type||'general');const result=await sendTransactionalEmail(env,email,`TEST — ${subject}`,emailHtmlFromText(text,''),text,senderType);if(result.skipped)return json({error:result.reason},503);return json({ok:true,message:`Test sent to ${email} from ${result.from}.`});
   }
   if(['SEND_NOW','SCHEDULE'].includes(action)){
     const subject=clean(body.subject,160),text=String(body.body_text||'').trim(),type=clean(body.audience_type,40),audience=body.audience||{};
