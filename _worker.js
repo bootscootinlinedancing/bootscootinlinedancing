@@ -448,45 +448,83 @@ async function resolveSumUpTransactionId(env, booking) {
   return transactionId;
 }
 
+function sumUpRefundToken(env) {
+  return clean(env.SUMUP_REFUND_ACCESS_TOKEN || env.SUMUP_OAUTH_ACCESS_TOKEN, 4096);
+}
+
 async function refundSumUpTransaction(env, transactionId, amountPence = null) {
   const transaction = clean(transactionId, 180);
   if (!looksLikeSumUpTransactionId(transaction)) {
-    throw new Error('A valid SumUp transaction UUID could not be found for this payment.');
+    const error = new Error('A valid SumUp transaction UUID could not be found for this payment.');
+    error.code = 'SUMUP_TRANSACTION_NOT_FOUND';
+    throw error;
   }
-  if (!sumUpConfigured(env)) throw new Error('SumUp is not configured.');
 
-  const options = { method: 'POST' };
+  // SumUp transaction refunds require a user-authorised OAuth token. The API key
+  // used to create/retrieve hosted checkouts is intentionally not reused here.
+  const refundToken = sumUpRefundToken(env);
+  if (!refundToken) {
+    const error = new Error('Automatic refunds are not connected yet. Add a user-authorised SumUp OAuth token as SUMUP_REFUND_ACCESS_TOKEN, or refund in SumUp and use “Record manual refund” in HQ.');
+    error.code = 'SUMUP_REFUND_OAUTH_REQUIRED';
+    error.status = 409;
+    throw error;
+  }
+
+  const headers = new Headers({
+    'Authorization': `Bearer ${refundToken}`,
+    'Accept': 'application/json'
+  });
+  const options = { method: 'POST', headers };
   if (amountPence !== null) {
     const amount = Number(amountPence);
-    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Refund amount must be greater than zero.');
+    if (!Number.isFinite(amount) || amount <= 0) {
+      const error = new Error('Refund amount must be greater than zero.');
+      error.code = 'INVALID_REFUND_AMOUNT';
+      throw error;
+    }
+    headers.set('Content-Type', 'application/json');
     options.body = JSON.stringify({ amount: Number((amount / 100).toFixed(2)) });
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
   let response;
   try {
-    response = await sumUpFetch(env, `/v0.1/me/refund/${encodeURIComponent(transaction)}`, options);
+    response = await fetch(`https://api.sumup.com/v0.1/me/refund/${encodeURIComponent(transaction)}`, {
+      ...options,
+      signal: controller.signal
+    });
   } catch (error) {
-    throw new Error(`SumUp could not be reached: ${clean(error && error.message ? error.message : error, 220)}`);
+    const failure = new Error(controller.signal.aborted
+      ? 'SumUp did not respond within 10 seconds. No booking record was changed. Check SumUp before trying again.'
+      : `SumUp could not be reached: ${clean(error && error.message ? error.message : error, 220)}`);
+    failure.code = controller.signal.aborted ? 'SUMUP_REFUND_TIMEOUT' : 'SUMUP_REFUND_NETWORK_ERROR';
+    failure.status = 502;
+    throw failure;
+  } finally {
+    clearTimeout(timeout);
   }
 
-  if (!response || !response.ok) {
+  if (!response.ok) {
     let raw = '';
-    try { raw = response ? await response.text() : ''; } catch (_) {}
+    try { raw = await response.text(); } catch (_) {}
     let payload = {};
     try { payload = raw ? JSON.parse(raw) : {}; } catch (_) {}
     const detail = clean(
       payload && (payload.message || payload.error_message || payload.error || payload.detail)
         ? (payload.message || payload.error_message || payload.error || payload.detail)
-        : (raw || `HTTP ${response ? response.status : 502}`),
+        : (raw || `HTTP ${response.status}`),
       300
     );
-    const authHint = response && (response.status === 401 || response.status === 403)
-      ? ' SumUp refunds require a user-authorised OAuth access token with transaction permissions; a client-credentials token cannot issue refunds.'
+    const authHint = response.status === 401 || response.status === 403
+      ? ' The refund token must come from SumUp’s authorisation-code OAuth flow and include transaction permissions.'
       : '';
     const failure = new Error(`SumUp refund failed: ${detail}${authHint}`);
-    failure.status = response ? response.status : 502;
+    failure.code = response.status === 401 || response.status === 403 ? 'SUMUP_REFUND_NOT_AUTHORISED' : 'SUMUP_REFUND_REJECTED';
+    failure.status = response.status;
     throw failure;
   }
+
   return { ok: true, status: response.status };
 }
 
@@ -545,7 +583,7 @@ async function sendTransactionalEmail(env, to, subject, html, text) {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.8'
+      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.9'
     },
     body: JSON.stringify({ from, to: [to], subject, html, text })
   });
@@ -1831,7 +1869,7 @@ async function adminBookings(request, env) {
         await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
           .bind(check.state.email,'REFUND_SUMUP_FAILED','booking',id,JSON.stringify({error:message,transaction_id:transactionId,requested_amount_pence:requested})).run();
       } catch (_) {}
-      return json({error:message,code:'SUMUP_REFUND_REJECTED'},502);
+      return json({error:message,code:clean(error && error.code ? error.code : 'SUMUP_REFUND_REJECTED',80)},Number(error && error.status)===409?409:502);
     }
 
     try {

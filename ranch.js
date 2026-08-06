@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-6-8';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-6-9';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -625,6 +625,7 @@
         <div class="booking-admin-actions">
           ${['PENDING','PAID'].includes(b.status)?`<button type="button" class="danger-outline" data-cancel-booking="${esc(b.id)}">Cancel booking</button>`:''}
           ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && b.refund_status!=='REFUNDED'?`<button type="button" class="ranch91-button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund ${money(b.amount_pence)}</button>`:''}
+          ${b.payment_provider==='SUMUP' && b.status==='CANCELLED' && b.refund_status==='REFUND_DUE'?`<button type="button" class="danger-outline" data-record-manual-refund="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Record manual refund</button>`:''}
           ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}
           ${b.is_test_candidate?`<button type="button" class="danger-outline" data-delete-test-booking="${esc(b.id)}">Delete test booking</button>`:''}
         </div>
@@ -647,6 +648,9 @@
     });
     box.querySelectorAll('[data-refund-booking]').forEach(button=>{
       button.addEventListener('click',()=>refundBooking(button.dataset.refundBooking,Number(button.dataset.refundPence||0)));
+    });
+    box.querySelectorAll('[data-record-manual-refund]').forEach(button=>{
+      button.addEventListener('click',()=>recordManualRefund(button.dataset.recordManualRefund,Number(button.dataset.refundPence||0)));
     });
 
     if(waiting){
@@ -692,6 +696,22 @@ Type REFUND to continue.`);
       localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
       await Promise.all([loadBookings(true),loadClasses(),loadBootstrap(false,{force:true,silent:true})]);
       toast(`${amount} refund sent to SumUp and customer notified.`);
+    }catch(error){toast(error.message,'error');}
+  }
+
+  async function recordManualRefund(id,amountPence){
+    const booking=(state.bookings?.bookings||[]).find(item=>item.id===id);
+    if(!booking)return toast('Booking not found.','error');
+    const amount=money(amountPence);
+    const confirmation=prompt(`Only use this after you have completed the ${amount} refund in the SumUp dashboard or app. HQ will record the refund, release it from revenue and notify the customer.
+
+Type REFUNDED to continue.`);
+    if(confirmation!=='REFUNDED')return;
+    try{
+      await bookingAdminAction({id,action:'MARK_REFUNDED',refund_amount_pence:amountPence,admin_notes:'Refund completed manually in SumUp and recorded in Boot Scootin HQ'});
+      localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+      await Promise.all([loadBookings(true),loadClasses(),loadBootstrap(false,{force:true,silent:true})]);
+      toast(`${amount} manual refund recorded and customer notification queued.`);
     }catch(error){toast(error.message,'error');}
   }
 

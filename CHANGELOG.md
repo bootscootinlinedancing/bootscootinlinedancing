@@ -1,3 +1,13 @@
+# V92.6.9 — SumUp Refund OAuth Safe Flow
+
+- Stops HQ from attempting transaction refunds with the checkout API key.
+- Adds support for a dedicated user-authorised OAuth token through `SUMUP_REFUND_ACCESS_TOKEN` (or `SUMUP_OAUTH_ACCESS_TOKEN`).
+- Returns a controlled HQ message when automatic refund authorisation is not configured, instead of calling SumUp and risking an incomplete Cloudflare response.
+- Keeps bookings as `CANCELLED / REFUND_DUE` unless SumUp accepts the refund.
+- Adds **Record manual refund** for refunds completed directly in the SumUp dashboard/app.
+- Manual refund recording updates HQ revenue/status, preserves the audit trail and triggers the refund customer notification workflow.
+- Rotates HQ and service-worker caches to V92.6.9.
+
 # V92.6.8 — SumUp Refund Timeout Guard
 
 - Adds a hard 10-second timeout to every SumUp API request so the Cloudflare Worker always returns a valid response.
