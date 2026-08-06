@@ -1,3 +1,14 @@
+## v96.2.0 – Full Honky-Tonk Bar Rebuild
+
+- Rebuilt the homepage around a dark brick, timber, bar-stage and red-neon aesthetic closely aligned with the approved reference.
+- Added a prominent western boot stage composition and Birmingham country-night neon signage.
+- Kept the original Boot Scootin’ silhouette logo unchanged.
+- Replaced decorative emoji characters across public HTML pages with a consistent SVG western icon library.
+- Reworked the four homepage feature panels using proper cowboy hat, boot, guitar and horseshoe icons.
+- Rebuilt the mobile menu with matching SVG icons and contained drill-down sections.
+- Added a stronger bar-style photo section, neon dance-floor sign and timber/brick visual textures.
+- Updated version and cache references to v96.2.0.
+
 ## v96.0.0 – Honky Tonk visual redesign
 
 - Rebuilt the visual identity around matte black, warm cream and neon red.

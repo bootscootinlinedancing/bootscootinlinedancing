@@ -186,7 +186,7 @@
     achievements.innerHTML=(data.achievements||[]).map(a=>`<article class="customer-achievement ${a.earned?'earned':'locked'}"><span aria-hidden="true">${a.icon}</span><div><h4>${esc(a.title)}</h4><p>${esc(a.description)}</p></div><strong>${a.earned?'Unlocked':'Locked'}</strong></article>`).join('');
 
     const stamps=document.getElementById('customerLoyaltyStamps');
-    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'★':'☆'}</span>`).join('');
+    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg>'}</span>`).join('');
 
     document.getElementById('customerUpcomingBookings').innerHTML=data.upcoming.length
       ?data.upcoming.map(b=>bookingCard(b,true)).join('')
