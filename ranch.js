@@ -606,14 +606,14 @@
           <strong>SumUp refunds connected</strong>
           <span>Refunds are sent to the exact SumUp transaction attached to the selected booking.${refundConnection.merchant_code?` Merchant: ${esc(refundConnection.merchant_code)}.`:''}</span>
           <div class="refund-connection-actions">
-            <a class="ranch91-button compact" href="${ADMIN_API_PREFIX}/sumup-oauth/connect">Reconnect SumUp</a>
+            <a class="button secondary compact" href="${ADMIN_API_PREFIX}/sumup-oauth/connect">Reconnect SumUp</a>
             <button type="button" class="danger-outline compact" id="disconnectSumUpRefunds">Disconnect</button>
           </div>`;
       }else if(refundConnection.configured){
         refundNotice.innerHTML=`
           <strong>Connect SumUp refunds</strong>
           <span>Sign in to SumUp once to authorise secure one-click refunds from HQ.</span>
-          <a class="ranch91-button" href="${ADMIN_API_PREFIX}/sumup-oauth/connect">Connect SumUp refunds</a>`;
+          <a class="button sumup-connect-button" href="${ADMIN_API_PREFIX}/sumup-oauth/connect">Connect SumUp refunds</a>`;
       }else{
         refundNotice.innerHTML=`
           <strong>SumUp OAuth setup required</strong>
@@ -673,8 +673,8 @@
           ${['PENDING','PAID'].includes(b.status)?`<button type="button" class="danger-outline" data-cancel-booking="${esc(b.id)}">Cancel booking</button>`:''}
           ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && b.refund_status!=='REFUNDED'
             ?(refundConnection.automatic
-              ?`<button type="button" class="ranch91-button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund payment</button>`
-              :`<button type="button" class="ranch91-button refund-not-connected" data-refund-not-connected="1" disabled title="Connect your SumUp account to enable automatic refunds">Connect SumUp refunds</button>`)
+              ?`<button type="button" class="button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund payment</button>`
+              :`<button type="button" class="button refund-not-connected" data-refund-not-connected="1" disabled title="Connect your SumUp account to enable automatic refunds">Connect SumUp refunds</button>`)
             :''}
           ${b.payment_provider==='SUMUP' && b.status==='CANCELLED' && b.refund_status==='REFUND_DUE'?`<button type="button" class="danger-outline" data-record-manual-refund="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Record refund already completed in SumUp</button>`:''}
           ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}

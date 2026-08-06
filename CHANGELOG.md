@@ -1,3 +1,10 @@
+# Boot Scootin’ Platform v93.0.1
+
+- Repairs the HQ **Connect SumUp refunds** control so it renders as a full-width red action button on mobile and desktop.
+- Replaces obsolete `ranch91-button` classes with the platform’s existing `.button` styles.
+- Styles reconnect and disconnect controls consistently.
+- Updates the HQ release label, JavaScript cache key and service-worker cache.
+
 # V93.0.0 — Automatic SumUp Refunds OAuth
 
 - Adds a real **Connect SumUp refunds** action in HQ.

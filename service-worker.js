@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v93-0-0-sumup-oauth-connect";
+const CACHE_NAME = "boot-scootin-v93-0-1-sumup-connect-button";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(

@@ -6698,3 +6698,15 @@ body.hq-modal-open{overflow:hidden}
 .booking-admin-card .booking-customer-name{font-size:1.45rem;line-height:1.15;margin:.2rem 0 .35rem}
 .booking-customer-contact{overflow-wrap:anywhere}
 .refund-not-connected[disabled]{opacity:.72;cursor:not-allowed;background:#d8d8dc;color:#291b1b;border-color:#aaa}
+
+/* V93.0.1 — SumUp OAuth connect control */
+.refund-connection-notice .sumup-connect-button{
+  display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;
+  margin-top:.55rem;text-align:center;text-decoration:none;
+}
+.refund-connection-actions{display:flex;gap:.65rem;flex-wrap:wrap;margin-top:.55rem}
+.refund-connection-actions .button,.refund-connection-actions button{flex:1;min-width:150px}
+@media(max-width:700px){
+  .refund-connection-actions{display:grid;grid-template-columns:1fr}
+  .refund-connection-actions .button,.refund-connection-actions button{width:100%}
+}
