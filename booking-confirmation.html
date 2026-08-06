@@ -1,25 +1,24 @@
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Booking Confirmation | Boot Scootin'</title><link href="https://fonts.googleapis.com/css2?family=Rye&amp;family=Oswald:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="styles.css?v=99.0.0" rel="stylesheet"/> <meta content="#080606" name="theme-color"/>
-<link href="honky-theme.css?v=98.3.0" rel="stylesheet"/>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Booking Confirmation | Boot Scootin'</title><link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css?v=98.4.0">  <meta name="theme-color" content="#080606">
+  <link rel="stylesheet" href="honky-theme.css?v=98.4.0">
 </head><body>
-<a class="skip-link" href="#main-content">Skip to main content</a><main class="confirmation-page" id="main-content"><section class="confirmation-card"><img alt="Boot Scootin' Line Dancing" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-v60.webp"/><p class="kicker red">Booking update</p><h1 id="confirmationTitle">Checking your payment…</h1><p id="confirmationText">Please keep this page open while we confirm your booking securely.</p><div id="confirmationDetails"></div>
-<p><a class="button" href="my-bookings.html" id="openCustomerPortal">Open My Bookings</a></p>
-<section class="manage-booking-panel" hidden="" id="manageBookingPanel">
-<h2>Manage this booking</h2>
-<p id="manageBookingPolicy"></p>
-<button class="button ghost dark-ghost" id="cancelBookingButton" type="button">Request Cancellation</button>
-<p aria-live="polite" class="form-message" id="manageBookingMessage"></p>
-</section>
-<section class="dance-pass-preview">
-<div class="dance-pass-header"><span>BOOT SCOOTIN’</span><strong>Your Dance Pass</strong></div>
-<div class="dance-pass-grid">
-<div><small>WHAT TO WEAR</small><b>Boots or trainers — comfort comes first</b></div>
-<div><small>WHAT TO BRING</small><b>Plenty of water</b></div>
-<div><small>ARRIVAL</small><b>Around 10 minutes early</b></div>
-<div><small>PARTNER</small><b>No partner needed</b></div>
-</div>
-<div aria-label="QR check-in coming later" class="dance-pass-qr-placeholder">QR<br/><small>CHECK-IN COMING SOON</small></div>
-</section>
-<a class="button" href="bookings.html">Back to classes</a></section></main><script defer="" src="booking-confirmation.js?v=92.6.2"></script>
-<a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#lock"></use></svg> Admin Login</a>
+  <a class="skip-link" href="#main-content">Skip to main content</a><main id="main-content" class="confirmation-page"><section class="confirmation-card"><img src="brand-logo-v60.webp" onerror="this.onerror=null;this.src='logo.webp'" alt="Boot Scootin' Line Dancing"><p class="kicker red">Booking update</p><h1 id="confirmationTitle">Checking your payment…</h1><p id="confirmationText">Please keep this page open while we confirm your booking securely.</p><div id="confirmationDetails"></div>
+      <p><a class="button" id="openCustomerPortal" href="my-bookings.html">Open My Bookings</a></p>
+      <section id="manageBookingPanel" class="manage-booking-panel" hidden>
+        <h2>Manage this booking</h2>
+        <p id="manageBookingPolicy"></p>
+        <button class="button ghost dark-ghost" id="cancelBookingButton" type="button">Request Cancellation</button>
+        <p id="manageBookingMessage" class="form-message" aria-live="polite"></p>
+      </section>
+      <section class="dance-pass-preview">
+        <div class="dance-pass-header"><span>BOOT SCOOTIN’</span><strong>Your Dance Pass</strong></div>
+        <div class="dance-pass-grid">
+          <div><small>WHAT TO WEAR</small><b>Boots or trainers — comfort comes first</b></div>
+          <div><small>WHAT TO BRING</small><b>Plenty of water</b></div>
+          <div><small>ARRIVAL</small><b>Around 10 minutes early</b></div>
+          <div><small>PARTNER</small><b>No partner needed</b></div>
+        </div>
+        <div class="dance-pass-qr-placeholder" aria-label="QR check-in coming later">QR<br><small>CHECK-IN COMING SOON</small></div>
+      </section>
+      <a class="button" href="bookings.html">Back to classes</a></section></main><script src="booking-confirmation.js?v=92.6.2" defer></script>
+<a class="admin-login-link" href="/admin-login" aria-label="Administrator login"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#lock"></use></svg> Admin Login</a>
 </body></html>
