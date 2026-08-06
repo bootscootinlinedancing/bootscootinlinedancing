@@ -1,65 +1,47 @@
 {
-  "release": "V94.0.0 PROMOTIONS & REWARDS ENGINE",
-  "version": "94.0.0",
-  "release_name": "Protected Email Automation Scheduler Bridge",
-  "description": "Adds complete customer profiles, activity, bookings, loyalty, spending, communications, tags and private instructor notes to protected HQ.",
-  "built_from": "boot-scootin-platform-v93.3.0-EMAIL-RELIABILITY.zip",
-  "built_at": "2026-08-06T13:38:35.541206+00:00",
+  "release": "V95.0.0 CUSTOMER PORTAL & ACHIEVEMENTS",
+  "version": "95.0.0",
+  "release_name": "Customer Portal, Rewards Wallet & Achievements",
+  "description": "Expands the secure customer portal with personal rewards, achievements, lifetime spend and engagement status.",
+  "built_from": "boot-scootin-platform-v94.0.0-PROMOTIONS-REWARDS-ENGINE.zip",
+  "built_at": "2026-08-06T18:49:56.842081+00:00",
   "changes": [
-    "Complete customer profiles",
-    "Customer health status",
-    "Activity timeline and booking history",
-    "Private notes and tags",
-    "Optional emergency and accessibility details",
-    "CRM email quick action"
+    "Customer rewards wallet",
+    "Achievement badges",
+    "Lifetime spend",
+    "Customer engagement status",
+    "Enhanced secure customer portal"
   ],
   "checks": {
-    "root_file_count": 85,
-    "customer_crm_routes": "passed",
-    "migration": "0008_customer_crm.sql"
+    "root_file_count": 86,
+    "worker_syntax": "passed",
+    "zip_integrity": "passed",
+    "zip_file_count": 129
   },
   "files": {
     "_worker.js": {
-      "size": 155452,
-      "sha256": "8e9334b4ab9cf7fc23d732e8fb5be8b0337ce22979a3d5135e62a1f1f5b759d2"
+      "size": 193288,
+      "sha256": "1820bb1f7506eb7e29292781285801536b2410acd0b889c63bd243a42e0840d4"
     },
-    "ranch.js": {
-      "size": 85355,
-      "sha256": "60490843ad6fa4acd647870c8839e55139a3058ac4e427df7b5099b3564709a8"
-    },
-    "ranch.html": {
-      "size": 33779,
-      "sha256": "c09854b172d345ad712f5c8cb0d22cc08eed2030fb0dcbfb0f976963f9788d7b"
+    "my-bookings.html": {
+      "size": 13015,
+      "sha256": "a6f7fd4f5e728a539e6445ad66c96cf8c61cce69c356cbafbfa02a5717f7a58e"
     },
     "styles.css": {
-      "size": 265707,
-      "sha256": "ae09f47388f1c30e8327a0a8663cdd99d2f125a3f7717027422e682d91975d93"
+      "size": 268465,
+      "sha256": "1633ac894fc53db70ec015c4d590a1fd1a341621288769d37126c18ca617abef"
+    },
+    "ranch.js": {
+      "size": 91464,
+      "sha256": "a6a3e6ceee78c5922da1bcafc7b7a9e9f6f2715197ed2424ae928f2bb3fa018d"
+    },
+    "ranch.html": {
+      "size": 37914,
+      "sha256": "5066d79a5e174d215411a68a1627dd01df09cbd27d89e81472eafefc4c13836c"
     },
     "service-worker.js": {
-      "size": 528,
-      "sha256": "4ba0e5d4db9c216718e0f82dd71efc15bc678b8a7692f38148c539a151933f98"
-    },
-    "CHANGELOG.md": {
-      "size": 24794,
-      "sha256": "9ef806c7752780957aa1fc8d4b846b2339ff3eba8c889e50124e83610b3e2880"
-    },
-    "migrations/0008_customer_crm.sql": {
-      "size": 986,
-      "sha256": "a59a14564fb26c415a04b4d7300a4e3a8a20e099a7c04b45b1440f15d04daa70"
+      "size": 515,
+      "sha256": "0ced25c5d752b213b74d50766e95fb864871537db1dea05335ba9ab73f35389a"
     }
-  },
-  "features": [
-    "Email API exception containment and diagnostics",
-    "Automatic CRM recipient audiences",
-    "Searchable individual customer picker",
-    "Departmental sender selection",
-    "Unsubscribe exclusions",
-    "Public promo-code validation and discounted SumUp checkout totals",
-    "Automatic personal birthday codes: 20% off, one use, 30 days",
-    "Automatic loyalty reward code after nine attended classes: free class, one use, 90 days",
-    "HQ Promotions & Rewards manager and redemption reporting"
-  ],
-  "name": "Automated Customer Journeys & Unsubscribe",
-  "generated_at": "2026-08-06T18:36:00+01:00",
-  "generated": "2026-08-06"
+  }
 }

@@ -1694,17 +1694,52 @@ async function customerPortal(request,env,url){
   };
   const upcoming=results.filter(b=>new Date(b.starts_at).getTime()>now&&!['CANCELLED','REFUNDED','FAILED'].includes(b.status)).map(decorate);
   const history=results.filter(b=>!upcoming.some(u=>u.id===b.id)).map(decorate);
-  const attended=results.filter(b=>Number(b.attended)===1).length;
+  const attendedRows=results.filter(b=>Number(b.attended)===1);
+  const attended=attendedRows.length;
   const loyaltyProgress=attended%9;
+  const paidSpend=results.filter(b=>b.status==='PAID').reduce((sum,b)=>sum+Number(b.amount_pence||0),0);
+  const refunded=results.filter(b=>b.status==='REFUNDED').reduce((sum,b)=>sum+Number(b.amount_pence||0),0);
+  const profile=await env.BOOKINGS_DB.prepare(`SELECT birthday FROM customer_crm_profiles WHERE lower(customer_key)=lower(?)`).bind(owner.customer_email).first().catch(()=>null);
+  const rewardsResult=await env.BOOKINGS_DB.prepare(`
+    SELECT pc.code,pc.issued_reason,pc.issued_at,pc.expires_at,pc.max_uses,pc.active,
+      p.name,p.discount_type,p.discount_value,
+      (SELECT COUNT(*) FROM promotion_redemptions pr WHERE pr.promotion_code_id=pc.id) uses
+    FROM promotion_codes pc JOIN promotions p ON p.id=pc.promotion_id
+    WHERE lower(pc.customer_email)=lower(?)
+    ORDER BY pc.issued_at DESC
+  `).bind(owner.customer_email).all().catch(()=>({results:[]}));
+  const rewards=(rewardsResult.results||[]).map(r=>({
+    ...r,
+    available:Number(r.active)===1&&Number(r.uses||0)<Number(r.max_uses||1)&&(!r.expires_at||new Date(r.expires_at).getTime()>now),
+    label:r.discount_type==='FREE'?'Free class':r.discount_type==='PERCENT'?`${Number(r.discount_value||0)}% off`:`£${(Number(r.discount_value||0)/100).toFixed(2)} off`
+  }));
+  const birthday=profile?.birthday||null;
+  const birthdayMd=birthday?String(birthday).slice(5,10):'';
+  const birthdayDancer=Boolean(birthdayMd&&attendedRows.some(b=>String(b.starts_at||'').slice(5,10)===birthdayMd));
+  const achievements=[
+    {id:'first_steps',title:'First Steps',description:'Attend your first Boot Scootin’ class.',earned:attended>=1,icon:'🥾'},
+    {id:'regular',title:'Boot Scootin’ Regular',description:'Attend 10 classes.',earned:attended>=10,icon:'⭐'},
+    {id:'trailblazer',title:'Trailblazer',description:'Attend 25 classes.',earned:attended>=25,icon:'🤠'},
+    {id:'legend',title:'Boot Scootin’ Legend',description:'Attend 100 classes.',earned:attended>=100,icon:'🏆'},
+    {id:'birthday_dancer',title:'Birthday Dancer',description:'Dance with us on your birthday.',earned:birthdayDancer,icon:'🎂'}
+  ];
+  const lastAttended=attendedRows.map(b=>new Date(b.starts_at).getTime()).filter(Number.isFinite).sort((a,b)=>b-a)[0]||0;
+  const daysSince=lastAttended?Math.floor((now-lastAttended)/86400000):null;
+  const health=!attended?'New':daysSince<=30?'Active':daysSince<=56?'At risk':'Inactive';
 
   return json({
     customer_name:owner.customer_name,
-    upcoming,history,
+    customer_email:owner.customer_email,
+    upcoming,history,rewards,achievements,
+    profile:{birthday,health},
     summary:{
       upcoming:upcoming.length,
       attended,
       loyalty_progress:loyaltyProgress,
-      reward_ready:attended>0&&attended%9===0
+      reward_ready:attended>0&&attended%9===0,
+      rewards_available:rewards.filter(r=>r.available).length,
+      lifetime_spend_pence:Math.max(0,paidSpend),
+      refunded_pence:refunded
     }
   });
 }

@@ -177,7 +177,7 @@
       user_agent:navigator.userAgent,
       online:navigator.onLine,
       visibility:document.visibilityState,
-      version:'V94.0.0',
+      version:'V95.0.0',
       bootstrap_loaded:Boolean(state.bootstrap),
       bootstrap_loaded_at:state.bootstrapLoadedAt?new Date(state.bootstrapLoadedAt).toISOString():null,
       frontend_errors:state.frontendErrors,
@@ -1271,7 +1271,7 @@ Type REFUNDED to continue.`);
     if(Array.isArray(previous))state.diagnostics=previous.slice(0,DIAGNOSTIC_LIMIT);
     else state.diagnostics=[];
   }catch(_){}
-  diagnosticEvent('hq_script_started',{result:'V94.0.0 loaded',online:navigator.onLine,visibility:document.visibilityState});
+  diagnosticEvent('hq_script_started',{result:'V95.0.0 loaded',online:navigator.onLine,visibility:document.visibilityState});
 
   showView('overview');
   const cachedBootstrap=readBootstrapCache();

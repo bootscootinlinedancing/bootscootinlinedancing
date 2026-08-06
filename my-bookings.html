@@ -7,7 +7,7 @@
   <title>My Bookings | Boot Scootin' Line Dancing</title>
   <meta name="description" content="View and manage your Boot Scootin' class bookings, cancellations, calendar links and loyalty progress.">
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.4.1">
+  <link rel="stylesheet" href="styles.css?v=95.0.0">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -35,8 +35,8 @@
     <section class="section dark customer-portal-hero">
       <div class="section-title centre reveal">
         <p class="kicker">Your Boot Scootin’ account</p>
-        <h1>My Bookings</h1>
-        <p>Open the secure link from your booking confirmation to view your classes, cancellation options, calendar downloads and loyalty progress.</p>
+        <h1>My Boot Scootin’</h1>
+        <p>Your bookings, loyalty progress, rewards and achievements — all together in one secure place.</p>
       </div>
     </section>
 
@@ -66,11 +66,16 @@
           <button class="button secondary compact" id="refreshCustomerPortal" type="button">Refresh</button>
         </div>
 
+        <div class="customer-status-row">
+          <span id="customerHealthBadge" class="customer-health-badge">New</span>
+          <span id="customerEmailLabel"></span>
+        </div>
+
         <div class="customer-summary-grid">
           <article><span>Upcoming classes</span><strong id="customerUpcomingCount">0</strong></article>
           <article><span>Classes attended</span><strong id="customerAttendedCount">0</strong></article>
-          <article><span>Loyalty progress</span><strong id="customerLoyaltyCount">0 / 9</strong></article>
-          <article><span>Reward status</span><strong id="customerRewardStatus">Keep dancing</strong></article>
+          <article><span>Lifetime spend</span><strong id="customerLifetimeSpend">£0.00</strong></article>
+          <article><span>Rewards available</span><strong id="customerRewardsCount">0</strong></article>
         </div>
 
         <section class="customer-loyalty-card">
@@ -80,6 +85,20 @@
             <p id="customerLoyaltyMessage">Your attendance progress will appear here.</p>
           </div>
           <div class="loyalty-stamp-row" id="customerLoyaltyStamps" aria-label="Loyalty stamp progress"></div>
+        </section>
+
+        <section class="customer-booking-section">
+          <div class="customer-section-head">
+            <div><p class="kicker red">Your wallet</p><h3>My Rewards</h3></div>
+          </div>
+          <div id="customerRewardsWallet" class="customer-rewards-wallet"></div>
+        </section>
+
+        <section class="customer-booking-section">
+          <div class="customer-section-head">
+            <div><p class="kicker red">Milestones</p><h3>Achievements</h3></div>
+          </div>
+          <div id="customerAchievements" class="customer-achievements-grid"></div>
         </section>
 
         <section class="customer-booking-section">
@@ -108,7 +127,7 @@
     </div>
   </footer>
 
-  <script src="script.js?v=89"></script>
+  <script src="script.js?v=95.0.0"></script>
   <script>
 (()=>{
   const params=new URLSearchParams(location.search);
@@ -146,14 +165,24 @@
 
   function render(data){
     gate.hidden=true;portal.hidden=false;
-    document.getElementById('customerPortalName').textContent=`${data.customer_name || 'Your'} bookings`;
+    document.getElementById('customerPortalName').textContent=`Welcome back, ${data.customer_name || 'dancer'}`;
+    document.getElementById('customerEmailLabel').textContent=data.customer_email||'';
+    const health=document.getElementById('customerHealthBadge');
+    health.textContent=data.profile?.health||'New';
+    health.className=`customer-health-badge ${String(data.profile?.health||'new').toLowerCase().replace(' ','-')}`;
     document.getElementById('customerUpcomingCount').textContent=data.summary.upcoming;
     document.getElementById('customerAttendedCount').textContent=data.summary.attended;
-    document.getElementById('customerLoyaltyCount').textContent=`${data.summary.loyalty_progress} / 9`;
-    document.getElementById('customerRewardStatus').textContent=data.summary.reward_ready?'Free class ready':'Keep dancing';
+    document.getElementById('customerLifetimeSpend').textContent=money(data.summary.lifetime_spend_pence);
+    document.getElementById('customerRewardsCount').textContent=data.summary.rewards_available||0;
     document.getElementById('customerLoyaltyMessage').textContent=data.summary.reward_ready
       ?'You have reached nine attended classes. Your free class reward is ready to be confirmed by Nora.'
       :`${9-data.summary.loyalty_progress} more attended class${9-data.summary.loyalty_progress===1?'':'es'} until your next free class.`;
+
+    const wallet=document.getElementById('customerRewardsWallet');
+    wallet.innerHTML=(data.rewards||[]).length?(data.rewards||[]).map(r=>`<article class="customer-reward-card ${r.available?'available':'used'}"><div><p class="kicker red">${esc(r.available?'Available reward':'Past reward')}</p><h4>${esc(r.name||r.issued_reason||'Boot Scootin’ reward')}</h4><p>${esc(r.label||'Reward')}</p></div><div><code>${esc(r.code)}</code><small>${r.expires_at?`Expires ${esc(new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric'}).format(new Date(r.expires_at)))}`:'No expiry set'}</small></div></article>`).join(''):'<div class="customer-empty">Your birthday, loyalty and promotional rewards will appear here.</div>';
+
+    const achievements=document.getElementById('customerAchievements');
+    achievements.innerHTML=(data.achievements||[]).map(a=>`<article class="customer-achievement ${a.earned?'earned':'locked'}"><span aria-hidden="true">${a.icon}</span><div><h4>${esc(a.title)}</h4><p>${esc(a.description)}</p></div><strong>${a.earned?'Unlocked':'Locked'}</strong></article>`).join('');
 
     const stamps=document.getElementById('customerLoyaltyStamps');
     stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'★':'☆'}</span>`).join('');

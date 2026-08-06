@@ -6757,3 +6757,11 @@ body.hq-modal-open{overflow:hidden}
 .email-customer-option input{width:auto!important;margin-top:4px}
 .email-customer-option span{display:flex;flex-direction:column;gap:3px}
 .email-customer-option small{overflow-wrap:anywhere}
+
+/* V95 customer portal, rewards wallet and achievements */
+.customer-status-row{display:flex;gap:.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:0 0 1rem;color:#5f5353}
+.customer-health-badge{display:inline-flex;align-items:center;border-radius:999px;padding:.45rem .8rem;font-weight:800;background:#eee;color:#332b2b}
+.customer-health-badge.active{background:#dcfce7;color:#166534}.customer-health-badge.at-risk{background:#fef3c7;color:#92400e}.customer-health-badge.inactive{background:#fee2e2;color:#991b1b}.customer-health-badge.new{background:#e0e7ff;color:#3730a3}
+.customer-rewards-wallet{display:grid;gap:1rem}.customer-reward-card{display:flex;justify-content:space-between;gap:1rem;align-items:center;border:1px solid #dccfcf;border-radius:18px;padding:1rem;background:#fff}.customer-reward-card.available{border-color:#b91c1c;box-shadow:0 8px 24px rgba(120,0,0,.08)}.customer-reward-card.used{opacity:.68}.customer-reward-card code{display:block;font-size:1rem;font-weight:900;letter-spacing:.08em;background:#170f0f;color:#fff;padding:.55rem .7rem;border-radius:9px}.customer-reward-card small{display:block;margin-top:.45rem;text-align:right}
+.customer-achievements-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1rem}.customer-achievement{display:grid;grid-template-columns:auto 1fr;gap:.8rem;border:1px solid #dccfcf;border-radius:18px;padding:1rem;background:#fff;position:relative}.customer-achievement>span{font-size:2rem}.customer-achievement h4{margin:0 0 .25rem}.customer-achievement p{margin:0;color:#665}.customer-achievement strong{grid-column:1/-1;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em}.customer-achievement.earned{border-color:#b91c1c}.customer-achievement.locked{filter:grayscale(1);opacity:.55}
+@media(max-width:620px){.customer-reward-card{align-items:flex-start;flex-direction:column}.customer-reward-card small{text-align:left}}

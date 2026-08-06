@@ -1,3 +1,13 @@
+# V95.0.0 – Customer Portal, Rewards Wallet & Achievements
+
+- Expanded My Bookings into a personal Boot Scootin’ customer portal.
+- Added lifetime spend, activity status and available-reward summaries.
+- Added My Rewards wallet for birthday, loyalty and personal promotion codes.
+- Added customer achievements for first class, 10, 25 and 100 classes, plus Birthday Dancer.
+- Kept secure booking access, cancellation controls and calendar downloads.
+- Personal rewards remain tied to the customer email and their existing promotion rules.
+- Updated portal styling for mobile and desktop.
+
 # V94.0.0 — Promotions & Rewards Engine
 
 - Added a secure promo-code box to the public booking form with live validation and an itemised discount total.
