@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v93-1-1-email-templates-sumup-approval-guard";
+const CACHE_NAME = "boot-scootin-v93-2-0-customer-crm";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(

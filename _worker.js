@@ -309,7 +309,34 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_waiting_class_status ON waiting_list(class_id,status)`,
     `CREATE INDEX IF NOT EXISTS idx_private_event_status ON private_event_inquiries(status,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_private_event_token ON private_event_inquiries(secure_token)`,
-    `CREATE INDEX IF NOT EXISTS idx_private_quote_inquiry ON private_event_quotes(inquiry_id,version)`
+    `CREATE INDEX IF NOT EXISTS idx_private_quote_inquiry ON private_event_quotes(inquiry_id,version)`,
+    `CREATE TABLE IF NOT EXISTS customer_crm_profiles (
+      customer_key TEXT PRIMARY KEY,
+      birthday TEXT,
+      emergency_contact_name TEXT,
+      emergency_contact_phone TEXT,
+      emergency_contact_relationship TEXT,
+      medical_notes TEXT,
+      instructor_notes_summary TEXT,
+      loyalty_adjustment INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_crm_notes (
+      id TEXT PRIMARY KEY,
+      customer_key TEXT NOT NULL,
+      note_text TEXT NOT NULL,
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_crm_tags (
+      customer_key TEXT NOT NULL,
+      tag TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(customer_key,tag)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_customer_crm_notes_key ON customer_crm_notes(customer_key,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_customer_crm_tags_key ON customer_crm_tags(customer_key)`
   ];
   for (const statement of statements) await env.BOOKINGS_DB.prepare(statement).run();
 
@@ -2204,31 +2231,104 @@ async function adminCustomers(request, env) {
   const check = requireAccessAdmin(request, env);
   if (check.response) return check.response;
   await ensureBookingSchema(env);
+  const url = new URL(request.url);
+  const email = clean(url.searchParams.get('email') || '', 320).toLowerCase();
 
-  const { results } = await env.BOOKINGS_DB.prepare(`
-    SELECT
-      lower(b.customer_email) customer_key,
-      MAX(b.customer_name) customer_name,
-      lower(b.customer_email) customer_email,
-      MAX(b.customer_phone) customer_phone,
-      COUNT(*) total_bookings,
+  if (request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const action = String(body.action || '').toUpperCase();
+    const customerKey = clean(body.customer_key || body.email || '', 320).toLowerCase();
+    if (!customerKey || !customerKey.includes('@')) return json({ error: 'A valid customer email is required.' }, 400);
+
+    if (action === 'SAVE_PROFILE') {
+      const birthday = clean(body.birthday || '', 20) || null;
+      const emergencyName = clean(body.emergency_contact_name || '', 120) || null;
+      const emergencyPhone = clean(body.emergency_contact_phone || '', 80) || null;
+      const emergencyRelationship = clean(body.emergency_contact_relationship || '', 80) || null;
+      const medicalNotes = clean(body.medical_notes || '', 2000) || null;
+      const summary = clean(body.instructor_notes_summary || '', 1200) || null;
+      const loyaltyAdjustment = Math.max(-100, Math.min(100, Number(body.loyalty_adjustment || 0)));
+      await env.BOOKINGS_DB.prepare(`
+        INSERT INTO customer_crm_profiles(customer_key,birthday,emergency_contact_name,emergency_contact_phone,emergency_contact_relationship,medical_notes,instructor_notes_summary,loyalty_adjustment)
+        VALUES(?,?,?,?,?,?,?,?)
+        ON CONFLICT(customer_key) DO UPDATE SET birthday=excluded.birthday,emergency_contact_name=excluded.emergency_contact_name,
+          emergency_contact_phone=excluded.emergency_contact_phone,emergency_contact_relationship=excluded.emergency_contact_relationship,
+          medical_notes=excluded.medical_notes,instructor_notes_summary=excluded.instructor_notes_summary,
+          loyalty_adjustment=excluded.loyalty_adjustment,updated_at=CURRENT_TIMESTAMP
+      `).bind(customerKey,birthday,emergencyName,emergencyPhone,emergencyRelationship,medicalNotes,summary,loyaltyAdjustment).run();
+      await env.BOOKINGS_DB.prepare(`DELETE FROM customer_crm_tags WHERE customer_key=?`).bind(customerKey).run();
+      const tags = [...new Set((Array.isArray(body.tags) ? body.tags : []).map(v => clean(v,40)).filter(Boolean))].slice(0,20);
+      for (const tag of tags) await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO customer_crm_tags(customer_key,tag) VALUES(?,?)`).bind(customerKey,tag).run();
+      await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email||'hq','CUSTOMER_PROFILE_UPDATED','customer',customerKey,JSON.stringify({tags})).run();
+      return json({ ok:true, message:'Customer profile saved.' });
+    }
+    if (action === 'ADD_NOTE') {
+      const note = clean(body.note_text || '', 2000);
+      if (!note) return json({ error:'Write a note first.' },400);
+      const id = crypto.randomUUID();
+      await env.BOOKINGS_DB.prepare(`INSERT INTO customer_crm_notes(id,customer_key,note_text,created_by) VALUES(?,?,?,?)`).bind(id,customerKey,note,check.state.email||'hq').run();
+      await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email||'hq','CUSTOMER_NOTE_ADDED','customer',customerKey,JSON.stringify({note_id:id})).run();
+      return json({ok:true,id,message:'Note added.'});
+    }
+    if (action === 'DELETE_NOTE') {
+      await env.BOOKINGS_DB.prepare(`DELETE FROM customer_crm_notes WHERE id=? AND customer_key=?`).bind(clean(body.note_id||'',80),customerKey).run();
+      return json({ok:true,message:'Note deleted.'});
+    }
+    return json({error:'Unsupported customer action.'},400);
+  }
+
+  if (request.method !== 'GET') return json({error:'Method not allowed.'},405);
+
+  const baseQuery = `
+    SELECT lower(b.customer_email) customer_key, MAX(b.customer_name) customer_name, lower(b.customer_email) customer_email,
+      MAX(b.customer_phone) customer_phone, COUNT(*) total_bookings,
       SUM(CASE WHEN b.status='PAID' THEN 1 ELSE 0 END) paid_bookings,
       SUM(CASE WHEN b.status='CANCELLED' THEN 1 ELSE 0 END) cancelled_bookings,
+      SUM(CASE WHEN b.status='REFUNDED' THEN 1 ELSE 0 END) refunded_bookings,
       SUM(CASE WHEN a.booking_id IS NOT NULL THEN 1 ELSE 0 END) attended_classes,
-      MAX(b.marketing_consent) marketing_consent,
-      MAX(b.created_at) last_booking_at
-    FROM bookings b
-    LEFT JOIN attendance a ON a.booking_id=b.id
-    GROUP BY lower(b.customer_email)
-    ORDER BY last_booking_at DESC
-  `).all();
+      SUM(CASE WHEN b.status='PAID' THEN b.amount_pence ELSE 0 END) gross_paid_pence,
+      SUM(CASE WHEN b.status='REFUNDED' THEN COALESCE(b.refund_amount_pence,b.amount_pence) ELSE 0 END) refunded_pence,
+      MAX(b.marketing_consent) marketing_consent, MIN(b.created_at) customer_since, MAX(b.created_at) last_booking_at,
+      SUM(CASE WHEN b.status IN ('PAID','PENDING') AND c.starts_at >= CURRENT_TIMESTAMP THEN 1 ELSE 0 END) upcoming_bookings
+    FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id LEFT JOIN classes c ON c.id=b.class_id
+  `;
 
+  if (!email) {
+    const { results } = await env.BOOKINGS_DB.prepare(baseQuery + ` GROUP BY lower(b.customer_email) ORDER BY last_booking_at DESC`).all();
+    const now = Date.now();
+    return json({ customers:(results||[]).map(row => {
+      const last = row.last_booking_at ? new Date(row.last_booking_at).getTime() : 0;
+      const days = last ? Math.floor((now-last)/86400000) : 9999;
+      const health_status = days <= 14 ? 'ACTIVE' : days <= 56 ? 'AT_RISK' : 'INACTIVE';
+      const attended = Number(row.attended_classes||0);
+      return {...row, lifetime_spend_pence:Math.max(0,Number(row.gross_paid_pence||0)-Number(row.refunded_pence||0)), loyalty_progress:attended%9, reward_ready:attended>0&&attended%9===0, health_status};
+    })});
+  }
+
+  const customer = await env.BOOKINGS_DB.prepare(baseQuery + ` WHERE lower(b.customer_email)=? GROUP BY lower(b.customer_email)`).bind(email).first();
+  if (!customer) return json({error:'Customer not found.'},404);
+  const [bookings, waiting, notes, tags, profile, notifications, campaigns] = await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,CASE WHEN a.booking_id IS NULL THEN 0 ELSE 1 END attended FROM bookings b LEFT JOIN classes c ON c.id=b.class_id LEFT JOIN attendance a ON a.booking_id=b.id WHERE lower(b.customer_email)=? ORDER BY b.created_at DESC LIMIT 100`).bind(email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w LEFT JOIN classes c ON c.id=w.class_id WHERE lower(w.customer_email)=? ORDER BY w.created_at DESC LIMIT 50`).bind(email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_notes WHERE customer_key=? ORDER BY created_at DESC LIMIT 100`).bind(email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT tag FROM customer_crm_tags WHERE customer_key=? ORDER BY tag`).bind(email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_profiles WHERE customer_key=?`).bind(email).first(),
+    env.BOOKINGS_DB.prepare(`SELECT event_type,channel,status,created_at,sent_at,error_message FROM notification_log WHERE lower(recipient)=? ORDER BY created_at DESC LIMIT 50`).bind(email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT ec.subject,ec.status,ec.sent_at,ec.created_at,ecr.status recipient_status FROM email_campaign_recipients ecr JOIN email_campaigns ec ON ec.id=ecr.campaign_id WHERE lower(ecr.email)=? ORDER BY ec.created_at DESC LIMIT 50`).bind(email).all()
+  ]);
+  const attended = Number(customer.attended_classes||0) + Number(profile?.loyalty_adjustment||0);
+  const last = customer.last_booking_at ? new Date(customer.last_booking_at).getTime() : 0;
+  const days = last ? Math.floor((Date.now()-last)/86400000) : 9999;
+  const health_status = days <= 14 ? 'ACTIVE' : days <= 56 ? 'AT_RISK' : 'INACTIVE';
+  const timeline = [
+    ...(bookings.results||[]).map(b=>({type:'BOOKING',title:`${b.status}: ${b.class_title||'Class'}`,detail:b.reference,created_at:b.created_at})),
+    ...(notes.results||[]).map(n=>({type:'NOTE',title:'Instructor note added',detail:n.note_text,created_at:n.created_at})),
+    ...(notifications.results||[]).map(n=>({type:'COMMUNICATION',title:`${n.event_type} · ${n.status}`,detail:n.channel,created_at:n.sent_at||n.created_at})),
+    ...(campaigns.results||[]).map(c=>({type:'EMAIL',title:c.subject,detail:c.recipient_status||c.status,created_at:c.sent_at||c.created_at}))
+  ].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,100);
   return json({
-    customers: results.map(row => ({
-      ...row,
-      loyalty_progress: Number(row.attended_classes || 0) % 9,
-      reward_ready: Number(row.attended_classes || 0) > 0 && Number(row.attended_classes || 0) % 9 === 0
-    }))
+    customer:{...customer,health_status,lifetime_spend_pence:Math.max(0,Number(customer.gross_paid_pence||0)-Number(customer.refunded_pence||0)),loyalty_progress:Math.max(0,attended)%9,reward_ready:attended>0&&attended%9===0},
+    profile:profile||{customer_key:email,loyalty_adjustment:0}, tags:(tags.results||[]).map(r=>r.tag), notes:notes.results||[], bookings:bookings.results||[], waiting:waiting.results||[], communications:[...(notifications.results||[]),...(campaigns.results||[])], timeline
   });
 }
 
@@ -2646,7 +2746,7 @@ export default {
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env, ctx);
-      if (path === '/api/admin/customers' && request.method === 'GET') return adminCustomers(request, env);
+      if (path === '/api/admin/customers') return adminCustomers(request, env);
       if (path === '/api/admin/emails') return adminEmailCentre(request, env, ctx);
       if (path === '/api/email/unsubscribe' && request.method === 'GET') return unsubscribeEmail(request, env, url);
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);

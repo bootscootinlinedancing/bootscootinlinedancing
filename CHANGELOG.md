@@ -1,3 +1,16 @@
+## V93.2.0 — Customer CRM
+
+- Added a complete Cloudflare-protected customer profile for every customer.
+- Added customer health status: Active, At risk and Inactive.
+- Added lifetime spend, attendance rate, upcoming bookings, loyalty and customer-since metrics.
+- Added booking history, activity timeline and communication history.
+- Added private instructor notes with audit records.
+- Added editable customer tags for targeted communications.
+- Added optional birthday, emergency contact, medical/accessibility notes and loyalty adjustment fields.
+- Added a one-click Compose email action from a customer profile.
+- Added D1 migration `0008_customer_crm.sql`.
+- Updated HQ and service-worker caches to V93.2.0.
+
 # v93.1.1 — Email Templates & SumUp Approval Guard
 
 - Added reusable templates for booking follow-ups, cancellation updates, refund confirmations, waiting-list places, birthdays, re-engagement, newsletters, new dances, instructor announcements, holiday closures and weather cancellations.

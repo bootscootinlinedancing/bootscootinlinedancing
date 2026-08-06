@@ -29,7 +29,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v93-1-1';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v93-2-0';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -874,25 +874,44 @@ Type REFUNDED to continue.`);
     }
   }
 
-  // Customers
+  // Customer CRM
+  const CRM_TAGS=['Beginner','Improver','Advanced','Regular','VIP','Volunteer','Instructor','Loyalty Member','Inactive','Birthday Month'];
+  function customerHealthBadge(status){const label=status==='ACTIVE'?'Active':status==='AT_RISK'?'At risk':'Inactive';return `<span class="crm-health crm-health-${String(status||'').toLowerCase()}">${label}</span>`;}
   async function loadCustomers(){
-    if(!state.bootstrap){
-      await loadBootstrap(false,{silent:true}).catch(()=>null);
-    }
+    if(!state.bootstrap)await loadBootstrap(false,{silent:true}).catch(()=>null);
     const box=$('#ranchCustomers');if(!box)return;
-    if(state.bootstrap?.mode!=='protected'){
-      box.innerHTML=lockedPanel('Customer register is locked','Enable Cloudflare Access before viewing names, emails, attendance and loyalty records.');
-      return;
-    }
+    if(state.bootstrap?.mode!=='protected'){box.innerHTML=lockedPanel('Customer CRM is locked','Enable Cloudflare Access before viewing customer profiles.');return;}
     box.innerHTML='<div class="ranch91-loading">Loading customers…</div>';
     try{
       state.customers=await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{cache:'no-store'});
       const q=($('#customerAdminSearch')?.value||'').trim().toLowerCase();
-      const rows=(state.customers.customers||[]).filter(c=>!q||String(c.customer_name||'').toLowerCase().includes(q)||String(c.customer_email||'').toLowerCase().includes(q));
-      box.innerHTML=rows.length?rows.map(c=>`<article class="hq-customer-card"><div><h3>${esc(c.customer_name)}</h3><p>${esc(c.customer_email)}</p></div><dl><div><dt>Bookings</dt><dd>${esc(c.total_bookings)}</dd></div><div><dt>Attended</dt><dd>${esc(c.attended_classes)}</dd></div><div><dt>Loyalty</dt><dd>${esc(c.loyalty_progress)} / 9</dd></div></dl></article>`).join(''):emptyPanel('No customers found.');
-    }catch(error){box.innerHTML=lockedPanel('Customer register unavailable',error.message);}
+      const rows=(state.customers.customers||[]).filter(c=>!q||`${c.customer_name||''} ${c.customer_email||''} ${c.customer_phone||''}`.toLowerCase().includes(q));
+      box.innerHTML=rows.length?rows.map(c=>`<article class="hq-customer-card crm-customer-card" data-customer-email="${esc(c.customer_email)}" tabindex="0"><div><div class="crm-card-heading"><h3>${esc(c.customer_name||'Name not supplied')}</h3>${customerHealthBadge(c.health_status)}</div><p>${esc(c.customer_email)}</p><p>${esc(c.customer_phone||'Phone not supplied')}</p><button type="button" class="button compact crm-open-profile" data-customer-email="${esc(c.customer_email)}">Open profile</button></div><dl><div><dt>Lifetime spend</dt><dd>${money(c.lifetime_spend_pence)}</dd></div><div><dt>Attended</dt><dd>${esc(c.attended_classes)}</dd></div><div><dt>Upcoming</dt><dd>${esc(c.upcoming_bookings)}</dd></div><div><dt>Loyalty</dt><dd>${esc(c.loyalty_progress)} / 9</dd></div></dl></article>`).join(''):emptyPanel('No customers found.');
+    }catch(error){box.innerHTML=lockedPanel('Customer CRM unavailable',error.message);}
   }
-
+  function renderCrmProfile(data){
+    const c=data.customer||{},p=data.profile||{},tags=data.tags||[],notes=data.notes||[],bookings=data.bookings||[],timeline=data.timeline||[];
+    const attended=Number(c.attended_classes||0), total=Number(c.total_bookings||0), attendanceRate=total?Math.round(attended/total*100):0;
+    const upcoming=bookings.filter(b=>['PAID','PENDING'].includes(b.status)&&b.starts_at&&new Date(b.starts_at)>new Date());
+    return `<div class="crm-profile" data-customer-key="${esc(c.customer_email)}">
+      <header class="crm-profile-header"><div><p class="kicker red">Customer profile</p><h2>${esc(c.customer_name||'Customer')}</h2><p>${esc(c.customer_email)}${c.customer_phone?` · ${esc(c.customer_phone)}`:''}</p></div>${customerHealthBadge(c.health_status)}</header>
+      <div class="crm-metrics"><article><span>Lifetime spend</span><strong>${money(c.lifetime_spend_pence)}</strong></article><article><span>Classes attended</span><strong>${attended}</strong></article><article><span>Attendance rate</span><strong>${attendanceRate}%</strong></article><article><span>Upcoming</span><strong>${upcoming.length}</strong></article><article><span>Loyalty</span><strong>${esc(c.loyalty_progress)} / 9</strong></article><article><span>Customer since</span><strong>${esc(fmt(c.customer_since))}</strong></article></div>
+      <nav class="crm-tabs" aria-label="Customer profile sections"><button class="active" data-crm-tab="overview">Overview</button><button data-crm-tab="activity">Activity</button><button data-crm-tab="bookings">Bookings</button><button data-crm-tab="notes">Notes</button><button data-crm-tab="private">Private details</button></nav>
+      <section class="crm-tab-panel active" data-crm-panel="overview">
+        <div class="crm-two-col"><article class="crm-box"><h3>Contact & consent</h3><p><strong>Email:</strong> ${esc(c.customer_email)}</p><p><strong>Phone:</strong> ${esc(c.customer_phone||'Not supplied')}</p><p><strong>Marketing:</strong> ${Number(c.marketing_consent)?'Opted in':'Not opted in'}</p><p><strong>Birthday:</strong> ${esc(p.birthday||'Not supplied')}</p></article>
+        <article class="crm-box"><h3>Customer tags</h3><div class="crm-tag-list">${CRM_TAGS.map(t=>`<label><input type="checkbox" value="${esc(t)}" data-crm-tag ${tags.includes(t)?'checked':''}> ${esc(t)}</label>`).join('')}</div></article></div>
+        <article class="crm-box"><h3>Instructor summary</h3><textarea id="crmInstructorSummary" rows="4" placeholder="Helpful non-sensitive notes for instructors…">${esc(p.instructor_notes_summary||'')}</textarea></article>
+        <div class="crm-actions"><button class="button" type="button" id="saveCrmOverview">Save profile</button><button class="button secondary" type="button" data-crm-email>Compose email</button></div>
+      </section>
+      <section class="crm-tab-panel" data-crm-panel="activity"><div class="crm-timeline">${timeline.length?timeline.map(t=>`<article><span>${esc(t.type)}</span><div><strong>${esc(t.title)}</strong><p>${esc(t.detail||'')}</p><small>${esc(fmt(t.created_at))}</small></div></article>`).join(''):emptyPanel('No activity yet.')}</div></section>
+      <section class="crm-tab-panel" data-crm-panel="bookings"><div class="crm-booking-list">${bookings.length?bookings.map(b=>`<article><div><strong>${esc(b.class_title||'Class')}</strong><p>${esc(fmt(b.starts_at))} · ${esc(b.venue||'')}</p></div><div><b>${esc(b.status)}</b><span>${money(b.amount_pence)}</span>${b.attended?'<em>Attended</em>':''}</div></article>`).join(''):emptyPanel('No bookings found.')}</div></section>
+      <section class="crm-tab-panel" data-crm-panel="notes"><div class="crm-note-compose"><textarea id="crmNewNote" rows="3" placeholder="Add a private instructor note…"></textarea><button class="button" id="addCrmNote" type="button">Add note</button></div><div class="crm-notes">${notes.length?notes.map(n=>`<article><p>${esc(n.note_text)}</p><small>${esc(n.created_by||'HQ')} · ${esc(fmt(n.created_at))}</small><button type="button" class="crm-delete-note" data-note-id="${esc(n.id)}">Delete</button></article>`).join(''):emptyPanel('No private notes yet.')}</div></section>
+      <section class="crm-tab-panel" data-crm-panel="private"><div class="crm-two-col"><article class="crm-box"><h3>Emergency contact</h3><label>Name<input id="crmEmergencyName" value="${esc(p.emergency_contact_name||'')}"></label><label>Phone<input id="crmEmergencyPhone" value="${esc(p.emergency_contact_phone||'')}"></label><label>Relationship<input id="crmEmergencyRelationship" value="${esc(p.emergency_contact_relationship||'')}"></label></article><article class="crm-box"><h3>Optional private information</h3><label>Birthday<input id="crmBirthday" type="date" value="${esc(p.birthday||'')}"></label><label>Loyalty adjustment<input id="crmLoyaltyAdjustment" type="number" min="-100" max="100" value="${esc(p.loyalty_adjustment||0)}"></label><label>Medical or accessibility notes<textarea id="crmMedicalNotes" rows="5" placeholder="Only record information the customer has chosen to share and that instructors genuinely need.">${esc(p.medical_notes||'')}</textarea></label></article></div><div class="crm-privacy-note">Private details are available only inside Cloudflare-protected HQ. Record only what is necessary and keep it accurate.</div><button class="button" type="button" id="saveCrmPrivate">Save private details</button></section>
+    </div>`;
+  }
+  async function openCustomerCrm(email){const dialog=$('#customerCrmDialog'),box=$('#customerCrmProfile');if(!dialog||!box)return;box.innerHTML='<div class="ranch91-loading">Loading customer profile…</div>';dialog.showModal();try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/customers?email=${encodeURIComponent(email)}`,{cache:'no-store'});state.customerProfile=data;box.innerHTML=renderCrmProfile(data);}catch(error){box.innerHTML=lockedPanel('Customer profile unavailable',error.message);}}
+  async function saveCrmProfile(privateOnly=false){const key=$('.crm-profile')?.dataset.customerKey;if(!key)return;const p=state.customerProfile?.profile||{};const payload={action:'SAVE_PROFILE',customer_key:key,birthday:$('#crmBirthday')?.value||p.birthday||'',emergency_contact_name:$('#crmEmergencyName')?.value||p.emergency_contact_name||'',emergency_contact_phone:$('#crmEmergencyPhone')?.value||p.emergency_contact_phone||'',emergency_contact_relationship:$('#crmEmergencyRelationship')?.value||p.emergency_contact_relationship||'',medical_notes:$('#crmMedicalNotes')?.value||p.medical_notes||'',instructor_notes_summary:$('#crmInstructorSummary')?.value||p.instructor_notes_summary||'',loyalty_adjustment:Number($('#crmLoyaltyAdjustment')?.value??p.loyalty_adjustment??0),tags:$$('[data-crm-tag]:checked').map(n=>n.value)};try{await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Customer profile saved.','success');await openCustomerCrm(key);loadCustomers();}catch(error){toast(error.message,'error');}}
+  async function addCrmNote(){const key=$('.crm-profile')?.dataset.customerKey,note=$('#crmNewNote')?.value.trim();if(!note)return toast('Write a note first.','error');try{await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'ADD_NOTE',customer_key:key,note_text:note})});toast('Note added.','success');await openCustomerCrm(key);}catch(error){toast(error.message,'error');}}
   // Operations safe summary
   function renderOperationsFromBootstrap(){
     const b=state.bootstrap;if(!b)return;
@@ -1093,6 +1112,8 @@ Type REFUNDED to continue.`);
   $('#saveEmailTemplate')?.addEventListener('click',saveEmailTemplate);
   $('#clearEmailTemplate')?.addEventListener('click',clearEmailTemplate);
   $('#emailTemplateSelect')?.addEventListener('change',event=>event.target.value&&applyEmailTemplate(event.target.value));
+  $('#closeCustomerCrm')?.addEventListener('click',()=>$('#customerCrmDialog')?.close());
+  $('#customerCrmDialog')?.addEventListener('click',event=>{if(event.target.id==='customerCrmDialog')event.currentTarget.close();});
   $('#processDueEmails')?.addEventListener('click',async()=>{try{const r=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'PROCESS_DUE'})},60000);toast(`Processed ${r.results?.length||0} due campaign(s).`,'success');loadEmailCentre();}catch(error){toast(error.message,'error');}});
   $('#customerAdminSearch')?.addEventListener('input',loadCustomers);
   $('#refreshOperations')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
@@ -1121,6 +1142,13 @@ Type REFUNDED to continue.`);
   $('#checkMediaBackend')?.addEventListener('click',checkMediaBackend);
   $('#mediaUploadForm')?.addEventListener('submit',uploadMedia);
   document.addEventListener('click',async event=>{
+    const openProfile=event.target.closest?.('[data-customer-email]');if(openProfile&&openProfile.closest('.crm-customer-card')){event.preventDefault();openCustomerCrm(openProfile.dataset.customerEmail||openProfile.closest('.crm-customer-card').dataset.customerEmail);return;}
+    const tab=event.target.closest?.('[data-crm-tab]');if(tab){$$('[data-crm-tab]').forEach(n=>n.classList.toggle('active',n===tab));$$('[data-crm-panel]').forEach(n=>n.classList.toggle('active',n.dataset.crmPanel===tab.dataset.crmTab));return;}
+    if(event.target.closest?.('#saveCrmOverview')||event.target.closest?.('#saveCrmPrivate')){saveCrmProfile();return;}
+    if(event.target.closest?.('#addCrmNote')){addCrmNote();return;}
+    const delNote=event.target.closest?.('.crm-delete-note');if(delNote&&confirm('Delete this private note?')){const key=$('.crm-profile')?.dataset.customerKey;try{await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE_NOTE',customer_key:key,note_id:delNote.dataset.noteId})});await openCustomerCrm(key);}catch(error){toast(error.message,'error');}return;}
+    if(event.target.closest?.('[data-crm-email]')){$('#customerCrmDialog')?.close();showView('emails');const email=state.customerProfile?.customer?.customer_email;if($('#emailSelectedRecipients'))$('#emailSelectedRecipients').value=email||'';if($('#emailAudienceType'))$('#emailAudienceType').value='selected';return;}
+
     const use=event.target.closest?.('[data-use-template]');if(use){applyEmailTemplate(use.dataset.useTemplate);return;}
     const edit=event.target.closest?.('[data-edit-template]');if(edit){applyEmailTemplate(edit.dataset.editTemplate,true);return;}
     const del=event.target.closest?.('[data-delete-template]');if(del&&confirm('Delete this email template?')){try{await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE_TEMPLATE',id:del.dataset.deleteTemplate})});loadEmailCentre();}catch(error){toast(error.message,'error');}return;}

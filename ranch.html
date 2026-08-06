@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=93.1.1">
+  <link rel="stylesheet" href="styles.css?v=93.2.0">
 </head>
 <body class="ranch-v91">
 
@@ -131,7 +131,7 @@
         <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
         <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
       </div>
-      <div class="ranch91-release">V93.1.1</div>
+      <div class="ranch91-release">V93.2.0</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -304,8 +304,8 @@
           <div class="ranch-panel-head">
             <div>
               <p class="kicker red">Customer register</p>
-              <h2>Customers &amp; attendance</h2>
-              <p>View booking activity, attendance, loyalty progress and contact permissions without exposing payment details.</p>
+              <h2>Customer CRM</h2>
+              <p>Open a complete customer profile with bookings, attendance, loyalty, spending, communications, tags and private instructor notes.</p>
             </div>
             <button class="button secondary compact" id="refreshCustomers">Refresh</button>
           </div>
@@ -593,7 +593,14 @@
 
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="ranch.js?v=93.1.1"></script>
+
+  <dialog id="customerCrmDialog" class="crm-dialog">
+    <div class="crm-dialog-shell">
+      <button type="button" class="crm-close" id="closeCustomerCrm" aria-label="Close customer profile">×</button>
+      <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
+    </div>
+  </dialog>
+  <script src="ranch.js?v=93.2.0"></script>
 
   <script>
   (function(){

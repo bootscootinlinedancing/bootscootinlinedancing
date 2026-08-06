@@ -1,63 +1,51 @@
 {
-  "release": "V93.1.1 EMAIL TEMPLATES & SUMUP APPROVAL GUARD",
-  "version": "93.1.1",
-  "release_name": "Email Templates & SumUp Approval Guard",
-  "description": "Expands the HQ Email Centre template library and prevents premature SumUp OAuth reconnection while the payments scope is awaiting manual approval.",
-  "built_from": "boot-scootin-platform-v92.7.2-UPDATE-SPEC(2).zip",
-  "built_at": "2026-08-06T11:48:13.120967+00:00",
+  "release": "V93.2.0 CUSTOMER CRM",
+  "version": "93.2.0",
+  "release_name": "Customer CRM",
+  "description": "Adds complete customer profiles, activity, bookings, loyalty, spending, communications, tags and private instructor notes to protected HQ.",
+  "built_from": "boot-scootin-platform-v93.1.1-EMAIL-TEMPLATES-SUMUP-APPROVAL-GUARD(1).zip",
+  "built_at": "2026-08-06T13:38:35.541206+00:00",
   "changes": [
-    "Adds eleven additional reusable HQ email templates.",
-    "Shows a waiting-for-approval state while the SumUp payments scope is missing.",
-    "Makes reconnect available only after explicit post-approval confirmation.",
-    "Updates HQ and service-worker caches to v93.1.1.",
-    "Keeps the root folder below 100 files."
+    "Complete customer profiles",
+    "Customer health status",
+    "Activity timeline and booking history",
+    "Private notes and tags",
+    "Optional emergency and accessibility details",
+    "CRM email quick action"
   ],
-  "cloudflare": {
-    "required": [
-      "SUMUP_OAUTH_CLIENT_ID",
-      "SUMUP_OAUTH_CLIENT_SECRET",
-      "SUMUP_OAUTH_REDIRECT_URI"
-    ],
-    "optional": [
-      "SUMUP_OAUTH_ENCRYPTION_KEY",
-      "SUMUP_OAUTH_SCOPES"
-    ]
-  },
   "checks": {
-    "javascript_syntax": "passed",
-    "json_validation": "passed",
-    "oauth_routes": "passed",
     "root_file_count": 85,
-    "live_environment_note": "Deploy, connect SumUp from HQ, then retry the \u00a31 sandbox refund.",
-    "sumup_approval_guard": "passed",
-    "email_template_count": 19
+    "customer_crm_routes": "passed",
+    "migration": "0008_customer_crm.sql"
   },
   "files": {
     "_worker.js": {
-      "size": 146387,
-      "sha256": "881de5ef8228c80e173d2e7093c4145b519068c6acc226270ad34a8641f0ac96"
+      "size": 155452,
+      "sha256": "8e9334b4ab9cf7fc23d732e8fb5be8b0337ce22979a3d5135e62a1f1f5b759d2"
     },
     "ranch.js": {
-      "size": 75454,
-      "sha256": "8f9426e6919086773c075351804125a93173cee364f09ff6f2e5933cfb4234f5"
+      "size": 85355,
+      "sha256": "60490843ad6fa4acd647870c8839e55139a3058ac4e427df7b5099b3564709a8"
     },
     "ranch.html": {
-      "size": 33441,
-      "sha256": "da1bfb7d2ad8787f410aa07cbf4a082f29b91300b4f143ccd9875543f0a93fe7"
+      "size": 33779,
+      "sha256": "c09854b172d345ad712f5c8cb0d22cc08eed2030fb0dcbfb0f976963f9788d7b"
     },
     "styles.css": {
-      "size": 261962,
-      "sha256": "5918a7372c6dfa9311f1232daf989cb7d359cf19607f40348dbd9537cef112e9"
+      "size": 265707,
+      "sha256": "ae09f47388f1c30e8327a0a8663cdd99d2f125a3f7717027422e682d91975d93"
     },
     "service-worker.js": {
-      "size": 552,
-      "sha256": "aa61d4c98f6667c0590c000741ea98ef3ffe94ec2be379e1259facc1f7f75e1e"
+      "size": 528,
+      "sha256": "4ba0e5d4db9c216718e0f82dd71efc15bc678b8a7692f38148c539a151933f98"
     },
     "CHANGELOG.md": {
-      "size": 24078,
-      "sha256": "a0ef5577ba0e1ecd750d0e57b872883c1c05d7cea5990818d531f9b3ede6da20"
+      "size": 24794,
+      "sha256": "9ef806c7752780957aa1fc8d4b846b2339ff3eba8c889e50124e83610b3e2880"
+    },
+    "migrations/0008_customer_crm.sql": {
+      "size": 986,
+      "sha256": "a59a14564fb26c415a04b4d7300a4e3a8a20e099a7c04b45b1440f15d04daa70"
     }
-  },
-  "root_file_count": 85,
-  "total_file_count": 124
+  }
 }
