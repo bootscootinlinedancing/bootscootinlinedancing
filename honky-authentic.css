@@ -54,3 +54,34 @@
 .home-v963 .hero-small{color:#ffb3b7;text-shadow:0 0 8px rgba(255,39,50,.7)}
 .home-v963 .new-home-footer{border-top:1px solid #4b1519}
 @media(max-width:700px){.home-v963 .intro-grid:before{font-size:12px;right:18px;top:12px;padding:8px 11px}.home-v963 .lower-home:before{top:10px}}
+
+/* v97.0.0 — Broadway neon polish */
+.home-v963 .honky-header{min-height:82px;padding:10px clamp(20px,4vw,64px);background:rgba(3,2,2,.97);backdrop-filter:blur(12px)}
+.home-v963 .honky-logo{width:68px;height:68px;flex:0 0 68px;display:grid;place-items:center}
+.home-v963 .honky-logo img{width:68px;height:68px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,38,48,.42))}
+.home-v963 .honky-desktop-nav{gap:clamp(18px,2.4vw,34px)}
+.home-v963 .honky-desktop-nav a{font-size:14px;letter-spacing:.12em}
+.home-v963 .honky-menu-head img{width:70px;height:70px;object-fit:contain;background:transparent;filter:drop-shadow(0 0 7px rgba(255,40,52,.42))}
+.home-v963 .honky-book{font-size:14px;padding:13px 24px}
+.home-v963 .honky-mobile-nav svg{width:38px!important;height:38px!important}
+.home-v963 .menu45-section summary strong{font-size:clamp(28px,7vw,39px)!important}
+
+.neon-marquee{position:relative;z-index:2;display:grid;grid-template-columns:1.35fr .9fr .8fr;gap:22px;padding:34px clamp(24px,6vw,90px);background:linear-gradient(rgba(5,2,2,.75),rgba(5,2,2,.88)),repeating-linear-gradient(0deg,#170908 0 28px,#0d0505 29px 31px);border-block:1px solid #4c181c;box-shadow:inset 0 20px 50px rgba(0,0,0,.45)}
+.neon-marquee>div{min-height:145px;border:1px solid rgba(154,38,45,.55);display:flex;align-items:center;justify-content:center;position:relative;background:radial-gradient(circle at 50% 45%,rgba(194,24,35,.13),transparent 62%),rgba(5,2,2,.68);box-shadow:inset 0 0 25px rgba(0,0,0,.8),0 0 18px rgba(239,32,43,.08)}
+.neon-brand-sign{flex-direction:column;color:#ff3340;font:400 clamp(42px,5vw,72px)/.9 Yellowtail,cursive;text-shadow:0 0 5px #ff2634,0 0 15px #f20e20,0 0 34px rgba(255,20,38,.8)}
+.neon-brand-sign small{margin-top:18px;font:600 clamp(17px,1.8vw,25px)/1 Oswald,sans-serif;letter-spacing:.28em;color:#ffe8cf;text-shadow:0 0 5px #fff0d5,0 0 14px rgba(255,224,189,.45)}
+.neon-guitar-sign,.neon-boots-sign{gap:18px;color:#ff303d;text-align:center;font:600 clamp(21px,2.2vw,32px)/1.15 Bebas Neue,sans-serif;letter-spacing:.1em;text-shadow:0 0 6px #ff2634,0 0 18px rgba(255,29,44,.8)}
+.neon-guitar-sign svg,.neon-boots-sign svg{width:64px;height:64px;fill:none;stroke:currentColor;stroke-width:1.6;filter:drop-shadow(0 0 9px #ff2634)}
+.bar-neon-divider{padding:22px 20px;display:flex;justify-content:center;align-items:center;gap:26px;background:#050202;border-block:1px solid #4e181c;color:#ff3340;font:400 clamp(25px,3.3vw,48px)/1 Yellowtail,cursive;text-shadow:0 0 5px #ff2634,0 0 18px rgba(255,29,44,.75)}
+.bar-neon-divider strong{font-family:Bebas Neue,sans-serif;letter-spacing:.14em;color:#ffe8d2;text-shadow:0 0 7px rgba(255,235,211,.65)}
+.bar-neon-divider i{font-style:normal;color:#8e232a}
+.review-wall{padding:70px clamp(24px,7vw,100px);background:linear-gradient(rgba(8,3,3,.84),rgba(8,3,3,.92)),repeating-linear-gradient(90deg,#1b0d09 0 72px,#130906 73px 76px);border-block:1px solid #4b171b}
+.review-heading{text-align:center;margin-bottom:34px}.review-heading span{color:#ff4a54;letter-spacing:.22em;font-weight:700}.review-heading h2{font:400 clamp(38px,5vw,68px)/1 Yellowtail,cursive;color:#ffe5cc;text-shadow:0 0 8px rgba(255,231,205,.25);margin:10px 0}
+.review-notes{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;max-width:1180px;margin:auto}.review-notes blockquote{margin:0;padding:30px 28px;min-height:190px;background:#ead8ba;color:#25110d;transform:rotate(-1.5deg);box-shadow:0 18px 30px rgba(0,0,0,.48);font-family:Oswald,sans-serif;position:relative}.review-notes blockquote:nth-child(2){transform:rotate(1.2deg);background:#f1e4ca}.review-notes blockquote:nth-child(3){transform:rotate(-.6deg)}.review-notes blockquote:before{content:"";position:absolute;width:70px;height:18px;background:rgba(123,73,42,.28);top:-8px;left:50%;transform:translateX(-50%) rotate(-2deg)}.review-notes b{color:#b6111b;letter-spacing:.16em}.review-notes p{font:400 clamp(20px,2vw,27px)/1.45 Yellowtail,cursive;margin:18px 0 0}
+.community-neon{position:relative;padding:64px 20px;text-align:center;background:radial-gradient(circle at center,rgba(193,20,31,.17),transparent 55%),repeating-linear-gradient(0deg,#070303 0 30px,#100606 31px 33px);border-top:1px solid #54191e}.community-neon span,.community-neon strong{display:block}.community-neon span{font:400 clamp(30px,4.5vw,64px)/1 Yellowtail,cursive;color:#ff3441;text-shadow:0 0 5px #ff2634,0 0 18px #f21125,0 0 38px rgba(255,21,39,.65)}.community-neon strong{margin-top:14px;font:600 clamp(30px,4vw,56px)/1 Bebas Neue,sans-serif;letter-spacing:.16em;color:#ffe7d0;text-shadow:0 0 7px rgba(255,232,211,.55)}
+.home-v963 .home-class-card,.home-v963 .paper-link,.home-v963 .primary-cta,.home-v963 .secondary-cta,.home-v963 .honky-book{transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+.home-v963 .home-class-card:hover{transform:translateY(-5px);border-color:#be2a34;box-shadow:0 18px 44px rgba(0,0,0,.6),0 0 20px rgba(255,32,44,.17)}
+.home-v963 .paper-link:hover,.home-v963 .primary-cta:hover,.home-v963 .secondary-cta:hover,.home-v963 .honky-book:hover{transform:translateY(-2px);filter:brightness(1.12);box-shadow:0 0 16px rgba(255,35,49,.45),0 8px 24px rgba(0,0,0,.35)}
+@media(prefers-reduced-motion:no-preference){.neon-brand-sign,.community-neon span{animation:bsNeonPulse 4.8s infinite}.bar-neon-divider span{animation:bsNeonFlicker 7s infinite}}@keyframes bsNeonPulse{0%,100%{opacity:1}50%{opacity:.94}}@keyframes bsNeonFlicker{0%,91%,93%,100%{opacity:1}92%{opacity:.55}}
+@media(max-width:900px){.neon-marquee{grid-template-columns:1fr 1fr}.neon-brand-sign{grid-column:1/-1}.review-notes{grid-template-columns:1fr}.home-v963 .honky-logo,.home-v963 .honky-logo img{width:58px;height:58px}.home-v963 .honky-header{min-height:72px}.home-v963 .honky-mobile-nav svg{width:32px!important;height:32px!important}}
+@media(max-width:580px){.neon-marquee{grid-template-columns:1fr;padding:22px 18px}.neon-brand-sign{grid-column:auto}.neon-marquee>div{min-height:116px}.bar-neon-divider{gap:10px;flex-wrap:wrap}.bar-neon-divider i{display:none}.review-wall{padding:54px 22px}.review-notes blockquote{min-height:160px}.home-v963 .menu45-section summary strong{font-size:29px!important}.home-v963 .honky-mobile-nav svg{width:29px!important;height:29px!important}}
