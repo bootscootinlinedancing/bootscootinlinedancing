@@ -38,6 +38,22 @@
     el.replaceChildren(makeIcon('🔒'), document.createTextNode(` ${text}`));
   });
 
+
+  // v98.1 — one consistent navigation on every public page.
+  const canonicalMenu = `
+    <div class="honky-menu-head"><div><small>BOOT SCOOTIN’</small><h2>Explore</h2></div><button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button></div>
+    <a class="honky-menu-feature menu45-first" href="bookings.html"><span><small>READY TO DANCE?</small><strong>Book Your Next Class</strong><em>Friendly · welcoming · beginner focused</em></span><b aria-hidden="true">›</b></a>
+    <div class="honky-menu-sections menu45-sections">
+      <details class="menu45-section"><summary><span class="menu45-summary-copy"><strong>New Here?</strong><small>Everything you need for class</small></span><b aria-hidden="true"></b></summary><div class="menu45-submenu"><a href="bookings.html"><span>Book Your Next Class</span><b>›</b></a><a href="bookings.html#before-you-arrive"><span>What to Wear & Bring</span><b>›</b></a><a href="ask-nora.html"><span>Questions & Class Help</span><b>›</b></a></div></details>
+      <details class="menu45-section"><summary><span class="menu45-summary-copy"><strong>Classes & Dancing</strong><small>Learn, practise and book</small></span><b aria-hidden="true"></b></summary><div class="menu45-submenu"><a href="bookings.html"><span>Classes & Bookings</span><b>›</b></a><a href="calendar.html"><span>Class Calendar</span><b>›</b></a><a href="dance-library.html"><span>Dance Library</span><b>›</b></a><a href="dance-diary.html"><span>Dance Diary</span><b>›</b></a><a href="requests.html"><span>Request a Dance</span><b>›</b></a></div></details>
+      <details class="menu45-section"><summary><span class="menu45-summary-copy"><strong>The Boot Room</strong><small>Bookings, rewards and your journey</small></span><b aria-hidden="true"></b></summary><div class="menu45-submenu"><a href="my-bookings.html"><span>My Bookings</span><b>›</b></a><a href="rewards.html"><span>Rewards</span><b>›</b></a><a href="passport.html"><span>My Passport</span><b>›</b></a><a href="journey.html"><span>My Journey</span><b>›</b></a><a href="member-hub.html"><span>Member Hub</span><b>›</b></a></div></details>
+      <details class="menu45-section"><summary><span class="menu45-summary-copy"><strong>Community</strong><small>Events, socials and your people</small></span><b aria-hidden="true"></b></summary><div class="menu45-submenu"><a href="community.html"><span>Events & Community</span><b>›</b></a><a href="private-events.html"><span>Private Events</span><b>›</b></a><a href="member-hub.html#lounge"><span>Member Community Access</span><b>›</b></a><a href="long-road-handbook.html"><span>Long Road Handbook</span><b>›</b></a></div></details>
+      <details class="menu45-section"><summary><span class="menu45-summary-copy"><strong>Country Corner</strong><small>Music, festivals, style and adventures</small></span><b aria-hidden="true"></b></summary><div class="menu45-submenu"><a href="country-guide.html"><span>Country Guide</span><b>›</b></a><a href="country-guide-music.html"><span>Country Music</span><b>›</b></a><a href="country-guide-line-dancing.html"><span>UK Line Dancing</span><b>›</b></a><a href="country-guide-fashion.html"><span>Western Fashion</span><b>›</b></a><a href="businesses.html"><span>Businesses I Love</span><b>›</b></a></div></details>
+      <details class="menu45-section"><summary><span class="menu45-summary-copy"><strong>About</strong><small>Our story, Nora and getting in touch</small></span><b aria-hidden="true"></b></summary><div class="menu45-submenu"><a href="about.html#meet-nora"><span>Meet Nora</span><b>›</b></a><a href="about.html#boot-scootin-story"><span>Why Boot Scootin’?</span><b>›</b></a><a href="about.html#my-story"><span>My Story</span><b>›</b></a><a href="ask-nora.html"><span>Contact</span><b>›</b></a><a href="https://www.instagram.com/boot.scootin.linedancing" target="_blank" rel="noopener"><span>Instagram</span><b>›</b></a><a href="https://www.facebook.com/share/1CVXqRfoUk" target="_blank" rel="noopener"><span>Facebook</span><b>›</b></a></div></details>
+    </div>`;
+  const navPanel = document.getElementById('menu45');
+  if (navPanel) navPanel.innerHTML = canonicalMenu;
+
   const panel = document.getElementById('menu45');
   if (!panel) return;
   const sections = [...panel.querySelectorAll('details.menu45-section')];
