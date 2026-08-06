@@ -269,3 +269,52 @@ installGuide?.addEventListener("click", event => {
     setMenuOpen(false);
   });
 })();
+
+
+// v98 newsletter subscription and mobile-menu safety fixes
+(() => {
+  const form = document.getElementById('newsletterForm');
+  const status = document.getElementById('newsletterStatus');
+  if (form && status) {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const email = String(new FormData(form).get('email') || '').trim();
+      form.classList.remove('is-success','is-error');
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        form.classList.add('is-error');
+        status.textContent = 'Please enter a valid email address.';
+        return;
+      }
+      const button = form.querySelector('button');
+      button.disabled = true;
+      status.textContent = 'Joining the Boot Scootin’ family…';
+      try {
+        const response = await fetch('/api/newsletter/subscribe', {
+          method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({email, source:'website-footer'})
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Unable to subscribe right now.');
+        form.classList.add('is-success');
+        status.textContent = data.alreadySubscribed ? 'You’re already on the list — see y’all soon!' : 'Thanks for joining the Boot Scootin’ family!';
+        form.reset();
+      } catch (error) {
+        form.classList.add('is-error');
+        status.textContent = error.message || 'Unable to subscribe right now. Please try again.';
+      } finally { button.disabled = false; }
+    });
+  }
+
+  const overlay = document.getElementById('nav');
+  if (overlay) {
+    overlay.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+      if (typeof setMenuOpen === 'function') setMenuOpen(false);
+      overlay.setAttribute('aria-hidden','true');
+      document.body.classList.remove('menu-open','nav-open');
+    }));
+    window.addEventListener('hashchange', () => {
+      if (typeof setMenuOpen === 'function') setMenuOpen(false);
+      overlay.setAttribute('aria-hidden','true');
+      document.body.classList.remove('menu-open','nav-open');
+    });
+  }
+})();
