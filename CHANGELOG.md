@@ -342,3 +342,11 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added Resend-compatible transactional email delivery using `RESEND_API_KEY` (or legacy `EMAIL_API_KEY`) and `EMAIL_FROM`.
 - Added Twilio SMS delivery using `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`.
 - Notification delivery failures are logged and never block payment reconciliation, class management or booking updates.
+## v92.7.2 – SumUp OAuth credentials connected
+
+- Added the SumUp OAuth Client ID and Client Secret securely in Cloudflare.
+- Added the authorised callback URL:
+  https://bootscootinlinedancing.co.uk/api/sumup/callback
+- Prepared HQ for secure SumUp refund authorisation.
+- Automatic refunds remain linked to the exact SumUp transaction stored against each booking.
+- No credentials or secrets are stored in GitHub.
