@@ -241,7 +241,7 @@ installGuide?.addEventListener("click", event => {
 
 
 
-// VERSION 81 — SIMPLE ACCORDION
+// VERSION 96.1 — CONTAINED DRILL-DOWN MENU
 (() => {
   const overlay = document.getElementById('nav');
   const sections = [...document.querySelectorAll('#menu45 details.menu45-section')];
@@ -249,23 +249,18 @@ installGuide?.addEventListener("click", event => {
 
   sections.forEach(section => {
     section.addEventListener('toggle', () => {
-      if (!section.open) return;
-
-      sections.forEach(other => {
-        if (other !== section) other.open = false;
-      });
-
-      // Keep the opened heading visible without forcing the page underneath to move.
-      requestAnimationFrame(() => {
-        const summary = section.querySelector(':scope > summary');
-        if (!summary) return;
-        const overlayRect = overlay.getBoundingClientRect();
-        const rect = summary.getBoundingClientRect();
-
-        if (rect.top < overlayRect.top + 90 || rect.bottom > overlayRect.bottom - 20) {
-          summary.scrollIntoView({block:'nearest', behavior:'smooth'});
-        }
-      });
+      const panel = document.getElementById('menu45');
+      if (section.open) {
+        sections.forEach(other => { if (other !== section) other.open = false; });
+        panel?.classList.add('submenu-active');
+        requestAnimationFrame(() => {
+          overlay.scrollTop = 0;
+          section.querySelector(':scope > summary')?.focus?.({preventScroll:true});
+        });
+      } else if (!sections.some(item => item.open)) {
+        panel?.classList.remove('submenu-active');
+        overlay.scrollTop = 0;
+      }
     });
   });
 

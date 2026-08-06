@@ -526,3 +526,15 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added Resend-compatible transactional email delivery using `RESEND_API_KEY` (or legacy `EMAIL_API_KEY`) and `EMAIL_FROM`.
 - Added Twilio SMS delivery using `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`.
 - Notification delivery failures are logged and never block payment reconciliation, class management or booking updates.
+
+## v96.1.0 – Authentic Honky Tonk Homepage Rebuild
+
+- Rebuilt the homepage composition rather than applying another colour overlay.
+- Introduced a true split hero layout inspired by the supplied reference: bold vintage type, real dance-floor photography and a Birmingham country-night neon sign.
+- Removed the opening poster splash so visitors arrive directly on the website.
+- Replaced homepage emoji tiles with a purpose-built Western line-icon set.
+- Added a four-column Classes, Events, Country Life and Community feature strip.
+- Added a cinematic real-photo welcome section and real community photo gallery.
+- Added a neon closing statement and simplified footer.
+- Rebuilt mobile navigation as contained drill-down sections: only the selected section remains visible until the user goes back.
+- Preserved the original Boot Scootin’ silhouette logo throughout.
