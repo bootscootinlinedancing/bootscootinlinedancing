@@ -133,6 +133,7 @@ async function ensureBookingSchema(env) {
       payment_provider TEXT NOT NULL DEFAULT 'SUMUP',
       provider_checkout_id TEXT,
       provider_transaction_id TEXT,
+      provider_transaction_code TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       paid_at TEXT,
       retention_delete_after TEXT
@@ -306,6 +307,7 @@ async function ensureBookingSchema(env) {
     `ALTER TABLE bookings ADD COLUMN refund_status TEXT`,
     `ALTER TABLE bookings ADD COLUMN refund_amount_pence INTEGER`,
     `ALTER TABLE bookings ADD COLUMN admin_notes TEXT`,
+    `ALTER TABLE bookings ADD COLUMN provider_transaction_code TEXT`,
     `ALTER TABLE waiting_list ADD COLUMN secure_token TEXT`
   ];
   for (const migration of migrations) {
@@ -889,18 +891,27 @@ function checkoutTransactionId(checkout) {
   return successful?.id ? String(successful.id) : null;
 }
 
+function checkoutTransactionCode(checkout) {
+  if (checkout?.transaction_code) return String(checkout.transaction_code);
+  const transactions = Array.isArray(checkout?.transactions) ? checkout.transactions : [];
+  const successful = transactions.find(item => item && item.status === 'SUCCESSFUL') || transactions[0];
+  return successful?.transaction_code || successful?.code || null;
+}
+
 async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RECONCILIATION') {
   if (!booking || !checkout) return booking;
   const checkoutStatus = String(checkout.status || '').toUpperCase();
   const transactionId = checkoutTransactionId(checkout);
+  const transactionCode = checkoutTransactionCode(checkout);
 
   if (checkoutStatus === 'PAID' && booking.status !== 'PAID') {
     const paid = await env.BOOKINGS_DB.prepare(
       `UPDATE bookings
        SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),
-           provider_transaction_id=COALESCE(?,provider_transaction_id)
+           provider_transaction_id=COALESCE(?,provider_transaction_id),
+           provider_transaction_code=COALESCE(?,provider_transaction_code)
        WHERE id=? AND status!='PAID'`
-    ).bind(transactionId, booking.id).run();
+    ).bind(transactionId, transactionCode, booking.id).run();
 
     if (Number(paid?.meta?.changes || 0) > 0) {
       await env.BOOKINGS_DB.batch([
@@ -915,6 +926,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
         ).bind(actor, 'SUMUP_PAYMENT_CONFIRMED', 'booking', booking.id, JSON.stringify({
           checkout_id: booking.provider_checkout_id,
           transaction_id: transactionId,
+          transaction_code: transactionCode,
           checkout_status: checkoutStatus
         }))
       ]);
@@ -923,6 +935,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
     }
     booking.status = 'PAID';
     booking.provider_transaction_id = transactionId || booking.provider_transaction_id;
+    booking.provider_transaction_code = transactionCode || booking.provider_transaction_code;
     return booking;
   }
 
@@ -1788,7 +1801,8 @@ async function adminBookings(request, env) {
         is_test_candidate:isTestBookingCandidate(booking)
       })),
       waiting,
-      stats
+      stats,
+      refund_connection:{automatic:Boolean(sumUpRefundToken(env)),mode:sumUpRefundToken(env)?'oauth':'manual'}
     });
   }
 
@@ -1828,6 +1842,21 @@ async function adminBookings(request, env) {
   }
   const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=?`).bind(id).first();
   if(!booking)return json({error:'Booking not found.'},404);
+
+  if(action==='REFRESH_PAYMENT_DETAILS'){
+    if(booking.payment_provider!=='SUMUP') return json({error:'This booking was not paid through SumUp.'},409);
+    if(!booking.provider_checkout_id) return json({error:'No SumUp checkout ID is stored for this booking.'},409);
+    try {
+      const checkout=await retrieveSumUpCheckout(env,booking.provider_checkout_id);
+      const transactionId=checkoutTransactionId(checkout) || booking.provider_transaction_id || '';
+      const transactionCode=checkoutTransactionCode(checkout) || booking.provider_transaction_code || '';
+      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET provider_transaction_id=COALESCE(?,provider_transaction_id),provider_transaction_code=COALESCE(?,provider_transaction_code) WHERE id=?`)
+        .bind(transactionId||null,transactionCode||null,id).run();
+      return json({ok:true,payment:{checkout_id:booking.provider_checkout_id,transaction_id:transactionId,transaction_code:transactionCode,status:clean(checkout.status,40),amount:checkout.amount,currency:checkout.currency,date:checkout.date||checkout.timestamp||null}});
+    } catch(error) {
+      return json({error:`Could not refresh SumUp payment details: ${clean(error && error.message ? error.message : error,300)}`},502);
+    }
+  }
 
   if(action==='MARK_PAID'){
     if(booking.status!=='PAID'){

@@ -1,3 +1,13 @@
+# V92.7.0 — Transaction Details & OAuth Refunds
+
+- Adds customer-linked SumUp payment details to every HQ booking.
+- Shows booking reference, checkout ID, transaction code, transaction UUID and paid timestamp.
+- Adds copy buttons and a protected “Refresh SumUp details” action.
+- Keeps automatic refunds tied to the exact transaction stored against that booking.
+- Makes the manual-refund wording explicit that it records a refund only after money was returned in SumUp.
+- Shows whether automatic OAuth refunds are connected in the bookings API response.
+- Rotates HQ and service-worker caches to V92.7.0.
+
 # V92.6.9 — SumUp Refund OAuth Safe Flow
 
 - Stops HQ from attempting transaction refunds with the checkout API key.

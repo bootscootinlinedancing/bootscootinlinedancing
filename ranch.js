@@ -28,7 +28,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-6-9';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v92-7-0';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -622,10 +622,18 @@
           <div><dt>Payment</dt><dd>${esc(b.payment_provider)}</dd></div>
           <div><dt>Created</dt><dd>${fmt(b.created_at)}</dd></div>
         </dl>
+        ${b.payment_provider==='SUMUP'?`<details class="payment-details"><summary>View payment details</summary><dl>
+          <div><dt>Customer</dt><dd>${esc(b.customer_name)} · ${esc(b.customer_email)}${b.customer_phone?` · ${esc(b.customer_phone)}`:''}</dd></div>
+          <div><dt>Booking reference</dt><dd>${esc(b.reference)}</dd></div>
+          <div><dt>Checkout ID</dt><dd><code>${esc(b.provider_checkout_id||'Not stored')}</code>${b.provider_checkout_id?` <button type="button" class="copy-mini" data-copy-value="${esc(b.provider_checkout_id)}">Copy</button>`:''}</dd></div>
+          <div><dt>Transaction code</dt><dd><code>${esc(b.provider_transaction_code||'Refresh to retrieve')}</code>${b.provider_transaction_code?` <button type="button" class="copy-mini" data-copy-value="${esc(b.provider_transaction_code)}">Copy</button>`:''}</dd></div>
+          <div><dt>Transaction UUID</dt><dd><code>${esc(b.provider_transaction_id||'Refresh to retrieve')}</code>${b.provider_transaction_id?` <button type="button" class="copy-mini" data-copy-value="${esc(b.provider_transaction_id)}">Copy</button>`:''}</dd></div>
+          <div><dt>Paid at</dt><dd>${b.paid_at?fmt(b.paid_at):'Not confirmed'}</dd></div>
+        </dl><button type="button" class="danger-outline" data-refresh-payment="${esc(b.id)}">Refresh SumUp details</button></details>`:''}
         <div class="booking-admin-actions">
           ${['PENDING','PAID'].includes(b.status)?`<button type="button" class="danger-outline" data-cancel-booking="${esc(b.id)}">Cancel booking</button>`:''}
           ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && b.refund_status!=='REFUNDED'?`<button type="button" class="ranch91-button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund ${money(b.amount_pence)}</button>`:''}
-          ${b.payment_provider==='SUMUP' && b.status==='CANCELLED' && b.refund_status==='REFUND_DUE'?`<button type="button" class="danger-outline" data-record-manual-refund="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Record manual refund</button>`:''}
+          ${b.payment_provider==='SUMUP' && b.status==='CANCELLED' && b.refund_status==='REFUND_DUE'?`<button type="button" class="danger-outline" data-record-manual-refund="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Record refund already completed in SumUp</button>`:''}
           ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}
           ${b.is_test_candidate?`<button type="button" class="danger-outline" data-delete-test-booking="${esc(b.id)}">Delete test booking</button>`:''}
         </div>
@@ -651,6 +659,12 @@
     });
     box.querySelectorAll('[data-record-manual-refund]').forEach(button=>{
       button.addEventListener('click',()=>recordManualRefund(button.dataset.recordManualRefund,Number(button.dataset.refundPence||0)));
+    });
+    box.querySelectorAll('[data-refresh-payment]').forEach(button=>{
+      button.addEventListener('click',()=>refreshPaymentDetails(button.dataset.refreshPayment));
+    });
+    box.querySelectorAll('[data-copy-value]').forEach(button=>{
+      button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(button.dataset.copyValue||'');toast('Copied.');}catch(_){toast('Could not copy.','error');}});
     });
 
     if(waiting){
@@ -699,11 +713,19 @@ Type REFUND to continue.`);
     }catch(error){toast(error.message,'error');}
   }
 
+  async function refreshPaymentDetails(id){
+    try{
+      await bookingAdminAction({id,action:'REFRESH_PAYMENT_DETAILS'});
+      await loadBookings(true);
+      toast('SumUp payment details refreshed.');
+    }catch(error){toast(error.message,'error');}
+  }
+
   async function recordManualRefund(id,amountPence){
     const booking=(state.bookings?.bookings||[]).find(item=>item.id===id);
     if(!booking)return toast('Booking not found.','error');
     const amount=money(amountPence);
-    const confirmation=prompt(`Only use this after you have completed the ${amount} refund in the SumUp dashboard or app. HQ will record the refund, release it from revenue and notify the customer.
+    const confirmation=prompt(`This button does not move money. Only use it after SumUp confirms that the ${amount} refund has been sent back to the customer. HQ will then record it, adjust revenue and notify the customer.
 
 Type REFUNDED to continue.`);
     if(confirmation!=='REFUNDED')return;
