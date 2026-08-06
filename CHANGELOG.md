@@ -1,3 +1,12 @@
+# Boot Scootin’ Platform v93.0.3
+
+- Forces every new SumUp OAuth request to include `payments`, `transactions.history`, and `user.profile_readonly`, even if an older Cloudflare scope variable omits one.
+- Adds a fresh reconnect flow that removes the locally stored grant before requesting a new authorisation code.
+- Shows the exact permissions SumUp granted inside HQ.
+- Keeps automatic refund buttons disabled until the granted token actually contains `payments`.
+- Explains when the SumUp application still needs manual Payments-scope activation.
+- Updates HQ and service-worker caches to v93.0.3.
+
 # Boot Scootin’ Platform v93.0.2
 
 - Background refund execution prevents Cloudflare 520/timeout pages.

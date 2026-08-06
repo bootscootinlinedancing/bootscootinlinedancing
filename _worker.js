@@ -479,7 +479,15 @@ function sumUpOAuthConfig(env) {
   // optional SUMUP_OAUTH_ENCRYPTION_KEY secret has not been added.
   const encryptionKey = clean(env.SUMUP_OAUTH_ENCRYPTION_KEY, 1000) || clientSecret;
   const redirectUri = clean(env.SUMUP_OAUTH_REDIRECT_URI, 1000) || DEFAULT_SUMUP_OAUTH_REDIRECT_URI;
-  const scope = clean(env.SUMUP_OAUTH_SCOPES, 500) || 'transactions.history user.profile_readonly payments';
+  // Always request the permissions HQ needs. An older SUMUP_OAUTH_SCOPES value
+  // must not be able to silently remove the payments permission.
+  const requestedScopes = new Set(
+    `${clean(env.SUMUP_OAUTH_SCOPES, 500)} transactions.history user.profile_readonly payments`
+      .split(/\s+/)
+      .map(value => value.trim())
+      .filter(Boolean)
+  );
+  const scope = [...requestedScopes].join(' ');
   return {
     clientId,
     clientSecret,
@@ -608,11 +616,21 @@ async function sumUpOAuthStatus(env) {
   const legacy = Boolean(clean(env.SUMUP_REFUND_ACCESS_TOKEN || env.SUMUP_OAUTH_ACCESS_TOKEN, 4096));
   let connection = null;
   try { connection = await readSumUpOAuthConnection(env); } catch {}
+  const grantedScope = clean(connection?.scope, 500);
+  const grantedScopes = grantedScope.split(/\s+/).filter(Boolean);
+  const requestedScopes = config.scope.split(/\s+/).filter(Boolean);
+  const paymentsGranted = legacy || grantedScopes.includes('payments');
   return {
     automatic: legacy || Boolean(connection),
     mode: legacy ? 'legacy-token' : connection ? 'oauth' : 'manual',
     configured: config.ready,
     connected: legacy || Boolean(connection),
+    refund_ready: Boolean((legacy || connection) && paymentsGranted),
+    payments_scope_granted: paymentsGranted,
+    requested_scope: config.scope,
+    requested_scopes: requestedScopes,
+    granted_scope: grantedScope,
+    granted_scopes: grantedScopes,
     redirect_uri: config.redirectUri,
     expires_at: connection?.expires_at || null,
     connected_at: connection?.connected_at || null,
@@ -628,6 +646,14 @@ async function sumUpOAuthStart(request, env) {
   const check = requireAccessAdmin(request, env);
   if (check.response) return check.response;
   await ensureBookingSchema(env);
+  const requestUrl = new URL(request.url);
+  const fresh = requestUrl.searchParams.get('fresh') === '1';
+  if (fresh) {
+    // Remove the locally stored grant before starting a new authorisation-code
+    // flow. This guarantees HQ does not continue using an older token while
+    // SumUp is being asked for the expanded scope set.
+    await env.BOOKINGS_DB.prepare(`DELETE FROM oauth_connections WHERE provider=?`).bind(SUMUP_OAUTH_PROVIDER).run().catch(() => {});
+  }
   const config = sumUpOAuthConfig(env);
   if (!config.ready) {
     return json({ error: 'Add the SumUp OAuth Client ID, Client Secret and encryption key in Cloudflare before connecting.', missing: (await sumUpOAuthStatus(env)).missing }, 409);
@@ -671,9 +697,12 @@ async function sumUpOAuthCallback(request, env, url) {
       merchantCode = clean(profile.merchant_code || profile.merchant_profile?.merchant_code || merchantCode, 120);
     } catch {}
     await saveSumUpOAuthConnection(env, { ...tokenData, merchant_code: merchantCode }, stateRow.actor || 'hq');
+    const grantedScopes = clean(tokenData.scope, 500).split(/\s+/).filter(Boolean);
+    const paymentsGranted = grantedScopes.includes('payments');
     await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-      .bind(stateRow.actor || 'hq', 'SUMUP_OAUTH_CONNECTED', 'integration', 'sumup', JSON.stringify({ merchant_code: merchantCode, scope: tokenData.scope || '' })).run().catch(() => {});
-    return Response.redirect('https://bootscootinlinedancing.co.uk/ranch.html?sumup=connected#bookings', 302);
+      .bind(stateRow.actor || 'hq', 'SUMUP_OAUTH_CONNECTED', 'integration', 'sumup', JSON.stringify({ merchant_code: merchantCode, scope: tokenData.scope || '', requested_scope: config.scope, payments_granted: paymentsGranted })).run().catch(() => {});
+    const result = paymentsGranted ? 'connected' : 'scope-missing';
+    return Response.redirect(`https://bootscootinlinedancing.co.uk/ranch.html?sumup=${result}#bookings`, 302);
   } catch (error) {
     return failureRedirect(error.message || 'SumUp could not be connected.');
   }

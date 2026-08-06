@@ -602,18 +602,29 @@
       refundNotice.classList.toggle('is-ready',Boolean(refundConnection.connected));
       refundNotice.classList.toggle('needs-setup',!refundConnection.connected);
       if(refundConnection.connected){
+        const grantedScopes=Array.isArray(refundConnection.granted_scopes)?refundConnection.granted_scopes:[];
+        const scopeRows=['payments','transactions.history','user.profile_readonly'].map(scope=>
+          `<li class="${grantedScopes.includes(scope)?'scope-ok':'scope-missing'}"><strong>${grantedScopes.includes(scope)?'✓':'!'}</strong> ${esc(scope)}</li>`
+        ).join('');
         refundNotice.innerHTML=`
-          <strong>SumUp refunds connected</strong>
-          <span>Refunds are sent to the exact SumUp transaction attached to the selected booking.${refundConnection.merchant_code?` Merchant: ${esc(refundConnection.merchant_code)}.`:''}</span>
+          <strong>${refundConnection.refund_ready?'SumUp refunds connected':'SumUp connected — refund permission missing'}</strong>
+          <span>${refundConnection.refund_ready
+            ?`Refunds are sent to the exact SumUp transaction attached to the selected booking.${refundConnection.merchant_code?` Merchant: ${esc(refundConnection.merchant_code)}.`:''}`
+            :'Your SumUp login worked, but SumUp has not enabled the payments permission for this OAuth application yet.'}</span>
+          <div class="sumup-scope-panel">
+            <b>Granted permissions</b>
+            <ul>${scopeRows}</ul>
+          </div>
+          ${refundConnection.refund_ready?'':`<p class="sumup-scope-help">Reconnect once after SumUp activates the <code>payments</code> scope for your Client ID. Until then, automatic refunds cannot move money.</p>`}
           <div class="refund-connection-actions">
-            <a class="button secondary compact" href="${ADMIN_API_PREFIX}/sumup-oauth/connect">Reconnect SumUp</a>
+            <a class="button secondary compact" href="${ADMIN_API_PREFIX}/sumup-oauth/connect?fresh=1">${refundConnection.refund_ready?'Reconnect SumUp':'Reconnect for payments permission'}</a>
             <button type="button" class="danger-outline compact" id="disconnectSumUpRefunds">Disconnect</button>
           </div>`;
       }else if(refundConnection.configured){
         refundNotice.innerHTML=`
           <strong>Connect SumUp refunds</strong>
           <span>Sign in to SumUp once to authorise secure one-click refunds from HQ.</span>
-          <a class="button sumup-connect-button" href="${ADMIN_API_PREFIX}/sumup-oauth/connect">Connect SumUp refunds</a>`;
+          <a class="button sumup-connect-button" href="${ADMIN_API_PREFIX}/sumup-oauth/connect?fresh=1">Connect SumUp refunds</a>`;
       }else{
         refundNotice.innerHTML=`
           <strong>SumUp OAuth setup required</strong>
@@ -672,7 +683,7 @@
         <div class="booking-admin-actions">
           ${['PENDING','PAID'].includes(b.status)?`<button type="button" class="danger-outline" data-cancel-booking="${esc(b.id)}">Cancel booking</button>`:''}
           ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && !['REFUNDED','REFUND_PROCESSING'].includes(b.refund_status)
-            ?(refundConnection.automatic
+            ?(refundConnection.refund_ready
               ?`<button type="button" class="button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund payment</button>`
               :`<button type="button" class="button refund-not-connected" data-refund-not-connected="1" disabled title="Connect your SumUp account to enable automatic refunds">Connect SumUp refunds</button>`)
             :''}
