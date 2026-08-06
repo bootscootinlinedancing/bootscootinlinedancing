@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=92.6.3">
+  <link rel="stylesheet" href="styles.css?v=93.1.0">
 </head>
 <body class="ranch-v91">
 
@@ -93,6 +93,7 @@
       <button type="button" data-view="classes">Classes</button>
       <button type="button" data-view="bookings">Bookings</button>
       <button type="button" data-view="customers">Customers</button>
+      <button type="button" data-view="emails">Emails &amp; Mailing List</button>
       <button type="button" data-view="operations">Operations</button>
       <button type="button" data-view="private-events">Private Events</button>
       <button type="button" data-view="media">Media</button>
@@ -130,7 +131,7 @@
         <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
         <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
       </div>
-      <div class="ranch91-release">V93.0.3</div>
+      <div class="ranch91-release">V93.1.0</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -266,6 +267,9 @@
                 <option value="PENDING">Pending payment</option>
                 <option value="CANCELLED">Cancelled</option>
                 <option value="REFUNDED">Refunded</option>
+                <option value="REFUND_DUE">Refund due</option>
+                <option value="REFUND_PROCESSING">Refund processing</option>
+                <option value="REFUND_FAILED">Refund failed</option>
                 <option value="refund-review">Refund / credit review</option>
               </select>
             </label>
@@ -314,6 +318,96 @@
           <div id="ranchCustomers">Loading…</div>
         </div>
       </section>
+
+      <section class="ranch-view" data-view-panel="emails">
+        <div class="ranch-panel">
+          <div class="ranch-panel-head">
+            <div>
+              <p class="kicker red">Customer communications</p>
+              <h2>Emails &amp; Mailing List</h2>
+              <p>Create reusable messages, contact customers who opted in, send class information and schedule campaigns.</p>
+            </div>
+            <button class="button secondary compact" id="refreshEmailCentre" type="button">Refresh</button>
+          </div>
+
+          <div class="email-centre-status" id="emailProviderStatus">Checking email connection…</div>
+
+          <div class="email-centre-grid">
+            <section class="email-centre-card">
+              <p class="kicker red">Compose</p>
+              <h3>Create an email</h3>
+              <label>Template
+                <select id="emailTemplateSelect"><option value="">Start from blank</option></select>
+              </label>
+              <label>Audience
+                <select id="emailAudienceType">
+                  <option value="subscribers">All mailing-list subscribers</option>
+                  <option value="class_bookings">People booked onto a class</option>
+                  <option value="class_attendees">People who attended a class</option>
+                  <option value="selected">Selected email addresses</option>
+                </select>
+              </label>
+              <label id="emailClassPickerWrap" hidden>Class
+                <select id="emailClassPicker"><option value="">Choose a class</option></select>
+              </label>
+              <label id="emailSelectedWrap" hidden>Email addresses
+                <textarea id="emailSelectedRecipients" rows="3" placeholder="name@example.com, another@example.com"></textarea>
+              </label>
+              <div class="email-audience-result" id="emailAudienceResult">Choose an audience to preview recipients.</div>
+              <label>Subject
+                <input id="emailSubject" maxlength="160" placeholder="Your next Boot Scootin’ class">
+              </label>
+              <label>Message
+                <textarea id="emailBody" rows="12" placeholder="Hi {{first_name}}, …"></textarea>
+              </label>
+              <p class="email-placeholder-help">Available placeholders: <code>{{first_name}}</code>, <code>{{full_name}}</code>, <code>{{class_name}}</code>, <code>{{class_date}}</code>, <code>{{class_time}}</code>, <code>{{venue}}</code>, <code>{{booking_link}}</code>, <code>{{places_remaining}}</code>.</p>
+              <label>Send time
+                <input id="emailScheduleAt" type="datetime-local">
+              </label>
+              <div class="email-compose-actions">
+                <button class="button secondary compact" id="previewEmailAudience" type="button">Preview audience</button>
+                <button class="button secondary compact" id="sendEmailTest" type="button">Send test to me</button>
+                <button class="button" id="sendEmailNow" type="button">Send now</button>
+                <button class="button secondary compact" id="scheduleEmail" type="button">Schedule</button>
+              </div>
+              <div id="emailComposeStatus" class="email-compose-status" role="status"></div>
+            </section>
+
+            <section class="email-centre-card">
+              <p class="kicker red">Templates</p>
+              <h3>Reusable messages</h3>
+              <div id="emailTemplatesList" class="email-template-list">Loading templates…</div>
+              <details class="email-template-editor">
+                <summary>Create or edit a template</summary>
+                <input id="templateId" type="hidden">
+                <label>Template name<input id="templateName" maxlength="80"></label>
+                <label>Subject<input id="templateSubject" maxlength="160"></label>
+                <label>Message<textarea id="templateBody" rows="8"></textarea></label>
+                <div class="email-compose-actions">
+                  <button class="button" id="saveEmailTemplate" type="button">Save template</button>
+                  <button class="button secondary compact" id="clearEmailTemplate" type="button">Clear</button>
+                </div>
+              </details>
+            </section>
+          </div>
+
+          <section class="email-centre-card email-campaign-history">
+            <div class="ranch-panel-head">
+              <div><p class="kicker red">Campaigns</p><h3>Scheduled and sent emails</h3></div>
+              <button class="button secondary compact" id="processDueEmails" type="button">Process due emails</button>
+            </div>
+            <div id="emailCampaignList">Loading campaigns…</div>
+          </section>
+
+          <section class="email-centre-card">
+            <p class="kicker red">Consent register</p>
+            <h3>Mailing-list subscribers</h3>
+            <p>Only customers who opted in receive marketing campaigns. Essential booking emails remain separate.</p>
+            <div id="emailSubscriberList">Loading subscribers…</div>
+          </section>
+        </div>
+      </section>
+
 <section class="ranch-view" data-view-panel="operations">
         <div class="ranch-panel">
           <div class="ranch-panel-head">
@@ -499,7 +593,7 @@
 
   <div id="ranch91Toast" class="ranch91-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="ranch.js?v=93.0.3"></script>
+  <script src="ranch.js?v=93.1.0"></script>
 
   <script>
   (function(){

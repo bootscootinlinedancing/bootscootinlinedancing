@@ -1,7 +1,7 @@
 {
   "release": "V93.0.0 AUTOMATIC SUMUP REFUNDS OAUTH",
-  "version": "93.0.0",
-  "release_name": "Automatic SumUp Refunds OAuth",
+  "version": "93.1.0",
+  "release_name": "Booking Management & Email Centre",
   "description": "Adds the complete SumUp authorization-code OAuth connection, encrypted D1 token storage and refresh handling, exact-transaction refunds, and clearer booking/customer payment details in HQ.",
   "built_from": "boot-scootin-platform-v92.7.2-UPDATE-SPEC(2).zip",
   "built_at": "2026-08-06T11:48:13.120967+00:00",
@@ -69,5 +69,7 @@
       "size": 926,
       "sha256": "4409944e5267f99bf00f26a72ae3051f161a9f29863b54b9bdbbc5d1e1ed6364"
     }
-  }
+  },
+  "root_file_count": 85,
+  "total_file_count": 122
 }

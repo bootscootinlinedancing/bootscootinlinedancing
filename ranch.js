@@ -5,6 +5,7 @@
     classes:[],
     bookings:null,
     customers:null,
+    emailCentre:null,
     operations:null,
     media:[],
     privateEvents:[],
@@ -28,7 +29,7 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v93-0-0';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v93-1-0';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
 
@@ -233,7 +234,7 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
   window.addEventListener('pageshow',()=>setDrawer(false));
 
-  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
+  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers',emails:'Emails & Mailing List',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
     state.currentView=name;
     $$('.ranch-view').forEach(panel=>panel.classList.toggle('active',panel.dataset.viewPanel===name));
@@ -244,6 +245,7 @@
     if(name==='classes')loadClasses();
     if(name==='bookings')loadBookings();
     if(name==='customers')loadCustomers();
+    if(name==='emails')loadEmailCentre();
     if(name==='operations')renderOperationsFromBootstrap();
     if(name==='private-events')loadPrivateEvents();
     if(name==='media')loadMedia();
@@ -646,7 +648,8 @@
     let rows=data.bookings||[];
 
     if(filter==='active')rows=rows.filter(b=>['PENDING','PAID'].includes(b.status));
-    else if(filter==='refund-review')rows=rows.filter(b=>['REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW'].includes(b.refund_status));
+    else if(filter==='refund-review')rows=rows.filter(b=>['REFUND_DUE','REFUND_PROCESSING','REFUND_FAILED','CREDIT_DUE','REVIEW_IF_RESOLD','ADMIN_REVIEW'].includes(b.refund_status));
+    else if(['REFUND_DUE','REFUND_PROCESSING','REFUND_FAILED'].includes(filter))rows=rows.filter(b=>b.refund_status===filter);
     else if(filter!=='all')rows=rows.filter(b=>b.status===filter);
 
     box.innerHTML=rows.length?rows.map(b=>`
@@ -688,7 +691,7 @@
               :`<button type="button" class="button refund-not-connected" data-refund-not-connected="1" disabled title="Connect your SumUp account to enable automatic refunds">Connect SumUp refunds</button>`)
             :''}
           ${b.payment_provider==='SUMUP' && b.status==='CANCELLED' && b.refund_status==='REFUND_DUE'?`<button type="button" class="danger-outline" data-record-manual-refund="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Record refund already completed in SumUp</button>`:''}
-          ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}${b.refund_status==='REFUND_FAILED'&&b.admin_notes?`<p class="booking-refund-error">${esc(b.admin_notes)}</p>`:''}
+          ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}${b.refund_status==='REFUND_FAILED'&&b.admin_notes?`<div class="booking-refund-error"><strong>Refund could not be completed.</strong><p>${esc(String(b.admin_notes).includes('Insufficient scopes')?'SumUp has not yet activated the payments permission for this connection. Once SumUp confirms it is enabled, reconnect and retry the refund.':'The refund was not accepted. Open diagnostics below for the technical response.')}</p><details><summary>View diagnostics</summary><code>${esc(b.admin_notes)}</code></details></div>`:''}
           ${b.is_test_candidate?`<button type="button" class="danger-outline" data-delete-test-booking="${esc(b.id)}">Delete test booking</button>`:''}
         </div>
       </article>
@@ -1003,6 +1006,61 @@ Type REFUNDED to continue.`);
     finally{button.disabled=false;button.textContent='Upload to HQ';if(progress)progress.hidden=true;}
   }
 
+
+  function emailAudiencePayload(){
+    return {class_id:$('#emailClassPicker')?.value||'',emails:$('#emailSelectedRecipients')?.value||''};
+  }
+  function currentEmailDraft(){
+    return {subject:$('#emailSubject')?.value.trim()||'',body_text:$('#emailBody')?.value.trim()||'',audience_type:$('#emailAudienceType')?.value||'subscribers',audience:emailAudiencePayload()};
+  }
+  function renderEmailCentre(){
+    const data=state.emailCentre;if(!data)return;
+    const provider=$('#emailProviderStatus');
+    if(provider){provider.className=`email-centre-status ${data.provider?.ready?'ready':'setup'}`;provider.innerHTML=data.provider?.ready?`<strong>Email sending connected</strong><br>Sending from ${esc(data.provider.from||'configured sender')}. Scheduled campaigns are supported.`:`<strong>Email setup required</strong><br>Add RESEND_API_KEY and EMAIL_FROM in Cloudflare before sending. You can still prepare templates and campaigns.`;}
+    const templateSelect=$('#emailTemplateSelect');if(templateSelect){templateSelect.innerHTML='<option value="">Start from blank</option>'+data.templates.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');}
+    const classPicker=$('#emailClassPicker');if(classPicker){classPicker.innerHTML='<option value="">Choose a class</option>'+data.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.title)} — ${esc(fmt(c.starts_at))}</option>`).join('');}
+    const list=$('#emailTemplatesList');if(list){list.innerHTML=data.templates.length?data.templates.map(t=>`<article class="email-template-item"><strong>${esc(t.name)}</strong><span>${esc(t.subject)}</span><div class="email-template-actions"><button type="button" data-use-template="${esc(t.id)}">Use</button>${t.is_system?'':`<button type="button" data-edit-template="${esc(t.id)}">Edit</button><button type="button" data-delete-template="${esc(t.id)}">Delete</button>`}</div></article>`).join(''):'<div class="email-empty">No templates yet.</div>';}
+    const campaigns=$('#emailCampaignList');if(campaigns){campaigns.innerHTML=data.campaigns.length?data.campaigns.map(c=>`<article class="email-campaign-row"><div><strong>${esc(c.subject)}</strong><br><small>${esc(c.audience_type.replaceAll('_',' '))}</small></div><span>${Number(c.recipient_count||0)} recipient${Number(c.recipient_count||0)===1?'':'s'}</span><span class="email-status-pill ${esc(String(c.status||'').toLowerCase())}">${esc(c.status)}</span><div>${c.scheduled_at?esc(fmt(c.scheduled_at)):c.sent_at?esc(fmt(c.sent_at)):esc(fmt(c.created_at))}${c.status==='SCHEDULED'?`<br><button type="button" data-cancel-campaign="${esc(c.id)}">Cancel</button>`:''}${c.error_message?`<br><small>${esc(c.error_message)}</small>`:''}</div></article>`).join(''):'<div class="email-empty">No campaigns yet.</div>';}
+    const subscribers=$('#emailSubscriberList');if(subscribers){subscribers.innerHTML=data.subscribers.length?data.subscribers.map(r=>`<article class="email-subscriber-row"><strong>${esc(r.name||'Customer')}</strong><span>${esc(r.email)}</span><small>Last booking ${esc(fmt(r.last_booking_at))}</small></article>`).join(''):'<div class="email-empty">No mailing-list subscribers yet.</div>';}
+  }
+  async function loadEmailCentre(){
+    const provider=$('#emailProviderStatus');if(provider)provider.textContent='Loading email centre…';
+    try{state.emailCentre=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{},15000);renderEmailCentre();}
+    catch(error){if(provider){provider.className='email-centre-status setup';provider.textContent=error.message;}toast(error.message,'error');}
+  }
+  function updateEmailAudienceFields(){
+    const type=$('#emailAudienceType')?.value;
+    if($('#emailClassPickerWrap'))$('#emailClassPickerWrap').hidden=!['class_bookings','class_attendees'].includes(type);
+    if($('#emailSelectedWrap'))$('#emailSelectedWrap').hidden=type!=='selected';
+  }
+  async function previewEmailAudience(){
+    const result=$('#emailAudienceResult');if(result)result.textContent='Checking recipients…';
+    try{const d=currentEmailDraft();const response=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'AUDIENCE_PREVIEW',audience_type:d.audience_type,audience:d.audience})});if(result)result.innerHTML=`<strong>${response.count} eligible recipient${response.count===1?'':'s'}</strong>${response.sample?.length?`<br>${response.sample.map(r=>esc(r.name||r.email)).join(', ')}`:''}`;return response;}
+    catch(error){if(result)result.textContent=error.message;throw error;}
+  }
+  function applyEmailTemplate(id,edit=false){
+    const t=state.emailCentre?.templates?.find(x=>String(x.id)===String(id));if(!t)return;
+    if(edit){$('#templateId').value=t.id;$('#templateName').value=t.name;$('#templateSubject').value=t.subject;$('#templateBody').value=t.body_text;document.querySelector('.email-template-editor')?.setAttribute('open','');}
+    else{$('#emailSubject').value=t.subject;$('#emailBody').value=t.body_text;$('#emailTemplateSelect').value=t.id;toast(`Loaded ${t.name}.`,'success');}
+  }
+  async function emailCampaignAction(action){
+    const status=$('#emailComposeStatus');const draft=currentEmailDraft();
+    if(!draft.subject||!draft.body_text){toast('Add a subject and message first.','error');return;}
+    if(action==='SCHEDULE')draft.scheduled_at=$('#emailScheduleAt')?.value?new Date($('#emailScheduleAt').value).toISOString():'';
+    if(status)status.textContent=action==='SEND_NOW'?'Queueing email…':'Saving schedule…';
+    try{await previewEmailAudience();const response=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,...draft})},30000);if(status)status.textContent=response.message||'Saved.';toast(response.message||'Email action completed.','success');setTimeout(loadEmailCentre,1500);}
+    catch(error){if(status)status.textContent=error.message;toast(error.message,'error');}
+  }
+  async function saveEmailTemplate(){
+    const payload={action:'SAVE_TEMPLATE',id:$('#templateId').value,name:$('#templateName').value,subject:$('#templateSubject').value,body_text:$('#templateBody').value};
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Template saved.','success');clearEmailTemplate();await loadEmailCentre();}catch(error){toast(error.message,'error');}
+  }
+  function clearEmailTemplate(){['templateId','templateName','templateSubject','templateBody'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
+  async function sendEmailTest(){
+    const draft=currentEmailDraft();if(!draft.subject||!draft.body_text){toast('Add a subject and message first.','error');return;}
+    try{const r=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'SEND_TEST',...draft})},30000);toast(r.message||'Test email sent.','success');}catch(error){toast(error.message,'error');}
+  }
+
   // Events
   $('#ranch91RunChecks')?.addEventListener('click',loadHealth);
   $('#refreshHealth')?.addEventListener('click',loadHealth);
@@ -1023,6 +1081,16 @@ Type REFUNDED to continue.`);
   }
   $('#deleteAllTestBookings')?.addEventListener('click',deleteAllTestBookings);
   $('#refreshCustomers')?.addEventListener('click',loadCustomers);
+  $('#refreshEmailCentre')?.addEventListener('click',loadEmailCentre);
+  $('#emailAudienceType')?.addEventListener('change',updateEmailAudienceFields);
+  $('#previewEmailAudience')?.addEventListener('click',()=>previewEmailAudience().catch(()=>{}));
+  $('#sendEmailTest')?.addEventListener('click',sendEmailTest);
+  $('#sendEmailNow')?.addEventListener('click',()=>emailCampaignAction('SEND_NOW'));
+  $('#scheduleEmail')?.addEventListener('click',()=>emailCampaignAction('SCHEDULE'));
+  $('#saveEmailTemplate')?.addEventListener('click',saveEmailTemplate);
+  $('#clearEmailTemplate')?.addEventListener('click',clearEmailTemplate);
+  $('#emailTemplateSelect')?.addEventListener('change',event=>event.target.value&&applyEmailTemplate(event.target.value));
+  $('#processDueEmails')?.addEventListener('click',async()=>{try{const r=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'PROCESS_DUE'})},60000);toast(`Processed ${r.results?.length||0} due campaign(s).`,'success');loadEmailCentre();}catch(error){toast(error.message,'error');}});
   $('#customerAdminSearch')?.addEventListener('input',loadCustomers);
   $('#refreshOperations')?.addEventListener('click',()=>loadBootstrap(true,{force:true}));
   $('#printOperationsRegister')?.addEventListener('click',()=>window.print());
@@ -1049,6 +1117,12 @@ Type REFUNDED to continue.`);
   $('#exportCustomersCsv')?.addEventListener('click',exportCustomersCsv);
   $('#checkMediaBackend')?.addEventListener('click',checkMediaBackend);
   $('#mediaUploadForm')?.addEventListener('submit',uploadMedia);
+  document.addEventListener('click',async event=>{
+    const use=event.target.closest?.('[data-use-template]');if(use){applyEmailTemplate(use.dataset.useTemplate);return;}
+    const edit=event.target.closest?.('[data-edit-template]');if(edit){applyEmailTemplate(edit.dataset.editTemplate,true);return;}
+    const del=event.target.closest?.('[data-delete-template]');if(del&&confirm('Delete this email template?')){try{await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE_TEMPLATE',id:del.dataset.deleteTemplate})});loadEmailCentre();}catch(error){toast(error.message,'error');}return;}
+    const cancel=event.target.closest?.('[data-cancel-campaign]');if(cancel&&confirm('Cancel this scheduled email?')){try{await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'CANCEL_CAMPAIGN',id:cancel.dataset.cancelCampaign})});loadEmailCentre();}catch(error){toast(error.message,'error');}}
+  });
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#classEditorModal')?.hidden)closeClassEditor();});
 
 

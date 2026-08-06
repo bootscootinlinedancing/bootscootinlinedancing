@@ -1,3 +1,16 @@
+# v93.1.0 — Booking Management & Email Centre
+
+- Added a new HQ **Emails & Mailing List** area.
+- Added subscriber register based on recorded marketing consent.
+- Added reusable email templates with editable placeholders.
+- Added audiences for subscribers, class bookings, class attendees and selected recipients.
+- Added audience preview, test-send, send-now and campaign scheduling.
+- Added campaign history, cancellation and due-campaign processing.
+- Added a Cloudflare scheduled handler for Cron Trigger delivery.
+- Added signed marketing unsubscribe links and consent withdrawal records.
+- Added mobile-responsive Email Centre styling.
+- Kept setup and report files under `docs/` to protect the GitHub root-file limit.
+
 # Boot Scootin’ Platform v93.0.3
 
 - Forces every new SumUp OAuth request to include `payments`, `transactions.history`, and `user.profile_readonly`, even if an older Cloudflare scope variable omits one.

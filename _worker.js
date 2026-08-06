@@ -853,7 +853,7 @@ async function sendTransactionalEmail(env, to, subject, html, text) {
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/92.6.9'
+      'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.1.0'
     },
     body: JSON.stringify({ from, to: [to], subject, html, text })
   });
@@ -1873,6 +1873,162 @@ async function cleanupKnownAugustTestBookings(request, env) {
   });
 }
 
+
+const DEFAULT_EMAIL_TEMPLATES = [
+  ['next-class','Next class reminder','Your next Boot Scootin’ class — {{class_date}}',`Hi {{first_name}},\n\nJust a reminder that our next Boot Scootin’ class is {{class_name}} on {{class_date}} at {{class_time}}, at {{venue}}.\n\nBook your place here: {{booking_link}}\n\nSee you on the dance floor!\n\nNora\nBoot Scootin’ Line Dancing`],
+  ['booking-open','Booking now open','Booking is open — {{class_name}}',`Hi {{first_name}},\n\nBooking is now open for {{class_name}} on {{class_date}} at {{class_time}}.\n\nBook here: {{booking_link}}\n\nNora\nBoot Scootin’ Line Dancing`],
+  ['few-spaces','Only a few spaces remaining','Only {{places_remaining}} spaces left — {{class_name}}',`Hi {{first_name}},\n\nThere are only {{places_remaining}} spaces remaining for {{class_name}} on {{class_date}}.\n\nBook here: {{booking_link}}`],
+  ['new-date','New class date added','New Boot Scootin’ date added',`Hi {{first_name}},\n\nA new Boot Scootin’ class has been added: {{class_name}}, {{class_date}} at {{class_time}}, at {{venue}}.\n\nBook here: {{booking_link}}`],
+  ['venue-update','Venue update','Important venue update — {{class_name}}',`Hi {{first_name}},\n\nThere is an update to the venue for {{class_name}} on {{class_date}}. The class will now take place at {{venue}}.\n\nNora`],
+  ['special-event','Special event announcement','A special Boot Scootin’ event is coming',`Hi {{first_name}},\n\nWe have a special Boot Scootin’ event coming up and would love you to join us.\n\n[Add your event details here]\n\nNora`],
+  ['thank-you','Thank you for coming','Thank you for dancing with us',`Hi {{first_name}},\n\nThank you for coming to {{class_name}}. I hope you had a brilliant time and I would love to see you again soon.\n\nNora`],
+  ['welcome-list','Mailing-list welcome','Welcome to the Boot Scootin’ mailing list',`Hi {{first_name}},\n\nWelcome to the Boot Scootin’ mailing list. You’ll receive class dates, reminders, special events and the latest Boot Scootin’ news.\n\nNora`]
+];
+
+async function ensureEmailCentreSchema(env){
+  if(!env.BOOKINGS_DB) throw new Error('D1 booking database is not connected.');
+  const statements=[
+    `CREATE TABLE IF NOT EXISTS email_templates (id TEXT PRIMARY KEY,name TEXT NOT NULL,subject TEXT NOT NULL,body_text TEXT NOT NULL,is_system INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS email_campaigns (id TEXT PRIMARY KEY,subject TEXT NOT NULL,body_text TEXT NOT NULL,audience_type TEXT NOT NULL,audience_json TEXT,recipient_count INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'DRAFT',scheduled_at TEXT,sent_at TEXT,created_by TEXT,provider_message TEXT,error_message TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+    `CREATE TABLE IF NOT EXISTS email_campaign_recipients (id TEXT PRIMARY KEY,campaign_id TEXT NOT NULL,email TEXT NOT NULL,name TEXT,status TEXT NOT NULL DEFAULT 'PENDING',provider_id TEXT,error_message TEXT,sent_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(campaign_id,email))`,
+    `CREATE TABLE IF NOT EXISTS mailing_unsubscribes (email TEXT PRIMARY KEY,unsubscribed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,source TEXT)`
+  ];
+  for(const sql of statements) await env.BOOKINGS_DB.prepare(sql).run();
+  for(const [id,name,subject,body] of DEFAULT_EMAIL_TEMPLATES){
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_templates(id,name,subject,body_text,is_system) VALUES(?,?,?,?,1)`).bind(id,name,subject,body).run();
+  }
+}
+
+function emailTokenSecret(env){return String(env.MAILING_LIST_SIGNING_SECRET||env.SUMUP_OAUTH_STATE_SECRET||env.SUMUP_OAUTH_CLIENT_SECRET||'').trim()}
+async function mailingToken(env,email){
+  const secret=emailTokenSecret(env); if(!secret)return '';
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(String(email).toLowerCase()));
+  return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function validMailingToken(env,email,token){const expected=await mailingToken(env,email);return Boolean(expected&&token&&expected===token)}
+
+function mergeEmailText(text,recipient,klass){
+  const full=String(recipient.name||'').trim(); const first=full.split(/\s+/)[0]||'there';
+  const date=klass?.starts_at?new Date(klass.starts_at).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Europe/London'}):'';
+  const time=klass?.starts_at?new Date(klass.starts_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/London'}):'';
+  const replacements={first_name:first,full_name:full||first,class_name:klass?.title||'',class_date:date,class_time:time,venue:klass?.venue||'',booking_link:klass?.booking_url||'https://bootscootinlinedancing.co.uk/bookings.html',places_remaining:String(Math.max(0,Number(klass?.capacity||0)-Number(klass?.sold||0)))};
+  return String(text||'').replace(/\{\{\s*([a-z_]+)\s*\}\}/gi,(_,key)=>replacements[key]??'');
+}
+function emailHtmlFromText(text,unsubscribeUrl){return `<div style="font-family:Arial,sans-serif;line-height:1.65;color:#211515;max-width:640px;margin:auto"><div style="border-top:8px solid #a71920;padding:26px;background:#fff8ed"><h1 style="font-size:24px">Boot Scootin’ Line Dancing</h1>${htmlEscape(text).replace(/\n/g,'<br>')}<hr style="border:0;border-top:1px solid #d8c3a5;margin:28px 0"><p style="font-size:12px;color:#705f55">You are receiving this because you booked with Boot Scootin’ or joined the mailing list.${unsubscribeUrl?` <a href="${htmlEscape(unsubscribeUrl)}">Unsubscribe from marketing emails</a>.`:''}</p></div></div>`}
+
+async function resolveEmailAudience(env,type,payload={}){
+  await ensureEmailCentreSchema(env);
+  let rows=[]; let klass=null;
+  if(type==='subscribers'){
+    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name FROM bookings b LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(b.customer_email) WHERE b.marketing_consent=1 AND u.email IS NULL GROUP BY lower(b.customer_email) ORDER BY MAX(b.created_at) DESC`).all(); rows=r.results||[];
+  }else if(type==='class_bookings'){
+    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name FROM bookings WHERE class_id=? AND status IN ('PAID','PENDING') GROUP BY lower(customer_email)`).bind(payload.class_id||'').all(); rows=r.results||[];
+  }else if(type==='class_attendees'){
+    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.class_id=? GROUP BY lower(b.customer_email)`).bind(payload.class_id||'').all(); rows=r.results||[];
+  }else if(type==='selected'){
+    rows=String(payload.emails||'').split(/[\s,;]+/).filter(Boolean).map(email=>({email:email.toLowerCase(),name:email.split('@')[0]}));
+  }
+  if(payload.class_id){klass=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(payload.class_id).first();}
+  const seen=new Set(); rows=rows.filter(r=>/^\S+@\S+\.\S+$/.test(r.email)&&!seen.has(r.email)&&(seen.add(r.email),true));
+  return {recipients:rows,klass};
+}
+
+async function sendCampaign(env,campaignId){
+  await ensureEmailCentreSchema(env);
+  const campaign=await env.BOOKINGS_DB.prepare(`SELECT * FROM email_campaigns WHERE id=?`).bind(campaignId).first();
+  if(!campaign)throw new Error('Campaign not found.');
+  if(campaign.status==='SENT')return {sent:campaign.recipient_count||0,already:true};
+  const audience=JSON.parse(campaign.audience_json||'{}');
+  const resolved=await resolveEmailAudience(env,campaign.audience_type,audience);
+  if(!resolved.recipients.length)throw new Error('This audience has no eligible recipients.');
+  await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='SENDING',recipient_count=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(resolved.recipients.length,campaignId).run();
+  let sent=0,failed=0;
+  for(const recipient of resolved.recipients.slice(0,500)){
+    const rid=crypto.randomUUID();
+    try{
+      const subject=mergeEmailText(campaign.subject,recipient,resolved.klass);
+      const body=mergeEmailText(campaign.body_text,recipient,resolved.klass);
+      const token=campaign.audience_type==='subscribers'?await mailingToken(env,recipient.email):'';
+      const unsubscribe=token?`https://bootscootinlinedancing.co.uk/api/email/unsubscribe?email=${encodeURIComponent(recipient.email)}&token=${encodeURIComponent(token)}`:'';
+      const result=await sendTransactionalEmail(env,recipient.email,subject,emailHtmlFromText(body,unsubscribe),body);
+      if(result.skipped)throw new Error(result.reason||'Email provider is not configured.');
+      await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_campaign_recipients(id,campaign_id,email,name,status,provider_id,sent_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)`).bind(rid,campaignId,recipient.email,recipient.name||'', 'SENT',result.id||'').run(); sent++;
+    }catch(error){
+      await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_campaign_recipients(id,campaign_id,email,name,status,error_message) VALUES(?,?,?,?,?,?)`).bind(rid,campaignId,recipient.email,recipient.name||'','FAILED',clean(error.message||error,300)).run(); failed++;
+    }
+  }
+  const finalStatus=sent>0?(failed?'PARTIAL':'SENT'):'FAILED';
+  await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status=?,sent_at=CURRENT_TIMESTAMP,provider_message=?,error_message=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(finalStatus,`${sent} sent`,failed?`${failed} failed`:null,campaignId).run();
+  return {sent,failed,status:finalStatus};
+}
+
+async function processDueCampaigns(env){
+  await ensureEmailCentreSchema(env);
+  const r=await env.BOOKINGS_DB.prepare(`SELECT id FROM email_campaigns WHERE status='SCHEDULED' AND scheduled_at<=CURRENT_TIMESTAMP ORDER BY scheduled_at LIMIT 10`).all();
+  const results=[]; for(const row of r.results||[]){try{results.push({id:row.id,...await sendCampaign(env,row.id)})}catch(error){await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='FAILED',error_message=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(clean(error.message||error,300),row.id).run();results.push({id:row.id,error:error.message});}}
+  return results;
+}
+
+async function adminEmailCentre(request,env,ctx){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env); await ensureEmailCentreSchema(env);
+  if(request.method==='GET'){
+    const [templates,campaigns,subscribers,classes]=await Promise.all([
+      env.BOOKINGS_DB.prepare(`SELECT * FROM email_templates ORDER BY is_system DESC,name`).all(),
+      env.BOOKINGS_DB.prepare(`SELECT * FROM email_campaigns ORDER BY created_at DESC LIMIT 50`).all(),
+      env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name,MAX(b.customer_phone) phone,MAX(b.created_at) last_booking_at FROM bookings b LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(b.customer_email) WHERE b.marketing_consent=1 AND u.email IS NULL GROUP BY lower(b.customer_email) ORDER BY last_booking_at DESC`).all(),
+      env.BOOKINGS_DB.prepare(`SELECT id,title,starts_at,venue,capacity,sold FROM classes ORDER BY starts_at DESC LIMIT 100`).all()
+    ]);
+    return json({provider:{ready:notificationConfig(env).emailReady,from:String(env.EMAIL_FROM||''),scheduling_ready:true,cron_note:'Scheduled campaigns are sent by the Worker scheduled handler or the Process due emails button.'},templates:templates.results||[],campaigns:campaigns.results||[],subscribers:subscribers.results||[],classes:classes.results||[]});
+  }
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  let body;try{body=await request.json()}catch{return json({error:'Invalid request.'},400)}
+  const action=String(body.action||'');
+  if(action==='AUDIENCE_PREVIEW'){
+    const r=await resolveEmailAudience(env,body.audience_type,body.audience||{});return json({count:r.recipients.length,sample:r.recipients.slice(0,10)});
+  }
+  if(action==='SAVE_TEMPLATE'){
+    const id=clean(body.id||crypto.randomUUID(),80),name=clean(body.name,80),subject=clean(body.subject,160),text=String(body.body_text||'').trim();
+    if(!name||!subject||!text)return json({error:'Template name, subject and message are required.'},400);
+    await env.BOOKINGS_DB.prepare(`INSERT INTO email_templates(id,name,subject,body_text,is_system,updated_at) VALUES(?,?,?,?,0,CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET name=excluded.name,subject=excluded.subject,body_text=excluded.body_text,updated_at=CURRENT_TIMESTAMP`).bind(id,name,subject,text).run();return json({ok:true,id});
+  }
+  if(action==='DELETE_TEMPLATE'){
+    await env.BOOKINGS_DB.prepare(`DELETE FROM email_templates WHERE id=? AND is_system=0`).bind(body.id||'').run();return json({ok:true});
+  }
+  if(action==='SEND_TEST'){
+    const email=check.state.email; if(!email)return json({error:'Your Cloudflare Access email is unavailable.'},400);
+    const recipient={email,name:'Nora'};let klass=null;if(body.audience?.class_id)klass=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(body.audience.class_id).first();
+    const subject=mergeEmailText(body.subject,recipient,klass),text=mergeEmailText(body.body_text,recipient,klass);const result=await sendTransactionalEmail(env,email,`TEST — ${subject}`,emailHtmlFromText(text,''),text);if(result.skipped)return json({error:result.reason},503);return json({ok:true,message:`Test sent to ${email}.`});
+  }
+  if(['SEND_NOW','SCHEDULE'].includes(action)){
+    const subject=clean(body.subject,160),text=String(body.body_text||'').trim(),type=clean(body.audience_type,40),audience=body.audience||{};
+    if(!subject||!text)return json({error:'Subject and message are required.'},400);
+    const preview=await resolveEmailAudience(env,type,audience);if(!preview.recipients.length)return json({error:'This audience has no eligible recipients.'},400);
+    const id=crypto.randomUUID(); let scheduled=action==='SCHEDULE'?String(body.scheduled_at||''):null; if(scheduled){const parsed=new Date(scheduled);scheduled=Number.isNaN(parsed.getTime())?'':parsed.toISOString().slice(0,19).replace('T',' ');}
+    if(action==='SCHEDULE'&&!scheduled)return json({error:'Choose a date and time.'},400);
+    await env.BOOKINGS_DB.prepare(`INSERT INTO email_campaigns(id,subject,body_text,audience_type,audience_json,recipient_count,status,scheduled_at,created_by) VALUES(?,?,?,?,?,?,?,?,?)`).bind(id,subject,text,type,JSON.stringify(audience),preview.recipients.length,action==='SCHEDULE'?'SCHEDULED':'QUEUED',scheduled,check.state.email||'hq').run();
+    if(action==='SEND_NOW'){
+      if(ctx?.waitUntil){ctx.waitUntil(sendCampaign(env,id));return json({ok:true,id,message:`Campaign queued for ${preview.recipients.length} recipient${preview.recipients.length===1?'':'s'}.`},202)}
+      return json({ok:true,id,...await sendCampaign(env,id)});
+    }
+    return json({ok:true,id,message:`Email scheduled for ${scheduled}.`});
+  }
+  if(action==='CANCEL_CAMPAIGN'){
+    await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='SCHEDULED'`).bind(body.id||'').run();return json({ok:true});
+  }
+  if(action==='PROCESS_DUE')return json({ok:true,results:await processDueCampaigns(env)});
+  return json({error:'Unknown email action.'},400);
+}
+
+async function unsubscribeEmail(request,env,url){
+  await ensureEmailCentreSchema(env);const email=String(url.searchParams.get('email')||'').toLowerCase(),token=String(url.searchParams.get('token')||'');
+  if(!email||!(await validMailingToken(env,email,token)))return new Response('This unsubscribe link is invalid or has expired.',{status:400,headers:{'content-type':'text/plain;charset=UTF-8'}});
+  await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO mailing_unsubscribes(email,source) VALUES(?,'email-link')`).bind(email).run();
+  await env.BOOKINGS_DB.prepare(`UPDATE bookings SET marketing_consent=0 WHERE lower(customer_email)=?`).bind(email).run();
+  return new Response(`<!doctype html><meta name="viewport" content="width=device-width"><title>Unsubscribed</title><body style="font-family:Arial;padding:40px;background:#fff8ed;color:#211515"><h1>You have been unsubscribed</h1><p>${htmlEscape(email)} will no longer receive Boot Scootin’ marketing emails. Essential messages about bookings you make may still be sent.</p></body>`,{headers:{'content-type':'text/html;charset=UTF-8'}});
+}
+
 async function adminOperations(request, env) {
   const check = requireAccessAdmin(request, env);
   if (check.response) return check.response;
@@ -2373,6 +2529,7 @@ async function serveMedia(request, env, pathname) {
 }
 
 export default {
+  async scheduled(event, env, ctx) { ctx.waitUntil(processDueCampaigns(env)); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
@@ -2401,6 +2558,8 @@ export default {
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env, ctx);
       if (path === '/api/admin/customers' && request.method === 'GET') return adminCustomers(request, env);
+      if (path === '/api/admin/emails') return adminEmailCentre(request, env, ctx);
+      if (path === '/api/email/unsubscribe' && request.method === 'GET') return unsubscribeEmail(request, env, url);
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);
       if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);
       if (path === '/api/admin/media-status' && request.method === 'GET') return mediaStatus(request, env);

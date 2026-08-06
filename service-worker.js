@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v93-0-3-sumup-scope-verification";
+const CACHE_NAME = "boot-scootin-v93-1-0-sumup-scope-verification";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(
