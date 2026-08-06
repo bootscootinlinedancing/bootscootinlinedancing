@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 640" role="img" aria-labelledby="t d">
+<title id="t">Broadway neon guitar</title><desc id="d">A red and cream neon guitar inspired by Nashville honky-tonk signs.</desc>
+<defs><filter id="g" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#g)">
+<path d="M238 47c27 11 43 31 47 62l-31 12-13-29-27 9 13 30-30 12c-18-28-15-57 8-79z" stroke="#fff1d2" stroke-width="8"/>
+<path d="M222 132 166 318" stroke="#ff3b35" stroke-width="15"/>
+<path d="M237 138 181 324" stroke="#fff1d2" stroke-width="5"/>
+<path d="M154 294c-44 12-80 47-94 94-22 73 16 158 85 190 68 31 151-3 179-73 18-45 10-91-14-126l-66 42c12 18 16 43 8 65-13 37-56 56-92 40-36-16-54-60-40-97 9-24 30-42 53-47z" stroke="#ff3b35" stroke-width="16"/>
+<path d="M165 325c-35 10-64 38-75 73-17 56 12 121 65 146 53 24 117-2 139-56 13-34 8-70-11-97" stroke="#fff1d2" stroke-width="6"/>
+<ellipse cx="194" cy="425" rx="31" ry="41" stroke="#fff1d2" stroke-width="7"/>
+<path d="M182 323 233 151M208 330 254 160" stroke="#ff3b35" stroke-width="4"/>
+<path d="M153 503c32 18 72 19 105 1" stroke="#ff3b35" stroke-width="7"/>
+</g></svg>
