@@ -1,3 +1,11 @@
+# v96.3.0 — Life's Better Homepage Refresh
+
+- Rebuilt the homepage around the ‘Life’s Better in Cowboy Boots’ design.
+- Added authentic Boot Scootin’ class and event photography supplied by Nora.
+- Added Meet Nora, upcoming classes, benefits, gallery and private events sections.
+- Preserved all existing booking, member, loyalty, waiting-list and HQ functionality.
+- Updated responsive mobile layout and removed emoji-style homepage visuals.
+
 ## v96.2.0 – Full Honky-Tonk Bar Rebuild
 
 - Rebuilt the homepage around a dark brick, timber, bar-stage and red-neon aesthetic closely aligned with the approved reference.

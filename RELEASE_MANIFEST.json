@@ -1,7 +1,7 @@
 {
   "release": "V95.0.0 CUSTOMER PORTAL & ACHIEVEMENTS",
-  "version": "96.0.0",
-  "release_name": "Honky Tonk Visual Redesign",
+  "version": "96.3.0",
+  "release_name": "LIFE'S BETTER IN COWBOY BOOTS HOMEPAGE",
   "description": "Expands the secure customer portal with personal rewards, achievements, lifetime spend and engagement status.",
   "built_from": "boot-scootin-platform-v94.0.0-PROMOTIONS-REWARDS-ENGINE.zip",
   "built_at": "2026-08-06T18:49:56.842081+00:00",
@@ -43,5 +43,6 @@
       "size": 515,
       "sha256": "0ced25c5d752b213b74d50766e95fb864871537db1dea05335ba9ab73f35389a"
     }
-  }
+  },
+  "homepage_refresh": true
 }
