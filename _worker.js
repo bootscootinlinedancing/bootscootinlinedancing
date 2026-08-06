@@ -290,6 +290,21 @@ async function ensureBookingSchema(env) {
 
     `CREATE INDEX IF NOT EXISTS idx_holds_class_expiry ON booking_holds(class_id, expires_at)`,
     `CREATE INDEX IF NOT EXISTS idx_bookings_class_status ON bookings(class_id,status)`,
+    `CREATE TABLE IF NOT EXISTS promotions (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, code_prefix TEXT, discount_type TEXT NOT NULL CHECK(discount_type IN ('PERCENT','FIXED','FREE')),
+      discount_value INTEGER NOT NULL DEFAULT 0, starts_at TEXT, ends_at TEXT, max_uses INTEGER, uses_per_customer INTEGER NOT NULL DEFAULT 1,
+      applicable_class_id TEXT, personal_only INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS promotion_codes (
+      id TEXT PRIMARY KEY, promotion_id TEXT NOT NULL REFERENCES promotions(id) ON DELETE CASCADE, code TEXT NOT NULL UNIQUE, customer_email TEXT,
+      issued_reason TEXT, issued_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, expires_at TEXT, max_uses INTEGER NOT NULL DEFAULT 1, active INTEGER NOT NULL DEFAULT 1
+    )`,
+    `CREATE TABLE IF NOT EXISTS promotion_redemptions (
+      id TEXT PRIMARY KEY, promotion_code_id TEXT NOT NULL REFERENCES promotion_codes(id), booking_id TEXT NOT NULL REFERENCES bookings(id),
+      customer_email TEXT NOT NULL, discount_pence INTEGER NOT NULL DEFAULT 0, redeemed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(promotion_code_id,booking_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promotion_codes(code)`,
+    `CREATE INDEX IF NOT EXISTS idx_promo_redemptions_code ON promotion_redemptions(promotion_code_id)`,
     `CREATE TABLE IF NOT EXISTS notification_log (
       id TEXT PRIMARY KEY,
       booking_id TEXT,
@@ -353,6 +368,9 @@ async function ensureBookingSchema(env) {
     `ALTER TABLE bookings ADD COLUMN refund_amount_pence INTEGER`,
     `ALTER TABLE bookings ADD COLUMN admin_notes TEXT`,
     `ALTER TABLE bookings ADD COLUMN provider_transaction_code TEXT`,
+    `ALTER TABLE bookings ADD COLUMN original_amount_pence INTEGER`,
+    `ALTER TABLE bookings ADD COLUMN discount_pence INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE bookings ADD COLUMN promo_code TEXT`,
     `ALTER TABLE waiting_list ADD COLUMN secure_token TEXT`
   ];
   for (const migration of migrations) {
@@ -1118,6 +1136,52 @@ async function bookingWithClass(env, bookingId) {
   return env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.id=?`).bind(bookingId).first();
 }
 
+
+function normalisePromoCode(value){return clean(value,48).toUpperCase().replace(/[^A-Z0-9-]/g,'');}
+function promoDiscountPence(promo, subtotal){
+  const total=Math.max(0,Number(subtotal)||0), value=Math.max(0,Number(promo?.discount_value)||0);
+  if(promo?.discount_type==='FREE') return total;
+  if(promo?.discount_type==='PERCENT') return Math.min(total,Math.round(total*Math.min(100,value)/100));
+  if(promo?.discount_type==='FIXED') return Math.min(total,value);
+  return 0;
+}
+async function validatePromotion(env,{code,email,classId,subtotal}){
+  const normalized=normalisePromoCode(code); if(!normalized)return {valid:false,error:'Enter a promo code.'};
+  const row=await env.BOOKINGS_DB.prepare(`SELECT pc.*,p.name promotion_name,p.discount_type,p.discount_value,p.starts_at,p.ends_at,p.max_uses promotion_max_uses,p.uses_per_customer,p.applicable_class_id,p.personal_only,p.active promotion_active FROM promotion_codes pc JOIN promotions p ON p.id=pc.promotion_id WHERE pc.code=?`).bind(normalized).first();
+  if(!row||!row.active||!row.promotion_active)return {valid:false,error:'This promo code is not valid.'};
+  const now=Date.now(); if(row.starts_at&&new Date(row.starts_at).getTime()>now)return {valid:false,error:'This promo code is not active yet.'};
+  if((row.ends_at&&new Date(row.ends_at).getTime()<now)||(row.expires_at&&new Date(row.expires_at).getTime()<now))return {valid:false,error:'This promo code has expired.'};
+  if(row.applicable_class_id&&row.applicable_class_id!==classId)return {valid:false,error:'This promo code does not apply to this class.'};
+  if(row.customer_email&&String(row.customer_email).toLowerCase()!==String(email||'').toLowerCase())return {valid:false,error:'This personal promo code belongs to another customer.'};
+  const codeUses=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM promotion_redemptions WHERE promotion_code_id=?`).bind(row.id).first();
+  if(Number(codeUses?.n||0)>=Number(row.max_uses||1))return {valid:false,error:'This promo code has already been used.'};
+  const customerUses=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM promotion_redemptions WHERE promotion_code_id=? AND lower(customer_email)=lower(?)`).bind(row.id,email||'').first();
+  if(Number(customerUses?.n||0)>=Number(row.uses_per_customer||1))return {valid:false,error:'You have already used this promo code.'};
+  const discount=promoDiscountPence(row,subtotal); if(discount<=0)return {valid:false,error:'This promo code does not reduce this booking.'};
+  return {valid:true,code:normalized,promotion_code_id:row.id,promotion_name:row.promotion_name,discount_pence:discount,total_pence:Math.max(0,subtotal-discount),discount_type:row.discount_type,discount_value:row.discount_value};
+}
+async function issuePersonalPromotion(env,{email,name,type='BIRTHDAY',percent=20,days=30}){
+  const normalizedEmail=String(email||'').toLowerCase(); if(!emailOk(normalizedEmail))return null;
+  const year=new Date().getFullYear(), prefix=type==='LOYALTY'?'FREE':'HBD';
+  const existing=await env.BOOKINGS_DB.prepare(`SELECT pc.* FROM promotion_codes pc JOIN promotions p ON p.id=pc.promotion_id WHERE lower(pc.customer_email)=lower(?) AND pc.issued_reason=? AND strftime('%Y',pc.issued_at)=? ORDER BY pc.issued_at DESC LIMIT 1`).bind(normalizedEmail,type,String(year)).first();
+  if(existing)return existing;
+  const promotionId=type==='LOYALTY'?'auto-loyalty-free':'auto-birthday-20';
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotions(id,name,code_prefix,discount_type,discount_value,uses_per_customer,personal_only,active) VALUES(?,?,?,?,?,1,1,1)`).bind(promotionId,type==='LOYALTY'?'Loyalty free class':'Birthday 20% off',prefix,type==='LOYALTY'?'FREE':'PERCENT',type==='LOYALTY'?100:percent).run();
+  const safeName=String(name||'DANCER').split(/\s+/)[0].replace(/[^A-Z0-9]/gi,'').toUpperCase().slice(0,8)||'DANCER';
+  const code=`${prefix}-${safeName}-${crypto.randomUUID().slice(0,4).toUpperCase()}`;
+  const expires=new Date(Date.now()+days*86400000).toISOString();
+  const id=crypto.randomUUID();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO promotion_codes(id,promotion_id,code,customer_email,issued_reason,expires_at,max_uses,active) VALUES(?,?,?,?,?,?,1,1)`).bind(id,promotionId,code,normalizedEmail,type,expires).run();
+  return {id,code,expires_at:expires};
+}
+async function publicPromoValidate(request,env){
+  await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
+  const classRow=await env.BOOKINGS_DB.prepare(`SELECT price_pence FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
+  const quantity=Math.max(1,Math.min(4,Number(body.quantity)||1)); const subtotal=Number(classRow.price_pence||0)*quantity;
+  const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId:clean(body.classId,120),subtotal});
+  return result.valid?json({ok:true,...result,subtotal_pence:subtotal}):json({error:result.error},400);
+}
+
 async function createClassReservation(request, env) {
   if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
   await ensureBookingSchema(env);
@@ -1131,6 +1195,7 @@ async function createClassReservation(request, env) {
   const classId = clean(body.classId, 120);
   const quantity = Math.max(1, Math.min(4, Number(body.quantity) || 1));
   const requestedWaitlist = clean(body.bookingMode, 20) === 'waitlist';
+  const requestedPromoCode = normalisePromoCode(body.promo_code || '');
 
   if (!name || !emailOk(email) || !classId) {
     return json({ error: 'Please enter your full name, a valid email address and choose a class.' }, 400);
@@ -1179,7 +1244,14 @@ async function createClassReservation(request, env) {
     }, 201);
   }
 
-  const amount = Number(classRow.price_pence || 0) * quantity;
+  const originalAmount = Number(classRow.price_pence || 0) * quantity;
+  let promotion = null;
+  if(requestedPromoCode){
+    promotion = await validatePromotion(env,{code:requestedPromoCode,email,classId,subtotal:originalAmount});
+    if(!promotion.valid)return json({error:promotion.error},400);
+  }
+  const discountPence = promotion?.discount_pence || 0;
+  const amount = Math.max(0,originalAmount-discountPence);
   const paymentReady = sumUpConfigured(env);
   const holdId = crypto.randomUUID();
   const holdExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -1194,11 +1266,11 @@ async function createClassReservation(request, env) {
     await env.BOOKINGS_DB.prepare(
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,
-        quantity,amount_pence,status,payment_provider,secure_token,customer_token,
+        quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,customer_token,
         terms_accepted_at,marketing_consent,retention_delete_after
-      ) VALUES(?,?,?,?,?,?,?,?,?,'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
     ).bind(
-      id, reference, classId, holdId, name, email, phone, quantity, amount,
+      id, reference, classId, holdId, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken, customerToken,
       Number(Boolean(body.marketing_consent))
     ).run();
@@ -1206,11 +1278,11 @@ async function createClassReservation(request, env) {
     await env.BOOKINGS_DB.prepare(
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,
-        quantity,amount_pence,status,payment_provider,secure_token,
+        quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,
         terms_accepted_at,marketing_consent,retention_delete_after
-      ) VALUES(?,?,?,?,?,?,?,?,?,'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
     ).bind(
-      id, reference, classId, holdId, name, email, phone, quantity, amount,
+      id, reference, classId, holdId, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken,
       Number(Boolean(body.marketing_consent))
     ).run();
@@ -1225,8 +1297,15 @@ async function createClassReservation(request, env) {
      VALUES(?,?,?,?,?)`
   ).bind(
     email, 'BOOKING_CREATED', 'booking', id,
-    JSON.stringify({ reference, quantity, terms: true, paymentReady })
+    JSON.stringify({ reference, quantity, terms: true, paymentReady, promo_code:promotion?.code||null, discount_pence:discountPence })
   ).run();
+
+  if(amount===0){
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
+    if(promotion)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotion_redemptions(id,promotion_code_id,booking_id,customer_email,discount_pence) VALUES(?,?,?,?,?)`).bind(crypto.randomUUID(),promotion.promotion_code_id,id,email,discountPence).run();
+    const paidBooking=await bookingWithClass(env,id); if(paidBooking)await deliverBookingNotification(env,paidBooking,'BOOKING_PAID');
+    return json({ok:true,reference,status:'PAID',secure_token:secureToken,customer_token:customerToken,discount_pence:discountPence,total_pence:0},201);
+  }
 
   if (paymentReady) {
     try {
@@ -1373,6 +1452,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
       if (confirmedBooking) await deliverBookingNotification(env, confirmedBooking, 'BOOKING_CONFIRMED');
     }
     booking.status = 'PAID';
+    if(booking.promo_code){const pc=await env.BOOKINGS_DB.prepare(`SELECT id FROM promotion_codes WHERE code=?`).bind(booking.promo_code).first();if(pc)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotion_redemptions(id,promotion_code_id,booking_id,customer_email,discount_pence) VALUES(?,?,?,?,?)`).bind(crypto.randomUUID(),pc.id,booking.id,booking.customer_email,Number(booking.discount_pence||0)).run();}
     booking.provider_transaction_id = transactionId || booking.provider_transaction_id;
     booking.provider_transaction_code = transactionCode || booking.provider_transaction_code;
     return booking;
@@ -2880,6 +2960,7 @@ async function adminBookings(request, env, ctx) {
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='CLASS_CREDIT_ISSUED',admin_notes=? WHERE id=?`).bind(clean(body.admin_notes,600),id).run();
   }else if(action==='CHECK_IN'){
     await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO attendance(id,booking_id,checked_in_by) VALUES(?,?,?)`).bind(crypto.randomUUID(),id,check.state.email).run();
+    const checked=await bookingWithClass(env,id); if(checked){const count=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE lower(b.customer_email)=lower(?)`).bind(checked.customer_email).first(); if(Number(count?.n||0)>0&&Number(count.n)%9===0){const reward=await issuePersonalPromotion(env,{email:checked.customer_email,name:checked.customer_name,type:'LOYALTY',days:90}); if(reward)await sendTransactionalEmail(env,checked.customer_email,'You earned a free Boot Scootin’ class',buildBrandedEmail({greeting:`Hi ${checked.customer_name},`,heading:'Your free class reward is ready',bodyHtml:`<p>You have completed nine loyalty stamps, so your tenth class is free.</p><p><strong>Your personal code: ${reward.code}</strong></p><p>Use it within 90 days when booking your next class.</p>`}),'You earned a free class. Code: '+reward.code,'members');}}
   }else if(action==='NO_SHOW'){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET admin_notes=? WHERE id=?`).bind(`NO SHOW — ${clean(body.admin_notes,500)}`,id).run();
   }else{
@@ -3035,6 +3116,26 @@ async function mediaCollection(request, env) {
   return json({ error: 'Method not allowed.' }, 405);
 }
 
+
+async function adminPromotions(request,env){
+  const check=await requireAdmin(request,env); if(!check.ok)return check.response; await ensureBookingSchema(env);
+  if(request.method==='GET'){
+    const result=await env.BOOKINGS_DB.prepare(`SELECT p.*,COUNT(DISTINCT pc.id) issued,COUNT(DISTINCT pr.id) redeemed,COALESCE(SUM(pr.discount_pence),0) discounted_pence FROM promotions p LEFT JOIN promotion_codes pc ON pc.promotion_id=p.id LEFT JOIN promotion_redemptions pr ON pr.promotion_code_id=pc.id GROUP BY p.id ORDER BY p.created_at DESC`).all();
+    return json({promotions:result.results||[]});
+  }
+  const body=await request.json().catch(()=>null); if(!body)return json({error:'Promotion request could not be read.'},400);
+  if(body.action==='CREATE'){
+    const id=crypto.randomUUID(), code=normalisePromoCode(body.code), type=clean(body.discount_type,12);
+    if(!clean(body.name,100)||!code||!['PERCENT','FIXED','FREE'].includes(type))return json({error:'Add a name, code and valid discount type.'},400);
+    const value=type==='PERCENT'?Math.min(100,Math.max(1,Number(body.discount_value)||0)):type==='FIXED'?Math.max(1,Math.round(Number(body.discount_value)||0)):100;
+    await env.BOOKINGS_DB.prepare(`INSERT INTO promotions(id,name,code_prefix,discount_type,discount_value,starts_at,ends_at,max_uses,uses_per_customer,active) VALUES(?,?,?,?,?,?,?,?,?,1)`).bind(id,clean(body.name,100),code,type,value,clean(body.starts_at,30)||null,clean(body.ends_at,30)||null,body.max_uses?Number(body.max_uses):null,Math.max(1,Number(body.uses_per_customer)||1)).run();
+    await env.BOOKINGS_DB.prepare(`INSERT INTO promotion_codes(id,promotion_id,code,max_uses,active) VALUES(?,?,?,?,1)`).bind(crypto.randomUUID(),id,code,body.max_uses?Number(body.max_uses):999999).run();
+    return json({ok:true,id,code});
+  }
+  if(body.action==='TOGGLE'){await env.BOOKINGS_DB.prepare(`UPDATE promotions SET active=CASE active WHEN 1 THEN 0 ELSE 1 END WHERE id=?`).bind(clean(body.id,80)).run();return json({ok:true});}
+  return json({error:'Unsupported promotion action.'},400);
+}
+
 async function serveMedia(request, env, pathname) {
   if (!env.MEDIA_BUCKET) return new Response('Media storage is not configured.', { status: 503 });
   const key = decodeURIComponent(pathname.slice('/media/'.length));
@@ -3061,6 +3162,7 @@ export default {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
+      if (path === '/api/promotions/validate' && request.method === 'POST') return publicPromoValidate(request, env);
       if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);
       if (path === '/api/sumup/callback' && request.method === 'GET') return sumUpOAuthCallback(request, env, url);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
@@ -3079,6 +3181,7 @@ export default {
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env, ctx);
       if (path === '/api/admin/customers') return adminCustomers(request, env);
+      if (path === '/api/admin/promotions') return adminPromotions(request, env);
       if (path === '/api/admin/emails') return adminEmailCentre(request, env, ctx);
       if (path === '/api/email/unsubscribe' && request.method === 'GET') return unsubscribeEmail(request, env, url);
       if (path === '/api/automation/run') return runProtectedEmailAutomations(request, env);

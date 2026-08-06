@@ -177,7 +177,7 @@
       user_agent:navigator.userAgent,
       online:navigator.onLine,
       visibility:document.visibilityState,
-      version:'V92.6.3',
+      version:'V94.0.0',
       bootstrap_loaded:Boolean(state.bootstrap),
       bootstrap_loaded_at:state.bootstrapLoadedAt?new Date(state.bootstrapLoadedAt).toISOString():null,
       frontend_errors:state.frontendErrors,
@@ -234,7 +234,7 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
   window.addEventListener('pageshow',()=>setDrawer(false));
 
-  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers',emails:'Emails & Mailing List',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
+  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
     state.currentView=name;
     $$('.ranch-view').forEach(panel=>panel.classList.toggle('active',panel.dataset.viewPanel===name));
@@ -246,6 +246,7 @@
     if(name==='bookings')loadBookings();
     if(name==='customers')loadCustomers();
     if(name==='emails')loadEmailCentre();
+    if(name==='promotions')loadPromotions();
     if(name==='operations')renderOperationsFromBootstrap();
     if(name==='private-events')loadPrivateEvents();
     if(name==='media')loadMedia();
@@ -877,6 +878,20 @@ Type REFUNDED to continue.`);
   // Customer CRM
   const CRM_TAGS=['Beginner','Improver','Advanced','Regular','VIP','Volunteer','Instructor','Loyalty Member','Inactive','Birthday Month'];
   function customerHealthBadge(status){const label=status==='ACTIVE'?'Active':status==='AT_RISK'?'At risk':'Inactive';return `<span class="crm-health crm-health-${String(status||'').toLowerCase()}">${label}</span>`;}
+
+  async function loadPromotions(){
+    const box=$('#promotionList');if(!box)return;box.innerHTML='<div class="ranch-loading">Loading promotions…</div>';
+    try{
+      const data=await jsonFetch(`${ADMIN_API_PREFIX}/promotions`,{cache:'no-store'});
+      const rows=data.promotions||[];
+      box.innerHTML=rows.length?rows.map(p=>`<article class="ranch-card"><div class="ranch-row"><div><h3>${esc(p.name)}</h3><p><strong>${esc(p.code_prefix||'Personal codes')}</strong> · ${p.discount_type==='FREE'?'Free class':p.discount_type==='PERCENT'?`${p.discount_value}% off`:`£${(Number(p.discount_value||0)/100).toFixed(2)} off`}</p><p>${Number(p.issued||0)} issued · ${Number(p.redeemed||0)} redeemed · £${(Number(p.discounted_pence||0)/100).toFixed(2)} discounted</p></div><button class="ranch-button secondary" data-toggle-promotion="${esc(p.id)}">${Number(p.active)?'Pause':'Activate'}</button></div></article>`).join(''):emptyPanel('No promotions created yet. Birthday and loyalty rewards will appear as they are issued.');
+    }catch(error){box.innerHTML=lockedPanel('Promotions unavailable',error.message);}
+  }
+  async function createPromotion(){
+    const type=$('#promoAdminType').value;
+    const payload={action:'CREATE',name:$('#promoAdminName').value.trim(),code:$('#promoAdminCode').value.trim(),discount_type:type,discount_value:type==='FIXED'?Math.round(Number($('#promoAdminValue').value||0)*100):Number($('#promoAdminValue').value||0),starts_at:$('#promoAdminStart').value||'',ends_at:$('#promoAdminEnd').value||'',max_uses:$('#promoAdminMaxUses').value||null,uses_per_customer:$('#promoAdminPerCustomer').value||1};
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/promotions`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Promotion created.','success');$('#promoAdminName').value='';$('#promoAdminCode').value='';await loadPromotions();}catch(error){toast(error.message,'error');}
+  }
   async function loadCustomers(){
     if(!state.bootstrap)await loadBootstrap(false,{silent:true}).catch(()=>null);
     const box=$('#ranchCustomers');if(!box)return;
@@ -1120,6 +1135,9 @@ Type REFUNDED to continue.`);
     }catch(_){}
   }
   $('#deleteAllTestBookings')?.addEventListener('click',deleteAllTestBookings);
+  $('#refreshPromotions')?.addEventListener('click',loadPromotions);
+  $('#createPromotion')?.addEventListener('click',createPromotion);
+  $('#promotionList')?.addEventListener('click',async event=>{const button=event.target.closest('[data-toggle-promotion]');if(!button)return;try{await jsonFetch(`${ADMIN_API_PREFIX}/promotions`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'TOGGLE',id:button.dataset.togglePromotion})});await loadPromotions();}catch(error){toast(error.message,'error');}});
   $('#refreshCustomers')?.addEventListener('click',loadCustomers);
   $('#refreshEmailCentre')?.addEventListener('click',loadEmailCentre);
   $('#emailAudienceType')?.addEventListener('change',updateEmailAudienceFields);
@@ -1253,7 +1271,7 @@ Type REFUNDED to continue.`);
     if(Array.isArray(previous))state.diagnostics=previous.slice(0,DIAGNOSTIC_LIMIT);
     else state.diagnostics=[];
   }catch(_){}
-  diagnosticEvent('hq_script_started',{result:'V92.6.3 loaded',online:navigator.onLine,visibility:document.visibilityState});
+  diagnosticEvent('hq_script_started',{result:'V94.0.0 loaded',online:navigator.onLine,visibility:document.visibilityState});
 
   showView('overview');
   const cachedBootstrap=readBootstrapCache();

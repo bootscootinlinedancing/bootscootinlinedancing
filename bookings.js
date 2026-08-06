@@ -5,6 +5,8 @@
   const form=document.getElementById('bookingForm');
   const status=document.getElementById('bookingStatus');
   let classes=[];
+  let selectedClass=null;
+  let appliedPromo=null;
 
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(n)||0);
@@ -51,6 +53,7 @@
   grid.addEventListener('click',event=>{
     const button=event.target.closest('.book-class');if(!button)return;
     const c=classes.find(item=>item.id===button.dataset.id);if(!c)return;
+    selectedClass=c;appliedPromo=null;
     const waitlist=button.dataset.mode==='waitlist';
     document.getElementById('classId').value=c.id;
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
@@ -59,6 +62,7 @@
     document.getElementById('selectedClassMeta').textContent=`${dateFmt(c.starts_at)} · ${c.venue} · ${money(c.price)} per person`;
     document.getElementById('bookingSubmit').textContent=waitlist?'Join Waiting List':'Continue to Secure Payment';
     form.reset();
+    document.getElementById('promoMessage').textContent='';document.getElementById('promoTotals').hidden=true;
     document.getElementById('classId').value=c.id;
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
     dialog.showModal();
@@ -66,6 +70,32 @@
 
   document.getElementById('closeBooking').onclick=()=>dialog.close();
   filter.onchange=render;
+
+
+  function showPromoTotals(result){
+    const box=document.getElementById('promoTotals');
+    if(!result){box.hidden=true;box.innerHTML='';return;}
+    box.innerHTML=`<strong><span>Original total</span><span>${money(result.subtotal_pence/100)}</span></strong><strong class="promo-success"><span>${esc(result.promotion_name||'Discount')}</span><span>−${money(result.discount_pence/100)}</span></strong><strong><span>Total to pay</span><span>${money(result.total_pence/100)}</span></strong>`;
+    box.hidden=false;
+  }
+  async function applyPromo(){
+    const code=document.getElementById('promoCode').value.trim();
+    const msg=document.getElementById('promoMessage');
+    if(!code){appliedPromo=null;showPromoTotals(null);msg.textContent='Enter a promo or reward code.';msg.className='form-message promo-error';return;}
+    if(!selectedClass){msg.textContent='Choose a class first.';return;}
+    const email=form.elements.email.value.trim();
+    if(!email){msg.textContent='Enter your email address first. Personal birthday and loyalty codes are linked to your email.';msg.className='form-message promo-error';return;}
+    const button=document.getElementById('applyPromo');button.disabled=true;msg.textContent='Checking code…';
+    try{
+      const r=await fetch('/api/promotions/validate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code,email,classId:selectedClass.id,quantity:Number(form.elements.quantity.value||1)})});
+      const out=await r.json();if(!r.ok)throw new Error(out.error||'This code could not be applied.');
+      appliedPromo=out;document.getElementById('promoCode').value=out.code;msg.textContent=`✓ ${out.promotion_name} applied`;msg.className='form-message promo-success';showPromoTotals(out);
+    }catch(error){appliedPromo=null;showPromoTotals(null);msg.textContent=error.message;msg.className='form-message promo-error';}
+    finally{button.disabled=false;}
+  }
+  document.getElementById('applyPromo').addEventListener('click',applyPromo);
+  form.elements.quantity.addEventListener('change',()=>{if(appliedPromo)applyPromo();});
+  form.elements.email.addEventListener('change',()=>{if(appliedPromo)applyPromo();});
 
   form.addEventListener('submit',async event=>{
     event.preventDefault();if(!form.reportValidity())return;

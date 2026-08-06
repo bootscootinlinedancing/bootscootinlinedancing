@@ -1,3 +1,15 @@
+# V94.0.0 — Promotions & Rewards Engine
+
+- Added a secure promo-code box to the public booking form with live validation and an itemised discount total.
+- Added percentage, fixed-value and free-class promotions.
+- Added personal birthday rewards: 20% off one class, one use, valid for 30 days.
+- Added automatic loyalty rewards: after nine attended classes, the tenth class is free; one use, valid for 90 days.
+- Personal rewards are tied to the customer email address and cannot be used by another customer.
+- Promo discounts are calculated and revalidated by the Worker before SumUp checkout creation.
+- Zero-balance free-class bookings are confirmed without opening SumUp.
+- Added HQ Promotions & Rewards management, activation controls and redemption totals.
+- Added D1 migration `migrations/0009_promotions_rewards.sql`.
+
 # Boot Scootin’ Platform v93.7.0
 
 ## Protected Email Automation Scheduler Bridge
@@ -493,12 +505,3 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added Resend-compatible transactional email delivery using `RESEND_API_KEY` (or legacy `EMAIL_API_KEY`) and `EMAIL_FROM`.
 - Added Twilio SMS delivery using `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`.
 - Notification delivery failures are logged and never block payment reconciliation, class management or booking updates.
-## v93.7.1 – Protected email scheduler configuration
-
-- Added the protected email automation endpoint to the main Boot Scootin’ platform.
-- Connected the separate Cloudflare email scheduler Worker to HQ.
-- Added shared secret authentication using `EMAIL_AUTOMATION_SECRET`.
-- Prevented unauthorised requests from triggering automated emails.
-- Added secure hourly processing for class reminders, birthday emails, mailing-list welcomes and scheduled campaigns.
-- Added scheduler health-check support and clearer automation logging.
-- Kept all secret values securely in Cloudflare and out of GitHub.

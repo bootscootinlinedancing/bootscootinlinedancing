@@ -49,6 +49,9 @@
 }
 @media(max-width:420px){#menu45{padding-inline:18px!important}#menu45 .menu45-first strong{font-size:19px!important}#menu45 details.menu45-section>summary>span{font-size:19px!important}}
 </style>
+<style>
+.promo-box{margin:18px 0;padding:16px;border:1px solid rgba(214,64,70,.35);border-radius:14px;background:#fffaf8}.promo-row{display:flex;gap:10px;margin-top:8px}.promo-row input{flex:1;min-width:0}.promo-row .button{white-space:nowrap}.promo-totals{margin-top:10px;padding:12px;border-radius:10px;background:#f7f3ef;line-height:1.7}.promo-totals strong{display:flex;justify-content:space-between}.promo-success{color:#176b3a}.promo-error{color:#a51f2a}@media(max-width:520px){.promo-row{flex-direction:column}.promo-row .button{width:100%}}
+</style>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -220,6 +223,16 @@
           </label>
         </div>
 
+        <section class="promo-box" id="promoBox">
+          <label for="promoCode"><strong>Promo or reward code</strong></label>
+          <div class="promo-row">
+            <input id="promoCode" name="promo_code" maxlength="48" autocomplete="off" placeholder="Enter your code">
+            <button class="button secondary" type="button" id="applyPromo">Apply</button>
+          </div>
+          <p id="promoMessage" class="form-message" aria-live="polite"></p>
+          <div id="promoTotals" class="promo-totals" hidden></div>
+        </section>
+
         <section class="booking-policy-summary" aria-labelledby="policySummaryTitle">
           <h3 id="policySummaryTitle">Cancellation and refund summary</h3>
           <ul>
@@ -287,8 +300,8 @@
     </section>
 
   </main>
-  <script src="script.js?v=89"></script>
-  <script src="bookings.js?v=89" defer></script>
+  <script src="script.js?v=94"></script>
+  <script src="bookings.js?v=94" defer></script>
 
 <a class="admin-login-link" href="/admin-login" aria-label="Administrator login">🔒 Admin Login</a>
 

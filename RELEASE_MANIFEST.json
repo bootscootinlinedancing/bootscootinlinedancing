@@ -1,6 +1,6 @@
 {
-  "release": "V93.5.0 BRANDED EMAILS & AUTOMATIC REMINDERS",
-  "version": "93.7.0",
+  "release": "V94.0.0 PROMOTIONS & REWARDS ENGINE",
+  "version": "94.0.0",
   "release_name": "Protected Email Automation Scheduler Bridge",
   "description": "Adds complete customer profiles, activity, bookings, loyalty, spending, communications, tags and private instructor notes to protected HQ.",
   "built_from": "boot-scootin-platform-v93.3.0-EMAIL-RELIABILITY.zip",
@@ -53,8 +53,13 @@
     "Automatic CRM recipient audiences",
     "Searchable individual customer picker",
     "Departmental sender selection",
-    "Unsubscribe exclusions"
+    "Unsubscribe exclusions",
+    "Public promo-code validation and discounted SumUp checkout totals",
+    "Automatic personal birthday codes: 20% off, one use, 30 days",
+    "Automatic loyalty reward code after nine attended classes: free class, one use, 90 days",
+    "HQ Promotions & Rewards manager and redemption reporting"
   ],
   "name": "Automated Customer Journeys & Unsubscribe",
-  "generated_at": "2026-08-06T18:36:00+01:00"
+  "generated_at": "2026-08-06T18:36:00+01:00",
+  "generated": "2026-08-06"
 }

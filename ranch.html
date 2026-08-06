@@ -94,6 +94,7 @@
       <button type="button" data-view="bookings">Bookings</button>
       <button type="button" data-view="customers">Customers</button>
       <button type="button" data-view="emails">Emails &amp; Mailing List</button>
+      <button type="button" data-view="promotions">Promotions &amp; Rewards</button>
       <button type="button" data-view="operations">Operations</button>
       <button type="button" data-view="private-events">Private Events</button>
       <button type="button" data-view="media">Media</button>
@@ -131,7 +132,7 @@
         <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
         <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
       </div>
-      <div class="ranch91-release">V93.7.0</div>
+      <div class="ranch91-release">V94.0.0</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -435,7 +436,34 @@
         </div>
       </section>
 
-<section class="ranch-view" data-view-panel="operations">
+<section class="ranch-view" data-view-panel="promotions">
+        <div class="ranch-section-head"><div><p class="kicker">Marketing tools</p><h2>Promotions &amp; Rewards</h2><p>Create public promo codes and monitor automatic birthday and loyalty rewards.</p></div><button type="button" id="refreshPromotions" class="ranch-button secondary">Refresh</button></div>
+        <div class="ranch-grid two">
+          <article class="ranch-card">
+            <h3>Create a promotion</h3>
+            <div class="ranch-form-grid">
+              <label>Promotion name<input id="promoAdminName" placeholder="e.g. Anniversary offer"></label>
+              <label>Public code<input id="promoAdminCode" placeholder="e.g. BOOTS20"></label>
+              <label>Discount type<select id="promoAdminType"><option value="PERCENT">Percentage</option><option value="FIXED">Fixed amount</option><option value="FREE">Free class</option></select></label>
+              <label>Discount value<input id="promoAdminValue" type="number" min="1" value="20"><small>Percentage, or pence for a fixed discount.</small></label>
+              <label>Start date<input id="promoAdminStart" type="datetime-local"></label>
+              <label>End date<input id="promoAdminEnd" type="datetime-local"></label>
+              <label>Maximum uses<input id="promoAdminMaxUses" type="number" min="1" placeholder="Unlimited"></label>
+              <label>Uses per customer<input id="promoAdminPerCustomer" type="number" min="1" value="1"></label>
+            </div>
+            <button type="button" id="createPromotion" class="ranch-button">Create promotion</button>
+          </article>
+          <article class="ranch-card">
+            <h3>Automatic rewards</h3>
+            <p><strong>Birthday:</strong> personal 20% code, one use, valid for 30 days.</p>
+            <p><strong>Loyalty:</strong> after nine attended classes, a personal free-class code valid for 90 days.</p>
+            <p>Personal codes are tied to the customer email address and cannot be used by someone else.</p>
+          </article>
+        </div>
+        <div id="promotionList" class="ranch-stack"><div class="ranch-loading">Loading promotions…</div></div>
+      </section>
+
+      <section class="ranch-view" data-view-panel="operations">
         <div class="ranch-panel">
           <div class="ranch-panel-head">
             <div>
@@ -627,7 +655,7 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=93.5.0"></script>
+  <script src="ranch.js?v=94.0.0"></script>
 
   <script>
   (function(){
