@@ -1,4 +1,4 @@
-# v98.1.0 — Broadway Honky-Tonk Repair
+# v98.2.0 — Broadway Honky-Tonk Repair
 
 - Rebuilt the Nashville sign wall as individual responsive HTML/CSS neon signs instead of one poster image.
 - Replaced Book Your First Class with Book Your Next Class.

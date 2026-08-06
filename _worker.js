@@ -100,7 +100,20 @@ async function newsletterSubscribe(request, env) {
     VALUES (?,?,?,'subscribed',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
     ON CONFLICT(email) DO UPDATE SET source=excluded.source,status='subscribed',consent_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP`)
     .bind(id,email,source).run();
-  return json({ ok: true, alreadySubscribed: false }, 201);
+  let welcomeEmailSent = false;
+  try {
+    const subject = 'Welcome to the Boot Scootin’ family!';
+    const text = `Welcome to the Boot Scootin’ family!\n\nYou’ll now be the first to hear about new line dancing classes, socials and special events in Birmingham.\n\nBook your next class: ${SITE_ORIGIN}/bookings.html\n\nSee y’all on the dance floor!\n\nNora\nBoot Scootin’ Line Dancing`;
+    const html = brandedEmailHtml({
+      heading: 'Welcome to the Boot Scootin’ family!',
+      greeting: 'Hi there,',
+      paragraphs: ['Thanks for joining us. You’ll now be the first to hear about new classes, socials and special events in Birmingham.', 'Whether you are completely new to line dancing or already have your boots ready, you are very welcome here.'],
+      buttons: [{ label: 'Book your next class', href: `${SITE_ORIGIN}/bookings.html` }]
+    });
+    const result = await sendTransactionalEmail(env, email, subject, html, text, 'general');
+    welcomeEmailSent = Boolean(result && !result.skipped);
+  } catch (error) { console.warn('Newsletter welcome email was not sent:', error?.message || error); }
+  return json({ ok: true, alreadySubscribed: false, welcomeEmailSent }, 201);
 }
 
 async function ensureBookingSchema(env) {
