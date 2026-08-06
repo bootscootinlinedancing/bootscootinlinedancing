@@ -1,4 +1,9 @@
-# Boot Scootin’ Platform v93.0.1
+# Boot Scootin’ Platform v93.0.2
+
+- Background refund execution prevents Cloudflare 520/timeout pages.
+- Refund requests immediately enter REFUND_PROCESSING and complete safely in the Worker background.
+- Failed refunds become REFUND_FAILED with a trace ID and detailed audit-log entry.
+- OAuth now requests the SumUp payments scope in addition to transaction history. Reconnect SumUp after deploying to grant the updated scope.
 
 - Repairs the HQ **Connect SumUp refunds** control so it renders as a full-width red action button on mobile and desktop.
 - Replaces obsolete `ranch91-button` classes with the platform’s existing `.button` styles.

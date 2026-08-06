@@ -479,7 +479,7 @@ function sumUpOAuthConfig(env) {
   // optional SUMUP_OAUTH_ENCRYPTION_KEY secret has not been added.
   const encryptionKey = clean(env.SUMUP_OAUTH_ENCRYPTION_KEY, 1000) || clientSecret;
   const redirectUri = clean(env.SUMUP_OAUTH_REDIRECT_URI, 1000) || DEFAULT_SUMUP_OAUTH_REDIRECT_URI;
-  const scope = clean(env.SUMUP_OAUTH_SCOPES, 500) || 'transactions.history user.profile_readonly';
+  const scope = clean(env.SUMUP_OAUTH_SCOPES, 500) || 'transactions.history user.profile_readonly payments';
   return {
     clientId,
     clientSecret,
@@ -2016,7 +2016,7 @@ async function deleteTestBooking(env, booking, actor) {
   return { ok: true };
 }
 
-async function adminBookings(request, env) {
+async function adminBookings(request, env, ctx) {
   const check=requireAccessAdmin(request,env);if(check.response)return check.response;
   await ensureBookingSchema(env);
 
@@ -2034,7 +2034,7 @@ async function adminBookings(request, env) {
     const stats={
       guests:results.filter(b=>['PENDING','PAID'].includes(b.status)).reduce((n,b)=>n+Number(b.quantity||0),0),
       paid:results.filter(b=>b.status==='PAID').reduce((n,b)=>n+Number(b.amount_pence||0),0),
-      refunds_due:results.filter(b=>['REFUND_DUE','CREDIT_DUE','REVIEW_IF_RESOLD'].includes(b.refund_status)).length,
+      refunds_due:results.filter(b=>['REFUND_DUE','REFUND_FAILED','REFUND_PROCESSING','CREDIT_DUE','REVIEW_IF_RESOLD'].includes(b.refund_status)).length,
       waiting:waiting.filter(w=>w.status==='WAITING').reduce((n,w)=>n+Number(w.quantity||0),0)
     };
     return json({
@@ -2132,38 +2132,39 @@ async function adminBookings(request, env) {
       return json({error:message,code:'SUMUP_TRANSACTION_NOT_FOUND'},409);
     }
 
-    try {
-      await refundSumUpTransaction(env,transactionId,isFull?null:requested);
-    } catch (error) {
-      const message=clean(error && error.message ? error.message : error,360)||'The refund could not be completed.';
+    const refundTraceId = crypto.randomUUID();
+    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='REFUND_PROCESSING',provider_transaction_id=?,admin_notes=? WHERE id=?`)
+      .bind(transactionId,clean(`Refund processing (${refundTraceId}). ${body.admin_notes||''}`,600),id).run();
+    await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+      .bind(check.state.email,'REFUND_SUMUP_QUEUED','booking',id,JSON.stringify({trace_id:refundTraceId,requested_amount_pence:requested,transaction_id:transactionId,full_refund:isFull})).run().catch(()=>{});
+
+    const runRefund = async () => {
       try {
+        await refundSumUpTransaction(env,transactionId,isFull?null:requested);
+        await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,provider_transaction_id=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
+          .bind(isFull?'REFUNDED':'CANCELLED',requested,transactionId,clean(`Refund confirmed by SumUp. Trace ${refundTraceId}. ${body.admin_notes||''}`,600),id).run();
         await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-          .bind(check.state.email,'REFUND_SUMUP_FAILED','booking',id,JSON.stringify({error:message,transaction_id:transactionId,requested_amount_pence:requested})).run();
-      } catch (_) {}
-      return json({error:message,code:clean(error && error.code ? error.code : 'SUMUP_REFUND_REJECTED',80)},Number(error && error.status)===409?409:502);
-    }
+          .bind(check.state.email,'REFUND_SUMUP','booking',id,JSON.stringify({trace_id:refundTraceId,requested_amount_pence:requested,transaction_id:transactionId,full_refund:isFull})).run().catch(()=>{});
+        try {
+          const refunded=await bookingWithClass(env,id);
+          if(refunded) await deliverBookingNotification(env,{...refunded,refund_amount_pence:requested},'REFUND_CONFIRMED');
+        } catch (notificationError) {
+          console.error('Refund notification failed',notificationError);
+        }
+      } catch (error) {
+        const message=clean(error && error.message ? error.message : error,360)||'The refund could not be completed.';
+        await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='REFUND_FAILED',admin_notes=? WHERE id=?`)
+          .bind(clean(`Refund failed (${refundTraceId}): ${message}`,600),id).run().catch(()=>{});
+        await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+          .bind(check.state.email,'REFUND_SUMUP_FAILED','booking',id,JSON.stringify({trace_id:refundTraceId,error:message,code:clean(error && error.code ? error.code : 'SUMUP_REFUND_REJECTED',80),status:Number(error && error.status)||0,transaction_id:transactionId,requested_amount_pence:requested})).run().catch(()=>{});
+        console.error('SumUp refund failed', {trace_id:refundTraceId, message, code:error && error.code, status:error && error.status});
+      }
+    };
 
-    try {
-      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,provider_transaction_id=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
-        .bind(isFull?'REFUNDED':'CANCELLED',requested,transactionId,clean(body.admin_notes,600),id).run();
-      await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-        .bind(check.state.email,'REFUND_SUMUP','booking',id,JSON.stringify({requested_amount_pence:requested,transaction_id:transactionId,full_refund:isFull})).run();
-    } catch (error) {
-      return json({
-        error:'SumUp accepted the refund, but HQ could not update the booking record. Check SumUp before trying again.',
-        detail:clean(error && error.message ? error.message : error,300),
-        code:'REFUND_RECORDED_BY_SUMUP_HQ_UPDATE_FAILED'
-      },500);
-    }
+    if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(runRefund());
+    else await runRefund();
 
-    try {
-      const refunded=await bookingWithClass(env,id);
-      if(refunded) await deliverBookingNotification(env,{...refunded,refund_amount_pence:requested},'REFUND_CONFIRMED');
-    } catch (notificationError) {
-      console.error('Refund notification failed',notificationError);
-    }
-
-    return json({ok:true,status:'REFUNDED',refund_amount_pence:requested,transaction_id:transactionId});
+    return json({ok:true,queued:true,status:'REFUND_PROCESSING',refund_amount_pence:requested,transaction_id:transactionId,trace_id:refundTraceId},202);
   }else if(action==='MARK_REFUNDED'){
     const refundAmount=Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence);
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)
@@ -2343,7 +2344,7 @@ async function serveMedia(request, env, pathname) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
     const path = incomingPath.startsWith('/ranch/api/admin/')
@@ -2369,7 +2370,7 @@ export default {
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
-      if (path === '/api/admin/bookings') return adminBookings(request, env);
+      if (path === '/api/admin/bookings') return adminBookings(request, env, ctx);
       if (path === '/api/admin/customers' && request.method === 'GET') return adminCustomers(request, env);
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);
       if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);

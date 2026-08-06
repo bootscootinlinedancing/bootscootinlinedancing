@@ -671,13 +671,13 @@
         </dl><button type="button" class="danger-outline" data-refresh-payment="${esc(b.id)}">Refresh SumUp details</button></details>`:''}
         <div class="booking-admin-actions">
           ${['PENDING','PAID'].includes(b.status)?`<button type="button" class="danger-outline" data-cancel-booking="${esc(b.id)}">Cancel booking</button>`:''}
-          ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && b.refund_status!=='REFUNDED'
+          ${b.payment_provider==='SUMUP' && ['PAID','CANCELLED'].includes(b.status) && !['REFUNDED','REFUND_PROCESSING'].includes(b.refund_status)
             ?(refundConnection.automatic
               ?`<button type="button" class="button" data-refund-booking="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Refund payment</button>`
               :`<button type="button" class="button refund-not-connected" data-refund-not-connected="1" disabled title="Connect your SumUp account to enable automatic refunds">Connect SumUp refunds</button>`)
             :''}
           ${b.payment_provider==='SUMUP' && b.status==='CANCELLED' && b.refund_status==='REFUND_DUE'?`<button type="button" class="danger-outline" data-record-manual-refund="${esc(b.id)}" data-refund-pence="${Number(b.amount_pence||0)}">Record refund already completed in SumUp</button>`:''}
-          ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}
+          ${b.refund_status?`<span class="booking-refund-state">${esc(String(b.refund_status).replaceAll('_',' '))}</span>`:''}${b.refund_status==='REFUND_FAILED'&&b.admin_notes?`<p class="booking-refund-error">${esc(b.admin_notes)}</p>`:''}
           ${b.is_test_candidate?`<button type="button" class="danger-outline" data-delete-test-booking="${esc(b.id)}">Delete test booking</button>`:''}
         </div>
       </article>
@@ -749,10 +749,15 @@
 Type REFUND to continue.`);
     if(confirmation!=='REFUND')return;
     try{
-      await bookingAdminAction({id,action:'REFUND_SUMUP',refund_amount_pence:amountPence,admin_notes:'Full refund issued from Boot Scootin HQ'});
+      const result=await bookingAdminAction({id,action:'REFUND_SUMUP',refund_amount_pence:amountPence,admin_notes:'Full refund issued from Boot Scootin HQ'});
       localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
       await Promise.all([loadBookings(true),loadClasses(),loadBootstrap(false,{force:true,silent:true})]);
-      toast(`${amount} refund sent to SumUp and customer notified.`);
+      if(result && result.queued){
+        toast(`${amount} refund submitted to SumUp. HQ will update automatically when SumUp replies.`);
+        setTimeout(()=>loadBookings(true).catch(()=>{}),3500);
+      }else{
+        toast(`${amount} refund sent to SumUp and customer notified.`);
+      }
     }catch(error){toast(error.message,'error');}
   }
 
