@@ -120,3 +120,71 @@
 body.home-page main#main-content,
 main#main-content { padding-top: 0 !important; margin-top: 0 !important; }
 main#main-content > .cream-home.intro-grid { margin-top: 0 !important; }
+
+/* v96.4.29 — DESKTOP BLACK-GAP ELIMINATION
+   The homepage hero is gone. On desktop, force the first real content section
+   into normal document flow with natural height and no inherited hero geometry. */
+@media (min-width: 951px) {
+  html.desktop-mode body.honky-home,
+  html.desktop-mode body.honky-home main#main-content {
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:0!important;
+  }
+
+  html.desktop-mode body.honky-home main#main-content::before,
+  html.desktop-mode body.honky-home main#main-content::after {
+    content:none!important;
+    display:none!important;
+  }
+
+  html.desktop-mode body.honky-home main#main-content > section:first-child,
+  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid {
+    display:grid!important;
+    grid-template-columns:minmax(220px,.72fr) minmax(200px,.62fr) minmax(390px,1.5fr)!important;
+    gap:22px!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:30px clamp(22px,3.5vw,48px)!important;
+    align-items:start!important;
+    align-content:start!important;
+    justify-items:stretch!important;
+    position:relative!important;
+    inset:auto!important;
+    top:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    transform:none!important;
+    overflow:hidden!important;
+  }
+
+  html.desktop-mode body.honky-home main#main-content > .intro-grid > * {
+    position:relative!important;
+    inset:auto!important;
+    top:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    margin-top:0!important;
+    transform:none!important;
+    align-self:start!important;
+  }
+
+  html.desktop-mode body.honky-home .nora-polaroid {
+    width:100%!important;
+    max-width:260px!important;
+    margin:0 auto!important;
+  }
+
+  html.desktop-mode body.honky-home .upcoming-home {
+    grid-column:auto!important;
+    width:100%!important;
+    margin:0!important;
+  }
+}
