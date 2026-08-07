@@ -7574,3 +7574,16 @@ body>.header .brand small{display:block!important;line-height:1.2!important}
   .poster-intro.stomping .boot-entry-neon,
   .poster-intro.stomping .boot-entry-button{animation:none!important;}
 }
+
+/* v96.4.18 — DESKTOP/LAPTOP RESPONSIVE REPAIR */
+@media (min-width:768px) and (max-width:950px){
+  #menu45.menu45-panel{width:min(1100px,calc(100vw - 36px))!important;padding:0 0 42px!important}
+  #menu45 .menu45-sections{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.85rem!important}
+  #menu45 details.menu45-section{border:1px solid #452326!important;background:#130909!important}
+  #menu45 details.menu45-section>summary{min-height:82px!important;padding:.9rem 1rem!important;background:#190c0d!important}
+  #menu45 .menu45-submenu{padding:.35rem 1rem .9rem!important;background:#110808!important}
+}
+@media (min-width:951px){
+  #menu45.menu45-panel{width:min(1240px,calc(100vw - 64px))!important}
+  #menu45 .menu45-sections{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:1rem!important}
+}

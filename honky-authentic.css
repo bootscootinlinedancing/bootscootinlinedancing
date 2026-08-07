@@ -260,3 +260,47 @@
  .footer-v9646 .legal-footer-links{gap:7px 11px!important}
  .footer-v9646 .legal-footer-links a{font-size:7px!important}
 }
+
+/* v96.4.18 — DESKTOP/LAPTOP RESPONSIVE REPAIR
+   Keeps the proven phone layout below 768px while preventing MacBook/small desktop
+   windows from falling into the oversized mobile navigation/layout. */
+@media (min-width:768px) and (max-width:1100px){
+  .honky-header{
+    height:88px!important;
+    grid-template-columns:minmax(190px,220px) minmax(0,1fr) auto!important;
+    gap:14px!important;
+    padding:10px 20px!important;
+  }
+  .honky-logo{min-width:0!important}
+  .brand-lockup{gap:8px!important;min-width:0!important}
+  .brand-lockup img,.honky-logo img{width:58px!important;height:58px!important}
+  .brand-lockup-copy{min-width:118px!important}
+  .brand-lockup-copy strong{font-size:13px!important}
+  .brand-lockup-copy b{font-size:8.5px!important;letter-spacing:.12em!important}
+  .brand-lockup-copy small{font-size:6.5px!important}
+  .honky-desktop-nav{
+    display:flex!important;
+    justify-content:center!important;
+    align-items:center!important;
+    gap:clamp(10px,1.5vw,18px)!important;
+    min-width:0!important;
+    white-space:nowrap!important;
+  }
+  .honky-desktop-nav a{font-size:11px!important;letter-spacing:.09em!important;padding:16px 0!important}
+  .honky-book{display:inline-flex!important;min-height:44px!important;padding:0 16px!important;font-size:11px!important;letter-spacing:.1em!important;white-space:nowrap!important}
+  .honky-menu-button{display:none!important}
+  .better-hero{min-height:calc(100vh - 88px)!important;min-height:calc(100svh - 88px)!important;background-position:center 38%!important}
+  .better-hero-copy{width:min(650px,65vw)!important;margin-left:clamp(28px,5vw,64px)!important;padding:58px 0!important}
+  .better-hero h1 span{font-size:clamp(44px,6vw,66px)!important}
+  .better-hero h1 em{font-size:clamp(50px,7vw,78px)!important}
+  .hero-lead{font-size:clamp(17px,2vw,21px)!important}
+}
+
+/* Explore overlay: keep a true desktop two-column layout on laptops/tablets in landscape. */
+@media (min-width:768px) and (max-width:950px){
+  #menu45.menu45-panel{width:min(1100px,calc(100vw - 36px))!important;padding:0 0 42px!important}
+  #menu45 .menu45-sections{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.85rem!important}
+  #menu45 details.menu45-section{border:1px solid #452326!important;background:#130909!important}
+  #menu45 details.menu45-section>summary{min-height:82px!important;padding:.9rem 1rem!important;background:#190c0d!important}
+  #menu45 .menu45-submenu{padding:.35rem 1rem .9rem!important;background:#110808!important}
+}
