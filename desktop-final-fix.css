@@ -246,3 +246,49 @@
   /* Explicitly preserve the working phone layout. */
   .desktop-home-start-v32 { display: none !important; }
 }
+
+/* v96.4.35 — ACTUAL BLACK-GAP ROOT CAUSE FIX
+   styles.css contains: #nav[aria-hidden="true"] { display:block!important; }
+   On desktop (>950px) the mobile nav is not fixed by the old mobile media query,
+   so that hidden nav was being rendered as a huge normal-flow block between
+   the header and homepage content. Keep it completely out of layout when closed. */
+@media (min-width: 768px) {
+  body.honky-home > nav#nav.honky-mobile-nav[aria-hidden="true"]:not(.open) {
+    display: none !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* When Explore is opened, it is an overlay and never takes document-flow space. */
+  body.honky-home > nav#nav.honky-mobile-nav.open {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 22px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 1000 !important;
+    overflow: auto !important;
+  }
+
+  /* Prove the content follows the header immediately in normal flow. */
+  body.honky-home > .honky-header + nav#nav + .desktop-home-start-v32 {
+    margin-top: 0 !important;
+  }
+}
