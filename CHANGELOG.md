@@ -605,3 +605,10 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Caps landing boot dimensions on desktop by both viewport width and height.
 - Restores compact two-column Explore menu when opened on desktop.
 - Restores desktop homepage hero composition while leaving touch/phone CSS unchanged.
+
+
+## v96.4.21 — Hard Desktop Layout Reset
+- Added deterministic desktop OS detection rather than relying on Safari media queries.
+- Rebuilt MacBook header, homepage hero and Explore overlay desktop sizing.
+- Added a clean desktop-only boot asset to remove the broken toe/rendering artefact.
+- Mobile layout remains controlled by the existing mobile rules.

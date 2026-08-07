@@ -442,3 +442,79 @@
   .intro-grid{grid-template-columns:minmax(0,1fr) minmax(280px,.75fr)!important}
   .upcoming-home{grid-column:1/-1!important}
 }
+
+
+/* v96.4.21 — HARD DESKTOP LAYOUT RESET
+   JS adds .desktop-mode from the actual desktop OS, so this does not depend on Safari viewport/pointer reporting. */
+html.desktop-mode, html.desktop-mode body{max-width:none!important;min-width:0!important;overflow-x:hidden!important}
+html.desktop-mode body.honky-home{width:100%!important}
+
+/* Header is always a real compact desktop header. */
+html.desktop-mode .honky-header{
+  box-sizing:border-box!important;width:100%!important;height:82px!important;min-height:82px!important;max-height:82px!important;
+  display:grid!important;grid-template-columns:230px minmax(0,1fr) 140px!important;align-items:center!important;
+  gap:18px!important;padding:8px 28px!important;overflow:hidden!important;position:relative!important;z-index:80!important
+}
+html.desktop-mode .honky-logo,html.desktop-mode .brand-lockup{width:230px!important;max-width:230px!important;height:66px!important;display:flex!important;align-items:center!important;gap:8px!important;overflow:hidden!important;text-decoration:none!important}
+html.desktop-mode .honky-header .honky-logo img,html.desktop-mode .honky-header .brand-lockup img{width:56px!important;height:56px!important;min-width:56px!important;max-width:56px!important;object-fit:contain!important;transform:none!important;margin:0!important}
+html.desktop-mode .brand-lockup-copy{display:grid!important;min-width:0!important;line-height:1!important}
+html.desktop-mode .brand-lockup-copy strong{font-size:13px!important;white-space:nowrap!important}
+html.desktop-mode .brand-lockup-copy b{font-size:8px!important;white-space:nowrap!important}
+html.desktop-mode .brand-lockup-copy small{font-size:6px!important;white-space:nowrap!important}
+html.desktop-mode .honky-desktop-nav{display:flex!important;align-items:center!important;justify-content:center!important;gap:clamp(10px,1.5vw,24px)!important;min-width:0!important;white-space:nowrap!important}
+html.desktop-mode .honky-desktop-nav a{display:block!important;font-size:11px!important;letter-spacing:.08em!important;padding:15px 0!important;white-space:nowrap!important}
+html.desktop-mode .honky-book{display:inline-flex!important;width:140px!important;min-width:140px!important;min-height:42px!important;padding:0 12px!important;font-size:10px!important;white-space:nowrap!important}
+html.desktop-mode .honky-menu-button{display:none!important}
+
+/* Home hero is never allowed to become the giant logo/phone composition. */
+html.desktop-mode .better-hero{
+  box-sizing:border-box!important;width:100%!important;min-height:560px!important;height:calc(100vh - 82px)!important;max-height:760px!important;
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;overflow:hidden!important;
+  background-image:url('summer-stomp-floor-1.webp')!important;background-size:cover!important;background-position:center 38%!important;background-repeat:no-repeat!important
+}
+html.desktop-mode .better-hero:before{display:block!important;background:linear-gradient(90deg,rgba(0,0,0,.96) 0%,rgba(0,0,0,.86) 38%,rgba(0,0,0,.34) 70%,rgba(0,0,0,.12) 100%),linear-gradient(0deg,rgba(0,0,0,.58),transparent 55%)!important}
+html.desktop-mode .better-hero-copy{display:block!important;position:relative!important;z-index:3!important;width:min(620px,52vw)!important;margin:0 0 0 clamp(34px,6vw,86px)!important;padding:42px 0!important;transform:none!important;text-align:left!important}
+html.desktop-mode .better-hero h1{display:grid!important;width:max-content!important;max-width:100%!important;text-align:left!important;margin:16px 0 22px!important}
+html.desktop-mode .better-hero h1 span{font-size:clamp(46px,5.6vw,76px)!important}
+html.desktop-mode .better-hero h1 small{font-size:clamp(25px,2.8vw,38px)!important;text-align:center!important}
+html.desktop-mode .better-hero h1 em{font-size:clamp(52px,6.5vw,88px)!important}
+html.desktop-mode .hero-small,html.desktop-mode .hero-lead{text-align:left!important}
+html.desktop-mode .hero-actions{display:flex!important;flex-direction:row!important;gap:12px!important}
+html.desktop-mode .primary-cta,html.desktop-mode .secondary-cta{width:auto!important}
+
+/* Entry screen: desktop-only clean boot asset and fixed composition. */
+html.desktop-mode .poster-intro.boot-entry .entry-boot{
+  top:22%!important;left:50%!important;width:360px!important;height:390px!important;min-height:0!important;max-height:390px!important;
+  transform:translateX(-50%)!important;overflow:visible!important;background:none!important
+}
+html.desktop-mode .poster-intro.boot-entry .entry-boot-photo{display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;clip-path:none!important;transform:none!important}
+html.desktop-mode .poster-intro.boot-entry .boot-entry-button{left:50%!important;width:min(620px,60vw)!important;bottom:8.3%!important}
+html.desktop-mode .poster-intro.boot-entry .boot-entry-tagline{bottom:2.6%!important}
+html.desktop-mode .poster-intro.boot-entry .impact-dust{left:31%!important;width:38%!important;bottom:16.5%!important}
+
+/* Explore menu: compact desktop panel, never giant phone rows. */
+html.desktop-mode .honky-mobile-nav.open{display:flex!important;align-items:flex-start!important;justify-content:center!important;position:fixed!important;inset:0!important;z-index:1000!important;padding:22px!important;background:rgba(3,2,2,.98)!important;overflow:auto!important}
+html.desktop-mode .honky-mobile-nav:not(.open){display:none!important}
+html.desktop-mode .honky-menu-panel{box-sizing:border-box!important;width:min(1040px,calc(100vw - 44px))!important;min-height:0!important;height:auto!important;margin:0 auto!important;padding:0 18px 24px!important;overflow:visible!important;background:#090505!important;border:1px solid #4a181c!important}
+html.desktop-mode .honky-menu-head{height:74px!important;min-height:74px!important;padding:8px 10px!important;display:flex!important;align-items:center!important;justify-content:space-between!important}
+html.desktop-mode .honky-menu-head img{width:64px!important;height:64px!important;object-fit:contain!important}
+html.desktop-mode .honky-menu-root{height:auto!important;overflow:visible!important;padding:0!important}
+html.desktop-mode .honky-menu-feature{display:grid!important;grid-template-columns:auto 1fr!important;gap:8px 12px!important;padding:12px 16px!important;margin:0 0 12px!important;min-height:0!important}
+html.desktop-mode .honky-menu-feature small{grid-column:1!important;font-size:10px!important}
+html.desktop-mode .honky-menu-feature strong{grid-column:2!important;font-size:22px!important;line-height:1!important}
+html.desktop-mode .honky-menu-feature span{grid-column:2!important;font-size:11px!important}
+html.desktop-mode .honky-menu-sections{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px 12px!important}
+html.desktop-mode .honky-menu-sections details.menu45-section{display:block!important;min-width:0!important;margin:0!important;border:1px solid #3d171a!important;background:#100707!important}
+html.desktop-mode .honky-menu-sections details.menu45-section>summary{box-sizing:border-box!important;display:grid!important;grid-template-columns:1fr 20px!important;align-items:center!important;min-height:68px!important;height:auto!important;padding:10px 12px!important;background:#150909!important}
+html.desktop-mode .honky-menu-sections details.menu45-section>summary>span{display:grid!important;grid-template-columns:34px minmax(0,1fr)!important;align-items:center!important;gap:9px!important}
+html.desktop-mode .honky-menu-sections details.menu45-section>summary svg{width:30px!important;height:30px!important;min-width:30px!important;max-width:30px!important}
+html.desktop-mode .honky-menu-sections details.menu45-section>summary b{display:block!important;min-width:0!important}
+html.desktop-mode .honky-menu-sections details.menu45-section>summary strong{display:block!important;font-size:18px!important;line-height:1.05!important;white-space:normal!important}
+html.desktop-mode .honky-menu-sections details.menu45-section>summary small{display:block!important;font-size:10px!important;line-height:1.25!important;margin-top:3px!important;white-space:normal!important}
+html.desktop-mode .honky-menu-sections details.menu45-section>summary i{font-size:19px!important}
+html.desktop-mode .honky-menu-sections .menu45-submenu{padding:0 10px 8px!important;background:#0c0505!important}
+html.desktop-mode .honky-menu-sections .menu45-submenu a{min-height:0!important;padding:8px 7px!important;font-size:12px!important}
+
+/* Stop old tablet rules from making inner-page content enormous on desktops. */
+html.desktop-mode .intro-grid{grid-template-columns:minmax(250px,.75fr) minmax(220px,.65fr) minmax(430px,1.6fr)!important}
+html.desktop-mode .upcoming-home{grid-column:auto!important}

@@ -1,3 +1,20 @@
+/* v96.4.21: deterministic desktop detection (Mac/Windows/Linux desktop). */
+(() => {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  const isPhoneTablet = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) && !/Macintosh/i.test(ua);
+  const isDesktopOS = /Mac|Win|Linux/i.test(platform) && !isPhoneTablet;
+  const desktop = isDesktopOS || (!isPhoneTablet && Math.max(screen.width || 0, screen.height || 0) >= 900);
+  if (desktop) {
+    document.documentElement.classList.add('desktop-mode');
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body?.classList.add('desktop-mode');
+      const boot = document.querySelector('.entry-boot-photo');
+      if (boot) boot.src = 'entry-boot-desktop.png?v=96.4.21';
+    }, {once:true});
+  }
+})();
+
 
 
 const intro = document.getElementById('intro');
