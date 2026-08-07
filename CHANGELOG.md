@@ -579,3 +579,5 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Tightened customer portal header behaviour on small screens.
 
 - v96.4.6: Repaired New Here menu, added Facebook and private WhatsApp community explanation, removed public member-access shortcut, centred/footer branding (EST. 2024), and restored lock icon on Admin Login.
+
+- v96.4.7: Turned WhatsApp Community into its own expandable New Here menu item, explaining its purpose and that joining access is shared only with class attendees or website members.
