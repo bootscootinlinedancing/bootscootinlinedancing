@@ -7664,7 +7664,7 @@ html.desktop-mode .honky-menu-sections .menu45-submenu a{min-height:0!important;
 html.desktop-mode .intro-grid{grid-template-columns:minmax(250px,.75fr) minmax(220px,.65fr) minmax(430px,1.6fr)!important}
 html.desktop-mode .upcoming-home{grid-column:auto!important}
 
-/* v96.4.22 — PRESENTATION DESKTOP FINALISATION
+/* v96.4.23 — PRESENTATION DESKTOP FINALISATION
    One desktop header everywhere, compact hero, clean spacing and reliable boot. */
 html.desktop-mode body{padding-top:0!important}
 html.desktop-mode .honky-header,

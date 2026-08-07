@@ -165,7 +165,7 @@ footer .script{font-size:clamp(1.4rem,3vw,2.2rem)}
   nav#nav.menu45-overlay #menu45 .menu45-home{margin-top:12px!important;padding:10px!important}
 }
 
-/* v96.4.22 — PRESENTATION DESKTOP FINALISATION
+/* v96.4.23 — PRESENTATION DESKTOP FINALISATION
    One desktop header everywhere, compact hero, clean spacing and reliable boot. */
 html.desktop-mode body{padding-top:0!important}
 html.desktop-mode .honky-header,

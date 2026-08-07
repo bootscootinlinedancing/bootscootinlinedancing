@@ -519,7 +519,7 @@ html.desktop-mode .honky-menu-sections .menu45-submenu a{min-height:0!important;
 html.desktop-mode .intro-grid{grid-template-columns:minmax(250px,.75fr) minmax(220px,.65fr) minmax(430px,1.6fr)!important}
 html.desktop-mode .upcoming-home{grid-column:auto!important}
 
-/* v96.4.22 — PRESENTATION DESKTOP FINALISATION
+/* v96.4.23 — PRESENTATION DESKTOP FINALISATION
    One desktop header everywhere, compact hero, clean spacing and reliable boot. */
 html.desktop-mode body{padding-top:0!important}
 html.desktop-mode .honky-header,
@@ -606,4 +606,79 @@ html.desktop-mode .gallery-grid,html.desktop-mode .home-gallery-grid{gap:10px!im
   html.desktop-mode .better-hero-copy{width:53vw!important;margin-left:34px!important}
   html.desktop-mode .better-hero h1 span{font-size:42px!important}
   html.desktop-mode .better-hero h1 em{font-size:49px!important}
+}
+
+/* ================================================================
+   v96.4.23 — PRESENTATION DESKTOP FINISH
+   Fix the final MacBook issues without changing phone layout.
+   ================================================================ */
+@media (min-width:768px){
+  /* Header: keep every desktop destination visible and add one consistent Explore control. */
+  html.desktop-mode .honky-header,
+  html.desktop-mode header.honky-header{
+    height:70px!important;min-height:70px!important;max-height:70px!important;
+    grid-template-columns:176px minmax(0,1fr) 78px 108px!important;
+    gap:8px!important;padding:4px 12px!important;overflow:visible!important;
+  }
+  html.desktop-mode .honky-header .brand-lockup{width:176px!important;max-width:176px!important;height:58px!important;gap:6px!important}
+  html.desktop-mode .honky-header .brand-lockup>img{width:43px!important;height:43px!important;min-width:43px!important;max-width:43px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy strong{font-size:11px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy b{font-size:7px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy small{font-size:5.5px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav{gap:clamp(8px,1.05vw,15px)!important;justify-content:flex-end!important;overflow:visible!important}
+  html.desktop-mode .honky-header .honky-desktop-nav a{font-size:8.8px!important;letter-spacing:.055em!important;padding:13px 0!important}
+  html.desktop-mode .honky-header .honky-book{grid-column:4!important;width:108px!important;min-width:108px!important;min-height:38px!important;font-size:8.5px!important;letter-spacing:.08em!important;padding:0 7px!important}
+  html.desktop-mode .honky-header .honky-menu-button{
+    grid-column:3!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    width:78px!important;min-width:78px!important;height:38px!important;min-height:38px!important;margin:0!important;padding:0 8px!important;
+    border:1px solid #6e3437!important;background:#100707!important;color:#f3e7dc!important;position:relative!important;
+  }
+  html.desktop-mode .honky-header .honky-menu-button span{display:none!important}
+  html.desktop-mode .honky-header .honky-menu-button::before{content:'Explore'!important;font:600 8.5px/1 Oswald,sans-serif!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#f3e7dc!important}
+  html.desktop-mode .honky-header .honky-menu-button .sr-only{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important}
+
+  /* Hero: explicitly fill the area immediately below the menu — no black void. */
+  html.desktop-mode .better-hero{
+    position:relative!important;height:390px!important;min-height:390px!important;max-height:390px!important;
+    background-image:linear-gradient(90deg,rgba(0,0,0,.68) 0%,rgba(0,0,0,.48) 36%,rgba(0,0,0,.08) 72%),url('summer-stomp-floor-1.webp')!important;
+    background-size:100% 100%!important;background-position:center center!important;background-repeat:no-repeat!important;
+  }
+  html.desktop-mode .better-hero-copy{
+    position:absolute!important;left:clamp(28px,4vw,58px)!important;top:50%!important;transform:translateY(-50%)!important;
+    width:min(490px,46vw)!important;margin:0!important;padding:0!important;
+  }
+  html.desktop-mode .better-hero .hero-small{font-size:10px!important;margin-bottom:7px!important}
+  html.desktop-mode .better-hero h1{margin:0 0 10px!important;line-height:.88!important}
+  html.desktop-mode .better-hero h1 span{font-size:40px!important}
+  html.desktop-mode .better-hero h1 small{font-size:20px!important}
+  html.desktop-mode .better-hero h1 em{font-size:47px!important}
+  html.desktop-mode .better-hero .hero-lead{font-size:13px!important;margin-bottom:13px!important}
+  html.desktop-mode .better-hero .primary-cta,
+  html.desktop-mode .better-hero .secondary-cta{min-height:40px!important;padding:0 14px!important;font-size:10px!important}
+
+  /* Entry boot: show the entire cleaned boot, including toe and heel. */
+  html.desktop-mode .poster-intro.boot-entry .entry-boot{
+    top:20.5%!important;width:430px!important;height:445px!important;max-height:445px!important;overflow:visible!important;
+  }
+  html.desktop-mode .poster-intro.boot-entry .entry-boot-photo{
+    width:100%!important;height:100%!important;object-fit:contain!important;object-position:50% 50%!important;
+  }
+
+  /* Remove any residual inter-section spacing left by legacy desktop rules. */
+  html.desktop-mode #main-content{display:block!important;margin:0!important;padding:0!important}
+  html.desktop-mode #main-content>section{margin-block:0!important}
+  html.desktop-mode .cream-home,
+  html.desktop-mode .why-strip,
+  html.desktop-mode .lower-home{margin-top:0!important;margin-bottom:0!important}
+}
+
+@media (min-width:768px) and (max-width:980px){
+  html.desktop-mode .honky-header{grid-template-columns:150px minmax(0,1fr) 68px 94px!important;gap:5px!important;padding-left:8px!important;padding-right:8px!important}
+  html.desktop-mode .honky-header .brand-lockup{width:150px!important;max-width:150px!important}
+  html.desktop-mode .honky-header .brand-lockup>img{width:38px!important;height:38px!important;min-width:38px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy strong{font-size:9.5px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav{gap:7px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav a{font-size:7.7px!important;letter-spacing:.035em!important}
+  html.desktop-mode .honky-header .honky-menu-button{width:68px!important;min-width:68px!important;font-size:8px!important}
+  html.desktop-mode .honky-header .honky-book{width:94px!important;min-width:94px!important;font-size:7.8px!important}
 }
