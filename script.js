@@ -1,18 +1,37 @@
-/* v96.4.21: deterministic desktop detection (Mac/Windows/Linux desktop). */
+/* v96.4.22: deterministic desktop mode + one consistent desktop header. */
 (() => {
   const ua = navigator.userAgent || '';
   const platform = navigator.platform || '';
   const isPhoneTablet = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) && !/Macintosh/i.test(ua);
   const isDesktopOS = /Mac|Win|Linux/i.test(platform) && !isPhoneTablet;
   const desktop = isDesktopOS || (!isPhoneTablet && Math.max(screen.width || 0, screen.height || 0) >= 900);
-  if (desktop) {
-    document.documentElement.classList.add('desktop-mode');
-    document.addEventListener('DOMContentLoaded', () => {
-      document.body?.classList.add('desktop-mode');
-      const boot = document.querySelector('.entry-boot-photo');
-      if (boot) boot.src = 'entry-boot-desktop.png?v=96.4.21';
-    }, {once:true});
-  }
+  if (!desktop) return;
+
+  document.documentElement.classList.add('desktop-mode');
+  document.addEventListener('DOMContentLoaded', () => {
+    document.body?.classList.add('desktop-mode');
+
+    // Every desktop page now uses the same compact navigation style as the homepage.
+    const legacyHeader = document.querySelector('header.header:not(.honky-header)');
+    if (legacyHeader) {
+      const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+      const navItems = [
+        ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],
+        ['private-events.html','Private Events'],['gallery.html','Gallery'],['ask-nora.html','Contact']
+      ];
+      const links = navItems.map(([href,label]) => {
+        const active = page === href || (href === 'index.html' && (page === '' || page === '/'));
+        return `<a${active ? ' class="active"' : ''} href="${href}">${label}</a>`;
+      }).join('');
+      legacyHeader.className = 'honky-header unified-desktop-header';
+      legacyHeader.innerHTML = `
+        <a class="honky-logo brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
+          <img src="brand-logo-transparent.png" alt=""><span class="brand-lockup-copy"><strong>BOOT SCOOTIN’</strong><b>LINE DANCING</b><small>EST. 2025</small></span>
+        </a>
+        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
+        <a class="honky-book" href="bookings.html">Book a class</a>`;
+    }
+  }, {once:true});
 })();
 
 

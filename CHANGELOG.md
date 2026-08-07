@@ -612,3 +612,11 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Rebuilt MacBook header, homepage hero and Explore overlay desktop sizing.
 - Added a clean desktop-only boot asset to remove the broken toe/rendering artefact.
 - Mobile layout remains controlled by the existing mobile rules.
+
+## v96.4.22 — Presentation desktop finalisation
+- Restored the entry boot using a clean replacement of the existing boot asset (no extra top-level asset added).
+- Unified legacy desktop page headers with the same desktop navigation used on the homepage.
+- Reduced the oversized homepage hero/blank space on laptop screens.
+- Tightened desktop spacing between homepage image/content blocks.
+- Restyled the Explore panel to match the desktop red/black navigation language.
+- Updated CSS/JS cache versions to v96.4.22.
