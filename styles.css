@@ -7023,3 +7023,109 @@ body>.header .brand small{display:block!important;line-height:1.2!important}
   .boot-entry .boot-entry-button{bottom:10.5%!important;min-height:52px!important;}
   .boot-entry .boot-entry-tagline{bottom:3.2%!important;font-size:16px!important;}
 }
+
+
+/* VERSION 96.4.10 — BOOT ENTRY REBUILD: compact, centred and iPhone-safe */
+/* This intentionally replaces the percentage/bottom stacking from 96.4.8/9. */
+.boot-entry .boot-entry-shell{
+  height:100dvh!important;
+  min-height:100dvh!important;
+  max-height:100dvh!important;
+  position:relative!important;
+  overflow:hidden!important;
+  padding:0!important;
+}
+.boot-entry .boot-entry-brand{
+  top:3.2%!important;
+  width:min(90%,520px)!important;
+  gap:11px!important;
+}
+.boot-entry .boot-entry-brand img{
+  width:58px!important;height:58px!important;flex:0 0 58px!important;
+}
+.boot-entry .boot-entry-brand strong{
+  font-size:clamp(22px,6.8vw,31px)!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.boot-entry .boot-entry-brand span{font-size:12px!important;letter-spacing:.22em!important;}
+.boot-entry .boot-entry-brand small{font-size:8.5px!important;letter-spacing:.22em!important;}
+.boot-entry .boot-entry-kicker{
+  top:12.4%!important;
+  font-size:8.5px!important;
+  letter-spacing:.26em!important;
+  white-space:nowrap!important;
+}
+.boot-entry .boot-entry-neon{
+  top:15.2%!important;
+  font-size:clamp(46px,14vw,66px)!important;
+  line-height:.95!important;
+}
+.boot-entry .entry-boot{
+  top:27.5%!important;
+  bottom:auto!important;
+  left:50%!important;
+  width:min(64%,360px)!important;
+  height:43%!important;
+  max-height:none!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  transform:translateX(-50%) rotate(-4deg)!important;
+  filter:drop-shadow(0 18px 20px rgba(0,0,0,.92)) saturate(1.02) contrast(1.08) brightness(1.08)!important;
+}
+.boot-entry .impact-dust{
+  top:65%!important;
+  bottom:auto!important;
+  height:8%!important;
+  width:68%!important;
+  left:16%!important;
+}
+.boot-entry .boot-entry-button{
+  top:73.2%!important;
+  bottom:auto!important;
+  left:50%!important;
+  width:min(76%,360px)!important;
+  min-height:58px!important;
+  padding:10px 14px!important;
+  transform:translateX(-50%)!important;
+  border-radius:4px!important;
+}
+.boot-entry .boot-entry-button span{
+  font-size:19px!important;
+  line-height:1!important;
+  letter-spacing:.13em!important;
+}
+.boot-entry .boot-entry-button small{
+  margin-top:5px!important;
+  font-size:8.5px!important;
+  line-height:1.2!important;
+  letter-spacing:.1em!important;
+}
+.boot-entry .boot-entry-tagline{
+  top:auto!important;
+  bottom:4.4%!important;
+  font-size:clamp(16px,4.8vw,20px)!important;
+  white-space:nowrap!important;
+}
+@media(max-width:390px){
+  .boot-entry .boot-entry-brand{top:2.9%!important;gap:9px!important;}
+  .boot-entry .boot-entry-brand img{width:52px!important;height:52px!important;flex-basis:52px!important;}
+  .boot-entry .boot-entry-brand strong{font-size:21px!important;}
+  .boot-entry .boot-entry-brand span{font-size:10.5px!important;}
+  .boot-entry .boot-entry-kicker{top:11.5%!important;font-size:7.5px!important;}
+  .boot-entry .boot-entry-neon{top:14.4%!important;font-size:48px!important;}
+  .boot-entry .entry-boot{top:27%!important;width:68%!important;height:42%!important;}
+  .boot-entry .boot-entry-button{top:72.6%!important;width:82%!important;}
+  .boot-entry .boot-entry-tagline{bottom:3.7%!important;font-size:15px!important;}
+}
+@media(max-height:740px){
+  .boot-entry .boot-entry-brand{top:2.4%!important;}
+  .boot-entry .boot-entry-kicker{top:11.6%!important;}
+  .boot-entry .boot-entry-neon{top:14.2%!important;font-size:46px!important;}
+  .boot-entry .entry-boot{top:26%!important;height:42%!important;width:min(58%,320px)!important;}
+  .boot-entry .boot-entry-button{top:70.6%!important;min-height:52px!important;}
+  .boot-entry .boot-entry-tagline{bottom:2.6%!important;font-size:15px!important;}
+}
+@supports not (height:100dvh){
+  .boot-entry .boot-entry-shell{height:100svh!important;min-height:100svh!important;max-height:100svh!important;}
+}
