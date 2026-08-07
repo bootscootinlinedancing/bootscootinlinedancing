@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 520" role="img" aria-label="Cream western cowboy boot with red heart and stars">
+  <defs>
+    <linearGradient id="leather" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7dc"/>
+      <stop offset="0.45" stop-color="#e8d3aa"/>
+      <stop offset="0.72" stop-color="#caaa78"/>
+      <stop offset="1" stop-color="#92704c"/>
+    </linearGradient>
+    <linearGradient id="leather2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7e8c8"/>
+      <stop offset="1" stop-color="#b88e5f"/>
+    </linearGradient>
+    <linearGradient id="sole" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4b2a20"/>
+      <stop offset="1" stop-color="#17100e"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="12" flood-color="#000" flood-opacity=".72"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)" transform="translate(4 3)">
+    <!-- main leather body -->
+    <path d="M170 35
+      C143 34 124 45 116 68
+      L112 278
+      C111 315 121 341 148 360
+      C168 374 195 381 230 381
+      L340 381
+      C370 381 399 387 432 401
+      L531 440
+      C563 453 598 451 616 432
+      C630 417 624 396 603 386
+      L496 333
+      C463 316 430 302 402 292
+      C378 283 364 268 357 247
+      L335 87
+      C331 60 313 43 289 40
+      C265 37 247 48 237 67
+      C228 49 204 35 170 35 Z"
+      fill="url(#leather)" stroke="#8c6a48" stroke-width="5" stroke-linejoin="round"/>
+
+    <!-- top scallop / collar -->
+    <path d="M118 75 C135 48 159 39 181 42 C206 45 225 58 237 76 C252 54 272 43 293 44 C313 46 328 60 333 83
+      C309 93 286 94 265 86 C253 81 244 72 237 61 C225 77 212 87 197 91 C170 98 143 93 118 75 Z"
+      fill="url(#leather2)" stroke="#8c6a48" stroke-width="4"/>
+
+    <!-- shaft overlay -->
+    <path d="M127 88 L132 273 C133 303 144 326 165 341 C181 352 202 358 229 358 L326 358
+      C305 338 292 312 286 282 L253 102
+      C244 94 238 84 235 74 C225 87 210 97 193 101 C171 106 149 102 127 88 Z"
+      fill="#ffffff" fill-opacity=".10" stroke="#a98155" stroke-width="3"/>
+
+    <!-- ankle/vamp seam -->
+    <path d="M138 321 C193 343 258 350 328 344 C370 341 405 348 444 364"
+      fill="none" stroke="#7f5c3d" stroke-width="5" stroke-linecap="round"/>
+    <path d="M143 314 C196 334 257 340 322 334 C370 330 410 339 453 356"
+      fill="none" stroke="#f5e3bf" stroke-width="2.5" stroke-linecap="round" opacity=".75"/>
+
+    <!-- toe cap seam -->
+    <path d="M386 316 C421 329 459 347 500 370 C523 383 546 394 571 401"
+      fill="none" stroke="#9b764f" stroke-width="4"/>
+    <path d="M391 309 C431 323 472 343 511 365 C532 377 551 387 575 394"
+      fill="none" stroke="#f3ddba" stroke-width="2" opacity=".7"/>
+
+    <!-- decorative embroidery -->
+    <g fill="none" stroke="#a8865d" stroke-width="4" stroke-linecap="round" opacity=".95">
+      <path d="M161 129 C196 146 214 174 210 205 C207 229 192 249 168 263"/>
+      <path d="M158 139 C177 152 184 168 180 185 C176 201 164 214 149 219"/>
+      <path d="M270 121 C296 143 307 169 303 198 C299 221 286 243 265 261"/>
+      <path d="M287 137 C274 155 270 173 275 190 C281 207 293 219 311 228"/>
+      <path d="M199 278 C218 264 238 260 257 266 C275 272 287 285 293 304"/>
+      <path d="M420 350 C448 341 473 345 495 361 C511 372 521 387 525 403"/>
+      <path d="M454 341 C463 356 477 366 496 369"/>
+    </g>
+
+    <!-- red heart -->
+    <path d="M257 234 C246 218 221 218 214 238 C207 258 228 275 260 295 C291 275 312 258 305 238 C298 218 273 218 262 234 Z"
+      fill="#a51f27" stroke="#6d1218" stroke-width="4"/>
+    <path d="M228 236 C238 228 249 230 257 239" fill="none" stroke="#df696d" stroke-width="3" opacity=".7"/>
+
+    <!-- stars -->
+    <g fill="#9c1c22" stroke="#651014" stroke-width="3">
+      <path d="M159 230 l9 19 21 2-16 14 5 21-19-11-19 11 5-21-16-14 21-2z" transform="scale(.72) translate(62 141)"/>
+      <path d="M196 353 l9 19 21 2-16 14 5 21-19-11-19 11 5-21-16-14 21-2z" transform="scale(.72) translate(63 103)"/>
+      <path d="M503 362 l9 19 21 2-16 14 5 21-19-11-19 11 5-21-16-14 21-2z" transform="scale(.72) translate(198 100)"/>
+    </g>
+
+    <!-- piping -->
+    <path d="M117 90 L119 276 C119 322 141 353 176 369" fill="none" stroke="#7d5c40" stroke-width="6"/>
+    <path d="M329 91 L350 244 C354 273 373 292 403 303" fill="none" stroke="#7d5c40" stroke-width="6"/>
+    <path d="M123 92 L125 273 C125 315 145 343 178 360" fill="none" stroke="#f4dfb9" stroke-width="2" opacity=".75"/>
+
+    <!-- welt / sole -->
+    <path d="M145 377 C205 394 273 400 341 396 C385 394 422 401 457 414 L540 446 C570 458 600 453 616 433
+      L614 446 C608 468 580 482 546 481 L386 480 L347 493 L181 493 C153 493 132 478 128 457 Z"
+      fill="url(#sole)" stroke="#0f0b0a" stroke-width="4"/>
+    <path d="M150 379 C211 394 274 399 341 394 C389 391 425 400 461 413 L546 445 C568 453 593 450 609 438"
+      fill="none" stroke="#b18154" stroke-width="4"/>
+
+    <!-- heel -->
+    <path d="M141 452 L223 452 L214 507 L147 507 Z" fill="#2b1713" stroke="#120b09" stroke-width="4"/>
+    <path d="M153 459 L213 459 M151 472 L211 472 M149 485 L209 485" stroke="#6b4431" stroke-width="3" opacity=".65"/>
+  </g>
+</svg>

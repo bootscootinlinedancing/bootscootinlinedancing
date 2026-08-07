@@ -7280,3 +7280,54 @@ body>.header .brand small{display:block!important;line-height:1.2!important}
     max-height:320px!important;
   }
 }
+
+/* VERSION 96.4.14 — CLEAN VECTOR BOOT REBUILD
+   Replaces the damaged raster boot with a code-built SVG so there are no
+   missing squares, trouser-leg artifacts or browser rendering gaps. */
+.boot-entry .entry-boot{
+  background-image:url('entry-boot-clean.svg')!important;
+  top:25.7%!important;
+  width:min(82vw,430px)!important;
+  height:43vh!important;
+  min-height:285px!important;
+  max-height:430px!important;
+  background-size:contain!important;
+  background-position:center center!important;
+  background-repeat:no-repeat!important;
+  transform:translateX(-50%) rotate(-2deg)!important;
+  filter:drop-shadow(0 20px 24px rgba(0,0,0,.9))!important;
+}
+.boot-entry .impact-dust{bottom:18.7%!important;}
+@media(max-width:430px){
+  .boot-entry .entry-boot{
+    top:25.8%!important;
+    width:84vw!important;
+    height:43vh!important;
+    min-height:280px!important;
+    max-height:410px!important;
+  }
+}
+@media(max-width:390px){
+  .boot-entry .entry-boot{
+    width:86vw!important;
+    height:42vh!important;
+    min-height:260px!important;
+  }
+}
+@media(max-height:760px){
+  .boot-entry .entry-boot{
+    top:24.8%!important;
+    width:min(78vw,390px)!important;
+    height:39vh!important;
+    min-height:230px!important;
+    max-height:335px!important;
+  }
+}
+.poster-intro.stomping .entry-boot{animation:cleanVectorBootStomp .84s cubic-bezier(.18,.82,.22,1) both!important;}
+@keyframes cleanVectorBootStomp{
+  0%{transform:translateX(-50%) translateY(0) rotate(-2deg)}
+  34%{transform:translateX(-50%) translateY(-30px) rotate(-6deg)}
+  59%{transform:translateX(-50%) translateY(13px) rotate(0deg)}
+  76%{transform:translateX(-50%) translateY(-5px) rotate(-2deg)}
+  100%{transform:translateX(-50%) translateY(0) rotate(-2deg)}
+}
