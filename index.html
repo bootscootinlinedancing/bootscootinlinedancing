@@ -9,12 +9,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Rye&family=Yellowtail&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=96.4.31">
-  <link rel="stylesheet" href="honky-authentic.css?v=96.4.31">
+  <link rel="stylesheet" href="styles.css?v=96.4.32">
+  <link rel="stylesheet" href="honky-authentic.css?v=96.4.32">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.31">
+  <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.32">
 </head>
 <body class="honky-home home-v963 intro-open">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -27,7 +27,7 @@
     <p class="boot-entry-kicker">BRINGING NASHVILLE TO BIRMINGHAM</p>
     <p class="boot-entry-neon">Boots On.</p>
     <div class="entry-boot" aria-hidden="true">
-      <img class="entry-boot-photo" src="entry-boot-restored.png?v=96.4.31" alt="">
+      <img class="entry-boot-photo" src="entry-boot-restored.png?v=96.4.32" alt="">
     </div>
     <div class="impact-dust" aria-hidden="true"></div>
     <button id="enterSite" class="poster-enter boot-entry-button" type="button">
@@ -57,6 +57,27 @@
     </div>
   </div>
 </nav>
+
+<!-- v96.4.32: dedicated desktop start section. This sits OUTSIDE the legacy homepage main
+     so no old hero/intro-grid geometry can create a black gap on desktop. -->
+<section class="desktop-home-start-v32" aria-label="Homepage introduction">
+  <div class="desktop-meet-v32">
+    <p class="section-label">Meet Nora</p>
+    <h2>Hi, I’m Nora!</h2>
+    <p>Operating Department Practitioner by day, line dance instructor by night. I started Boot Scootin’ Line Dancing to bring people together through a love of country music, good vibes and unforgettable nights.</p>
+    <p class="handwritten">Grab your boots and let’s dance!</p>
+    <a class="paper-link" href="about.html">More about me →</a>
+  </div>
+  <figure class="desktop-nora-v32"><img src="nora.webp" alt="Nora, founder of Boot Scootin’ Line Dancing, wearing her red cowboy hat"></figure>
+  <div class="desktop-upcoming-v32">
+    <div class="home-title-row"><p class="section-label">Upcoming Classes</p><a href="bookings.html">View all classes →</a></div>
+    <div class="class-card-grid">
+      <article class="home-class-card"><img src="hall1.webp" alt="Line dancing class at Edgbaston Community Centre"><div><span class="day-tag">Fortnightly Fridays</span><h3>Edgbaston Community Centre</h3><p>7:30PM – 8:30PM · £6</p><a href="bookings.html">Book now</a></div></article>
+      <article class="home-class-card"><img src="lowplaces.webp" alt="Low Places Bar Birmingham"><div><span class="day-tag">Fortnightly Fridays</span><h3>Low Places Bar Birmingham</h3><p>7:15PM – 9:00PM · £6</p><a href="bookings.html">Book now</a></div></article>
+    </div>
+  </div>
+</section>
+
 <main id="main-content">
   <!-- Hero removed in v96.4.28: page now begins directly with the main homepage content. -->
 
@@ -121,6 +142,6 @@
     <div class="copyright-line">© 2026 Boot Scootin’ Line Dancing. All rights reserved.</div>
   </div>
 </footer>
-<script src="script.js?v=96.4.31"></script>
+<script src="script.js?v=96.4.32"></script>
 </body>
 </html>
