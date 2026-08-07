@@ -7383,3 +7383,88 @@ body>.header .brand small{display:block!important;line-height:1.2!important}
   76%{transform:translateX(-50%) translateY(-5px) rotate(-2deg)}
   100%{transform:translateX(-50%) translateY(0) rotate(-2deg)}
 }
+
+
+/* VERSION 96.4.16 — RESTORED ORIGINAL BOOT + ORIGINAL STOMP MOTION
+   Only the entry boot is changed. The boot image is cut from the approved
+   v92 landing artwork; no legacy site layout/menu/theme code is imported. */
+.boot-entry .entry-boot{
+  position:absolute!important;
+  top:23.5%!important;
+  left:50%!important;
+  width:min(82vw,500px)!important;
+  height:45vh!important;
+  min-height:300px!important;
+  max-height:440px!important;
+  transform:translateX(-50%)!important;
+  transform-origin:31% 90%!important;
+  background:none!important;
+  border:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+  z-index:3!important;
+}
+.boot-entry .entry-boot-photo{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  user-select:none!important;
+  -webkit-user-drag:none!important;
+  pointer-events:none!important;
+  filter:drop-shadow(0 18px 18px rgba(0,0,0,.4))!important;
+}
+.boot-entry .entry-boot::before,
+.boot-entry .entry-boot::after{content:none!important;display:none!important;}
+
+/* Reuse the original approved v92 stomp timing/motion on the boot itself. */
+.poster-intro.stomping .entry-boot{
+  animation:restoredOriginalStomp .86s cubic-bezier(.18,.82,.22,1) both!important;
+}
+@keyframes restoredOriginalStomp{
+  0%{transform:translateX(-50%) translate3d(0,0,0) rotate(0) scale(1)}
+  32%{transform:translateX(-50%) translate3d(0,-24px,0) rotate(-1deg) scale(1.008)}
+  62%{transform:translateX(-50%) translate3d(0,10px,0) rotate(.4deg) scale(.996)}
+  78%{transform:translateX(-50%) translate3d(0,-3px,0) rotate(-.15deg) scale(1.001)}
+  100%{transform:translateX(-50%) translate3d(0,0,0) rotate(0) scale(1)}
+}
+.boot-entry .impact-dust{
+  left:11%!important;
+  top:auto!important;
+  bottom:19.2%!important;
+  width:78%!important;
+  height:14%!important;
+}
+.poster-intro.stomping .impact-dust{animation:stableDust .86s ease both!important;}
+
+@media(max-width:760px){
+  .boot-entry .entry-boot{
+    top:24.2%!important;
+    width:86vw!important;
+    height:44vh!important;
+    min-height:285px!important;
+    max-height:405px!important;
+  }
+  .boot-entry .boot-entry-button{bottom:10.2%!important;}
+  .boot-entry .boot-entry-tagline{bottom:3.4%!important;}
+}
+@media(max-width:390px){
+  .boot-entry .entry-boot{
+    top:24.5%!important;
+    width:88vw!important;
+    height:42vh!important;
+    min-height:260px!important;
+    max-height:360px!important;
+  }
+}
+@media(max-height:720px){
+  .boot-entry .entry-boot{
+    top:23.5%!important;
+    height:39vh!important;
+    min-height:220px!important;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .poster-intro.stomping .entry-boot{animation:none!important;}
+}
