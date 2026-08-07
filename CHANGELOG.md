@@ -1,10 +1,7 @@
-# Boot Scootin’ v103.0.0 — Western Neon UI Integration
-
-- Integrated the supplied Western Neon UI V2 design system.
-- Rebuilt the homepage highlight wall as individual responsive HTML/SVG cards.
-- Rebuilt the Why You’ll Love It section using the supplied components.
-- Applied the supplied professional SVG icon language to the mobile menu.
-- Reworked menu spacing, responsive sizing and close behaviour.
-- Enforced red/black surfaces across public pages; cream remains text only.
-- Updated booking cards, forms, reviews and footer contrast.
-- Updated cache version to v103.0.0.
+# v104.0.0 — Homepage Rebuild
+- Rebuilt index.html from scratch to remove duplicate and overlapping homepage sections.
+- Added a proper professional western boot SVG with shaft, stitching, heel and spur/star detail.
+- Replaced the homepage icon set with consistent vector icons.
+- Added a clean mobile-first black/red honky-tonk design with no beige panel backgrounds.
+- Preserved booking, member, newsletter and backend links.
+- Updated service worker cache version.
