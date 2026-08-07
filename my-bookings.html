@@ -1,138 +1,125 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#080606">
-  <title>My Bookings | Boot Scootin' Line Dancing</title>
-  <meta name="description" content="View and manage your Boot Scootin' class bookings, cancellations, calendar links and loyalty progress.">
-  <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=102.0.0">
-  <link rel="stylesheet" href="honky-theme.css?v=102.0.0">
-  <link rel="stylesheet" href="honky-rebuild.css?v=102.0.0">
-  <link rel="stylesheet" href="v101-red-black.css?v=102.0.0">
-<link rel="stylesheet" href="v102-final-reset.css?v=102.0.0">
-</head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="#080606" name="theme-color"/>
+<title>My Bookings | Boot Scootin' Line Dancing</title>
+<meta content="View and manage your Boot Scootin' class bookings, cancellations, calendar links and loyalty progress." name="description"/>
+<link href="favicon.png" rel="icon"/>
+<link href="styles.css?v=102.0.0" rel="stylesheet"/>
+<link href="honky-theme.css?v=102.0.0" rel="stylesheet"/>
+<link href="honky-rebuild.css?v=102.0.0" rel="stylesheet"/>
+
+
+<link href="western-neon-complete.css?v=103.0.0" rel="stylesheet"/></head>
 <body>
-  <a class="skip-link" href="#main-content">Skip to main content</a>
-
-  <header class="header">
-    <a class="brand" href="index.html" aria-label="Boot Scootin' home">
-      <img src="favicon.png" alt="" width="64" height="64">
-      <span><strong>BOOT SCOOTIN’</strong><small>LINE DANCING</small></span>
-    </a>
-    <button class="menu" id="menuButton" aria-expanded="false" aria-controls="nav">Menu</button>
-  </header>
-
-  <nav class="menu45-overlay" id="nav" aria-hidden="true">
-    <div class="menu45-panel" id="menu45">
-      <button class="nav-close" id="navClose" type="button" aria-label="Close menu">×</button>
-      <a class="menu45-first" href="index.html">Home</a>
-      <a class="menu45-first" href="bookings.html">Book a Class</a>
-      <a class="menu45-first" href="my-bookings.html">My Bookings</a>
-      <a class="menu45-first" href="member-hub.html">Member Hub Preview</a>
-      <a class="menu45-first" href="contact.html">Contact</a>
-    </div>
-  </nav>
-
-  <main id="main-content" class="customer-portal-page">
-    <section class="section dark customer-portal-hero">
-      <div class="section-title centre reveal">
-        <p class="kicker">Your Boot Scootin’ account</p>
-        <h1>My Boot Scootin’</h1>
-        <p>Your bookings, loyalty progress, rewards and achievements — all together in one secure place.</p>
-      </div>
-    </section>
-
-    <section class="section paper customer-portal-shell">
-      <div id="customerPortalGate" class="customer-portal-gate">
-        <p class="kicker red">Secure access</p>
-        <h2>Open your personal booking link</h2>
-        <p>For privacy, this page only opens through the secure link created when you book. If you have lost your link, enter one of your booking references below and the email address used to book.</p>
-        <form id="customerLookupForm" class="customer-lookup-form">
-          <label>Booking reference
-            <input name="reference" autocomplete="off" placeholder="BS-260803-ABC123" required>
-          </label>
-          <label>Email address
-            <input name="email" type="email" autocomplete="email" required>
-          </label>
-          <button class="button" type="submit">Find My Booking</button>
-          <p id="customerLookupMessage" class="form-message" aria-live="polite"></p>
-        </form>
-      </div>
-
-      <div id="customerPortal" hidden>
-        <div class="customer-portal-head">
-          <div>
-            <p class="kicker red">Welcome back</p>
-            <h2 id="customerPortalName">Your bookings</h2>
-          </div>
-          <button class="button secondary compact" id="refreshCustomerPortal" type="button">Refresh</button>
-        </div>
-
-        <div class="customer-status-row">
-          <span id="customerHealthBadge" class="customer-health-badge">New</span>
-          <span id="customerEmailLabel"></span>
-        </div>
-
-        <div class="customer-summary-grid">
-          <article><span>Upcoming classes</span><strong id="customerUpcomingCount">0</strong></article>
-          <article><span>Classes attended</span><strong id="customerAttendedCount">0</strong></article>
-          <article><span>Lifetime spend</span><strong id="customerLifetimeSpend">£0.00</strong></article>
-          <article><span>Rewards available</span><strong id="customerRewardsCount">0</strong></article>
-        </div>
-
-        <section class="customer-loyalty-card">
-          <div>
-            <p class="kicker red">Boot Scootin’ Loyalty</p>
-            <h3>Every attended class moves you closer to a free class.</h3>
-            <p id="customerLoyaltyMessage">Your attendance progress will appear here.</p>
-          </div>
-          <div class="loyalty-stamp-row" id="customerLoyaltyStamps" aria-label="Loyalty stamp progress"></div>
-        </section>
-
-        <section class="customer-booking-section">
-          <div class="customer-section-head">
-            <div><p class="kicker red">Your wallet</p><h3>My Rewards</h3></div>
-          </div>
-          <div id="customerRewardsWallet" class="customer-rewards-wallet"></div>
-        </section>
-
-        <section class="customer-booking-section">
-          <div class="customer-section-head">
-            <div><p class="kicker red">Milestones</p><h3>Achievements</h3></div>
-          </div>
-          <div id="customerAchievements" class="customer-achievements-grid"></div>
-        </section>
-
-        <section class="customer-booking-section">
-          <div class="customer-section-head">
-            <div><p class="kicker red">Coming up</p><h3>Upcoming bookings</h3></div>
-          </div>
-          <div id="customerUpcomingBookings"></div>
-        </section>
-
-        <section class="customer-booking-section">
-          <div class="customer-section-head">
-            <div><p class="kicker red">Your history</p><h3>Past and cancelled bookings</h3></div>
-          </div>
-          <div id="customerBookingHistory"></div>
-        </section>
-      </div>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <p>Boot Scootin’ Line Dancing · Birmingham, UK</p>
-    <div class="site-ip-notice">
-      <p><strong>© 2026 Boot Scootin’ Line Dancing. All rights reserved.</strong></p>
-      <p>Boot Scootin’ Line Dancing™ and its original website text, graphics, code, branded designs and distinctive named features are the intellectual property of Boot Scootin’ Line Dancing or their respective creators.</p>
-      <p class="ip-small">™ indicates an unregistered trade mark claim.</p>
-    </div>
-  </footer>
-
-  <script src="script.js?v=102.0.0"></script>
-  <script>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<header class="header">
+<a aria-label="Boot Scootin' home" class="brand" href="index.html">
+<img alt="" height="64" src="favicon.png" width="64"/>
+<span><strong>BOOT SCOOTIN’</strong><small>LINE DANCING</small></span>
+</a>
+<button aria-controls="nav" aria-expanded="false" class="menu" id="menuButton">Menu</button>
+</header>
+<nav aria-hidden="true" class="menu45-overlay" id="nav">
+<div class="menu45-panel" id="menu45">
+<button aria-label="Close menu" class="nav-close" id="navClose" type="button">×</button>
+<a class="menu45-first" href="index.html">Home</a>
+<a class="menu45-first" href="bookings.html">Book a Class</a>
+<a class="menu45-first" href="my-bookings.html">My Bookings</a>
+<a class="menu45-first" href="member-hub.html">Member Hub Preview</a>
+<a class="menu45-first" href="contact.html">Contact</a>
+</div>
+</nav>
+<main class="customer-portal-page" id="main-content">
+<section class="section dark customer-portal-hero">
+<div class="section-title centre reveal">
+<p class="kicker">Your Boot Scootin’ account</p>
+<h1>My Boot Scootin’</h1>
+<p>Your bookings, loyalty progress, rewards and achievements — all together in one secure place.</p>
+</div>
+</section>
+<section class="section paper customer-portal-shell">
+<div class="customer-portal-gate" id="customerPortalGate">
+<p class="kicker red">Secure access</p>
+<h2>Open your personal booking link</h2>
+<p>For privacy, this page only opens through the secure link created when you book. If you have lost your link, enter one of your booking references below and the email address used to book.</p>
+<form class="customer-lookup-form" id="customerLookupForm">
+<label>Booking reference
+            <input autocomplete="off" name="reference" placeholder="BS-260803-ABC123" required=""/>
+</label>
+<label>Email address
+            <input autocomplete="email" name="email" required="" type="email"/>
+</label>
+<button class="button" type="submit">Find My Booking</button>
+<p aria-live="polite" class="form-message" id="customerLookupMessage"></p>
+</form>
+</div>
+<div hidden="" id="customerPortal">
+<div class="customer-portal-head">
+<div>
+<p class="kicker red">Welcome back</p>
+<h2 id="customerPortalName">Your bookings</h2>
+</div>
+<button class="button secondary compact" id="refreshCustomerPortal" type="button">Refresh</button>
+</div>
+<div class="customer-status-row">
+<span class="customer-health-badge" id="customerHealthBadge">New</span>
+<span id="customerEmailLabel"></span>
+</div>
+<div class="customer-summary-grid">
+<article><span>Upcoming classes</span><strong id="customerUpcomingCount">0</strong></article>
+<article><span>Classes attended</span><strong id="customerAttendedCount">0</strong></article>
+<article><span>Lifetime spend</span><strong id="customerLifetimeSpend">£0.00</strong></article>
+<article><span>Rewards available</span><strong id="customerRewardsCount">0</strong></article>
+</div>
+<section class="customer-loyalty-card">
+<div>
+<p class="kicker red">Boot Scootin’ Loyalty</p>
+<h3>Every attended class moves you closer to a free class.</h3>
+<p id="customerLoyaltyMessage">Your attendance progress will appear here.</p>
+</div>
+<div aria-label="Loyalty stamp progress" class="loyalty-stamp-row" id="customerLoyaltyStamps"></div>
+</section>
+<section class="customer-booking-section">
+<div class="customer-section-head">
+<div><p class="kicker red">Your wallet</p><h3>My Rewards</h3></div>
+</div>
+<div class="customer-rewards-wallet" id="customerRewardsWallet"></div>
+</section>
+<section class="customer-booking-section">
+<div class="customer-section-head">
+<div><p class="kicker red">Milestones</p><h3>Achievements</h3></div>
+</div>
+<div class="customer-achievements-grid" id="customerAchievements"></div>
+</section>
+<section class="customer-booking-section">
+<div class="customer-section-head">
+<div><p class="kicker red">Coming up</p><h3>Upcoming bookings</h3></div>
+</div>
+<div id="customerUpcomingBookings"></div>
+</section>
+<section class="customer-booking-section">
+<div class="customer-section-head">
+<div><p class="kicker red">Your history</p><h3>Past and cancelled bookings</h3></div>
+</div>
+<div id="customerBookingHistory"></div>
+</section>
+</div>
+</section>
+</main>
+<footer class="footer">
+<p>Boot Scootin’ Line Dancing · Birmingham, UK</p>
+<div class="site-ip-notice">
+<p><strong>© 2026 Boot Scootin’ Line Dancing. All rights reserved.</strong></p>
+<p>Boot Scootin’ Line Dancing™ and its original website text, graphics, code, branded designs and distinctive named features are the intellectual property of Boot Scootin’ Line Dancing or their respective creators.</p>
+<p class="ip-small">™ indicates an unregistered trade mark claim.</p>
+</div>
+</footer>
+<script src="script.js?v=103.0.0"></script>
+<script>
 (()=>{
   const params=new URLSearchParams(location.search);
   let token=params.get('token')||'';
@@ -241,5 +228,15 @@
   if(token)load();
 })();
 </script>
-</body>
+<svg aria-hidden="true" class="bs-svg-sprite" xmlns="http://www.w3.org/2000/svg">
+<symbol id="bs-icon-hat" viewbox="0 0 120 120"><path d="M29 66c8-3 13-8 17-18 5-14 8-23 15-24 8-1 17 7 21 19 3 8 8 14 15 18"></path><path d="M25 67c17 6 39 7 59 2 9-2 18-1 24 4-8 11-30 18-52 18-19 0-35-6-44-14 3-5 7-8 13-10z"></path><path d="M46 53c10 5 25 6 37 1"></path></symbol>
+<symbol id="bs-icon-calendar" viewbox="0 0 120 120"><rect height="65" rx="8" width="72" x="24" y="31"></rect><path d="M38 23v18M82 23v18M24 50h72"></path><path d="M60 61l5 10 11 1-8 8 2 11-10-5-10 5 2-11-8-8 11-1z"></path></symbol>
+<symbol id="bs-icon-boot-star" viewbox="0 0 120 120"><path d="M42 20h28v34c0 12 3 21 10 28 8 8 17 10 26 10-4 12-18 17-35 17H31c-12 0-21-4-25-10 7-8 14-13 22-16 10-4 14-10 14-19z"></path><path d="M49 22v35M56 25l11 8M56 38l11 8M33 96h50"></path><path d="M96 61l4 8 9 1-7 6 2 9-8-4-8 4 2-9-7-6 9-1z"></path></symbol>
+<symbol id="bs-icon-community" viewbox="0 0 120 120"><circle cx="60" cy="39" r="13"></circle><circle cx="31" cy="48" r="11"></circle><circle cx="89" cy="48" r="11"></circle><path d="M38 96V84c0-15 10-25 22-25s22 10 22 25v12"></path><path d="M9 96V86c0-13 8-22 20-22 6 0 11 2 15 6M111 96V86c0-13-8-22-20-22-6 0-11 2-15 6"></path></symbol>
+<symbol id="bs-icon-guitar" viewbox="0 0 120 120"><path d="M78 20l22 22M72 26l22 22"></path><path d="M70 31l-30 30c-8-4-17-2-23 4-10 10-8 27 3 37 11 10 28 10 38 0 6-6 8-15 4-23l30-30"></path><circle cx="41" cy="79" r="9"></circle><path d="M47 73l31-31"></path></symbol>
+<symbol id="bs-icon-partners" viewbox="0 0 120 120"><circle cx="42" cy="40" r="13"></circle><circle cx="78" cy="40" r="13"></circle><path d="M18 96V82c0-16 10-27 24-27s24 11 24 27v14"></path><path d="M54 70c4-9 12-15 24-15 14 0 24 11 24 27v14"></path></symbol>
+<symbol id="bs-icon-star-outline" viewbox="0 0 120 120"><path d="M60 16l13 27 30 4-22 21 5 30-26-14-26 14 5-30-22-21 30-4z"></path><path d="M60 36l7 15 17 2-12 12 3 17-15-8-15 8 3-17-12-12 17-2z"></path></symbol>
+<symbol id="bs-icon-music" viewbox="0 0 120 120"><path d="M49 29v55M49 40l42-10v50"></path><ellipse cx="35" cy="86" rx="16" ry="11"></ellipse><ellipse cx="77" cy="82" rx="16" ry="11"></ellipse><path d="M49 52l42-10"></path></symbol>
+<symbol id="bs-icon-heart" viewbox="0 0 120 120"><path d="M60 98S20 73 20 43c0-15 11-25 25-25 9 0 16 5 21 13 5-8 12-13 21-13 14 0 25 10 25 25 0 30-40 55-52 55z"></path></symbol>
+</svg></body>
 </html>
