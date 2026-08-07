@@ -113,3 +113,10 @@
   html.desktop-mode .honky-header .honky-book{flex-basis:76px!important;width:76px!important;min-width:76px!important;font-size:6.5px!important}
   html.desktop-mode .desktop-showcase-v27{height:390px!important;min-height:390px!important;max-height:390px!important}
 }
+
+/* v96.4.28 — HERO REMOVAL / CLEAN START
+   The unreliable homepage hero has been removed from index.html entirely.
+   Keep the first real homepage section flush beneath the header on every device. */
+body.home-page main#main-content,
+main#main-content { padding-top: 0 !important; margin-top: 0 !important; }
+main#main-content > .cream-home.intro-grid { margin-top: 0 !important; }
