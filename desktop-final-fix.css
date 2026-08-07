@@ -1,326 +1,248 @@
-/* v96.4.27 — isolated desktop presentation repair.
-   The desktop hero is independent from all legacy .better-hero CSS.
-   Mobile uses the original .better-hero exactly as before. */
+/* Boot Scootin' v96.4.34 — CLEAN DESKTOP HOMEPAGE FIX
+   This file intentionally replaces all accumulated desktop hero/gap patches.
+   Phone layout (<768px) is not changed. */
 
-.desktop-showcase-v27{display:none}
+/* Default: desktop duplicate is hidden, original mobile section remains normal. */
+.desktop-home-start-v32 { display: none; }
 
-/* Mobile safety: the desktop-only helper elements from prior builds must never participate. */
-@media (max-width:767px){
-  .desktop-showcase-v27,.desktop-hero-photo,.desktop-hero-wash{display:none!important}
-  .better-hero{height:auto!important;max-height:none!important}
-}
-
-@media (min-width:768px){
-  html.desktop-mode body{overflow-x:hidden!important}
-  html.desktop-mode main#main-content{margin:0!important;padding:0!important}
-
-  /* A readable one-row MacBook header. */
-  html.desktop-mode .honky-header,
-  html.desktop-mode header.honky-header{
-    box-sizing:border-box!important;
-    width:100%!important;height:72px!important;min-height:72px!important;max-height:72px!important;
-    display:flex!important;flex-wrap:nowrap!important;align-items:center!important;
-    gap:10px!important;padding:0 14px!important;margin:0!important;
-    overflow:hidden!important;background:#050303!important;border-bottom:1px solid #4b171a!important;
-  }
-  html.desktop-mode .honky-header .brand-lockup{
-    flex:0 0 150px!important;width:150px!important;max-width:150px!important;height:58px!important;
-    display:flex!important;align-items:center!important;gap:7px!important;overflow:hidden!important;
-  }
-  html.desktop-mode .honky-header .brand-lockup>img{width:40px!important;height:40px!important;min-width:40px!important;object-fit:contain!important}
-  html.desktop-mode .honky-header .brand-lockup-copy strong{font-size:9.4px!important;white-space:nowrap!important}
-  html.desktop-mode .honky-header .brand-lockup-copy b{font-size:6.6px!important;white-space:nowrap!important}
-  html.desktop-mode .honky-header .brand-lockup-copy small{font-size:5px!important;white-space:nowrap!important}
-  html.desktop-mode .honky-header .honky-desktop-nav{
-    order:2!important;flex:1 1 auto!important;min-width:0!important;width:auto!important;
-    display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-end!important;
-    gap:clamp(7px,.9vw,13px)!important;overflow:visible!important;white-space:nowrap!important;
-  }
-  html.desktop-mode .honky-header .honky-desktop-nav a{
-    flex:0 0 auto!important;font:600 clamp(7.6px,.83vw,9.4px)/1 Oswald,sans-serif!important;
-    letter-spacing:.025em!important;padding:14px 0!important;white-space:nowrap!important;
-  }
-  html.desktop-mode .honky-header .honky-menu-button{
-    order:3!important;position:relative!important;inset:auto!important;
-    flex:0 0 70px!important;width:70px!important;min-width:70px!important;height:36px!important;min-height:36px!important;
-    display:inline-flex!important;align-items:center!important;justify-content:center!important;
-    margin:0!important;padding:0 6px!important;border:1px solid #e22a34!important;background:#110708!important;
-  }
-  html.desktop-mode .honky-header .honky-menu-button span{display:none!important}
-  html.desktop-mode .honky-header .honky-menu-button::before{
-    content:'Explore'!important;font:600 8px/1 Oswald,sans-serif!important;letter-spacing:.06em!important;text-transform:uppercase!important;color:#f5e9df!important;
-  }
-  html.desktop-mode .honky-header .honky-book{
-    order:4!important;position:relative!important;inset:auto!important;
-    flex:0 0 88px!important;width:88px!important;min-width:88px!important;height:36px!important;min-height:36px!important;
-    display:inline-flex!important;align-items:center!important;justify-content:center!important;
-    margin:0!important;padding:0 5px!important;font-size:7.5px!important;letter-spacing:.025em!important;white-space:nowrap!important;
-  }
-
-  /* Completely bypass the legacy hero on desktop. */
-  html.desktop-mode .better-hero{display:none!important}
-  html.desktop-mode .desktop-showcase-v27{
-    box-sizing:border-box!important;display:block!important;position:relative!important;
-    width:100%!important;height:430px!important;min-height:430px!important;max-height:430px!important;
-    margin:0!important;padding:0!important;overflow:hidden!important;background:#080404!important;border-bottom:1px solid #4b1519!important;
-  }
-  html.desktop-mode .desktop-showcase-v27-photo{
-    position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;
-    object-fit:cover!important;object-position:center 48%!important;margin:0!important;padding:0!important;transform:none!important;opacity:1!important;
-  }
-  html.desktop-mode .desktop-showcase-v27-shade{
-    position:absolute!important;inset:0!important;display:block!important;pointer-events:none!important;
-    background:linear-gradient(90deg,rgba(0,0,0,.76) 0%,rgba(0,0,0,.48) 35%,rgba(0,0,0,.10) 70%,rgba(0,0,0,.03) 100%)!important;
-  }
-  html.desktop-mode .desktop-showcase-v27-copy{
-    position:absolute!important;left:clamp(34px,5.2vw,70px)!important;top:50%!important;transform:translateY(-50%)!important;
-    z-index:2!important;width:min(430px,44vw)!important;color:#fff!important;text-align:left!important;
-  }
-  html.desktop-mode .desktop-showcase-v27-copy>p{
-    margin:0 0 8px!important;font:600 9px/1.2 Oswald,sans-serif!important;letter-spacing:.23em!important;text-transform:uppercase!important;color:#ead8cb!important;
-  }
-  html.desktop-mode .desktop-showcase-v27-copy h1{display:grid!important;width:max-content!important;max-width:100%!important;margin:0 0 16px!important;font-family:Rye,serif!important;line-height:.88!important;text-shadow:3px 4px 0 #160708,0 12px 30px #000!important}
-  html.desktop-mode .desktop-showcase-v27-copy h1 span{font-size:40px!important;color:#f7efe4!important}
-  html.desktop-mode .desktop-showcase-v27-copy h1 small{font:400 18px/1 Yellowtail,cursive!important;text-align:center!important;color:#fff!important;margin:2px 0!important}
-  html.desktop-mode .desktop-showcase-v27-copy h1 em{font-style:normal!important;font-size:48px!important;color:#e31c27!important}
-  html.desktop-mode .desktop-showcase-v27-actions{display:flex!important;gap:9px!important}
-  html.desktop-mode .desktop-showcase-v27-actions a{
-    min-height:36px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
-    padding:0 13px!important;text-decoration:none!important;text-transform:uppercase!important;font:700 8.5px/1 Oswald,sans-serif!important;letter-spacing:.07em!important;
-    color:#fff!important;border:1px solid #eadfd8!important;background:rgba(0,0,0,.36)!important;
-  }
-  html.desktop-mode .desktop-showcase-v27-actions a:first-child{background:#d81c25!important;border-color:#d81c25!important}
-
-  /* Keep the restored entry boot fully visible. */
-  html.desktop-mode .poster-intro.boot-entry .entry-boot{
-    box-sizing:border-box!important;left:50%!important;top:21%!important;width:420px!important;height:420px!important;
-    max-width:46vw!important;max-height:49vh!important;transform:translateX(-50%)!important;overflow:visible!important;background:none!important;border:0!important;
-  }
-  html.desktop-mode .poster-intro.boot-entry .entry-boot-photo{
-    display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;
-    clip-path:none!important;transform:scale(.95)!important;transform-origin:center!important;
-  }
-}
-
-@media (min-width:768px) and (max-width:930px){
-  html.desktop-mode .honky-header{gap:6px!important;padding:0 8px!important}
-  html.desktop-mode .honky-header .brand-lockup{flex-basis:126px!important;width:126px!important;max-width:126px!important}
-  html.desktop-mode .honky-header .brand-lockup>img{width:34px!important;height:34px!important;min-width:34px!important}
-  html.desktop-mode .honky-header .brand-lockup-copy strong{font-size:8px!important}
-  html.desktop-mode .honky-header .honky-desktop-nav{gap:5px!important}
-  html.desktop-mode .honky-header .honky-desktop-nav a{font-size:7px!important;letter-spacing:0!important}
-  html.desktop-mode .honky-header .honky-menu-button{flex-basis:60px!important;width:60px!important;min-width:60px!important}
-  html.desktop-mode .honky-header .honky-book{flex-basis:76px!important;width:76px!important;min-width:76px!important;font-size:6.5px!important}
-  html.desktop-mode .desktop-showcase-v27{height:390px!important;min-height:390px!important;max-height:390px!important}
-}
-
-/* v96.4.28 — HERO REMOVAL / CLEAN START
-   The unreliable homepage hero has been removed from index.html entirely.
-   Keep the first real homepage section flush beneath the header on every device. */
-body.home-page main#main-content,
-main#main-content { padding-top: 0 !important; margin-top: 0 !important; }
-main#main-content > .cream-home.intro-grid { margin-top: 0 !important; }
-
-/* v96.4.30 — DESKTOP BLACK-GAP ELIMINATION
-   The homepage hero is gone. On desktop, force the first real content section
-   into normal document flow with natural height and no inherited hero geometry. */
-@media (min-width: 951px) {
-  html.desktop-mode body.honky-home,
-  html.desktop-mode body.honky-home main#main-content {
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    margin:0!important;
-    padding:0!important;
-  }
-
-  html.desktop-mode body.honky-home main#main-content::before,
-  html.desktop-mode body.honky-home main#main-content::after {
-    content:none!important;
-    display:none!important;
-  }
-
-  html.desktop-mode body.honky-home main#main-content > section:first-child,
-  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid {
-    display:grid!important;
-    grid-template-columns:minmax(220px,.72fr) minmax(200px,.62fr) minmax(390px,1.5fr)!important;
-    gap:22px!important;
-    width:100%!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    margin:0!important;
-    padding:30px clamp(22px,3.5vw,48px)!important;
-    align-items:start!important;
-    align-content:start!important;
-    justify-items:stretch!important;
-    position:relative!important;
-    inset:auto!important;
-    top:auto!important;
-    right:auto!important;
-    bottom:auto!important;
-    left:auto!important;
-    transform:none!important;
-    overflow:hidden!important;
-  }
-
-  html.desktop-mode body.honky-home main#main-content > .intro-grid > * {
-    position:relative!important;
-    inset:auto!important;
-    top:auto!important;
-    right:auto!important;
-    bottom:auto!important;
-    left:auto!important;
-    margin-top:0!important;
-    transform:none!important;
-    align-self:start!important;
-  }
-
-  html.desktop-mode body.honky-home .nora-polaroid {
-    width:100%!important;
-    max-width:260px!important;
-    margin:0 auto!important;
-  }
-
-  html.desktop-mode body.honky-home .upcoming-home {
-    grid-column:auto!important;
-    width:100%!important;
-    margin:0!important;
-  }
-}
-
-/* v96.4.30 — MACBOOK BLACK GAP FIX
-   Important: the previous gap fix started at 951px, but Safari on this MacBook
-   is reporting a CSS viewport below that. Apply the compact homepage layout to
-   every real desktop-mode viewport from 768px upward. Mobile is untouched. */
-@media (min-width:768px) {
-  html.desktop-mode body.honky-home main#main-content {
-    display:block!important;
-    width:100%!important;
-    height:auto!important;
-    min-height:0!important;
-    max-height:none!important;
-    margin:0!important;
-    padding:0!important;
-  }
-
-  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid {
-    box-sizing:border-box!important;
-    display:grid!important;
-    grid-template-columns:minmax(190px,.75fr) minmax(180px,.62fr) minmax(340px,1.45fr)!important;
-    grid-template-rows:max-content!important;
-    grid-auto-rows:max-content!important;
-    gap:18px!important;
-    align-items:start!important;
-    align-content:start!important;
-    justify-content:stretch!important;
-    justify-items:stretch!important;
-    width:100%!important;
-    height:max-content!important;
-    min-height:0!important;
-    max-height:none!important;
-    margin:0!important;
-    padding:24px clamp(18px,3vw,40px)!important;
-    position:static!important;
-    inset:auto!important;
-    transform:none!important;
-    overflow:hidden!important;
-  }
-
-  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid::before {
-    top:14px!important;
-  }
-
-  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid > .meet-copy,
-  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid > .nora-polaroid,
-  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid > .upcoming-home {
-    position:static!important;
-    inset:auto!important;
-    top:auto!important;
-    right:auto!important;
-    bottom:auto!important;
-    left:auto!important;
-    margin-top:0!important;
-    margin-bottom:0!important;
-    padding-top:0!important;
-    transform:none!important;
-    align-self:start!important;
-  }
-
-  html.desktop-mode body.honky-home .nora-polaroid {
-    width:100%!important;
-    max-width:240px!important;
-    margin-inline:auto!important;
-  }
-  html.desktop-mode body.honky-home .upcoming-home {
-    grid-column:auto!important;
-    width:100%!important;
-  }
-}
-
-@media (min-width:768px) and (max-width:950px) {
-  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid {
-    grid-template-columns:minmax(170px,.72fr) minmax(160px,.58fr) minmax(300px,1.35fr)!important;
-    padding:20px 16px!important;
-    gap:14px!important;
-  }
-  html.desktop-mode body.honky-home .section-label{font-size:19px!important;margin-bottom:12px!important}
-  html.desktop-mode body.honky-home .meet-copy h2{font-size:30px!important}
-  html.desktop-mode body.honky-home .meet-copy p{font-size:12px!important;line-height:1.45!important}
-  html.desktop-mode body.honky-home .nora-polaroid{max-width:205px!important}
-  html.desktop-mode body.honky-home .home-class-card>img{height:110px!important}
-  html.desktop-mode body.honky-home .home-class-card>div{padding:10px!important}
-  html.desktop-mode body.honky-home .home-class-card h3{font-size:14px!important}
-  html.desktop-mode body.honky-home .home-class-card p{font-size:11px!important}
-}
-\n\n/* v96.4.32 — DEFINITIVE DESKTOP GAP REMOVAL\n   Do not style the legacy first homepage section on desktop at all. A clean duplicate\n   is placed directly after the navigation, outside <main>, so accumulated legacy hero\n   rules cannot reserve vertical space. Mobile continues to use the original section. */\n.desktop-home-start-v32{display:none}\n@media (min-width:768px){\n  html.desktop-mode .desktop-home-start-v32{\n    box-sizing:border-box!important;\n    display:grid!important;\n    grid-template-columns:minmax(190px,.76fr) minmax(180px,.62fr) minmax(340px,1.45fr)!important;\n    gap:18px!important;\n    align-items:start!important;\n    width:100%!important;\n    height:auto!important;\n    min-height:0!important;\n    margin:0!important;\n    padding:24px clamp(18px,3vw,40px)!important;\n    position:relative!important;\n    background:#090505!important;\n    color:#f5ece6!important;\n    border-top:0!important;\n    border-bottom:1px solid #421519!important;\n  }\n  html.desktop-mode .desktop-home-start-v32::before{\n    content:'BROADWAY NIGHTS';position:absolute;right:3%;top:14px;\n    padding:7px 11px;border:1px solid #ff2632;border-radius:5px;color:#ff404a;\n    font:600 10px/1 Oswald,sans-serif;letter-spacing:.16em;opacity:.82\n  }\n  html.desktop-mode .desktop-home-start-v32 .section-label{font-size:19px!important;margin:0 0 12px!important;color:#fff!important}\n  html.desktop-mode .desktop-meet-v32 h2{font:400 30px/1 Yellowtail,cursive!important;color:#e42832!important;margin:0 0 10px!important}\n  html.desktop-mode .desktop-meet-v32>p:not(.section-label):not(.handwritten){font-size:12px!important;line-height:1.5!important;color:#cbbab0!important;margin:0 0 10px!important}\n  html.desktop-mode .desktop-meet-v32 .handwritten{font-size:20px!important;color:#df2730!important;margin:8px 0 12px!important}\n  html.desktop-mode .desktop-meet-v32 .paper-link{font-size:9px!important;padding:8px 11px!important;color:#ff5b63!important;border-color:#b92730!important}\n  html.desktop-mode .desktop-nora-v32{width:100%!important;max-width:205px!important;margin:0 auto!important;padding:8px 8px 16px!important;background:#100909!important;border:1px solid #5d2529!important;transform:none!important}\n  html.desktop-mode .desktop-nora-v32 img{display:block!important;width:100%!important;aspect-ratio:4/5!important;object-fit:cover!important;object-position:50% 43%!important}\n  html.desktop-mode .desktop-upcoming-v32{width:100%!important;min-width:0!important}\n  html.desktop-mode .desktop-upcoming-v32 .home-title-row{margin:0 0 10px!important}\n  html.desktop-mode .desktop-upcoming-v32 .class-card-grid{grid-template-columns:1fr 1fr!important;gap:12px!important}\n  html.desktop-mode .desktop-upcoming-v32 .home-class-card>img{height:105px!important}\n  html.desktop-mode .desktop-upcoming-v32 .home-class-card>div{padding:10px!important}\n  html.desktop-mode .desktop-upcoming-v32 .home-class-card h3{font-size:14px!important}\n  html.desktop-mode .desktop-upcoming-v32 .home-class-card p{font-size:11px!important}\n\n  /* Remove the old first section completely on desktop. It cannot create height. */\n  html.desktop-mode body.honky-home main#main-content>.cream-home.intro-grid{display:none!important;height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;border:0!important}\n  html.desktop-mode body.honky-home main#main-content>.cream-home.intro-grid::before,\n  html.desktop-mode body.honky-home main#main-content>.cream-home.intro-grid::after{display:none!important;content:none!important}\n  html.desktop-mode body.honky-home main#main-content{display:block!important;margin:0!important;padding:0!important;height:auto!important;min-height:0!important}\n}\n@media (min-width:768px) and (max-width:950px){\n  html.desktop-mode .desktop-home-start-v32{grid-template-columns:minmax(165px,.72fr) minmax(150px,.56fr) minmax(285px,1.32fr)!important;gap:12px!important;padding:18px 14px!important}\n  html.desktop-mode .desktop-nora-v32{max-width:175px!important}\n  html.desktop-mode .desktop-home-start-v32 .section-label{font-size:17px!important}\n}\n@media (max-width:767px){\n  .desktop-home-start-v32{display:none!important}\n}\n
-/* v96.4.33 — MACBOOK DESKTOP GAP HARD OVERRIDE
-   The homepage intro block is pinned immediately under the desktop header.
-   This bypasses every inherited/min-height/grid rule that was reserving black space.
-   Mobile (<768px) is deliberately untouched. */
-@media (min-width:768px) {
-  html.desktop-mode body.honky-home {
-    position: relative !important;
-  }
-  html.desktop-mode body.honky-home > .desktop-home-start-v32 {
-    display: grid !important;
-    position: absolute !important;
-    top: 82px !important;
-    left: 0 !important;
-    right: 0 !important;
-    z-index: 5 !important;
-    width: 100% !important;
-    height: 248px !important;
-    min-height: 0 !important;
-    max-height: 248px !important;
+@media (min-width: 768px) {
+  /* Keep desktop page in ordinary document flow. */
+  body.honky-home {
     margin: 0 !important;
-    padding: 18px 24px !important;
-    overflow: hidden !important;
-    align-content: start !important;
-    align-items: start !important;
-    grid-auto-rows: max-content !important;
-  }
-  html.desktop-mode body.honky-home > .desktop-home-start-v32 > * {
-    align-self: start !important;
-    margin-top: 0 !important;
-  }
-  html.desktop-mode body.honky-home main#main-content {
-    margin: 248px 0 0 !important;
     padding: 0 !important;
     min-height: 0 !important;
+    height: auto !important;
   }
-  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid {
+
+  /* Desktop header: compact, single row, nothing wraps underneath. */
+  body.honky-home > .honky-header {
+    position: relative !important;
+    inset: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    height: 70px !important;
+    min-height: 70px !important;
+    max-height: 70px !important;
+    margin: 0 !important;
+    padding: 5px 12px !important;
+    gap: 8px !important;
+    overflow: hidden !important;
+  }
+  body.honky-home > .honky-header .brand-lockup {
+    flex: 0 0 160px !important;
+    width: 160px !important;
+    max-width: 160px !important;
+    height: 56px !important;
+    margin: 0 !important;
+  }
+  body.honky-home > .honky-header .brand-lockup > img {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    object-fit: contain !important;
+  }
+  body.honky-home > .honky-header .honky-desktop-nav {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: clamp(6px, .85vw, 12px) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
+  body.honky-home > .honky-header .honky-desktop-nav a {
+    flex: 0 0 auto !important;
+    font-size: 8px !important;
+    letter-spacing: .03em !important;
+    padding: 14px 0 !important;
+  }
+  body.honky-home > .honky-header .honky-menu-button {
+    display: inline-flex !important;
+    flex: 0 0 68px !important;
+    width: 68px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    inset: auto !important;
+    margin: 0 !important;
+    padding: 0 6px !important;
+    border: 1px solid #713036 !important;
+    background: #100707 !important;
+  }
+  body.honky-home > .honky-header .honky-menu-button span { display: none !important; }
+  body.honky-home > .honky-header .honky-menu-button::before {
+    content: 'Explore' !important;
+    font: 600 8px/1 Oswald, sans-serif !important;
+    letter-spacing: .06em !important;
+    text-transform: uppercase !important;
+  }
+  body.honky-home > .honky-header .honky-book {
+    display: inline-flex !important;
+    flex: 0 0 92px !important;
+    width: 92px !important;
+    min-width: 92px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    inset: auto !important;
+    margin: 0 !important;
+    padding: 0 6px !important;
+    font-size: 7.5px !important;
+    white-space: nowrap !important;
+  }
+
+  /* The desktop homepage starts HERE, directly after the header. No hero, no spacer. */
+  body.honky-home > .desktop-home-start-v32 {
+    box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: minmax(190px,.72fr) minmax(170px,.58fr) minmax(340px,1.35fr) !important;
+    grid-auto-rows: max-content !important;
+    align-items: start !important;
+    align-content: start !important;
+    gap: 18px !important;
+    position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 24px clamp(18px,3vw,40px) 26px !important;
+    overflow: visible !important;
+    background: #090505 !important;
+    color: #f5ece6 !important;
+    border-top: 1px solid #3d1417 !important;
+    border-bottom: 1px solid #3d1417 !important;
+  }
+  body.honky-home > .desktop-home-start-v32::before,
+  body.honky-home > .desktop-home-start-v32::after {
+    content: none !important;
     display: none !important;
   }
+  body.honky-home > .desktop-home-start-v32 > * {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    margin-top: 0 !important;
+    align-self: start !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .section-label {
+    margin: 0 0 10px !important;
+    font-size: 18px !important;
+    color: #fff !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .desktop-meet-v32 h2 {
+    margin: 0 0 10px !important;
+    font: 400 30px/1 Yellowtail, cursive !important;
+    color: #ef313b !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .desktop-meet-v32 > p:not(.section-label):not(.handwritten) {
+    margin: 0 0 9px !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+    color: #cbbab0 !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .handwritten {
+    margin: 7px 0 11px !important;
+    font-size: 19px !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .desktop-nora-v32 {
+    width: 100% !important;
+    max-width: 190px !important;
+    margin: 0 auto !important;
+    padding: 7px 7px 14px !important;
+    background: #110909 !important;
+    border: 1px solid #5d2529 !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .desktop-nora-v32 img {
+    display: block !important;
+    width: 100% !important;
+    height: 205px !important;
+    aspect-ratio: auto !important;
+    object-fit: cover !important;
+    object-position: 50% 40% !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .desktop-upcoming-v32 {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .home-title-row { margin: 0 0 9px !important; }
+  body.honky-home > .desktop-home-start-v32 .class-card-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  body.honky-home > .desktop-home-start-v32 .home-class-card > img { height: 95px !important; }
+  body.honky-home > .desktop-home-start-v32 .home-class-card > div { padding: 9px !important; }
+  body.honky-home > .desktop-home-start-v32 .home-class-card h3 { font-size: 13px !important; }
+  body.honky-home > .desktop-home-start-v32 .home-class-card p { font-size: 10px !important; }
+
+  /* Hide the old duplicated intro section on desktop and remove ALL possible space from it. */
+  body.honky-home > main#main-content {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+  }
+  body.honky-home > main#main-content > .cream-home.intro-grid {
+    display: none !important;
+    position: static !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+  }
+  body.honky-home > main#main-content > .cream-home.intro-grid::before,
+  body.honky-home > main#main-content > .cream-home.intro-grid::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* No accidental viewport-height spacers anywhere before the next section. */
+  body.honky-home > .honky-header + .desktop-home-start-v32 { margin-top: 0 !important; }
+  body.honky-home > .desktop-home-start-v32 + main#main-content { margin-top: 0 !important; }
 }
-@media (min-width:768px) and (max-width:950px) {
-  html.desktop-mode body.honky-home > .desktop-home-start-v32 {
-    top: 82px !important;
-    height: 232px !important;
-    max-height: 232px !important;
-    padding: 14px 16px !important;
+
+@media (min-width: 768px) and (max-width: 950px) {
+  body.honky-home > .honky-header { padding-left: 7px !important; padding-right: 7px !important; gap: 5px !important; }
+  body.honky-home > .honky-header .brand-lockup { flex-basis: 135px !important; width: 135px !important; max-width: 135px !important; }
+  body.honky-home > .honky-header .brand-lockup > img { width: 36px !important; height: 36px !important; min-width: 36px !important; }
+  body.honky-home > .honky-header .brand-lockup-copy strong { font-size: 9px !important; }
+  body.honky-home > .honky-header .honky-desktop-nav { gap: 5px !important; }
+  body.honky-home > .honky-header .honky-desktop-nav a { font-size: 6.8px !important; letter-spacing: 0 !important; }
+  body.honky-home > .honky-header .honky-menu-button { flex-basis: 60px !important; width: 60px !important; }
+  body.honky-home > .honky-header .honky-book { flex-basis: 76px !important; width: 76px !important; min-width: 76px !important; font-size: 6.4px !important; }
+  body.honky-home > .desktop-home-start-v32 {
+    grid-template-columns: minmax(160px,.7fr) minmax(145px,.55fr) minmax(285px,1.28fr) !important;
+    gap: 12px !important;
+    padding: 18px 14px 20px !important;
   }
-  html.desktop-mode body.honky-home main#main-content {
-    margin-top: 232px !important;
-  }
+  body.honky-home > .desktop-home-start-v32 .desktop-nora-v32 { max-width: 165px !important; }
+  body.honky-home > .desktop-home-start-v32 .desktop-nora-v32 img { height: 175px !important; }
+}
+
+@media (max-width: 767px) {
+  /* Explicitly preserve the working phone layout. */
+  .desktop-home-start-v32 { display: none !important; }
 }
