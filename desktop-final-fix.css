@@ -1,0 +1,120 @@
+/* v96.4.24 — FINAL MACBOOK PRESENTATION FIX
+   Desktop-only overrides. Mobile/tablet touch layout remains unchanged. */
+@media (min-width:768px){
+  html.desktop-mode .honky-header,
+  html.desktop-mode header.honky-header{
+    box-sizing:border-box!important;
+    width:100%!important;
+    height:72px!important;
+    min-height:72px!important;
+    max-height:72px!important;
+    display:grid!important;
+    grid-template-columns:164px minmax(0,1fr) 72px 104px!important;
+    grid-template-rows:72px!important;
+    align-items:center!important;
+    column-gap:7px!important;
+    row-gap:0!important;
+    padding:0 10px!important;
+    margin:0!important;
+    overflow:hidden!important;
+    background:#050303!important;
+  }
+  html.desktop-mode .honky-header .brand-lockup{
+    grid-column:1!important;grid-row:1!important;
+    width:164px!important;max-width:164px!important;height:60px!important;
+  }
+  html.desktop-mode .honky-header .brand-lockup>img{
+    width:42px!important;height:42px!important;min-width:42px!important;max-width:42px!important;
+  }
+  html.desktop-mode .honky-header .brand-lockup-copy strong{font-size:10px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy b{font-size:6.8px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy small{font-size:5.2px!important}
+
+  html.desktop-mode .honky-header .honky-desktop-nav{
+    grid-column:2!important;grid-row:1!important;
+    display:flex!important;align-items:center!important;justify-content:flex-end!important;
+    min-width:0!important;width:100%!important;gap:clamp(6px,.75vw,10px)!important;
+    white-space:nowrap!important;overflow:hidden!important;
+  }
+  html.desktop-mode .honky-header .honky-desktop-nav a{
+    flex:0 0 auto!important;font-size:8px!important;letter-spacing:.035em!important;
+    padding:13px 0!important;white-space:nowrap!important;
+  }
+
+  /* Explicit row placement prevents CSS grid auto-placement from dropping Explore onto row two. */
+  html.desktop-mode .honky-header .honky-menu-button{
+    grid-column:3!important;grid-row:1!important;
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    position:relative!important;inset:auto!important;
+    width:72px!important;min-width:72px!important;height:38px!important;min-height:38px!important;
+    margin:0!important;padding:0 6px!important;
+    border:1px solid #6e3437!important;background:#100707!important;color:#f3e7dc!important;
+  }
+  html.desktop-mode .honky-header .honky-menu-button span{display:none!important}
+  html.desktop-mode .honky-header .honky-menu-button::before{
+    content:'Explore'!important;font:600 8px/1 Oswald,sans-serif!important;letter-spacing:.07em!important;text-transform:uppercase!important;color:#f3e7dc!important;
+  }
+  html.desktop-mode .honky-header .honky-menu-button .sr-only{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important}
+  html.desktop-mode .honky-header .honky-book{
+    grid-column:4!important;grid-row:1!important;
+    display:inline-flex!important;align-items:center!important;justify-content:center!important;
+    position:relative!important;inset:auto!important;
+    width:104px!important;min-width:104px!important;height:38px!important;min-height:38px!important;
+    margin:0!important;padding:0 6px!important;font-size:7.8px!important;letter-spacing:.05em!important;white-space:nowrap!important;
+  }
+
+  /* Kill the legacy dark overlays that were visually creating the giant black 'gap'. */
+  html.desktop-mode main#main-content{margin:0!important;padding:0!important;display:block!important}
+  html.desktop-mode .better-hero{
+    position:relative!important;
+    width:100%!important;height:390px!important;min-height:390px!important;max-height:390px!important;
+    margin:0!important;padding:0!important;
+    display:flex!important;align-items:center!important;justify-content:flex-start!important;
+    background-image:linear-gradient(90deg,rgba(0,0,0,.67) 0%,rgba(0,0,0,.43) 36%,rgba(0,0,0,.05) 74%),url('summer-stomp-floor-1.webp')!important;
+    background-size:cover!important;background-position:center center!important;background-repeat:no-repeat!important;
+    overflow:hidden!important;
+  }
+  html.desktop-mode .better-hero::before,
+  html.desktop-mode .better-hero::after,
+  html.desktop-mode .better-hero .hero-shade{display:none!important;content:none!important;background:none!important;opacity:0!important}
+  html.desktop-mode .better-hero-copy{
+    position:relative!important;inset:auto!important;transform:none!important;
+    width:min(470px,45vw)!important;margin:0 0 0 clamp(26px,4vw,52px)!important;padding:0!important;
+    opacity:1!important;visibility:visible!important;z-index:2!important;
+  }
+  html.desktop-mode .better-hero .hero-small{font-size:9px!important;margin:0 0 6px!important}
+  html.desktop-mode .better-hero h1{margin:0 0 9px!important;line-height:.88!important}
+  html.desktop-mode .better-hero h1 span{font-size:38px!important}
+  html.desktop-mode .better-hero h1 small{font-size:18px!important}
+  html.desktop-mode .better-hero h1 em{font-size:44px!important}
+  html.desktop-mode .better-hero .hero-lead{font-size:12px!important;line-height:1.4!important;margin:0 0 11px!important}
+  html.desktop-mode .better-hero .hero-actions{gap:8px!important;margin:0!important}
+  html.desktop-mode .better-hero .primary-cta,
+  html.desktop-mode .better-hero .secondary-cta{min-height:36px!important;padding:0 12px!important;font-size:9px!important}
+
+  /* Keep the restored raster boot entirely visible, with extra breathing room around the toe and heel. */
+  html.desktop-mode .poster-intro.boot-entry .entry-boot{
+    box-sizing:border-box!important;left:50%!important;top:21%!important;
+    width:440px!important;height:430px!important;max-width:48vw!important;max-height:50vh!important;
+    transform:translateX(-50%)!important;overflow:visible!important;border:0!important;background:none!important;
+  }
+  html.desktop-mode .poster-intro.boot-entry .entry-boot-photo{
+    display:block!important;width:100%!important;height:100%!important;object-fit:contain!important;
+    object-position:50% 50%!important;clip-path:none!important;transform:scale(.96)!important;transform-origin:center!important;
+  }
+}
+
+@media (min-width:768px) and (max-width:980px){
+  html.desktop-mode .honky-header,
+  html.desktop-mode header.honky-header{
+    grid-template-columns:138px minmax(0,1fr) 62px 88px!important;
+    column-gap:4px!important;padding:0 6px!important;
+  }
+  html.desktop-mode .honky-header .brand-lockup{width:138px!important;max-width:138px!important}
+  html.desktop-mode .honky-header .brand-lockup>img{width:36px!important;height:36px!important;min-width:36px!important;max-width:36px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy strong{font-size:8.8px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav{gap:5px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav a{font-size:7.1px!important;letter-spacing:.015em!important}
+  html.desktop-mode .honky-header .honky-menu-button{width:62px!important;min-width:62px!important}
+  html.desktop-mode .honky-header .honky-book{width:88px!important;min-width:88px!important;font-size:7px!important}
+}

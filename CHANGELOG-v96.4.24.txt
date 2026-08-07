@@ -1,0 +1,7 @@
+v96.4.24
+- Fixed desktop Explore button dropping to a second row
+- Kept Book a Class and all primary navigation on one row
+- Removed legacy hero overlays causing the large black desktop gap
+- Preserved full homepage hero image directly beneath header
+- Added extra boot image breathing room so toe and heel remain visible
+- Mobile styling unchanged
