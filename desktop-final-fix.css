@@ -118,3 +118,56 @@
   html.desktop-mode .honky-header .honky-menu-button{width:62px!important;min-width:62px!important}
   html.desktop-mode .honky-header .honky-book{width:88px!important;min-width:88px!important;font-size:7px!important}
 }
+
+/* v96.4.25 — deterministic MacBook repair: real hero image layer + single-row header */
+@media (min-width:768px){
+  html.desktop-mode .honky-header,html.desktop-mode header.honky-header{
+    display:flex!important;flex-wrap:nowrap!important;align-items:center!important;
+    height:68px!important;min-height:68px!important;max-height:68px!important;
+    padding:0 8px!important;gap:6px!important;overflow:visible!important;
+  }
+  html.desktop-mode .honky-header .brand-lockup{
+    flex:0 0 132px!important;width:132px!important;max-width:132px!important;height:56px!important;
+  }
+  html.desktop-mode .honky-header .brand-lockup>img{width:36px!important;height:36px!important;min-width:36px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy strong{font-size:8.6px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy b{font-size:6.2px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy small{font-size:4.8px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav{
+    flex:1 1 auto!important;width:auto!important;min-width:0!important;display:flex!important;
+    justify-content:flex-end!important;gap:clamp(4px,.55vw,8px)!important;overflow:visible!important;
+  }
+  html.desktop-mode .honky-header .honky-desktop-nav a{font-size:7.4px!important;letter-spacing:0!important;padding:12px 0!important}
+  html.desktop-mode .honky-header .honky-menu-button{
+    flex:0 0 62px!important;width:62px!important;min-width:62px!important;height:34px!important;min-height:34px!important;
+  }
+  html.desktop-mode .honky-header .honky-book{
+    flex:0 0 82px!important;width:82px!important;min-width:82px!important;height:34px!important;min-height:34px!important;
+    font-size:6.8px!important;letter-spacing:.02em!important;padding:0 3px!important;
+  }
+
+  /* The hero now uses a physical IMG instead of a CSS background, so no browser can render a black void above it. */
+  html.desktop-mode .better-hero{
+    position:relative!important;height:390px!important;min-height:390px!important;max-height:390px!important;
+    background:#050303!important;overflow:hidden!important;isolation:isolate!important;
+  }
+  html.desktop-mode .better-hero>.desktop-hero-photo{
+    display:block!important;position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+    object-fit:cover!important;object-position:50% 50%!important;margin:0!important;padding:0!important;
+    opacity:1!important;visibility:visible!important;transform:none!important;z-index:0!important;
+  }
+  html.desktop-mode .better-hero>.desktop-hero-wash{
+    display:block!important;position:absolute!important;inset:0!important;z-index:1!important;pointer-events:none!important;
+    background:linear-gradient(90deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,.45) 35%,rgba(0,0,0,.05) 72%)!important;
+  }
+  html.desktop-mode .better-hero-copy{z-index:2!important}
+  html.desktop-mode .better-hero::before,html.desktop-mode .better-hero::after,html.desktop-mode .better-hero .hero-shade{display:none!important}
+}
+@media (min-width:768px) and (max-width:900px){
+  html.desktop-mode .honky-header .brand-lockup{flex-basis:112px!important;width:112px!important;max-width:112px!important}
+  html.desktop-mode .honky-header .brand-lockup-copy strong{font-size:7.6px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav{gap:3px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav a{font-size:6.6px!important}
+  html.desktop-mode .honky-header .honky-menu-button{flex-basis:54px!important;width:54px!important;min-width:54px!important}
+  html.desktop-mode .honky-header .honky-book{flex-basis:72px!important;width:72px!important;min-width:72px!important;font-size:6.1px!important}
+}
