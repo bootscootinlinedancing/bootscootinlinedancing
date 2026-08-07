@@ -305,3 +305,54 @@ installGuide?.addEventListener("click", event => {
     setMenuOpen(false);
   });
 })();
+
+
+/* v96.4.31 — MACBOOK GAP STRUCTURAL BYPASS
+   Do not depend on Safari viewport breakpoints. On a detected desktop OS,
+   remove the main wrapper from the CSS box tree and force the first homepage
+   section to natural height immediately after the header. Mobile is untouched. */
+(() => {
+  const applyDesktopHomeGapFix = () => {
+    if (!document.documentElement.classList.contains('desktop-mode')) return;
+    const body = document.body;
+    if (!body || !body.classList.contains('honky-home')) return;
+    const main = document.getElementById('main-content');
+    const first = main?.querySelector(':scope > .cream-home.intro-grid');
+    if (!main || !first) return;
+
+    // Eliminate any legacy height/min-height/padding/positioning on the wrapper.
+    main.style.setProperty('display', 'contents', 'important');
+    main.style.setProperty('height', 'auto', 'important');
+    main.style.setProperty('min-height', '0', 'important');
+    main.style.setProperty('max-height', 'none', 'important');
+    main.style.setProperty('margin', '0', 'important');
+    main.style.setProperty('padding', '0', 'important');
+
+    // The first visible homepage block must begin directly after the header.
+    first.style.setProperty('display', 'grid', 'important');
+    first.style.setProperty('height', 'auto', 'important');
+    first.style.setProperty('min-height', '0', 'important');
+    first.style.setProperty('max-height', 'none', 'important');
+    first.style.setProperty('margin', '0', 'important');
+    first.style.setProperty('padding-top', '24px', 'important');
+    first.style.setProperty('padding-bottom', '24px', 'important');
+    first.style.setProperty('align-items', 'start', 'important');
+    first.style.setProperty('align-content', 'start', 'important');
+    first.style.setProperty('position', 'relative', 'important');
+    first.style.setProperty('top', 'auto', 'important');
+    first.style.setProperty('transform', 'none', 'important');
+
+    for (const child of first.children) {
+      child.style.setProperty('margin-top', '0', 'important');
+      child.style.setProperty('align-self', 'start', 'important');
+      child.style.setProperty('transform', 'none', 'important');
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyDesktopHomeGapFix, {once:true});
+  } else {
+    applyDesktopHomeGapFix();
+  }
+  window.addEventListener('pageshow', applyDesktopHomeGapFix);
+})();
