@@ -567,3 +567,13 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Added a neon closing statement and simplified footer.
 - Rebuilt mobile navigation as contained drill-down sections: only the selected section remains visible until the user goes back.
 - Preserved the original Boot Scootin’ silhouette logo throughout.
+
+
+## v96.4.4 — New Here + Compact Footer + Readability Polish
+- Restored a dedicated New Here menu with Meet Nora, Boot Scootin’ story, line dancing explainer and first-class advice.
+- Added first-class advice content and social/member signposts.
+- Compacted the homepage footer and legal links for mobile presentation.
+- Removed the public Community footer shortcut; member access remains labelled private.
+- Added a dark-theme/contrast pass to public paper sections and booking cards.
+- Improved visibility of class notes such as “No partner needed”.
+- Tightened customer portal header behaviour on small screens.

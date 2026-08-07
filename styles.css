@@ -6833,3 +6833,37 @@ main section:not(.dark):not(.better-hero):not(.booking-hero):not(.about-hero):no
 /* What is line dancing section */
 .what-is-line-dancing{background:radial-gradient(circle at 85% 20%,rgba(210,25,35,.11),transparent 28%),repeating-linear-gradient(0deg,#080505 0 31px,#100707 32px 33px)!important}
 .what-is-line-dancing .story-panel{background:#140a0b!important;border:1px solid #5b2428!important}
+
+
+/* v96.4.4 — public dark palette and contrast pass */
+body:not(.ranch-body):not(.admin-login-body) .section.paper{background:radial-gradient(circle at 88% 8%,rgba(196,24,34,.075),transparent 28%),repeating-linear-gradient(0deg,#080505 0 31px,#100707 32px 33px)!important;color:#f4e9e2!important}
+body:not(.ranch-body):not(.admin-login-body) .section.paper h1,
+body:not(.ranch-body):not(.admin-login-body) .section.paper h2,
+body:not(.ranch-body):not(.admin-login-body) .section.paper h3,
+body:not(.ranch-body):not(.admin-login-body) .section.paper h4{color:#fff!important}
+body:not(.ranch-body):not(.admin-login-body) .section.paper p,
+body:not(.ranch-body):not(.admin-login-body) .section.paper li{color:#d6c6bd!important}
+body:not(.ranch-body):not(.admin-login-body) .section.paper article,
+body:not(.ranch-body):not(.admin-login-body) .section.paper .card,
+body:not(.ranch-body):not(.admin-login-body) .section.paper .story-panel,
+body:not(.ranch-body):not(.admin-login-body) .section.paper .copy{border-color:#5e2529!important}
+
+/* Booking cards: readable notes and controls */
+.booking-page{background:#050303!important;color:#f4e9e2!important}
+.booking-content{background:repeating-linear-gradient(0deg,#080505 0 31px,#100707 32px 33px)!important}
+.booking-toolbar h2,.booking-filter{color:#fff!important}
+.booking-filter select,.form-grid input,.form-grid select{background:#0b0606!important;color:#fff!important;border-color:#713036!important}
+.class-card{background:#100909!important;border-color:#63272c!important;color:#f5eae3!important;box-shadow:0 14px 35px rgba(0,0,0,.32)!important}
+.class-info h3{color:#fff!important}.class-info p{color:#d4c2b8!important}.class-venue{color:#ef5158!important}.class-footer{color:#e9ddd5!important}
+.class-card .class-note,.class-card blockquote,.class-card .note,.class-info .note{background:#1b0d0e!important;color:#f1e4dc!important;border-left:4px solid #e32631!important;padding:12px 14px!important}
+.class-card .class-note p,.class-card blockquote p,.class-card .note p{color:#f1e4dc!important}
+.booking-loading,.booking-empty,.booking-alert{background:#100909!important;color:#e7d7ce!important;border-color:#77282e!important}
+.booking-dialog{background:#100909!important;color:#f5ebe4!important}.booking-dialog h2{color:#fff!important}.dialog-meta,.privacy-note{color:#c9b7ad!important}.booking-dialog input,.booking-dialog select{background:#080505!important;color:#fff!important;border-color:#6f2a30!important}
+
+/* Portal header: prevent old wordmark rules from colliding on mobile */
+.customer-portal-page + *{} /* specificity spacer */
+body>.header .brand{min-width:0!important;max-width:calc(100% - 104px)!important}
+body>.header .brand span{min-width:0!important;white-space:normal!important}
+body>.header .brand strong{display:block!important;line-height:1.05!important}
+body>.header .brand small{display:block!important;line-height:1.2!important}
+@media(max-width:520px){body>.header{padding-inline:14px!important}body>.header .brand img{width:46px!important;height:46px!important;flex:0 0 46px!important}body>.header .brand strong{font-size:12px!important}body>.header .brand small{font-size:8px!important;letter-spacing:.09em!important}.customer-portal-hero .section-title{padding-top:20px!important}}
