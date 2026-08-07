@@ -581,3 +581,10 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - v96.4.6: Repaired New Here menu, added Facebook and private WhatsApp community explanation, removed public member-access shortcut, centred/footer branding (EST. 2024), and restored lock icon on Admin Login.
 
 - v96.4.7: Turned WhatsApp Community into its own expandable New Here menu item, explaining its purpose and that joining access is shared only with class attendees or website members.
+
+## v96.4.8 — Boot Stomp Entry Restored
+- Restored the opening Boot Scootin’ entry screen on the homepage.
+- Rebuilt it to match the current black/red honky-tonk and neon visual direction.
+- Uses the western boot artwork with the existing stomp, dust and vibration interaction.
+- Entry displays once per browser session and then reveals the homepage.
+- No booking, payment, loyalty, waiting-list or HQ logic changed.

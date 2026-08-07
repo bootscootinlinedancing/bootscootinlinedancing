@@ -6878,3 +6878,82 @@ body>.header .brand small{display:block!important;line-height:1.2!important}
 
 /* v96.4.7 WhatsApp info page */
 .whatsapp-info-page{background:#050303;color:#f5ebe5}.whatsapp-info-page .about-section,.whatsapp-info-page .about-hero{background:linear-gradient(180deg,#080404,#120505);color:#f5ebe5}.whatsapp-info-page h1,.whatsapp-info-page h2,.whatsapp-info-page strong{color:#fff}.whatsapp-info-page p{color:#d7c6bd}.whatsapp-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:24px}.whatsapp-info-grid article{border:1px solid rgba(201,48,57,.42);border-left:4px solid #e51d2a;background:#100607;padding:22px}.whatsapp-info-grid article strong{display:block;font-size:1.15rem;margin-bottom:8px}.whatsapp-info-grid article p{margin:0;line-height:1.6}.whatsapp-access-section{border-top:1px solid rgba(201,48,57,.45);border-bottom:1px solid rgba(201,48,57,.45)}.whatsapp-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}@media(max-width:720px){.whatsapp-info-grid{grid-template-columns:1fr}.whatsapp-info-grid article{padding:18px}.whatsapp-actions .btn{width:100%;text-align:center}}
+
+
+/* VERSION 96.4.8 — RESTORED BOOT STOMP ENTRY, MATCHED TO CURRENT HONKY-TONK THEME */
+.boot-entry{
+  background:
+    radial-gradient(circle at 50% 34%,rgba(216,28,37,.16),transparent 30%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 58px),
+    linear-gradient(180deg,#020202 0%,#090404 58%,#030202 100%);
+}
+.boot-entry-shell{
+  width:min(100vw,640px);
+  height:100svh;
+  max-width:100vw;
+  aspect-ratio:auto;
+  overflow:hidden;
+  border-left:1px solid rgba(125,32,37,.26);
+  border-right:1px solid rgba(125,32,37,.26);
+  background:
+    radial-gradient(circle at 50% 40%,rgba(164,15,23,.12),transparent 38%),
+    repeating-linear-gradient(0deg,transparent 0 56px,rgba(108,31,35,.10) 57px 58px),
+    #050303;
+}
+.boot-entry-shell:before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.28),transparent 28% 72%,rgba(0,0,0,.28));
+}
+.boot-entry-brand{
+  position:absolute;z-index:4;left:50%;top:5.5%;transform:translateX(-50%);
+  width:88%;display:flex;align-items:center;justify-content:center;gap:16px;text-align:left;
+}
+.boot-entry-brand img{width:78px;height:78px;object-fit:contain;filter:drop-shadow(0 0 15px rgba(222,28,37,.28))}
+.boot-entry-brand div{display:grid;gap:2px}
+.boot-entry-brand strong{font:400 clamp(25px,7vw,38px)/1 Rye,serif;color:#ee2832;letter-spacing:.04em;text-shadow:0 0 12px rgba(238,40,50,.28)}
+.boot-entry-brand span{font:700 16px/1.15 Oswald,sans-serif;color:#f7eee8;letter-spacing:.27em}
+.boot-entry-brand small{font:600 11px/1.2 Oswald,sans-serif;color:#c79178;letter-spacing:.25em}
+.boot-entry-kicker{
+  position:absolute;z-index:4;top:18%;left:7%;right:7%;margin:0;text-align:center;
+  color:#d8b8aa;font:600 11px/1.2 Oswald,sans-serif;letter-spacing:.31em;
+}
+.boot-entry-neon{
+  position:absolute;z-index:4;top:21%;left:0;right:0;margin:0;text-align:center;
+  font:400 clamp(50px,15vw,82px)/1 Yellowtail,cursive;color:#ff2833;
+  text-shadow:0 0 4px #ff2833,0 0 16px #e20b17,0 0 38px rgba(226,11,23,.72);
+}
+.entry-boot{
+  position:absolute;z-index:3;left:50%;bottom:22%;transform:translateX(-50%) rotate(-5deg);
+  width:min(78%,460px);max-height:49vh;object-fit:contain;object-position:center bottom;
+  filter:drop-shadow(0 24px 24px #000) saturate(.9) contrast(1.08) brightness(.9);
+  transform-origin:50% 93%;pointer-events:none;
+}
+.boot-entry-button{
+  left:50%;top:auto;bottom:13.2%;transform:translateX(-50%);width:min(76%,390px);height:auto;
+  min-height:66px;padding:12px 18px;border:1px solid #ed2832;border-radius:2px;
+  background:linear-gradient(#df202a,#b70f18);color:#fff;box-shadow:0 0 18px rgba(235,39,49,.32);
+  text-align:center;text-transform:uppercase;
+}
+.boot-entry-button span{display:block;font:700 21px/1 Oswald,sans-serif;letter-spacing:.14em}
+.boot-entry-button small{display:block;margin-top:7px;font:500 10px/1.2 Oswald,sans-serif;letter-spacing:.13em;color:#f1c8c5}
+.boot-entry-tagline{
+  position:absolute;z-index:4;bottom:6.2%;left:5%;right:5%;margin:0;text-align:center;
+  font:400 22px/1 Yellowtail,cursive;color:#f3e6db;
+}
+.boot-entry .impact-dust{left:10%;top:auto;bottom:20%;width:80%;height:14%;}
+.poster-intro.stomping .entry-boot{animation:bootHeelStomp .86s cubic-bezier(.18,.82,.22,1) both}
+@keyframes bootHeelStomp{
+  0%{transform:translateX(-50%) translateY(0) rotate(-5deg) scale(1)}
+  32%{transform:translateX(-50%) translateY(-34px) rotate(-9deg) scale(1.015)}
+  58%{transform:translateX(-50%) translateY(13px) rotate(-2deg) scale(.99)}
+  74%{transform:translateX(-50%) translateY(-5px) rotate(-5deg) scale(1.002)}
+  100%{transform:translateX(-50%) translateY(0) rotate(-5deg) scale(1)}
+}
+@media(max-width:520px){
+ .boot-entry-brand{top:4.7%;gap:11px}.boot-entry-brand img{width:65px;height:65px}
+ .boot-entry-brand strong{font-size:26px}.boot-entry-brand span{font-size:13px}.boot-entry-brand small{font-size:9px}
+ .boot-entry-kicker{top:16.3%;font-size:9px}.boot-entry-neon{top:19.2%}
+ .entry-boot{bottom:23%;width:88%;max-height:50vh}
+ .boot-entry-button{bottom:12.5%;width:82%;min-height:62px}.boot-entry-tagline{bottom:5.4%;font-size:19px}
+}
+@media(prefers-reduced-motion:reduce){.poster-intro.stomping .entry-boot{animation:none}}
