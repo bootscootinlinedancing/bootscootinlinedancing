@@ -121,7 +121,7 @@ body.home-page main#main-content,
 main#main-content { padding-top: 0 !important; margin-top: 0 !important; }
 main#main-content > .cream-home.intro-grid { margin-top: 0 !important; }
 
-/* v96.4.29 — DESKTOP BLACK-GAP ELIMINATION
+/* v96.4.30 — DESKTOP BLACK-GAP ELIMINATION
    The homepage hero is gone. On desktop, force the first real content section
    into normal document flow with natural height and no inherited hero geometry. */
 @media (min-width: 951px) {
@@ -187,4 +187,89 @@ main#main-content > .cream-home.intro-grid { margin-top: 0 !important; }
     width:100%!important;
     margin:0!important;
   }
+}
+
+/* v96.4.30 — MACBOOK BLACK GAP FIX
+   Important: the previous gap fix started at 951px, but Safari on this MacBook
+   is reporting a CSS viewport below that. Apply the compact homepage layout to
+   every real desktop-mode viewport from 768px upward. Mobile is untouched. */
+@media (min-width:768px) {
+  html.desktop-mode body.honky-home main#main-content {
+    display:block!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:0!important;
+  }
+
+  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid {
+    box-sizing:border-box!important;
+    display:grid!important;
+    grid-template-columns:minmax(190px,.75fr) minmax(180px,.62fr) minmax(340px,1.45fr)!important;
+    grid-template-rows:max-content!important;
+    grid-auto-rows:max-content!important;
+    gap:18px!important;
+    align-items:start!important;
+    align-content:start!important;
+    justify-content:stretch!important;
+    justify-items:stretch!important;
+    width:100%!important;
+    height:max-content!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:24px clamp(18px,3vw,40px)!important;
+    position:static!important;
+    inset:auto!important;
+    transform:none!important;
+    overflow:hidden!important;
+  }
+
+  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid::before {
+    top:14px!important;
+  }
+
+  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid > .meet-copy,
+  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid > .nora-polaroid,
+  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid > .upcoming-home {
+    position:static!important;
+    inset:auto!important;
+    top:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    left:auto!important;
+    margin-top:0!important;
+    margin-bottom:0!important;
+    padding-top:0!important;
+    transform:none!important;
+    align-self:start!important;
+  }
+
+  html.desktop-mode body.honky-home .nora-polaroid {
+    width:100%!important;
+    max-width:240px!important;
+    margin-inline:auto!important;
+  }
+  html.desktop-mode body.honky-home .upcoming-home {
+    grid-column:auto!important;
+    width:100%!important;
+  }
+}
+
+@media (min-width:768px) and (max-width:950px) {
+  html.desktop-mode body.honky-home main#main-content > .cream-home.intro-grid {
+    grid-template-columns:minmax(170px,.72fr) minmax(160px,.58fr) minmax(300px,1.35fr)!important;
+    padding:20px 16px!important;
+    gap:14px!important;
+  }
+  html.desktop-mode body.honky-home .section-label{font-size:19px!important;margin-bottom:12px!important}
+  html.desktop-mode body.honky-home .meet-copy h2{font-size:30px!important}
+  html.desktop-mode body.honky-home .meet-copy p{font-size:12px!important;line-height:1.45!important}
+  html.desktop-mode body.honky-home .nora-polaroid{max-width:205px!important}
+  html.desktop-mode body.honky-home .home-class-card>img{height:110px!important}
+  html.desktop-mode body.honky-home .home-class-card>div{padding:10px!important}
+  html.desktop-mode body.honky-home .home-class-card h3{font-size:14px!important}
+  html.desktop-mode body.honky-home .home-class-card p{font-size:11px!important}
 }
