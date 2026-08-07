@@ -1,7 +1,7 @@
-# v104.0.0 — Homepage Rebuild
-- Rebuilt index.html from scratch to remove duplicate and overlapping homepage sections.
-- Added a proper professional western boot SVG with shaft, stitching, heel and spur/star detail.
-- Replaced the homepage icon set with consistent vector icons.
-- Added a clean mobile-first black/red honky-tonk design with no beige panel backgrounds.
-- Preserved booking, member, newsletter and backend links.
-- Updated service worker cache version.
+# v105.0.0 — Clean Homepage Rebuild
+- Replaced the broken homepage with one isolated, mobile-first layout.
+- Removed duplicate and overlapping homepage components.
+- Added a recognisable Western boot icon and consistent SVG icon set.
+- Kept the black/red honky-tonk design with no beige page panels.
+- Rebuilt the mobile menu, classes, benefits, reviews, private events and footer.
+- Preserved existing booking, newsletter, member and backend links.
