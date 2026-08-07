@@ -1,150 +1,117 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#050303">
-  <meta name="description" content="Boot Scootin' Line Dancing — friendly, beginner-focused line dancing classes in Birmingham.">
-  <title>Boot Scootin' Line Dancing | Birmingham</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=Rye&family=Yellowtail&display=swap" rel="stylesheet">
-  <link rel="icon" href="favicon.png" type="image/png">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="v106-home.css?v=106.0.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<meta name="description" content="Boot Scootin' Line Dancing — friendly, beginner-focused line dancing classes in Birmingham.">
+<title>Boot Scootin' Line Dancing | Birmingham</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Great+Vibes&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="v106-home.css?v=108.0.0">
 </head>
 <body>
 <a class="skip" href="#main">Skip to main content</a>
-<div id="bs-home">
-  <header class="topbar">
-    <a class="brand" href="index.html" aria-label="Boot Scootin' home">
-      <img src="brand-logo-v60.webp" alt="Boot Scootin' Line Dancing">
-      <span>EST. 2025 <i>•</i> BIRMINGHAM</span>
-    </a>
-    <nav class="desktop-nav" aria-label="Primary">
-      <a href="bookings.html">Classes</a><a href="private-events.html">Private Events</a><a href="about.html">About</a><a href="ask-nora.html">Contact</a>
+<header class="bs-header">
+  <a class="bs-logo-lockup" href="index.html" aria-label="Boot Scootin' home">
+    <img src="brand-logo-v60.webp" alt="Boot Scootin' Line Dancing">
+    <span class="bs-logo-copy"><strong>BOOT SCOOTIN'</strong><span>EST. 2025 <i>•</i> BIRMINGHAM</span></span>
+  </a>
+  <nav class="bs-nav" aria-label="Primary navigation">
+    <a href="bookings.html">Classes</a><a href="private-events.html">Events</a><a href="community.html">Community</a><a href="country-corner.html">Country Corner</a><a href="about.html">About</a><a href="ask-nora.html">Contact</a>
+  </nav>
+  <a class="bs-btn bs-btn-small" href="bookings.html">Book a Class</a>
+  <button class="bs-menu-toggle" id="bsMenuOpen" aria-label="Open menu" aria-controls="bsMobileMenu" aria-expanded="false"><i></i><i></i><i></i></button>
+</header>
+
+<div class="bs-mobile-menu" id="bsMobileMenu" aria-hidden="true">
+  <div class="bs-menu-panel" role="dialog" aria-modal="true" aria-label="Website menu">
+    <div class="bs-menu-top"><img src="brand-logo-v60.webp" alt="Boot Scootin' Line Dancing"><button class="bs-menu-close" id="bsMenuClose" aria-label="Close menu">×</button></div>
+    <a class="bs-menu-feature" href="bookings.html"><small>READY TO DANCE?</small><strong>BOOK YOUR NEXT CLASS</strong><span>Friendly, welcoming and beginner focused</span></a>
+    <nav class="bs-menu-links" aria-label="Mobile navigation">
+      <a href="bookings.html"><svg><use href="western-icons.svg#boot"></use></svg><span><b>Classes &amp; Dancing</b><small>Learn, practise and book</small></span><i>›</i></a>
+      <a href="member-hub.html"><svg><use href="western-icons.svg#horseshoe"></use></svg><span><b>The Boot Room</b><small>Bookings, rewards and your journey</small></span><i>›</i></a>
+      <a href="community.html"><svg><use href="western-icons.svg#people"></use></svg><span><b>Community</b><small>Events, socials and your people</small></span><i>›</i></a>
+      <a href="country-corner.html"><svg><use href="western-icons.svg#guitar"></use></svg><span><b>Country Corner</b><small>Music, festivals, style and adventures</small></span><i>›</i></a>
+      <a href="private-events.html"><svg><use href="western-icons.svg#star"></use></svg><span><b>Private Events</b><small>Parties, weddings and celebrations</small></span><i>›</i></a>
+      <a href="about.html"><svg><use href="western-icons.svg#hat"></use></svg><span><b>About</b><small>Our story, Nora and getting in touch</small></span><i>›</i></a>
     </nav>
-    <button class="menu-toggle" id="menuOpen" aria-label="Open menu" aria-controls="mobileMenu" aria-expanded="false">
-      <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 13h32M8 24h32M8 35h32"/></svg>
-    </button>
-  </header>
-
-  <aside class="mobile-menu" id="mobileMenu" aria-hidden="true">
-    <div class="menu-sheet" role="dialog" aria-modal="true" aria-label="Website menu">
-      <div class="menu-top">
-        <a class="menu-brand" href="index.html"><img src="brand-logo-v60.webp" alt="Boot Scootin' Line Dancing"><span>EST. 2025 <i>•</i> BIRMINGHAM</span></a>
-        <button id="menuClose" class="menu-close" aria-label="Close menu">×</button>
-      </div>
-      <div class="menu-scroll">
-        <a class="menu-feature" href="bookings.html"><small>READY TO DANCE?</small><strong>BOOK YOUR NEXT CLASS</strong><span>Friendly, welcoming and beginner focused</span></a>
-        <nav class="menu-links" aria-label="Mobile navigation">
-          <section class="menu-group">
-            <button class="menu-row" type="button" aria-expanded="false"><span class="mi"><svg><use href="#icon-boot"></use></svg></span><span class="menu-copy"><b>New Here?</b><small>Everything for your first visit</small></span><span class="menu-plus">+</span></button>
-            <div class="menu-sub"><a href="bookings.html">Book Your Next Class</a><a href="bookings.html#before-you-arrive">What to Wear &amp; Bring</a><a href="ask-nora.html">Questions &amp; Class Help</a></div>
-          </section>
-          <section class="menu-group">
-            <button class="menu-row" type="button" aria-expanded="false"><span class="mi"><svg><use href="#icon-calendar"></use></svg></span><span class="menu-copy"><b>Classes &amp; Dancing</b><small>Learn, practise and book</small></span><span class="menu-plus">+</span></button>
-            <div class="menu-sub"><a href="bookings.html">Classes &amp; Bookings</a><a href="calendar.html">Class Calendar</a><a href="dance-library.html">Dance Library</a></div>
-          </section>
-          <section class="menu-group">
-            <button class="menu-row" type="button" aria-expanded="false"><span class="mi"><svg><use href="#icon-star"></use></svg></span><span class="menu-copy"><b>The Boot Room</b><small>Bookings, rewards and your journey</small></span><span class="menu-plus">+</span></button>
-            <div class="menu-sub"><a href="my-bookings.html">My Bookings</a><a href="rewards.html">Rewards</a><a href="passport.html">My Passport</a><a href="member-hub.html">Member Hub</a></div>
-          </section>
-          <section class="menu-group">
-            <button class="menu-row" type="button" aria-expanded="false"><span class="mi"><svg><use href="#icon-people"></use></svg></span><span class="menu-copy"><b>Community</b><small>Events, socials and your people</small></span><span class="menu-plus">+</span></button>
-            <div class="menu-sub"><a href="community.html">Events &amp; Community</a><a href="private-events.html">Private Events</a><a href="long-road-handbook.html">Long Road Handbook</a></div>
-          </section>
-          <section class="menu-group">
-            <button class="menu-row" type="button" aria-expanded="false"><span class="mi"><svg><use href="#icon-guitar"></use></svg></span><span class="menu-copy"><b>Country Corner</b><small>Music, festivals, style and adventures</small></span><span class="menu-plus">+</span></button>
-            <div class="menu-sub"><a href="country-guide.html">Country Guide</a><a href="country-guide-music.html">Country Music</a><a href="country-guide-fashion.html">Western Fashion</a></div>
-          </section>
-          <section class="menu-group">
-            <button class="menu-row" type="button" aria-expanded="false"><span class="mi"><svg><use href="#icon-heart"></use></svg></span><span class="menu-copy"><b>About</b><small>Our story, Nora and getting in touch</small></span><span class="menu-plus">+</span></button>
-            <div class="menu-sub"><a href="about.html#meet-nora">Meet Nora</a><a href="about.html#boot-scootin-story">Why Boot Scootin’?</a><a href="about.html#my-story">My Story</a><a href="ask-nora.html">Contact</a></div>
-          </section>
-        </nav>
-      </div>
-    </div>
-  </aside>
-
-  <main id="main">
-    <section class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">BRINGING NASHVILLE TO BIRMINGHAM</p>
-        <h1>LIFE’S BETTER <span>IN COWBOY BOOTS.</span></h1>
-        <p class="lead">Learn to line dance in Birmingham with friendly people, brilliant country music and a proper honky-tonk atmosphere. Complete beginners are always welcome.</p>
-        <div class="actions"><a class="btn primary" href="bookings.html"><svg><use href="#icon-boot"></use></svg>BOOK YOUR NEXT CLASS</a><a class="btn ghost" href="bookings.html">VIEW CLASSES</a></div>
-      </div>
-    </section>
-
-    <section class="signs wrap" aria-label="Highlights">
-      <a class="sign-card" href="bookings.html"><span class="icon-ring"><svg><use href="#icon-boot"></use></svg></span><span><b>BOOK YOUR NEXT CLASS</b><small>Friendly classes for every level</small></span></a>
-      <a class="sign-card" href="country-guide-music.html"><span class="icon-ring"><svg><use href="#icon-music"></use></svg></span><span><b>LIVE COUNTRY MUSIC</b><small>Good songs. Good people.</small></span></a>
-      <a class="sign-card" href="about.html"><span class="icon-ring"><svg><use href="#icon-hat"></use></svg></span><span><b>BOOTS ON.</b><small>Confidence on the dance floor</small></span></a>
-      <div class="broadway"><i>★</i><span><b>BROADWAY NIGHTS.</b><em>Brummie Heart.</em></span><i>★</i></div>
-    </section>
-
-    <section class="panel about wrap" id="meet-nora">
-      <div class="about-copy"><p class="eyebrow">MEET NORA</p><h2>HI, I’M NORA.</h2><p class="script">Brummie Cowgirl</p><p>Operating Department Practitioner by day and line dance instructor by night. I created Boot Scootin’ to bring people together through country music, confidence and unforgettable nights on the dance floor.</p><a class="btn primary" href="about.html">MORE ABOUT ME</a></div>
-      <img src="nora.webp" alt="Nora, founder of Boot Scootin' Line Dancing">
-    </section>
-
-    <section class="panel wrap">
-      <p class="eyebrow">UPCOMING CLASSES</p><h2>CHOOSE YOUR NEXT DANCE NIGHT</h2>
-      <div class="class-grid">
-        <article class="class-card"><img src="hall1.webp" alt="Edgbaston Community Centre class"><div><span class="pill">FORTNIGHTLY FRIDAYS</span><h3>Edgbaston Community Centre</h3><p>7:30PM–8:30PM · £6</p><a class="btn primary" href="bookings.html">BOOK NOW</a></div></article>
-        <article class="class-card"><img src="lowplaces.webp" alt="Low Places Bar Birmingham"><div><span class="pill">FORTNIGHTLY FRIDAYS</span><h3>Low Places Bar Birmingham</h3><p>7:15PM–9:00PM · £6</p><a class="btn primary" href="bookings.html">BOOK NOW</a></div></article>
-      </div>
-    </section>
-
-    <section class="panel wrap">
-      <p class="eyebrow">WHY YOU’LL LOVE IT</p><h2>GOOD PEOPLE. GOOD VIBES.</h2>
-      <div class="benefits">
-        <article><span class="icon-ring small"><svg><use href="#icon-boot"></use></svg></span><div><h3>BEGINNER FRIENDLY</h3><p>We guide you every step of the way.</p></div></article>
-        <article><span class="icon-ring small"><svg><use href="#icon-people"></use></svg></span><div><h3>NO PARTNER NEEDED</h3><p>Come alone or bring your friends.</p></div></article>
-        <article><span class="icon-ring small"><svg><use href="#icon-star"></use></svg></span><div><h3>ALL AGES WELCOME</h3><p>It is never too early or too late.</p></div></article>
-        <article><span class="icon-ring small"><svg><use href="#icon-music"></use></svg></span><div><h3>GREAT MUSIC</h3><p>Country hits, old and new.</p></div></article>
-        <article><span class="icon-ring small"><svg><use href="#icon-heart"></use></svg></span><div><h3>FRIENDLY ATMOSPHERE</h3><p>A welcoming space for everyone.</p></div></article>
-      </div>
-    </section>
-
-    <section class="panel wrap reviews-panel">
-      <p class="eyebrow">WORDS FROM THE DANCE FLOOR</p><h2>WHAT OUR DANCERS SAY</h2>
-      <div class="reviews"><blockquote><b>★★★★★</b><p>“I came on my own and felt welcome straight away.”</p></blockquote><blockquote><b>★★★★★</b><p>“Nora makes every class fun, friendly and easy to follow.”</p></blockquote><blockquote><b>★★★★★</b><p>“More than a dance class — it really feels like a community.”</p></blockquote></div>
-    </section>
-
-    <section class="panel event wrap">
-      <div><p class="eyebrow">PRIVATE EVENTS</p><h2>MAKE IT UNFORGETTABLE</h2><p>Birthday parties, hen dos, weddings and corporate events — with a fun line dancing experience everyone can enjoy.</p><a class="btn primary" href="private-events.html">EXPLORE PRIVATE EVENTS</a></div>
-      <div class="event-images"><img src="party1.webp" alt="Private line dancing event"><img src="party2.webp" alt="Country party dancing"></div>
-    </section>
-
-    <section class="community-strip"><span>More Than Just a Dance Class.</span><b>IT’S A COMMUNITY.</b></section>
-  </main>
-
-  <footer class="footer">
-    <div class="newsletter wrap"><div><p class="eyebrow">JOIN THE BOOT SCOOTIN’ FAMILY</p><h2>STAY IN THE LOOP</h2><p>Be first to hear about new classes, socials and special events.</p></div><form id="newsletterForm"><label class="sr-only" for="newsletterEmail">Email address</label><input id="newsletterEmail" name="email" type="email" required placeholder="Enter your email address"><button type="submit">SUBSCRIBE</button><p id="newsletterStatus" aria-live="polite"></p></form></div>
-    <div class="footer-grid wrap"><div><img src="brand-logo-v60.webp" alt="Boot Scootin' Line Dancing"><p>EST. 2025 • BIRMINGHAM</p></div><div><b>EXPLORE</b><a href="bookings.html">Classes</a><a href="private-events.html">Private Events</a><a href="about.html">About</a><a href="ask-nora.html">Contact</a></div><div><b>FOLLOW</b><a href="https://www.instagram.com/boot.scootin.linedancing" target="_blank" rel="noopener">Instagram</a><a href="https://www.facebook.com/share/1JWs8eApw8/" target="_blank" rel="noopener">Facebook</a><a href="member-hub.html">Member Hub</a></div><div><b>LEGAL & TRUST</b><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="cookies.html">Cookies</a><a href="refunds.html">Refunds</a><a href="accessibility.html">Accessibility</a><a href="security.html">Security</a></div></div>
-    <div class="footer-bottom wrap"><p class="script">See y’all on the dance floor.</p><p>© 2026 Boot Scootin’ Line Dancing · Birmingham, UK</p></div>
-  </footer>
+  </div>
 </div>
 
-<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-<symbol id="icon-boot" viewBox="0 0 120 120"><path d="M31 10h35v47c0 10 4 17 13 22l20 10c7 4 11 10 11 17v4H46c-20 0-35-12-35-28 0-12 7-22 20-28V10zm10 10v39l-9 4c-7 3-11 9-11 16 0 10 10 18 25 18h49l-20-10C61 80 56 70 56 57V20H41zm2 8h11v7H43zm0 13h11v7H43z"/><path d="M82 72l4 8 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1 4-8z"/></symbol>
-<symbol id="icon-music" viewBox="0 0 120 120"><path d="M72 17v57.5A17.5 17.5 0 1 1 62 59V34l44-9v40.5A17.5 17.5 0 1 1 96 50V17L72 22v-5zM44.5 70A7.5 7.5 0 1 0 44.5 85 7.5 7.5 0 0 0 44.5 70zm51 1A7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15z"/></symbol>
-<symbol id="icon-people" viewBox="0 0 120 120"><path d="M39 56a19 19 0 1 0 0-38 19 19 0 0 0 0 38zm42 0a17 17 0 1 0 0-34 17 17 0 0 0 0 34zM8 105c0-24 13-39 31-39s31 15 31 39H8zm55 0c0-14-4-26-12-34 8-5 17-7 26-4 19 5 31 20 35 38H63z"/></symbol>
-<symbol id="icon-star" viewBox="0 0 120 120"><path d="M60 8l14 29 32 5-23 23 5 32-28-15-28 15 5-32-23-23 32-5L60 8zm0 22l-8 16-18 3 13 13-3 18 16-8 16 8-3-18 13-13-18-3-8-16z"/></symbol>
-<symbol id="icon-heart" viewBox="0 0 120 120"><path d="M60 103S11 74 11 39C11 21 24 10 40 10c10 0 17 5 20 11 3-6 10-11 20-11 16 0 29 11 29 29 0 35-49 64-49 64zm0-17c13-9 35-27 35-47 0-10-6-16-15-16-10 0-15 8-20 17-5-9-10-17-20-17-9 0-15 6-15 16 0 20 22 38 35 47z"/></symbol>
-<symbol id="icon-calendar" viewBox="0 0 120 120"><path d="M20 18h12V8h10v10h36V8h10v10h12c7 0 12 5 12 12v66c0 7-5 12-12 12H20c-7 0-12-5-12-12V30c0-7 5-12 12-12zm0 30v48h80V48H20zm12 11h16v14H32V59zm22 0h16v14H54V59zm22 0h16v14H76V59zM32 79h16v14H32V79zm22 0h16v14H54V79z"/></symbol>
-<symbol id="icon-guitar" viewBox="0 0 120 120"><path d="M82 8l30 30-13 13-9-9-33 33c2 10-1 21-9 29-13 13-34 13-47 0s-13-34 0-47c8-8 19-11 29-9l33-33-9-9L67-7l15 15zM17 74a12 12 0 1 0 17 17 12 12 0 0 0-17-17zm13 4l43-43 6 6-43 43-6-6z"/></symbol>
-<symbol id="icon-hat" viewBox="0 0 120 120"><path d="M24 66c8-9 13-24 16-45 1-7 6-11 13-11h14c7 0 12 4 13 11 3 21 8 36 16 45 7 1 13 4 18 9-10 17-29 27-54 27S16 92 6 75c5-5 11-8 18-9zm14-2h44c-4-8-7-20-9-37-1-4-3-6-7-6H54c-4 0-6 2-7 6-2 17-5 29-9 37zm-15 15c10 8 22 12 37 12s27-4 37-12c-10-3-23-5-37-5s-27 2-37 5z"/></symbol>
-</svg>
+<main id="main">
+  <section class="bs-hero">
+    <div class="bs-hero-content">
+      <div class="bs-kicker">BRINGING NASHVILLE TO BIRMINGHAM</div>
+      <div class="bs-neon-script">Boots on.</div>
+      <h1>LET'S DANCE.</h1>
+      <p>Friendly Birmingham line dancing, brilliant country music and a proper honky-tonk atmosphere. Complete beginners are always welcome.</p>
+      <div class="bs-hero-actions">
+        <a class="bs-btn" href="bookings.html"><svg><use href="western-icons.svg#boot"></use></svg>Book Your Next Class</a>
+        <a class="bs-link" href="bookings.html">View Classes →</a>
+      </div>
+    </div>
+    <div class="bs-neon-sign" aria-hidden="true"><div>★</div><strong>BOOT SCOOTIN'</strong><small>LINE DANCING</small></div>
+  </section>
+
+  <section class="bs-marquee" aria-label="Boot Scootin' highlights"><div>COUNTRY MUSIC • LINE DANCING • GOOD TIMES • BIRMINGHAM • BEGINNER FRIENDLY • COUNTRY MUSIC • LINE DANCING • GOOD TIMES • BIRMINGHAM • BEGINNER FRIENDLY •</div></section>
+
+  <section class="bs-feature-grid" aria-label="Explore Boot Scootin'">
+    <a class="bs-feature-card" href="bookings.html"><svg class="bs-icon"><use href="western-icons.svg#boot"></use></svg><em>01</em><h2>Classes</h2><p>Friendly line dancing sessions with plenty of country energy and no pressure to be perfect.</p><span>Find a class →</span></a>
+    <a class="bs-feature-card" href="private-events.html"><svg class="bs-icon"><use href="western-icons.svg#hat"></use></svg><em>02</em><h2>Events</h2><p>Special socials, parties and honky-tonk style nights made for dancing together.</p><span>See what's on →</span></a>
+    <a class="bs-feature-card" href="country-corner.html"><svg class="bs-icon"><use href="western-icons.svg#guitar"></use></svg><em>03</em><h2>Country Corner</h2><p>Music, festivals, western style and adventures with a proper Nashville-inspired feel.</p><span>Explore more →</span></a>
+    <a class="bs-feature-card" href="member-hub.html"><svg class="bs-icon"><use href="western-icons.svg#horseshoe"></use></svg><em>04</em><h2>The Boot Room</h2><p>Your bookings, rewards, passport, journey and member experience all in one place.</p><span>Open the hub →</span></a>
+  </section>
+
+  <section class="bs-section bs-about" id="about">
+    <div class="bs-about-photo"><img src="nora.webp" alt="Nora, founder of Boot Scootin' Line Dancing"></div>
+    <div class="bs-about-copy"><div class="bs-eyebrow">THE WOMAN BEHIND THE BOOTS</div><h2>Hi, I'm <span>Nora.</span></h2><p>Boot Scootin' is about creating a fun, friendly space where you can learn to line dance, enjoy country music and meet people who love the same atmosphere.</p><p>No judgement. No need to know the steps before you arrive. Just bring yourself and we'll get you moving.</p><a class="bs-btn" href="about.html">More About Boot Scootin'</a></div>
+  </section>
+
+  <section class="bs-section bs-classes">
+    <div class="bs-eyebrow">UPCOMING CLASSES</div><h2 class="bs-heading">CHOOSE YOUR NEXT DANCE NIGHT</h2>
+    <div class="bs-class-grid">
+      <article class="bs-class-card"><img src="hall1.webp" alt="Edgbaston Community Centre"><div><span class="bs-pill">FORTNIGHTLY FRIDAYS</span><h3>Edgbaston Community Centre</h3><p>7:30PM–8:30PM · £6</p><a class="bs-btn" href="bookings.html">Book Now</a></div></article>
+      <article class="bs-class-card"><img src="lowplaces.webp" alt="Low Places Bar Birmingham"><div><span class="bs-pill">FORTNIGHTLY FRIDAYS</span><h3>Low Places Bar Birmingham</h3><p>7:15PM–9:00PM · £6</p><a class="bs-btn" href="bookings.html">Book Now</a></div></article>
+    </div>
+  </section>
+
+  <section class="bs-section bs-benefits">
+    <div class="bs-eyebrow">WHY YOU'LL LOVE IT</div><h2 class="bs-heading">GOOD PEOPLE. GOOD VIBES.</h2>
+    <div class="bs-benefit-grid">
+      <article class="bs-benefit"><svg class="bs-icon"><use href="western-icons.svg#boot"></use></svg><h3>BEGINNER FRIENDLY</h3><p>We guide you every step of the way.</p></article>
+      <article class="bs-benefit"><svg class="bs-icon"><use href="western-icons.svg#people"></use></svg><h3>NO PARTNER NEEDED</h3><p>Come alone or bring your friends.</p></article>
+      <article class="bs-benefit"><svg class="bs-icon"><use href="western-icons.svg#star"></use></svg><h3>ALL AGES WELCOME</h3><p>It is never too early or too late.</p></article>
+      <article class="bs-benefit"><svg class="bs-icon"><use href="western-icons.svg#music"></use></svg><h3>GREAT MUSIC</h3><p>Country hits, old and new.</p></article>
+      <article class="bs-benefit"><svg class="bs-icon"><use href="western-icons.svg#heart"></use></svg><h3>FRIENDLY ATMOSPHERE</h3><p>A welcoming space for everyone.</p></article>
+    </div>
+  </section>
+
+  <section class="bs-section bs-reviews">
+    <div class="bs-eyebrow">WORDS FROM THE DANCE FLOOR</div><h2 class="bs-heading">WHAT OUR DANCERS SAY</h2>
+    <div class="bs-review-grid"><blockquote class="bs-review"><b>★★★★★</b><p>“I came on my own and felt welcome straight away.”</p></blockquote><blockquote class="bs-review"><b>★★★★★</b><p>“Nora makes every class fun, friendly and easy to follow.”</p></blockquote><blockquote class="bs-review"><b>★★★★★</b><p>“More than a dance class — it really feels like a community.”</p></blockquote></div>
+  </section>
+
+  <section class="bs-section bs-event">
+    <div class="bs-event-copy"><div class="bs-eyebrow">PRIVATE EVENTS</div><h2 class="bs-heading">MAKE IT UNFORGETTABLE</h2><p class="bs-copy">Birthday parties, hen dos, weddings, corporate events and celebrations — with a fun line dancing experience everyone can enjoy.</p><a class="bs-btn" href="private-events.html">Explore Private Events</a></div><img src="party1.webp" alt="Boot Scootin' private event">
+  </section>
+
+  <section class="bs-cta"><div class="bs-cta-inner"><svg class="bs-icon"><use href="western-icons.svg#music"></use></svg><div><div class="bs-neon-script small">See y'all on the dance floor</div><h2>READY TO BOOT SCOOT?</h2><p>Find your next class and come dance with us.</p></div><a class="bs-btn" href="bookings.html">Book Now</a></div></section>
+</main>
+
+<footer class="bs-footer"><strong>BOOT SCOOTIN'</strong><span>Line Dancing • Birmingham</span><div class="bs-footer-links"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="cookies.html">Cookies</a><a href="refunds.html">Refunds</a><a href="accessibility.html">Accessibility</a><a href="security.html">Security</a></div><small>© 2026 Boot Scootin' Line Dancing</small></footer>
 <script>
-const menu=document.getElementById('mobileMenu'),openBtn=document.getElementById('menuOpen'),closeBtn=document.getElementById('menuClose');
-function setMenu(open){menu.classList.toggle('open',open);menu.setAttribute('aria-hidden',String(!open));openBtn.setAttribute('aria-expanded',String(open));document.body.classList.toggle('menu-open',open);if(open)closeBtn.focus()}
-openBtn.addEventListener('click',()=>setMenu(true));closeBtn.addEventListener('click',()=>setMenu(false));menu.addEventListener('click',e=>{if(e.target===menu)setMenu(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape')setMenu(false)});
-document.querySelectorAll('.menu-row').forEach(row=>row.addEventListener('click',()=>{const group=row.closest('.menu-group'),isOpen=group.classList.toggle('open');row.setAttribute('aria-expanded',String(isOpen));}));
-const nf=document.getElementById('newsletterForm'),ns=document.getElementById('newsletterStatus');nf.addEventListener('submit',async e=>{e.preventDefault();const email=nf.email.value.trim(),btn=nf.querySelector('button');if(!email)return;btn.disabled=true;ns.textContent='Joining…';try{const r=await fetch('/api/newsletter/subscribe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,source:'website-footer'})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Unable to subscribe right now.');ns.textContent=d.alreadySubscribed?'You’re already on the list — see y’all soon!':(d.welcomeEmailSent?'You’re in! Check your inbox for your welcome email.':'You’re subscribed. Your welcome email may take a few minutes.');nf.reset()}catch(err){ns.textContent=err.message||'Unable to subscribe right now.'}finally{btn.disabled=false}});
+(() => {
+  const menu=document.getElementById('bsMobileMenu'),open=document.getElementById('bsMenuOpen'),close=document.getElementById('bsMenuClose');
+  const show=()=>{menu.classList.add('open');menu.setAttribute('aria-hidden','false');open.setAttribute('aria-expanded','true');document.body.style.overflow='hidden';};
+  const hide=()=>{menu.classList.remove('open');menu.setAttribute('aria-hidden','true');open.setAttribute('aria-expanded','false');document.body.style.overflow='';};
+  open?.addEventListener('click',show);close?.addEventListener('click',hide);menu?.addEventListener('click',e=>{if(e.target===menu)hide();});document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});menu?.querySelectorAll('a').forEach(a=>a.addEventListener('click',hide));
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));}
+})();
 </script>
 </body>
 </html>

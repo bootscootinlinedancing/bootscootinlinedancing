@@ -1,15 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
-<symbol id="boot" viewBox="0 0 64 64"><path d="M18 5h25v30c0 6 4 10 10 12l7 2v10H29C16 59 7 51 7 41c0-8 5-15 11-19V5z"/><path d="M23 15h15M23 24h15M23 33h15M24 45c5 5 12 7 21 8"/></symbol>
-<symbol id="calendar" viewBox="0 0 64 64"><rect x="8" y="12" width="48" height="44" rx="6"/><path d="M8 25h48M20 6v12M44 6v12M19 35h8v8h-8zM37 35h8v8h-8z"/></symbol>
-<symbol id="star" viewBox="0 0 64 64"><path d="M32 5l8 17 19 3-14 13 4 19-17-9-17 9 4-19L5 25l19-3z"/></symbol>
-<symbol id="people" viewBox="0 0 64 64"><circle cx="23" cy="21" r="9"/><circle cx="45" cy="24" r="7"/><path d="M7 56c1-14 7-22 16-22s15 8 16 22M37 56c1-10 5-16 12-16 6 0 10 5 11 16"/></symbol>
-<symbol id="guitar" viewBox="0 0 64 64"><path d="M43 7l13-3 4 4-4 13-8 2-10 10c4 8 2 18-5 24-8 6-19 5-25-3S3 35 11 29c6-5 14-5 21-1l10-10 1-11z"/><circle cx="23" cy="43" r="5"/><path d="M27 39l25-25M47 10l7 7"/></symbol>
-<symbol id="info" viewBox="0 0 64 64"><circle cx="32" cy="32" r="27"/><path d="M32 28v21M32 17h.01"/></symbol>
-<symbol id="sparkles" viewBox="0 0 64 64"><path d="M25 4c2 12 8 18 20 20-12 2-18 8-20 20-2-12-8-18-20-20 12-2 18-8 20-20zM49 36c1 7 4 10 11 11-7 1-10 4-11 11-1-7-4-10-11-11 7-1 10-4 11-11z"/></symbol>
-<symbol id="music" viewBox="0 0 64 64"><path d="M25 12v34a9 9 0 1 1-6-8V18l35-8v31a9 9 0 1 1-6-8V4L25 12z"/></symbol>
-<symbol id="heart" viewBox="0 0 64 64"><path d="M32 57S6 42 6 23c0-11 7-17 16-17 5 0 9 3 10 8 2-5 6-8 11-8 9 0 15 6 15 17 0 19-26 34-26 34z"/></symbol>
-<symbol id="badge" viewBox="0 0 64 64"><path d="M32 5l7 10 12-2-2 12 10 7-10 7 2 12-12-2-7 10-7-10-12 2 2-12-10-7 10-7-2-12 12 2z"/><circle cx="32" cy="32" r="9"/></symbol>
-<symbol id="ticket" viewBox="0 0 64 64"><path d="M7 16h50v13a7 7 0 0 0 0 14v13H7V43a7 7 0 0 0 0-14V16z"/><path d="M32 17v38" stroke-dasharray="5 5"/></symbol>
-<symbol id="hat" viewBox="0 0 64 64"><path d="M17 34c2-17 8-27 15-27s13 10 15 27c-9 4-21 4-30 0zM4 39c17 8 39 8 56 0-4 12-14 19-28 19S8 51 4 39z"/></symbol>
-<symbol id="lock" viewBox="0 0 64 64"><rect x="10" y="28" width="44" height="30" rx="5"/><path d="M20 28v-8a12 12 0 0 1 24 0v8"/></symbol>
+  <defs>
+    <style>.i{fill:none;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}</style>
+  </defs>
+  <symbol id="boot" viewBox="0 0 120 120"><g class="i"><path d="M42 18h28l-3 42 16 16 20 4c-1 12-12 18-26 18H45c-9 0-16-7-16-16V66l10-9z"/><path d="M45 18l9 12 10-12"/><path d="M39 57c8 3 18 3 28 0"/><path d="M31 79h32"/></g></symbol>
+  <symbol id="hat" viewBox="0 0 120 120"><g class="i"><path d="M22 65c13 9 63 9 76 0"/><path d="M34 61c5-6 9-20 12-32 9 7 19 7 28 0 4 13 7 25 12 32"/><path d="M47 51c10 4 20 4 29 0"/><path d="M18 66c2 11 25 18 42 18s40-7 42-18"/></g></symbol>
+  <symbol id="guitar" viewBox="0 0 120 120"><g class="i"><path d="M70 19l12-9 20 20-9 12"/><path d="M76 35l17-17"/><path d="M72 39l-17 17"/><path d="M53 52c-10-4-23 0-30 10-8 12-6 26 4 33 10 7 24 3 32-9 4-6 5-12 3-18l14-14z"/><circle cx="47" cy="73" r="7"/><path d="M51 68l33-33"/></g></symbol>
+  <symbol id="star" viewBox="0 0 120 120"><path class="i" d="M60 12l13 30 33 3-25 22 8 32-29-17-29 17 8-32-25-22 33-3z"/></symbol>
+  <symbol id="horseshoe" viewBox="0 0 120 120"><g class="i"><path d="M35 20c-12 10-18 26-18 43 0 24 18 43 43 43s43-19 43-43c0-17-6-33-18-43l-13 16c8 7 12 16 12 27 0 14-11 25-24 25S36 77 36 63c0-11 4-20 12-27z"/><circle cx="28" cy="39" r="2"/><circle cx="23" cy="60" r="2"/><circle cx="30" cy="84" r="2"/><circle cx="92" cy="39" r="2"/><circle cx="97" cy="60" r="2"/><circle cx="90" cy="84" r="2"/></g></symbol>
+  <symbol id="music" viewBox="0 0 120 120"><g class="i"><path d="M48 28v50"/><path d="M48 33l38-8v47"/><ellipse cx="36" cy="82" rx="13" ry="9"/><ellipse cx="74" cy="76" rx="13" ry="9"/></g></symbol>
+  <symbol id="calendar" viewBox="0 0 120 120"><g class="i"><rect x="18" y="27" width="84" height="72" rx="8"/><path d="M18 46h84M39 17v20M81 17v20M36 61h15v15H36zM69 61h15v15H69z"/></g></symbol>
+  <symbol id="people" viewBox="0 0 120 120"><g class="i"><circle cx="43" cy="39" r="15"/><circle cx="79" cy="43" r="12"/><path d="M17 102c2-25 12-39 27-39 16 0 26 14 28 39M67 102c2-18 9-29 21-29 11 0 18 9 20 29"/></g></symbol>
+  <symbol id="heart" viewBox="0 0 120 120"><path class="i" d="M60 104S15 78 15 43c0-19 12-30 27-30 9 0 16 5 18 14 3-9 10-14 19-14 15 0 26 11 26 30 0 35-45 61-45 61z"/></symbol>
+  <symbol id="ticket" viewBox="0 0 120 120"><g class="i"><path d="M18 31h84v22a12 12 0 0 0 0 24v22H18V77a12 12 0 0 0 0-24V31z"/><path d="M60 33v64" stroke-dasharray="7 8"/></g></symbol>
+  <symbol id="lock" viewBox="0 0 120 120"><g class="i"><rect x="25" y="52" width="70" height="53" rx="8"/><path d="M40 52V38a20 20 0 0 1 40 0v14"/></g></symbol>
+  <symbol id="home" viewBox="0 0 120 120"><g class="i"><path d="M16 58L60 20l44 38"/><path d="M29 52v51h62V52"/><path d="M50 103V72h20v31"/></g></symbol>
+  <symbol id="cactus" viewBox="0 0 120 120"><g class="i"><path d="M55 104V31c0-9 5-15 12-15s12 6 12 15v20"/><path d="M55 61H38c-8 0-13-6-13-14V36"/><path d="M79 67h12c7 0 11-5 11-12V43"/><path d="M42 104h51"/></g></symbol>
+  <symbol id="gift" viewBox="0 0 120 120"><g class="i"><rect x="18" y="48" width="84" height="55" rx="5"/><path d="M13 38h94v20H13zM60 38v65"/><path d="M60 38c-18-4-26-14-20-22 7-8 18 0 20 22zM60 38c18-4 26-14 20-22-7-8-18 0-20 22z"/></g></symbol>
+  <symbol id="moon" viewBox="0 0 120 120"><path class="i" d="M78 16c-31 7-45 45-25 68 14 17 39 21 58 10-9 18-28 29-49 27-31-3-54-30-51-61 3-29 31-51 67-44z"/></symbol>
+  <symbol id="user" viewBox="0 0 120 120"><g class="i"><circle cx="60" cy="39" r="21"/><path d="M22 105c4-26 18-40 38-40s34 14 38 40"/></g></symbol>
+  <symbol id="flame" viewBox="0 0 120 120"><path class="i" d="M61 107c-24 0-40-16-40-38 0-17 9-27 20-38 1 12 7 18 15 20-2-20 9-35 22-43-1 17 16 27 20 43 9 35-12 56-37 56z"/></symbol>
+  <symbol id="butterfly" viewBox="0 0 120 120"><g class="i"><path d="M60 57c-8-25-28-39-43-27-13 11-2 35 22 37-23 6-31 31-15 41 14 9 31-8 36-29"/><path d="M60 57c8-25 28-39 43-27 13 11 2 35-22 37 23 6 31 31 15 41-14 9-31-8-36-29"/><path d="M60 46v46"/></g></symbol>
+  <symbol id="tent" viewBox="0 0 120 120"><g class="i"><path d="M16 98L60 20l44 78z"/><path d="M60 20v78M40 98l20-38 20 38"/></g></symbol>
+  <symbol id="trophy" viewBox="0 0 120 120"><g class="i"><path d="M36 18h48v22c0 25-10 38-24 38S36 65 36 40V18z"/><path d="M36 29H18c0 20 9 30 23 31M84 29h18c0 20-9 30-23 31M60 78v17M42 104h36"/></g></symbol>
+  <symbol id="info" viewBox="0 0 120 120"><g class="i"><circle cx="60" cy="60" r="48"/><path d="M60 53v35M60 35h.01"/></g></symbol>
+  <symbol id="badge" viewBox="0 0 120 120"><g class="i"><path d="M60 12l12 17 20-3-3 20 17 12-17 12 3 20-20-3-12 17-12-17-20 3 3-20-17-12 17-12-3-20 20 3z"/><circle cx="60" cy="58" r="16"/></g></symbol>
 </svg>
