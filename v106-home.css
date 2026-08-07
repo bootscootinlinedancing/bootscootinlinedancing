@@ -33,3 +33,10 @@
   .menu-sheet{width:100%}.menu-top{height:98px}.menu-links{padding-inline:18px}.menu-row{min-height:108px;grid-template-columns:54px minmax(0,1fr) 30px;gap:13px}.menu-copy b{font-size:clamp(1.75rem,8vw,2.25rem)}.menu-copy small{font-size:.92rem}.menu-sub{padding-left:67px}
   .sign-card .icon-ring svg{width:58px;height:58px}
 }
+
+/* v107 polished Western icon system */
+.icon-ring{background:radial-gradient(circle at 35% 28%,rgba(255,76,84,.18),rgba(0,0,0,.96) 68%);border:2px solid #ff2732;box-shadow:0 0 7px #ff2732,0 0 20px rgba(255,20,35,.55),inset 0 0 24px rgba(255,30,45,.09)}
+.icon-ring svg,.btn svg,.mi svg{fill:#f7e8d3!important;stroke:none!important;filter:drop-shadow(0 0 5px rgba(255,56,66,.35))}
+.btn svg{width:30px;height:30px}.mi svg{width:30px;height:30px}.sign-card .icon-ring svg{width:62px;height:62px}
+.menu-row .mi{border:1px solid rgba(255,50,60,.42);border-radius:12px;background:#120607;display:grid;place-items:center}
+@media(max-width:650px){.sign-card .icon-ring svg{width:56px;height:56px}}
