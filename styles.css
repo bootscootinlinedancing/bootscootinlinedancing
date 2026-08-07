@@ -7129,3 +7129,61 @@ body>.header .brand small{display:block!important;line-height:1.2!important}
 @supports not (height:100dvh){
   .boot-entry .boot-entry-shell{height:100svh!important;min-height:100svh!important;max-height:100svh!important;}
 }
+
+/* VERSION 96.4.11 — BOOT ENTRY HARD FIX
+   Use the already-proven walking-boot asset as a CSS background so Safari can
+   never render alt text/broken-image UI inside the stomp artwork. */
+.boot-entry .entry-boot{
+  display:block!important;
+  position:absolute!important;
+  left:50%!important;
+  top:27%!important;
+  bottom:auto!important;
+  width:min(72vw,360px)!important;
+  height:43vh!important;
+  max-width:360px!important;
+  max-height:430px!important;
+  min-height:260px!important;
+  background-image:url('walking-boot.webp')!important;
+  background-repeat:no-repeat!important;
+  background-position:center bottom!important;
+  background-size:contain!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+  transform:translateX(-50%) rotate(-3deg)!important;
+  transform-origin:50% 92%!important;
+  filter:drop-shadow(0 20px 20px rgba(0,0,0,.9)) brightness(1.08) contrast(1.06)!important;
+  overflow:visible!important;
+  color:transparent!important;
+  font-size:0!important;
+}
+.boot-entry .entry-boot::before,.boot-entry .entry-boot::after{content:none!important;display:none!important;}
+.boot-entry .boot-entry-button{
+  top:auto!important;
+  bottom:10.3%!important;
+  width:min(78vw,390px)!important;
+}
+.boot-entry .boot-entry-tagline{bottom:4.2%!important;}
+.boot-entry .impact-dust{top:auto!important;bottom:19.5%!important;}
+@media(max-width:430px){
+  .boot-entry .entry-boot{top:26.5%!important;width:66vw!important;height:42vh!important;min-height:245px!important;}
+  .boot-entry .boot-entry-button{bottom:10.5%!important;width:78vw!important;}
+}
+@media(max-width:390px){
+  .boot-entry .entry-boot{top:26%!important;width:64vw!important;height:41vh!important;min-height:230px!important;}
+  .boot-entry .boot-entry-button{bottom:10.2%!important;width:82vw!important;}
+}
+@media(max-height:760px){
+  .boot-entry .entry-boot{top:25.5%!important;height:40vh!important;width:min(58vw,310px)!important;min-height:210px!important;}
+  .boot-entry .boot-entry-button{bottom:10.5%!important;}
+  .boot-entry .boot-entry-tagline{bottom:3.2%!important;}
+}
+.poster-intro.stomping .entry-boot{animation:bootHeelStompHard .86s cubic-bezier(.18,.82,.22,1) both!important;}
+@keyframes bootHeelStompHard{
+  0%{transform:translateX(-50%) translateY(0) rotate(-3deg)}
+  32%{transform:translateX(-50%) translateY(-30px) rotate(-7deg)}
+  58%{transform:translateX(-50%) translateY(12px) rotate(-1deg)}
+  74%{transform:translateX(-50%) translateY(-4px) rotate(-3deg)}
+  100%{transform:translateX(-50%) translateY(0) rotate(-3deg)}
+}
