@@ -6767,3 +6767,16 @@ body.hq-modal-open{overflow:hidden}
 @media(max-width:620px){.customer-reward-card{align-items:flex-start;flex-direction:column}.customer-reward-card small{text-align:left}}
 
 .western-icon{width:1.15em;height:1.15em;display:inline-block;vertical-align:-.18em;color:currentColor;fill:none;stroke:currentColor;margin-right:.22em}.western-icon use{pointer-events:none}
+
+/* v96.4 presentation dark-theme consistency */
+:root{--presentation-bg:#050303;--presentation-panel:#100909;--presentation-border:#5a2025;--presentation-copy:#d3c3ba;--presentation-red:#e31d28}
+.paper,.booking-page,.admin-page{background:var(--presentation-bg)!important;color:#f7eee8!important}
+.booking-content,.booking-arrival-section{background:radial-gradient(circle at 50% 0,rgba(213,26,36,.10),transparent 34%),repeating-linear-gradient(0deg,#050303 0 31px,#0d0506 32px)!important;color:#f7eee8!important}
+.booking-toolbar{padding:22px 0 8px;border-bottom:1px solid #4a171b}
+.booking-toolbar h2{font:500 clamp(36px,5vw,58px)/1 Oswald,sans-serif!important;text-transform:uppercase;letter-spacing:.045em;color:#fff!important;text-shadow:none!important;filter:none!important}
+.booking-toolbar .kicker.red{color:#ff4b54!important;text-shadow:0 0 9px rgba(255,42,52,.45)}
+.booking-filter{color:#f0e5de!important}.booking-filter select,.form-grid input,.form-grid select{background:#120909!important;border-color:#703037!important;color:#fff!important}
+.class-card,.booking-loading,.booking-empty,.booking-alert,.booking-arrival-card{background:#100909!important;border-color:#5c2428!important;color:#f4e8e0!important;box-shadow:0 12px 30px rgba(0,0,0,.42)!important}
+.class-info p,.booking-arrival-card p,.booking-arrival-card li{color:#cbbab0!important}.class-venue{color:#ff5b63!important}.class-date{border:1px solid #6b252a}.spaces{color:#72c691!important}.spaces.low{color:#ff626a!important}
+.booking-dialog{background:#100909!important;color:#f7eee8!important;border-color:#743038!important}.dialog-meta{border-color:#59262a!important}.privacy-note{color:#b7a49b!important}.booking-policy-summary{background:#0b0606!important;border-color:#542025!important;color:#d8c8be!important}
+.booking-policy-section,.booking-help{background:#050303!important}.booking-policy-grid article,.fair-policy-note,.help-grid article{background:#100909!important;border-color:#5c2428!important;color:#e9ddd5!important}
