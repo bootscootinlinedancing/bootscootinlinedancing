@@ -292,3 +292,53 @@
     margin-top: 0 !important;
   }
 }
+
+/* v96.4.36 — DESKTOP EXPLORE BUTTON CLEANUP
+   Desktop gets one compact Explore control inside the main nav row.
+   The existing hamburger remains untouched for phones. */
+@media (min-width: 768px) {
+  body.honky-home > .honky-header > .honky-menu-button,
+  body:not(.honky-home) > .honky-header > .honky-menu-button {
+    display: none !important;
+  }
+
+  .honky-header .honky-desktop-nav .desktop-explore-button {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    display: inline-flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    min-width: 58px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 0 0 3px !important;
+    padding: 0 10px !important;
+    border: 1px solid rgba(222,58,67,.72) !important;
+    outline: 1px solid rgba(222,58,67,.28) !important;
+    outline-offset: 2px !important;
+    border-radius: 0 !important;
+    background: rgba(18,7,8,.94) !important;
+    color: #f2e8df !important;
+    box-shadow: none !important;
+    font: 600 7.5px/1 Oswald, sans-serif !important;
+    letter-spacing: .08em !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    transform: none !important;
+  }
+  .honky-header .honky-desktop-nav .desktop-explore-button:hover,
+  .honky-header .honky-desktop-nav .desktop-explore-button:focus-visible {
+    background: #241012 !important;
+    border-color: #e33d46 !important;
+    color: #fff !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .desktop-explore-button { display: none !important; }
+}

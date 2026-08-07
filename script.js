@@ -39,6 +39,7 @@
 const intro = document.getElementById('intro');
 const enter = document.getElementById('enterSite');
 const menuButton = document.getElementById('menuButton');
+const desktopExploreButton = document.getElementById('desktopExploreButton');
 const nav = document.getElementById('nav');
 
 function finishIntro(){
@@ -109,6 +110,7 @@ function setMenuOpen(open) {
   nav.classList.toggle('open', open);
   nav.setAttribute('aria-hidden', String(!open));
   menuButton.setAttribute('aria-expanded', String(open));
+  desktopExploreButton?.setAttribute('aria-expanded', String(open));
   document.body.classList.toggle('menu-open', open);
 
   if (open) {
@@ -125,6 +127,11 @@ function setMenuOpen(open) {
 if (menuButton && nav) {
   // A single click handler works for touch, mouse and keyboard.
   menuButton.addEventListener('click', event => {
+    event.preventDefault();
+    setMenuOpen(!nav.classList.contains('open'));
+  });
+
+  desktopExploreButton?.addEventListener('click', event => {
     event.preventDefault();
     setMenuOpen(!nav.classList.contains('open'));
   });
