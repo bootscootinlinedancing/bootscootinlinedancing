@@ -73,49 +73,6 @@ function requireAdmin(request, env) {
 }
 
 
-
-async function ensureNewsletterSchema(env) {
-  if (!env.BOOKINGS_DB) throw new Error('BOOKINGS_DB binding is missing.');
-  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS newsletter_subscribers (
-    id TEXT PRIMARY KEY,
-    email TEXT NOT NULL UNIQUE,
-    source TEXT NOT NULL DEFAULT 'website-footer',
-    status TEXT NOT NULL DEFAULT 'subscribed',
-    consent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`).run();
-}
-
-async function newsletterSubscribe(request, env) {
-  await ensureNewsletterSchema(env);
-  let body = {};
-  try { body = await request.json(); } catch { return json({ error: 'Please enter a valid email address.' }, 400); }
-  const email = String(body.email || '').trim().toLowerCase();
-  const source = String(body.source || 'website-footer').slice(0,80);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'Please enter a valid email address.' }, 400);
-  const existing = await env.BOOKINGS_DB.prepare('SELECT email, status FROM newsletter_subscribers WHERE email = ?').bind(email).first();
-  if (existing && existing.status === 'subscribed') return json({ ok: true, alreadySubscribed: true });
-  const id = crypto.randomUUID();
-  await env.BOOKINGS_DB.prepare(`INSERT INTO newsletter_subscribers (id,email,source,status,consent_at,updated_at)
-    VALUES (?,?,?,'subscribed',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
-    ON CONFLICT(email) DO UPDATE SET source=excluded.source,status='subscribed',consent_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP`)
-    .bind(id,email,source).run();
-  let welcomeEmailSent = false;
-  try {
-    const subject = 'Welcome to the Boot Scootin’ family!';
-    const text = `Welcome to the Boot Scootin’ family!\n\nYou’ll now be the first to hear about new line dancing classes, socials and special events in Birmingham.\n\nBook your next class: ${SITE_ORIGIN}/bookings.html\n\nSee y’all on the dance floor!\n\nNora\nBoot Scootin’ Line Dancing`;
-    const html = brandedEmailHtml({
-      heading: 'Welcome to the Boot Scootin’ family!',
-      greeting: 'Hi there,',
-      paragraphs: ['Thanks for joining us. You’ll now be the first to hear about new classes, socials and special events in Birmingham.', 'Whether you are completely new to line dancing or already have your boots ready, you are very welcome here.'],
-      buttons: [{ label: 'Book your next class', href: `${SITE_ORIGIN}/bookings.html` }]
-    });
-    const result = await sendTransactionalEmail(env, email, subject, html, text, 'general');
-    welcomeEmailSent = Boolean(result && !result.skipped);
-  } catch (error) { console.warn('Newsletter welcome email was not sent:', error?.message || error); }
-  return json({ ok: true, alreadySubscribed: false, welcomeEmailSent }, 201);
-}
-
 async function ensureBookingSchema(env) {
   if (!env.BOOKINGS_DB) throw new Error('BOOKINGS_DB binding is missing.');
   const statements = [
@@ -3239,7 +3196,6 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
-      if (path === '/api/newsletter/subscribe' && request.method === 'POST') return newsletterSubscribe(request, env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
       if (path === '/api/promotions/validate' && request.method === 'POST') return publicPromoValidate(request, env);
       if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);

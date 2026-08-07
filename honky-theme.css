@@ -131,37 +131,3 @@ footer .script{font-size:clamp(1.4rem,3vw,2.2rem)}
  .platform-preview-grid>a,.platform-pathway-grid>a,[class*="card"]{transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
  .platform-preview-grid>a:hover,.platform-pathway-grid>a:hover,[class*="card"]:hover{transform:translateY(-3px);border-color:#bf2833!important}
 }
-
-
-/* v98.3.0 — mobile stability, professional icon sizing and readable booking UI */
-.honky-logo-established{display:flex!important;align-items:center!important;gap:14px!important;min-width:250px!important;padding:0!important;overflow:visible!important;text-decoration:none!important}
-.honky-logo-established img{width:92px!important;height:76px!important;object-fit:contain!important;flex:0 0 auto!important}
-.honky-logo-established span{display:block!important;margin:0!important;position:static!important;white-space:nowrap!important;color:#d8b783!important;font:600 11px/1.25 Oswald,sans-serif!important;letter-spacing:1.7px!important;text-align:left!important}
-.honky-logo-established span i{color:#ef2933!important;font-style:normal!important;margin:0 4px!important}
-.menu45-section summary svg{width:28px!important;height:28px!important;max-width:28px!important;max-height:28px!important;fill:none!important;stroke:currentColor!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important;filter:none!important}
-.menu45-section summary>span{grid-template-columns:36px minmax(0,1fr)!important;gap:14px!important}
-.menu45-section summary strong{font-size:25px!important}.menu45-section summary small{font-size:14px!important}
-.why-grid article svg{width:42px!important;height:42px!important;padding:8px!important;fill:none!important;stroke:currentColor!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important;filter:none!important;border-radius:8px!important;background:#160606!important;box-shadow:inset 0 0 0 1px #6d2327!important}
-.booking-content h2,.booking-shell h2,.booking-content .section-title,.booking-content .section-title h2{font-family:Oswald,Arial,sans-serif!important;color:#f5e8d5!important;text-shadow:none!important;filter:none!important;-webkit-text-stroke:0!important;letter-spacing:.02em!important}
-.booking-content,.booking-arrival-section,.booking-content .paper{background:linear-gradient(180deg,#100605,#050202)!important;color:#f4e6cf!important}
-.booking-filter label,.booking-content p,.booking-content h3,.booking-content strong{color:#f4e6cf!important}
-.booking-filter select{background:#110606!important;color:#fff!important;border:1px solid #7d3034!important}
-.class-card{background:linear-gradient(145deg,#1b0908,#080303)!important;color:#f4e6cf!important;border-color:#72262b!important}
-.neon-sign svg{fill:none!important;stroke-linecap:round!important;stroke-linejoin:round!important}
-.neon-guitar-svg{stroke-width:4.5!important}.live-music-sign svg,.proper-boot{stroke-width:4.5!important}
-@media(max-width:950px){
- .honky-header{height:112px!important;min-height:112px!important;padding:12px 20px!important;grid-template-columns:minmax(0,1fr) auto!important;overflow:visible!important}
- .honky-logo-established{min-width:0!important;max-width:calc(100vw - 105px)!important;gap:10px!important}
- .honky-logo-established img{width:76px!important;height:66px!important}
- .honky-logo-established span{font-size:9px!important;letter-spacing:1.15px!important;line-height:1.3!important;white-space:normal!important;max-width:118px!important}
- .honky-menu-button{width:58px!important;height:58px!important;min-width:58px!important}
- .honky-menu-panel{padding:0 20px 28px!important}
- .honky-menu-root{height:calc(100dvh - 92px)!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important}
- .honky-menu-head{height:92px!important;min-height:92px!important;position:sticky!important;top:0!important;z-index:3!important}
- .menu-brand img{width:58px!important;height:58px!important}.nav-close{width:52px!important;height:52px!important;font-size:32px!important}
- .honky-menu-feature strong{font-size:30px!important}.honky-menu-feature span{font-size:15px!important}
- .menu45-section summary{padding:18px 0!important;min-height:78px!important}.menu45-section summary strong{font-size:23px!important}.menu45-section summary svg{width:26px!important;height:26px!important}
- .menu45-submenu{padding-left:50px!important}
- .neon-guitar-marquee{grid-template-columns:120px minmax(0,1fr)!important}.neon-guitar-svg{height:165px!important}.neon-guitar-marquee a span{font-size:clamp(24px,7vw,36px)!important}
-}
-@media(max-width:420px){.honky-logo-established span{font-size:8.5px!important;max-width:105px!important}.honky-header{padding-inline:14px!important}.menu45-section summary strong{font-size:22px!important}}

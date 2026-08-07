@@ -64,6 +64,55 @@ if (intro) {
   }
 }
 
+// VERSION 81 — ONE STABLE MENU CONTROLLER
+const navClose = document.getElementById('navClose');
+
+function setMenuOpen(open) {
+  if (!nav || !menuButton) return;
+
+  nav.classList.toggle('open', open);
+  nav.setAttribute('aria-hidden', String(!open));
+  menuButton.setAttribute('aria-expanded', String(open));
+  document.body.classList.toggle('menu-open', open);
+
+  if (open) {
+    nav.scrollTop = 0;
+    requestAnimationFrame(() => navClose?.focus({preventScroll:true}));
+  } else {
+    nav.querySelectorAll('details.menu45-section[open]').forEach(section => {
+      section.open = false;
+    });
+    requestAnimationFrame(() => menuButton.focus({preventScroll:true}));
+  }
+}
+
+if (menuButton && nav) {
+  // A single click handler works for touch, mouse and keyboard.
+  menuButton.addEventListener('click', event => {
+    event.preventDefault();
+    setMenuOpen(!nav.classList.contains('open'));
+  });
+
+  navClose?.addEventListener('click', event => {
+    event.preventDefault();
+    setMenuOpen(false);
+  });
+
+  nav.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => setMenuOpen(false));
+  });
+
+  nav.addEventListener('click', event => {
+    if (event.target === nav) setMenuOpen(false);
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && nav.classList.contains('open')) {
+      setMenuOpen(false);
+    }
+  });
+}
+
 // Reveal sections on every page.
 const revealElements = document.querySelectorAll('.reveal');
 
@@ -192,48 +241,31 @@ installGuide?.addEventListener("click", event => {
 
 
 
-
-
-// v98.2.0 — single mobile navigation controller (prevents stale policy/footer overlays)
+// VERSION 96.1 — CONTAINED DRILL-DOWN MENU
 (() => {
-  const nav = document.getElementById('nav');
-  const openButton = document.getElementById('menuButton');
-  const closeButton = document.getElementById('navClose');
-  if (!nav || !openButton) return;
-  const sections = [...nav.querySelectorAll('details.menu45-section')];
-  const close = (restoreFocus=false) => {
-    nav.classList.remove('open'); nav.setAttribute('aria-hidden','true');
-    openButton.setAttribute('aria-expanded','false'); document.body.classList.remove('menu-open','nav-open');
-    sections.forEach(s => s.open=false);
-    if (restoreFocus) openButton.focus({preventScroll:true});
-  };
-  const open = () => {
-    nav.classList.add('open'); nav.setAttribute('aria-hidden','false');
-    openButton.setAttribute('aria-expanded','true'); document.body.classList.add('menu-open');
-    nav.scrollTop=0; setTimeout(()=>closeButton?.focus({preventScroll:true}),20);
-  };
-  openButton.onclick=(e)=>{e.preventDefault(); nav.classList.contains('open')?close(true):open();};
-  if(closeButton) closeButton.onclick=(e)=>{e.preventDefault();close(true);};
-  nav.addEventListener('click',e=>{if(e.target===nav)close(false);});
-  nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>close(false)));
-  sections.forEach(s=>s.addEventListener('toggle',()=>{if(s.open)sections.forEach(o=>{if(o!==s)o.open=false;});}));
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')close(true);});
-  window.addEventListener('pageshow',()=>close(false));
-  window.addEventListener('hashchange',()=>close(false));
-})();
+  const overlay = document.getElementById('nav');
+  const sections = [...document.querySelectorAll('#menu45 details.menu45-section')];
+  if (!overlay || !sections.length) return;
 
-// v98.2.0 — genuine newsletter signup with welcome-email status
-(() => {
-  const form=document.getElementById('newsletterForm'); const status=document.getElementById('newsletterStatus');
-  if(!form||!status)return;
-  form.addEventListener('submit',async e=>{
-    e.preventDefault(); const email=String(new FormData(form).get('email')||'').trim(); const button=form.querySelector('button');
-    form.classList.remove('is-success','is-error');
-    if(!/^\S+@\S+\.\S+$/.test(email)){form.classList.add('is-error');status.textContent='Please enter a valid email address.';return;}
-    button.disabled=true; status.textContent='Joining the Boot Scootin’ family…';
-    try{const r=await fetch('/api/newsletter/subscribe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,source:'website-footer'})}); const d=await r.json(); if(!r.ok)throw new Error(d.error||'Unable to subscribe right now.'); form.classList.add('is-success'); status.textContent=d.alreadySubscribed?'You’re already on the list — see y’all soon!':(d.welcomeEmailSent?'You’re in! Check your inbox for your welcome email.':'You’re subscribed. Your welcome email may take a few minutes.'); form.reset();}catch(err){form.classList.add('is-error');status.textContent=err.message||'Unable to subscribe right now.';}finally{button.disabled=false;}
+  sections.forEach(section => {
+    section.addEventListener('toggle', () => {
+      const panel = document.getElementById('menu45');
+      if (section.open) {
+        sections.forEach(other => { if (other !== section) other.open = false; });
+        panel?.classList.add('submenu-active');
+        requestAnimationFrame(() => {
+          overlay.scrollTop = 0;
+          section.querySelector(':scope > summary')?.focus?.({preventScroll:true});
+        });
+      } else if (!sections.some(item => item.open)) {
+        panel?.classList.remove('submenu-active');
+        overlay.scrollTop = 0;
+      }
+    });
+  });
+
+  // Safari back/forward cache can preserve a stale open overlay.
+  window.addEventListener('pageshow', () => {
+    setMenuOpen(false);
   });
 })();
-
-// Force old cached service workers to refresh this release immediately.
-if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update())).catch(()=>{});}

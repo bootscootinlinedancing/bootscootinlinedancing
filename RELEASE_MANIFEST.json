@@ -1,7 +1,7 @@
 {
   "release": "V95.0.0 CUSTOMER PORTAL & ACHIEVEMENTS",
-  "version": "97.1.0",
-  "release_name": "Broadway Neon Experience",
+  "version": "96.4.0",
+  "release_name": "BROADWAY NEON + NORA PHOTO UPDATE",
   "description": "Expands the secure customer portal with personal rewards, achievements, lifetime spend and engagement status.",
   "built_from": "boot-scootin-platform-v94.0.0-PROMOTIONS-REWARDS-ENGINE.zip",
   "built_at": "2026-08-06T18:49:56.842081+00:00",
@@ -50,6 +50,5 @@
     "Reduced white/cream areas in favour of black, deep red and dark timber textures",
     "Added Broadway-style neon sign details and glow treatments",
     "Retained all existing booking, loyalty, waiting-list and HQ functionality"
-  ],
-  "name": "BROADWAY-NEON-HONKY-TONK-REFINEMENT"
+  ]
 }
