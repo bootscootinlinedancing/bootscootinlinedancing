@@ -620,3 +620,8 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Tightened desktop spacing between homepage image/content blocks.
 - Restyled the Explore panel to match the desktop red/black navigation language.
 - Updated CSS/JS cache versions to v96.4.22.
+
+## v96.4.26
+- Structural desktop hero repair: normal-flow hero image removes Safari black-gap failure mode.
+- Compact single-row desktop navigation keeps all destinations, Explore, and Book a Class visible.
+- Mobile rules unchanged.
