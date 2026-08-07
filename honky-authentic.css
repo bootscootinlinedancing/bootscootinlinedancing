@@ -222,3 +222,41 @@
   .about-values-grid article h3{font-size:20px!important}
   .about-values-grid article p{font-size:15px!important;color:#d8c9c1!important}
 }
+
+/* v96.4.6 — New Here repair + centred presentation footer */
+.new-here-menu .menu45-submenu{padding:4px 14px 16px!important}
+.new-here-menu .menu45-submenu>a{display:flex!important;align-items:center!important;min-height:48px!important;padding:12px 4px!important;color:#f2e7df!important;font-size:15px!important;border-bottom:1px solid #3b2325!important}
+.new-here-menu .menu45-submenu>a::after{content:"›";margin-left:auto;color:#e52b35;font:400 22px/1 Arial,sans-serif}
+.new-here-menu .menu45-community-note{margin:12px 0 2px!important;padding:14px 14px 15px!important;border:1px solid #592429!important;border-left:3px solid #d5252e!important;background:#100808!important}
+.new-here-menu .menu45-community-note strong{display:block!important;margin:0 0 6px!important;color:#fff!important;font:700 15px/1.15 Oswald,sans-serif!important;letter-spacing:.02em!important;text-transform:none!important}
+.new-here-menu .menu45-community-note span{display:block!important;color:#beaDA5!important;font:400 12.5px/1.5 Oswald,sans-serif!important;letter-spacing:0!important;text-transform:none!important}
+
+.footer-v9646{padding:28px clamp(20px,5vw,58px) 24px!important;text-align:center!important}
+.footer-v9646 .footer-brand-centred{display:flex!important;flex-direction:column!important;align-items:center!important;max-width:520px!important;margin:0 auto 20px!important}
+.footer-v9646 .footer-brand-centred img{width:64px!important;height:64px!important;object-fit:contain!important;margin:0 0 8px!important}
+.footer-v9646 .footer-brand-centred strong{color:#f0444b!important;font:400 22px/1 Rye,serif!important;letter-spacing:.04em!important}
+.footer-v9646 .footer-brand-centred span{margin-top:5px!important;color:#fff!important;font:600 11px/1 Oswald,sans-serif!important;letter-spacing:.24em!important}
+.footer-v9646 .footer-brand-centred small{margin-top:6px!important;color:#bb8a73!important;font:600 8px/1 Oswald,sans-serif!important;letter-spacing:.18em!important}
+.footer-v9646 .footer-brand-centred p{margin:11px 0 0!important;color:#a99890!important;font-size:11.5px!important;line-height:1.35!important}
+.footer-v9646 .footer-info-row{display:grid!important;grid-template-columns:1fr 1fr!important;gap:24px!important;max-width:720px!important;margin:0 auto!important;align-items:start!important}
+.footer-v9646 .footer-mini-column{text-align:center!important}
+.footer-v9646 .footer-mini-column strong{font-size:10px!important;letter-spacing:.13em!important}
+.footer-v9646 .footer-mini-column p{font-size:10.5px!important;line-height:1.45!important;margin:6px 0 0!important}
+.footer-v9646 .footer-script{margin:20px auto 17px!important;font-size:20px!important;max-width:680px!important}
+.footer-v9646 .footer-bottom-row{padding-top:13px!important}
+.footer-v9646 .legal-footer-links{gap:7px 15px!important;margin-bottom:12px!important}
+.footer-v9646 .legal-footer-links a{font-size:7.8px!important}
+.footer-v9646 .footer-admin-link{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:7px 11px!important;margin:0 auto 10px!important;border:1px solid #64252b!important;color:#a9948b!important}
+.footer-v9646 .footer-admin-link svg{width:11px!important;height:11px!important;fill:none!important;stroke:currentColor!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+.footer-v9646 .footer-admin-link span{font:600 8px/1 Oswald,sans-serif!important;letter-spacing:.11em!important;text-transform:uppercase!important}
+.footer-v9646 .copyright-line{font-size:7.7px!important}
+@media(max-width:520px){
+ .footer-v9646{padding:24px 18px 22px!important}
+ .footer-v9646 .footer-brand-centred img{width:58px!important;height:58px!important}
+ .footer-v9646 .footer-brand-centred strong{font-size:19px!important}
+ .footer-v9646 .footer-info-row{grid-template-columns:1fr 1fr!important;gap:14px!important}
+ .footer-v9646 .footer-mini-column p{font-size:9.7px!important;overflow-wrap:anywhere!important}
+ .footer-v9646 .footer-script{font-size:18px!important;margin:17px auto 14px!important}
+ .footer-v9646 .legal-footer-links{gap:7px 11px!important}
+ .footer-v9646 .legal-footer-links a{font-size:7px!important}
+}
