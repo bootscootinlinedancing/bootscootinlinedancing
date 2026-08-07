@@ -6780,3 +6780,56 @@ body.hq-modal-open{overflow:hidden}
 .class-info p,.booking-arrival-card p,.booking-arrival-card li{color:#cbbab0!important}.class-venue{color:#ff5b63!important}.class-date{border:1px solid #6b252a}.spaces{color:#72c691!important}.spaces.low{color:#ff626a!important}
 .booking-dialog{background:#100909!important;color:#f7eee8!important;border-color:#743038!important}.dialog-meta{border-color:#59262a!important}.privacy-note{color:#b7a49b!important}.booking-policy-summary{background:#0b0606!important;border-color:#542025!important;color:#d8c8be!important}
 .booking-policy-section,.booking-help{background:#050303!important}.booking-policy-grid article,.fair-policy-note,.help-grid article{background:#100909!important;border-color:#5c2428!important;color:#e9ddd5!important}
+
+
+/* v96.4.3 — site-wide black/red presentation polish */
+:root{--cream:#0b0606;--cream2:#1b0d0e;--ink:#f4e8df}
+body{background:#030202;color:#f5ece6}
+.paper,.cream-home,.booking-page,.booking-content,.member-content,.member-hub-public-cta,
+.guide-section,.guide-card,.country-guide-gateway-card,.featured-venue-card,.inspiration-profile,
+.summer-stomp-intro,.summer-stomp-learning,.dashboard-welcome,.dashboard-card,.passport-inside,
+.passport-principles article,.account-action-grid article,.map-category-grid article,.memory-grid figure,
+.calendar-day,.customer-portal-gate,.customer-summary-grid article,.customer-booking-card,.customer-empty,
+.customer-reward-card,.customer-achievements-grid article,.member-welcome>div:first-child,.member-stat-grid article,
+.member-card,.member-section-head,.member-badge-grid article,.passport-stamps article,.journey-timeline article,
+.member-library-grid article,.member-shop-grid article,.member-profile-settings article,.member-hub-cta-inner,.passport-book,
+[class*="paper-card"],[class*="info-card"],[class*="story-panel"],[class*="feature-card"]{
+  background:#100909!important;color:#f5ece6!important;border-color:#5d2529!important;box-shadow:none!important
+}
+.paper h1,.paper h2,.paper h3,.paper h4,.cream-home h1,.cream-home h2,.cream-home h3,.cream-home h4,
+.booking-page h1,.booking-page h2,.booking-page h3,.booking-page h4,
+.member-content h1,.member-content h2,.member-content h3,.member-content h4,
+.guide-section h1,.guide-section h2,.guide-section h3,.guide-section h4,
+.country-guide-gateway-card h1,.country-guide-gateway-card h2,.country-guide-gateway-card h3,
+.featured-venue-card h1,.featured-venue-card h2,.featured-venue-card h3{color:#fff!important}
+.paper p,.paper li,.paper label,.paper dt,.paper dd,.cream-home p,.cream-home li,.cream-home label,
+.booking-page p,.booking-page li,.booking-page label,.booking-page dt,.booking-page dd,
+.member-content p,.member-content li,.member-content label,.guide-section p,.guide-section li,
+.country-guide-gateway-card p,.featured-venue-card p,.inspiration-profile p{color:#cbbab0!important}
+.home-class-card,.venue-card,.nora-polaroid,.polaroids figure,.event-polaroids img,.mini-gallery img{background:#100909!important;color:#f5ece6!important;border-color:#5d2529!important}
+.home-class-card p,.venue-card p,.nora-polaroid figcaption,.polaroids figcaption{color:#cbbab0!important}
+.booking-page input,.booking-page select,.booking-page textarea,.customer-lookup-form input,
+.member-content input,.member-content select,.member-content textarea,
+.paper input,.paper select,.paper textarea{background:#070404!important;color:#fff!important;border-color:#6b2a2f!important}
+.booking-page input::placeholder,.paper input::placeholder,.member-content input::placeholder{color:#7f706a!important}
+.booking-page [class*="note"],.booking-page [class*="description"],.booking-page [class*="summary"],
+.booking-page [class*="policy"],.member-content [class*="stat"],.member-content [class*="panel"]{
+  background:#160b0c!important;color:#d8c9c0!important;border-color:#6b282d!important
+}
+.booking-page [class*="note"] *, .booking-page [class*="description"] *{color:#d8c9c0!important}
+/* Moonshine / Long Road / rewards and guide pages: remove remaining parchment blocks */
+main section:not(.dark):not(.better-hero):not(.booking-hero):not(.about-hero):not(.saloon-signoff){background-color:#090505!important;color:#f5ece6!important}
+main section:not(.dark):not(.better-hero):not(.booking-hero):not(.about-hero):not(.saloon-signoff) article{border-color:#5b2529}
+/* polished brand lockup */
+.brand-lockup-copy{min-width:150px!important;gap:1px!important}
+.brand-lockup-copy strong{font:400 18px/1 Rye,serif!important;color:#f7eee8!important;letter-spacing:.02em!important}
+.brand-lockup-copy b{font:600 10px/1.15 Oswald,sans-serif!important;color:#e52a33!important;letter-spacing:.24em!important;margin-top:5px!important}
+.brand-lockup-copy small{font:500 8px/1 Oswald,sans-serif!important;color:#bda49a!important;letter-spacing:.25em!important;margin-top:5px!important}
+@media(max-width:430px){.brand-lockup-copy{min-width:122px!important}.brand-lockup-copy strong{font-size:14px!important}.brand-lockup-copy b{font-size:8px!important}.brand-lockup-copy small{font-size:7px!important}}
+/* legal footer links */
+.legal-footer-links{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:8px 18px!important;margin:18px auto 0!important;padding-top:16px!important;border-top:1px solid #3d1719!important;max-width:900px!important}
+.legal-footer-links a{color:#bdaea5!important;text-decoration:none!important;font:500 11px/1.3 Oswald,sans-serif!important;text-transform:uppercase!important;letter-spacing:.08em!important}
+.legal-footer-links a:hover{color:#ef3039!important}
+/* What is line dancing section */
+.what-is-line-dancing{background:radial-gradient(circle at 85% 20%,rgba(210,25,35,.11),transparent 28%),repeating-linear-gradient(0deg,#080505 0 31px,#100707 32px 33px)!important}
+.what-is-line-dancing .story-panel{background:#140a0b!important;border:1px solid #5b2428!important}
