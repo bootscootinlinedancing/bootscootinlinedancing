@@ -6957,3 +6957,69 @@ body>.header .brand small{display:block!important;line-height:1.2!important}
  .boot-entry-button{bottom:12.5%;width:82%;min-height:62px}.boot-entry-tagline{bottom:5.4%;font-size:19px}
 }
 @media(prefers-reduced-motion:reduce){.poster-intro.stomping .entry-boot{animation:none}}
+
+/* VERSION 96.4.9 — BOOT STOMP ENTRY MOBILE LAYOUT FIX */
+/* Overrides the legacy v46 poster hit-area rules that were forcing the red
+   entry button over the boot on phones. */
+.boot-entry .boot-entry-button{
+  left:50%!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:10.8%!important;
+  width:min(78%,390px)!important;
+  height:auto!important;
+  min-height:58px!important;
+  transform:translateX(-50%)!important;
+  padding:11px 16px!important;
+  border-radius:4px!important;
+  z-index:6!important;
+}
+.boot-entry .entry-boot{
+  left:50%!important;
+  bottom:20.5%!important;
+  width:min(72%,430px)!important;
+  max-height:44vh!important;
+  transform:translateX(-50%) rotate(-5deg)!important;
+  object-fit:contain!important;
+  object-position:center bottom!important;
+  filter:drop-shadow(0 20px 22px rgba(0,0,0,.92)) saturate(1) contrast(1.08) brightness(1.04)!important;
+}
+.boot-entry .boot-entry-tagline{
+  bottom:4.3%!important;
+  font-size:clamp(17px,5vw,22px)!important;
+}
+.boot-entry .impact-dust{bottom:18.2%!important;}
+
+@media(max-width:520px){
+  .boot-entry-shell{height:100svh!important;min-height:100svh!important;}
+  .boot-entry-brand{top:4.2%!important;width:91%!important;gap:10px!important;}
+  .boot-entry-brand img{width:60px!important;height:60px!important;}
+  .boot-entry-brand strong{font-size:clamp(23px,7vw,29px)!important;white-space:nowrap;}
+  .boot-entry-brand span{font-size:12px!important;letter-spacing:.24em!important;}
+  .boot-entry-brand small{font-size:9px!important;}
+  .boot-entry-kicker{top:14.2%!important;font-size:8.5px!important;letter-spacing:.27em!important;}
+  .boot-entry-neon{top:17.1%!important;font-size:clamp(48px,15vw,68px)!important;}
+  .boot-entry .entry-boot{
+    bottom:21.5%!important;
+    width:72%!important;
+    max-height:43vh!important;
+  }
+  .boot-entry .boot-entry-button{
+    bottom:10.2%!important;
+    width:78%!important;
+    min-height:56px!important;
+    padding:10px 13px!important;
+  }
+  .boot-entry-button span{font-size:19px!important;letter-spacing:.13em!important;}
+  .boot-entry-button small{font-size:9px!important;margin-top:5px!important;}
+  .boot-entry .boot-entry-tagline{bottom:4.1%!important;font-size:17px!important;}
+}
+
+@media(max-height:720px) and (max-width:520px){
+  .boot-entry-brand{top:3.2%!important;}
+  .boot-entry-kicker{top:13.2%!important;}
+  .boot-entry-neon{top:16%!important;font-size:52px!important;}
+  .boot-entry .entry-boot{bottom:22%!important;max-height:40vh!important;width:67%!important;}
+  .boot-entry .boot-entry-button{bottom:10.5%!important;min-height:52px!important;}
+  .boot-entry .boot-entry-tagline{bottom:3.2%!important;font-size:16px!important;}
+}
