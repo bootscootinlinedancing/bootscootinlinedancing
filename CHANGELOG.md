@@ -597,3 +597,11 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Prevents home hero artwork from being excessively zoomed/cropped on landscape laptops.
 - Repairs inner-page Explore menu sizing at MacBook-width viewports.
 - Cache-busts all core stylesheet references to v96.4.19.
+
+## v96.4.20 — Emergency Desktop Safari Repair
+- Detects desktop by fine-pointer/hover capability instead of relying only on viewport width.
+- Prevents Safari page zoom/display scaling from triggering phone/tablet layout on MacBooks.
+- Forces full desktop header/navigation on Mac/PC.
+- Caps landing boot dimensions on desktop by both viewport width and height.
+- Restores compact two-column Explore menu when opened on desktop.
+- Restores desktop homepage hero composition while leaving touch/phone CSS unchanged.

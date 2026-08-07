@@ -362,3 +362,83 @@
   .honky-menu-sections .menu45-submenu{padding:0 10px 8px!important}
   .honky-menu-sections .menu45-submenu a{padding:9px 8px!important;font-size:13px!important}
 }
+
+/* v96.4.20 — EMERGENCY DESKTOP SAFETY NET
+   Desktop Safari can report a narrowed CSS viewport when page zoom/display scaling is in use.
+   Use desktop input capabilities (fine pointer + hover) so Mac/PC always receives the desktop layout.
+   Phone/touch layouts remain untouched. */
+@media (hover:hover) and (pointer:fine){
+  html,body{min-width:0!important;overflow-x:hidden!important}
+
+  .honky-header{
+    height:88px!important;
+    display:grid!important;
+    grid-template-columns:minmax(180px,220px) minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:12px!important;
+    padding:8px clamp(14px,2.4vw,34px)!important;
+  }
+  .honky-logo,.brand-lockup{display:flex!important;align-items:center!important;min-width:0!important;gap:8px!important}
+  .brand-lockup img,.honky-logo img{width:56px!important;height:56px!important;object-fit:contain!important}
+  .brand-lockup-copy{display:block!important;min-width:112px!important}
+  .brand-lockup-copy strong{font-size:13px!important;white-space:nowrap!important}
+  .brand-lockup-copy b{font-size:8px!important;white-space:nowrap!important}
+  .brand-lockup-copy small{font-size:6.5px!important}
+  .honky-desktop-nav{display:flex!important;justify-content:center!important;align-items:center!important;gap:clamp(6px,1.05vw,15px)!important;white-space:nowrap!important;min-width:0!important}
+  .honky-desktop-nav a{font-size:10px!important;letter-spacing:.055em!important;padding:12px 0!important;white-space:nowrap!important}
+  .honky-book{display:inline-flex!important;min-height:40px!important;padding:0 12px!important;font-size:10px!important;letter-spacing:.08em!important;white-space:nowrap!important}
+  .honky-menu-button{display:none!important}
+
+  /* Never let the phone navigation become the page layout on a Mac/PC. */
+  .honky-mobile-nav:not(.open){display:none!important;opacity:0!important;visibility:hidden!important}
+  .honky-mobile-nav.open{display:block!important;position:fixed!important;inset:0!important;z-index:1000!important;background:#050303!important;overflow:auto!important}
+  .honky-menu-panel{width:min(1080px,calc(100vw - 28px))!important;height:auto!important;min-height:100vh!important;margin:0 auto!important;padding:0 14px 30px!important;overflow:visible!important}
+  .honky-menu-root{height:auto!important;overflow:visible!important;padding-bottom:24px!important}
+  .honky-menu-feature{padding:14px 10px!important;margin-bottom:10px!important}
+  .honky-menu-feature strong{font-size:24px!important}
+  .honky-menu-sections{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px 12px!important}
+  .honky-menu-sections details.menu45-section{display:block!important;border:1px solid #3b171a!important;background:#0f0707!important}
+  .honky-menu-sections details.menu45-section>summary{min-height:66px!important;padding:9px 12px!important;grid-template-columns:1fr 22px!important;background:#130909!important}
+  .honky-menu-sections details.menu45-section>summary>span{grid-template-columns:30px 1fr!important;gap:9px!important}
+  .honky-menu-sections details.menu45-section>summary svg{width:27px!important;height:27px!important}
+  .honky-menu-sections details.menu45-section>summary strong{font-size:19px!important;line-height:1!important}
+  .honky-menu-sections details.menu45-section>summary small{font-size:10.5px!important;margin-top:2px!important}
+  .honky-menu-sections details.menu45-section>summary i{font-size:20px!important}
+  .honky-menu-sections .menu45-submenu{padding:0 10px 8px!important}
+  .honky-menu-sections .menu45-submenu a{padding:8px!important;font-size:12px!important}
+
+  /* Landing screen: cap the boot by BOTH width and height so it cannot fill a laptop screen. */
+  .boot-entry .entry-boot{
+    top:22%!important;
+    left:50%!important;
+    width:min(34vw,360px)!important;
+    height:min(38vh,330px)!important;
+    min-height:0!important;
+    max-height:330px!important;
+    transform:translateX(-50%)!important;
+  }
+  .boot-entry .entry-boot-photo{width:100%!important;height:100%!important;object-fit:contain!important;transform:none!important;clip-path:none!important}
+  .boot-entry .boot-entry-button{left:50%!important;width:min(620px,62vw)!important;bottom:8.5%!important}
+  .boot-entry .boot-entry-tagline{bottom:2.5%!important}
+  .boot-entry .impact-dust{left:31%!important;width:38%!important;bottom:17%!important}
+
+  /* Homepage: use a real desktop composition even if Safari page zoom narrows the CSS viewport. */
+  .better-hero{
+    min-height:clamp(520px,calc(100vh - 88px),760px)!important;
+    display:flex!important;
+    align-items:center!important;
+    background-size:cover!important;
+    background-position:center 38%!important;
+  }
+  .better-hero-copy{width:min(620px,52vw)!important;margin-left:clamp(26px,5vw,70px)!important;padding:56px 0!important}
+  .better-hero h1{width:max-content!important;max-width:100%!important;text-align:left!important}
+  .better-hero h1 span{font-size:clamp(42px,5.2vw,72px)!important}
+  .better-hero h1 em{font-size:clamp(48px,6.2vw,84px)!important}
+  .hero-small,.hero-lead{text-align:left!important}
+  .hero-actions{flex-direction:row!important}
+  .primary-cta,.secondary-cta{width:auto!important}
+
+  /* About / content pages: prevent tablet stacking on desktop browsers. */
+  .intro-grid{grid-template-columns:minmax(0,1fr) minmax(280px,.75fr)!important}
+  .upcoming-home{grid-column:1/-1!important}
+}
