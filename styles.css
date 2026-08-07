@@ -7240,3 +7240,43 @@ body>.header .brand small{display:block!important;line-height:1.2!important}
   76%{transform:translateX(-50%) translateY(-4px) rotate(-4deg)}
   100%{transform:translateX(-50%) translateY(0) rotate(-4deg)}
 }
+
+/* VERSION 96.4.13 — BOOT ARTWORK PROPORTION FIX
+   Less trouser leg, larger boot, and a tighter composition on mobile. */
+.boot-entry .entry-boot{
+  background-image:url('entry-boot-v2.webp')!important;
+  top:27.2%!important;
+  width:min(72vw,370px)!important;
+  height:39vh!important;
+  min-height:255px!important;
+  max-height:390px!important;
+  background-size:contain!important;
+  background-position:center bottom!important;
+  transform:translateX(-50%) rotate(-3deg)!important;
+}
+.boot-entry .impact-dust{bottom:19.5%!important;}
+@media(max-width:430px){
+  .boot-entry .entry-boot{
+    top:27.5%!important;
+    width:72vw!important;
+    height:38vh!important;
+    min-height:250px!important;
+    max-height:365px!important;
+  }
+}
+@media(max-width:390px){
+  .boot-entry .entry-boot{
+    width:74vw!important;
+    height:37vh!important;
+    min-height:235px!important;
+  }
+}
+@media(max-height:760px){
+  .boot-entry .entry-boot{
+    top:26.5%!important;
+    width:min(68vw,345px)!important;
+    height:36vh!important;
+    min-height:220px!important;
+    max-height:320px!important;
+  }
+}
