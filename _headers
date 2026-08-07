@@ -1,3 +1,15 @@
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+/*.css
+  Cache-Control: no-cache, no-store, must-revalidate
+/*.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/*.webp
+  Cache-Control: no-cache, must-revalidate
+/*.png
+  Cache-Control: no-cache, must-revalidate
+/*.jpg
+  Cache-Control: no-cache, must-revalidate
 /ranch.html
   Cache-Control: no-store, no-cache, must-revalidate
 /ranch.js
