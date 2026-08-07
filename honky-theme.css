@@ -131,3 +131,36 @@ footer .script{font-size:clamp(1.4rem,3vw,2.2rem)}
  .platform-preview-grid>a,.platform-pathway-grid>a,[class*="card"]{transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
  .platform-preview-grid>a:hover,.platform-pathway-grid>a:hover,[class*="card"]:hover{transform:translateY(-3px);border-color:#bf2833!important}
 }
+
+/* v96.4.19 — LAPTOP MENU SCALE REPAIR FOR INNER PAGES
+   The inline menu CSS on older pages uses a 950px phone breakpoint. On a MacBook
+   Safari window that can incorrectly create a full-size phone menu. This later
+   stylesheet converts only 768–1100px to a compact laptop layout. */
+@media (min-width:768px) and (max-width:1100px){
+  .header{height:76px!important;padding:8px 18px!important}
+  .header .brand-lockup{min-width:0!important}
+  .header .menu{display:block!important;padding:.55rem .9rem!important;font-size:.78rem!important}
+  .header>.button{display:inline-flex!important;padding:.65rem .9rem!important;font-size:.72rem!important}
+
+  nav#nav.menu45-overlay.open{overflow-y:auto!important}
+  nav#nav.menu45-overlay #menu45.menu45-panel{
+    width:min(1040px,calc(100vw - 28px))!important;
+    min-height:100dvh!important;
+    padding:0 14px 28px!important;
+  }
+  nav#nav.menu45-overlay #menu45 .menu45-head{min-height:68px!important;padding:8px 0!important;margin-bottom:8px!important}
+  nav#nav.menu45-overlay #menu45 .menu45-head h2{font-size:24px!important}
+  nav#nav.menu45-overlay #menu45 .nav-close{width:40px!important;height:40px!important;min-width:40px!important;font-size:23px!important}
+  nav#nav.menu45-overlay #menu45 .menu45-first{min-height:66px!important;padding:10px!important;margin-bottom:10px!important;border:1px solid #66272b!important}
+  nav#nav.menu45-overlay #menu45 .menu45-first strong{font-size:17px!important;text-decoration:none!important}
+  nav#nav.menu45-overlay #menu45 .menu45-first em{font-size:11px!important;margin-top:4px!important}
+  nav#nav.menu45-overlay #menu45 .menu45-sections{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px 12px!important}
+  nav#nav.menu45-overlay #menu45 details.menu45-section{border:1px solid #492225!important;background:#110808!important}
+  nav#nav.menu45-overlay #menu45 details.menu45-section>summary{min-height:60px!important;padding:9px 11px!important}
+  nav#nav.menu45-overlay #menu45 details.menu45-section>summary>span{font-size:16px!important;text-decoration:none!important}
+  nav#nav.menu45-overlay #menu45 .menu45-summary-copy>strong{font-size:16px!important}
+  nav#nav.menu45-overlay #menu45 .menu45-summary-copy>small{font-size:10px!important;margin-top:2px!important}
+  nav#nav.menu45-overlay #menu45 .menu45-submenu{padding:0 10px 7px!important}
+  nav#nav.menu45-overlay #menu45 .menu45-submenu>a{min-height:36px!important;padding:7px 0!important;font-size:12.5px!important}
+  nav#nav.menu45-overlay #menu45 .menu45-home{margin-top:12px!important;padding:10px!important}
+}

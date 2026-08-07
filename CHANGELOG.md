@@ -588,3 +588,12 @@ All notable changes to Boot Scootin’ Platform are recorded here.
 - Uses the western boot artwork with the existing stomp, dust and vibration interaction.
 - Entry displays once per browser session and then reveals the homepage.
 - No booking, payment, loyalty, waiting-list or HQ logic changed.
+
+## v96.4.19 — MacBook Desktop Viewport Repair
+- Preserves phone layout at 767px and below.
+- Corrects laptop Safari viewport behaviour on the home header and Explore menu.
+- Converts the home Explore menu to a compact two-column laptop layout.
+- Reduces desktop entry-boot scale so the full landing composition fits on screen.
+- Prevents home hero artwork from being excessively zoomed/cropped on landscape laptops.
+- Repairs inner-page Explore menu sizing at MacBook-width viewports.
+- Cache-busts all core stylesheet references to v96.4.19.
