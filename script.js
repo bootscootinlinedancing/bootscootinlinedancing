@@ -30,7 +30,7 @@ function enterWebsite(event){
   }
 
   // Let the stomp register, but do not make visitors wait or tap twice.
-  window.setTimeout(finishIntro, 520);
+  window.setTimeout(finishIntro, 900);
 }
 
 // The intro only exists on the homepage.
