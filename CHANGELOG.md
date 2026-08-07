@@ -1,3 +1,13 @@
+# v96.4.2 — Presentation Final Polish
+
+- Refined compact header wordmark and EST. 2025 spacing.
+- Added transparent circular logo asset to remove the grey square.
+- Removed temporary cowboy-hat icon from the primary booking CTA.
+- Restyled My Bookings secure access and customer dashboard to dark black/red honky-tonk theme.
+- Restyled Member Hub/dashboard cream panels to the same dark theme.
+- Reduced account/header logo sizing on mobile.
+- No booking, payment, waiting-list, loyalty, database or HQ logic changed.
+
 # v96.3.0 — Life's Better Homepage Refresh
 
 - Rebuilt the homepage around the ‘Life’s Better in Cowboy Boots’ design.

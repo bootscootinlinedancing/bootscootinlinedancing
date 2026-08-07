@@ -70,3 +70,70 @@
 .new-home-footer{position:relative;padding-bottom:70px}.new-home-footer .copyright-line{position:absolute;left:clamp(24px,5vw,72px);right:clamp(24px,5vw,72px);bottom:20px;padding-top:17px;border-top:1px solid #3b1518;color:#776966;font:400 11px Oswald,sans-serif;letter-spacing:.04em;text-align:center}
 @media(max-width:950px){.honky-header{grid-template-columns:1fr auto;height:86px}.brand-lockup{min-width:0;gap:9px}.brand-lockup img{width:58px!important;height:58px!important}.brand-lockup-copy strong{font-size:16px}.brand-lockup-copy b{font-size:10px}.brand-lockup-copy small{font-size:8px}.honky-menu-head img{width:82px;height:72px}}
 @media(max-width:430px){.brand-lockup-copy strong{font-size:14px}.brand-lockup-copy b{font-size:9px;letter-spacing:.12em}.brand-lockup-copy small{font-size:7px}.new-home-footer{padding-bottom:76px}.footer-brand-lockup{justify-content:center}}
+
+
+/* v96.4.2 — presentation final polish: consistent dark portal + refined branding */
+.brand-lockup-copy{gap:0!important;white-space:normal!important;min-width:138px}
+.brand-lockup-copy strong{display:block!important;font-family:Rye,serif!important;font-size:17px!important;line-height:1.02!important;color:#f1e8df!important;letter-spacing:.015em!important;text-shadow:none!important}
+.brand-lockup-copy b{display:block!important;font-family:Oswald,sans-serif!important;font-size:11px!important;line-height:1.15!important;color:#ef202b!important;letter-spacing:.18em!important;margin-top:4px!important}
+.brand-lockup-copy small{display:block!important;font-family:Oswald,sans-serif!important;font-size:8px!important;line-height:1!important;color:#cfa797!important;letter-spacing:.22em!important;margin-top:5px!important}
+.brand-lockup img,.honky-logo img,.member-hub-brand img,.footer-brand-lockup img{background:transparent!important;border-radius:50%!important;box-shadow:none!important}
+.primary-cta svg{display:none!important}
+
+/* Customer portal / My Bookings */
+.customer-portal-page{background:#030202!important;color:#f7eee8!important;min-height:100vh}
+.customer-portal-page .customer-portal-hero{min-height:330px!important;background:radial-gradient(circle at 50% 15%,rgba(208,26,36,.15),transparent 35%),repeating-linear-gradient(0deg,#050303 0 31px,#0d0606 32px 33px)!important;border-bottom:1px solid #4a1519!important}
+.customer-portal-page .customer-portal-hero h1{color:#f7eee8!important;text-shadow:2px 2px 0 #2c1012!important}
+.customer-portal-page .customer-portal-hero p{color:#cbbab0!important}
+.customer-portal-page .customer-portal-shell{max-width:none!important;margin:0!important;background:radial-gradient(circle at 12% 12%,rgba(210,20,31,.08),transparent 25%),repeating-linear-gradient(0deg,#0b0606 0 31px,#120808 32px 33px)!important;color:#f7eee8!important;padding-top:56px!important;padding-bottom:72px!important}
+.customer-portal-gate{max-width:760px!important;padding:clamp(24px,5vw,48px)!important;border:1px solid #642126!important;background:#100909!important;color:#f7eee8!important;box-shadow:0 18px 44px rgba(0,0,0,.45)!important}
+.customer-portal-gate h2,.customer-portal-head h2,.customer-booking-section h3{color:#fff!important}
+.customer-portal-gate>p:not(.kicker){color:#cbbab0!important}
+.customer-lookup-form label{color:#eee1d8!important}
+.customer-lookup-form input{min-height:52px!important;border:1px solid #6e2a2f!important;background:#080505!important;color:#fff!important}
+.customer-lookup-form input::placeholder{color:#796a65!important}
+.customer-summary-grid article,.customer-booking-card,.customer-empty,.customer-reward-card,.customer-achievements-grid article{border-color:#5d2529!important;background:#100909!important;color:#f7eee8!important}
+.customer-summary-grid span,.customer-booking-card dt,.customer-booking-main p,.customer-reward-card p,.customer-reward-card small,.customer-achievements-grid p{color:#bbaaa1!important}
+.customer-summary-grid strong{color:#ef3039!important}
+.customer-loyalty-card{background:#080505!important;border-color:#6d252a!important}
+.customer-booking-actions a,.customer-booking-actions button{background:#090505!important;color:#ff5b63!important;border-color:#8c2c32!important}
+.customer-booking-actions a:hover,.customer-booking-actions button:hover{background:#bd171f!important;color:#fff!important}
+.customer-portal-page .footer{background:#030202!important;color:#8e7e77!important;border-top:1px solid #4a1519!important}
+.customer-portal-page .header{min-height:76px!important;height:auto!important;background:#030202!important;border-bottom:1px solid #4a1519!important;padding-block:9px!important}
+.customer-portal-page .header .brand{display:flex!important;align-items:center!important;gap:10px!important;color:#fff!important;text-decoration:none!important}
+.customer-portal-page .header .brand img{width:54px!important;height:54px!important;object-fit:contain!important;border-radius:50%!important;background:transparent!important}
+.customer-portal-page .header .brand span{display:grid!important;line-height:1!important}
+.customer-portal-page .header .brand strong{font:700 14px/1.05 Rye,serif!important;color:#f3e7de!important}
+.customer-portal-page .header .brand small{font:600 9px/1 Oswald,sans-serif!important;color:#e92a33!important;letter-spacing:.15em!important;margin-top:4px!important}
+
+/* Member Hub / dashboard */
+.member-hub-body{background:repeating-linear-gradient(0deg,#070404 0 31px,#100606 32px 33px)!important;color:#f5ece6!important}
+.member-hub-topbar{background:#030202!important;border-bottom-color:#4a1519!important;padding:.6rem 1rem!important}
+.member-hub-brand{font-size:.9rem!important}
+.member-hub-brand img{width:42px!important;height:42px!important;object-fit:contain!important}
+.member-content{background:transparent!important}
+.member-mobile-tabs select{background:#0b0606!important;color:#fff!important;border-color:#6c292e!important}
+.member-welcome>div:first-child,.member-stat-grid article,.member-card,.member-section-head,.member-badge-grid article,.passport-stamps article,.journey-timeline article,.member-library-grid article,.member-shop-grid article,.member-profile-settings article,.member-hub-cta-inner,.passport-book{background:#100909!important;border-color:#5e2529!important;color:#f5ece6!important}
+.member-welcome p,.member-card p,.member-stat-grid small,.member-badge-grid small,.passport-stamps small,.journey-timeline p,.member-library-grid p,.member-profile-settings p,.member-hub-cta-inner p{color:#bba9a0!important}
+.member-welcome h1,.member-card h2,.member-section-head h1,.journey-timeline h2,.member-library-grid h2,.member-shop-grid h2{color:#fff!important}
+.member-stat-grid strong,.member-section-head>span,.member-rank-large b,.member-ledger strong,.member-shop-grid strong{color:#ef3841!important}
+.member-card-actions a,.member-library-grid button,.member-library-grid a,.member-shop-grid button{color:#ff626a!important;border-color:#8b2d32!important}
+.member-badge-grid article.earned,.passport-stamps article.stamped{background:#160b0c!important;border-color:#8c3035!important}
+.member-progress{background:#2b1718!important}
+.member-hub-public-cta{background:transparent!important}
+
+@media(max-width:950px){
+  .brand-lockup-copy strong{font-size:14px!important}
+  .brand-lockup-copy b{font-size:9px!important}
+  .brand-lockup-copy small{font-size:7px!important}
+}
+@media(max-width:430px){
+  .brand-lockup{gap:8px!important}
+  .brand-lockup img{width:56px!important;height:56px!important}
+  .brand-lockup-copy{min-width:128px!important}
+  .brand-lockup-copy strong{font-size:13px!important}
+  .brand-lockup-copy b{font-size:8.5px!important}
+  .brand-lockup-copy small{font-size:6.5px!important}
+  .customer-portal-page .header .brand img{width:46px!important;height:46px!important}
+  .customer-portal-page .header .brand strong{font-size:12px!important}
+}
