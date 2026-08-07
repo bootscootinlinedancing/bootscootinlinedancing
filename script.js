@@ -1,4 +1,4 @@
-/* v96.4.23: deterministic desktop mode + one consistent desktop header. */
+/* v96.4.27: deterministic desktop mode + one consistent desktop header. */
 (() => {
   const ua = navigator.userAgent || '';
   const platform = navigator.platform || '';
