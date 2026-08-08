@@ -315,3 +315,31 @@ installGuide?.addEventListener("click", event => {
 
 
 
+
+/* v96.4.41 menu clarity: one submenu at a time + an obvious way back to section list. */
+document.addEventListener('DOMContentLoaded', () => {
+  const panel = document.getElementById('menu45');
+  if (!panel) return;
+  const sections = [...panel.querySelectorAll('details.menu45-section')];
+  sections.forEach((section) => {
+    const submenu = section.querySelector('.menu45-submenu');
+    if (submenu && !submenu.querySelector('.menu45-back-sections')) {
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'menu45-back-sections';
+      back.textContent = 'Back to Explore sections';
+      back.addEventListener('click', () => {
+        section.open = false;
+        const summary = section.querySelector(':scope > summary');
+        if (summary) summary.scrollIntoView({behavior:'smooth', block:'center'});
+      });
+      submenu.appendChild(back);
+    }
+    section.addEventListener('toggle', () => {
+      if (!section.open) return;
+      sections.forEach(other => { if (other !== section) other.open = false; });
+      const summary = section.querySelector(':scope > summary');
+      if (summary) setTimeout(() => summary.scrollIntoView({behavior:'smooth', block:'start'}), 20);
+    });
+  });
+});
