@@ -1,36 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
   <!-- Boot Scootin' custom Western SVG icon set v96.4.40. All artwork is vector code: no emoji/icon font dependency. -->
   <symbol id="boot" viewBox="0 0 100 100">
-    <g fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
-      <!-- Simple spur-free Western boot: scalloped shaft, narrow ankle, stacked heel, pointed toe -->
-      <path d="M25 10h34l-2 42c0 7 2 12 7 16 6 5 14 8 25 10 5 1 8 4 8 8 0 4-4 6-10 6H47c-9 0-15-2-20-7l-5-5-4 12H8l7-21c2-7 6-12 11-16z"/>
-      <path d="M25 10c5 4 10 6 17 6s12-2 17-6"/>
-      <path d="M28 26c4 3 9 5 14 5s10-2 14-5"/>
-      <path d="M27 43h29"/>
-      <path d="M34 54l8 7 8-7"/>
-      <path d="M34 66l8 7 8-7"/>
-      <path d="M18 82h14M28 84h18"/>
+    <g fill="none" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Clean classic Western boot: no spur, no star, pointed toe, stacked heel -->
+      <path d="M27 9h35l-2 42c0 8 3 14 9 18 6 4 13 7 21 9 4 1 7 4 7 8 0 4-3 6-9 6H52c-11 0-20-4-27-11l-5 11H9l7-23c2-7 6-12 11-16V9z"/>
+      <path d="M27 9c5 4 11 6 18 6 6 0 12-2 17-6"/>
+      <path d="M31 26c4 3 9 4 14 4s10-1 14-4"/>
+      <path d="M30 42h30"/>
+      <path d="M35 54l10 8 10-8"/>
+      <path d="M35 67l10 8 10-8"/>
+      <path d="M20 80h16l-4 12H11"/>
+      <path d="M51 92c11-1 20-2 29-2 6 0 11-1 15-3"/>
     </g>
   </symbol>
 
   <symbol id="hat" viewBox="0 0 100 100">
-    <g fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
-      <!-- Classic cattleman cowboy hat: pinched crown + long curled brim -->
-      <path d="M30 56c2-15 4-28 9-37 3-5 7-8 11-10 4 2 8 5 11 10 5 9 7 22 9 37"/>
-      <path d="M39 20c3 5 7 8 11 8s8-3 11-8"/>
-      <path d="M36 39c5 3 10 4 14 4s9-1 14-4"/>
-      <path d="M8 61c8 3 16 4 24 2 6-1 12-4 18-7 6 3 12 6 18 7 8 2 16 1 24-2-3 7-9 12-18 15-7 3-15 4-24 4s-17-1-24-4c-9-3-15-8-18-15z"/>
-      <path d="M18 64c9 5 20 7 32 7s23-2 32-7"/>
+    <g fill="none" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Proper cowboy hat: low cattleman crown with pinched centre and curled brim -->
+      <path d="M30 57c1-12 3-25 7-35 3-8 8-12 13-12s10 4 13 12c4 10 6 23 7 35"/>
+      <path d="M38 22c3 5 7 8 12 8s9-3 12-8"/>
+      <path d="M36 41c8 4 20 4 28 0"/>
+      <path d="M9 61c10 4 20 5 30 2 4-1 8-3 11-5 3 2 7 4 11 5 10 3 20 2 30-2-3 8-10 14-20 18-7 3-14 4-21 4s-14-1-21-4C19 75 12 69 9 61z"/>
+      <path d="M18 64c9 5 20 8 32 8s23-3 32-8"/>
     </g>
   </symbol>
 
-  <symbol id="guitar" viewBox="0 0 96 96">
-    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M59 13l22-7 9 9-13 19-10 1-18 18"/>
-      <path d="M47 47c9 9 10 23 1 32s-23 8-32-1-10-23-1-32c6-6 15-8 22-5l7-7 13 13-7 7c3 7 1 16-5 22"/>
-      <circle cx="31" cy="62" r="7"/>
-      <path d="M56 34l9 9M64 26l9 9M73 17l9 9" opacity=".7"/>
-      <path d="M26 57l10 10"/>
+  <symbol id="guitar" viewBox="0 0 100 100">
+    <g fill="none" stroke="currentColor" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round">
+      <!-- recognisable acoustic guitar, angled like a neon sign -->
+      <path d="M57 12l28-8 10 10-18 24-11 1-17 17"/>
+      <path d="M45 48c8-7 20-5 26 3 7 9 5 23-4 31-10 9-25 9-34 1-9-8-10-22-2-31 5-6 13-8 20-5l6-6 10 10-7 7"/>
+      <circle cx="46" cy="67" r="7"/>
+      <path d="M41 62l10 10M61 34l10 10M69 26l10 10M77 18l10 10"/>
+      <path d="M25 84l13-13"/>
     </g>
   </symbol>
 
@@ -73,10 +75,11 @@
     </g>
   </symbol>
 
-  <symbol id="badge" viewBox="0 0 96 96">
-    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M48 7l10 15 18-3-3 18 14 11-14 11 3 18-18-3-10 15-10-15-18 3 3-18L9 48l14-11-3-18 18 3z"/>
-      <path d="M48 31l5 10 11 2-8 8 2 11-10-5-10 5 2-11-8-8 11-2z"/>
+  <symbol id="badge" viewBox="0 0 100 100">
+    <g fill="none" stroke="currentColor" stroke-width="3.7" stroke-linejoin="round" stroke-linecap="round">
+      <!-- simple sheriff-style six point badge -->
+      <path d="M50 7l9 18 20-5-4 20 18 10-18 10 4 20-20-5-9 18-9-18-20 5 4-20L7 50l18-10-4-20 20 5z"/>
+      <circle cx="50" cy="50" r="15"/>
     </g>
   </symbol>
 

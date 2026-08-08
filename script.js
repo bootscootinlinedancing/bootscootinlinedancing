@@ -345,27 +345,39 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-/* v96.4.44 persistent Moonshine community menu repair */
+/* v96.4.45 — keep Moonshine permanently inside the Community submenu. */
 (() => {
   const ensureMoonshine = () => {
-    document.querySelectorAll('#menu45 details.menu45-section').forEach(section => {
-      const title = section.querySelector(':scope > summary strong')?.textContent?.trim();
-      if (title !== 'Community') return;
-      const submenu = section.querySelector('.menu45-submenu');
-      if (!submenu) return;
-      let link = submenu.querySelector('a[href="moonshine.html"]');
-      if (!link) {
-        link = document.createElement('a');
-        link.href = 'moonshine.html';
-        link.innerHTML = '<span>Moonshine &amp; Good Times Gang — Preview</span><b aria-hidden="true">›</b>';
-        submenu.insertBefore(link, submenu.firstElementChild);
-      } else if (submenu.firstElementChild !== link) {
-        submenu.insertBefore(link, submenu.firstElementChild);
-      }
+    const panels = document.querySelectorAll('#menu45');
+    panels.forEach(panel => {
+      const sections = panel.querySelectorAll('details.menu45-section');
+      sections.forEach(section => {
+        const submenu = section.querySelector(':scope > .menu45-submenu');
+        if (!submenu) return;
+        const isCommunity = !!submenu.querySelector('a[href="community.html"]') ||
+          (section.querySelector(':scope > summary strong')?.textContent || '').trim() === 'Community';
+        if (!isCommunity) return;
+        let link = submenu.querySelector('a[href="moonshine.html"]');
+        if (!link) {
+          link = document.createElement('a');
+          link.href = 'moonshine.html';
+          link.innerHTML = '<span>Moonshine &amp; Good Times Gang</span><b aria-hidden="true">›</b>';
+        } else {
+          link.innerHTML = '<span>Moonshine &amp; Good Times Gang</span><b aria-hidden="true">›</b>';
+        }
+        if (submenu.firstElementChild !== link) submenu.insertBefore(link, submenu.firstElementChild);
+      });
     });
   };
-  document.addEventListener('DOMContentLoaded', ensureMoonshine);
+
+  const run = () => requestAnimationFrame(ensureMoonshine);
+  document.addEventListener('DOMContentLoaded', () => {
+    ensureMoonshine();
+    const nav = document.getElementById('nav');
+    if (nav) new MutationObserver(ensureMoonshine).observe(nav, {subtree:true, childList:true});
+  });
   window.addEventListener('pageshow', ensureMoonshine);
-  document.getElementById('menuToggle')?.addEventListener('click', () => setTimeout(ensureMoonshine, 0));
-  document.getElementById('desktopExploreButton')?.addEventListener('click', () => setTimeout(ensureMoonshine, 0));
+  document.addEventListener('click', event => {
+    if (event.target.closest('#menuButton,#menuToggle,#desktopExploreButton,.menu45-section summary,.menu45-back-sections')) run();
+  });
 })();

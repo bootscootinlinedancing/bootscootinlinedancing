@@ -8065,3 +8065,56 @@ svg.western-icon:has(use[href$="#hat"]){
 .library-private-note{margin:1rem 0 0;color:#d6c3b8;font-size:.95rem}
 .stepsheet-mini-links{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:16px}
 .library-actions{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+
+/* v96.4.45 — cleaner Western icon treatment + Moonshine mobile repair */
+.western-icon{
+  color:#ef2634!important;
+  filter:drop-shadow(0 0 3px rgba(239,38,52,.72)) drop-shadow(0 0 8px rgba(166,12,25,.34))!important;
+  stroke-width:3.6!important;
+}
+.library-icon .western-icon,.why-grid .western-icon,.about-values-grid .western-icon{
+  stroke-width:3.4!important;
+}
+/* Keep large hero icons crisp rather than cartoonishly thick. */
+.event-empty .western-icon{stroke-width:3.2!important;}
+
+.moonshine-page .moonshine-hero{
+  display:block!important;
+  width:100%!important;
+  max-width:1180px!important;
+  margin:0 auto!important;
+  padding:36px 20px 48px!important;
+  box-sizing:border-box!important;
+}
+.moonshine-page .moonshine-brand-banner{
+  display:block!important;
+  width:min(720px,100%)!important;
+  max-width:100%!important;
+  height:auto!important;
+  object-fit:contain!important;
+  margin:0 auto 32px!important;
+  border:1px solid #7d2a30!important;
+  box-shadow:0 0 28px rgba(210,18,37,.18)!important;
+}
+.moonshine-page .moonshine-hero-copy{
+  display:block!important;
+  width:min(820px,100%)!important;
+  max-width:100%!important;
+  margin:0 auto!important;
+  padding:0!important;
+  writing-mode:horizontal-tb!important;
+  text-orientation:mixed!important;
+}
+.moonshine-page .moonshine-hero-copy *{
+  max-width:100%!important;
+  writing-mode:horizontal-tb!important;
+  text-orientation:mixed!important;
+  word-break:normal!important;
+  overflow-wrap:break-word!important;
+}
+@media(max-width:700px){
+  .moonshine-page .moonshine-hero{padding:24px 18px 34px!important;}
+  .moonshine-page .moonshine-brand-banner{width:100%!important;margin-bottom:24px!important;}
+  .moonshine-page .moonshine-hero-copy{width:100%!important;}
+  .moonshine-page .moonshine-hero-copy h1{font-size:clamp(2.45rem,13vw,4rem)!important;line-height:1.02!important;}
+}
