@@ -7786,7 +7786,7 @@ body:not(.admin-login-body):not(.ranch-v91) :is(.portrait,.polaroids figure,.mem
 @media(max-width:767px){.home-shop-return{grid-template-columns:1fr;padding:34px 18px}.home-shop-products{grid-template-columns:1fr 1fr}.home-shop-products a,.home-shop-products img{min-height:170px}}
 
 
-/* v96.4.38 — remove remaining beige/cream public surfaces */
+/* v96.4.39 — remove remaining beige/cream public surfaces */
 .section.paper,.cream-home,.library-2-intro,.library-controls,.library-youtube-cta,.diary-archive-tools,.diary-content,.reward-benefits,.reward-join-card,.reward-terms .terms-card,.passport-book,.business-transparency-card,.member-profile-settings article,.member-hub-cta-inner{background:#100809!important;color:#f7eee7!important;border-color:#5b2428!important;box-shadow:none!important}
 .section.paper h1,.section.paper h2,.section.paper h3,.section.paper h4,.section.paper strong,.section.paper label,.cream-home h1,.cream-home h2,.cream-home h3{color:#fff6ee!important}
 .section.paper p,.section.paper li,.section.paper small,.section.paper span,.cream-home p{color:#d8c5b7!important}
@@ -7816,3 +7816,125 @@ body:not(.admin-login-body):not(.ranch-v91) :is(.portrait,.polaroids figure,.mem
 #merchOrderForm input:not([type=radio]):not([type=checkbox]),#merchOrderForm select{width:100%;margin-top:.35rem;padding:.8rem;border:1px solid #6f2a2f;background:#050303;color:#fff;font:500 1rem Oswald,sans-serif;box-sizing:border-box}#merchOrderForm fieldset{display:flex;gap:1rem;flex-wrap:wrap;padding:.8rem;border:1px solid #5b2428;background:#13090a}
 .merch-terms-check{display:flex!important;gap:.65rem;align-items:flex-start;text-transform:none!important;font-family:Oswald,sans-serif!important;font-weight:400!important}.merch-terms-check input{margin-top:.2rem}.merch-order-total{padding:.9rem 1rem;border:1px solid #6f2a2f;background:#170b0c;color:#d8c5b7;font:700 1rem Oswald,sans-serif}.merch-order-total strong{float:right;color:#ff4a52;font-size:1.35rem}.merch-order-status{min-height:1.5em;color:#ffb5b8!important}.merch-return-banner{display:grid;gap:.25rem;max-width:980px;margin:0 auto 1.5rem;padding:1rem 1.2rem;border:1px solid #df3c44;background:#281014;color:#fff}.merch-return-banner strong{font:700 1.15rem Oswald,sans-serif}.merch-return-banner span{color:#e3cfc1}
 @media(max-width:700px){.merch-price-row{display:grid}.merch-order-card{padding:1.2rem}.real-merch-card img{aspect-ratio:1/1}}
+
+
+/* ==========================================================
+   v96.4.39 — PUBLIC BLACK/RED CONSISTENCY SWEEP
+   Remove remaining beige/cream UI from public-facing pages.
+   QR codes intentionally stay white for reliable scanning.
+   ========================================================== */
+:root{--cream:#120909;--cream2:#1a0c0d;--ink:#f7eee7}
+
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .library-progress-preview>div,.library-controls,.library-youtube-cta,.library-item,
+  .dance-specs>span,.library-request,.request-type,.request-form-wrap,
+  .diary-archive-tools,.diary-archive-stats>div,.diary-content,.diary-entry,
+  .reward-benefits,.reward-terms .terms-card,.reward-progress-row>span,
+  .moonshine-request-form,.playlist-card,.event-types article,
+  .journey-metrics>div,.journey-dance-list>article,.long-road-card,
+  .booking-arrival-card,.dance-pass-preview,.trail-stats>article,.trail-badges>article,.trail-challenges>article,
+  .member-welcome>div:first-child,.member-stat-grid>article,.member-card,.member-section-head,
+  .member-badge-grid>article,.passport-stamps>article,.passport-book,.journey-timeline>article,
+  .member-library-grid>article,.member-shop-grid>article,.member-profile-settings>article,.member-hub-cta-inner,
+  .platform-pathway-grid>a
+){background:#100809!important;color:#f7eee7!important;border-color:#64282d!important;box-shadow:none!important}
+
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .library-progress-preview>div,.dance-specs>span,.diary-archive-stats>div,.reward-progress-row>span,
+  .trail-stats>article,.trail-badges>article,.trail-challenges>article,.journey-metrics>div
+) :is(span,small,p){color:#cdbab0!important}
+
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .library-progress-preview>div,.dance-specs>span,.diary-archive-stats>div,.reward-progress-row>span,
+  .trail-stats>article,.trail-badges>article,.trail-challenges>article,.journey-metrics>div
+) :is(strong,b){color:#ef424a!important}
+
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .library-filters button,.diary-archive-actions button,.request-type,.dance-progress-buttons button,
+  .member-library-grid button,.member-library-grid a,.member-shop-grid button
+){background:#160a0b!important;color:#f7eee7!important;border-color:#713036!important}
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .library-filters button.active,.library-filters button:hover,.diary-archive-actions button:hover,
+  .request-type.active,.dance-progress-buttons button[aria-pressed="true"]
+){background:#b91f27!important;color:#fff!important;border-color:#ef434b!important}
+
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .library-controls input,.library-controls select,.diary-archive-tools input,
+  .request-form input,.request-form textarea,.request-form select,
+  .moonshine-request-form input,.moonshine-request-form textarea,.moonshine-request-form select,
+  .member-mobile-tabs select,.journey-dance-list select
+){background:#070404!important;color:#fff7ed!important;border-color:#713036!important}
+body:not(.ranch-v91):not(.admin-login-body) :is(input,textarea)::placeholder{color:#9c8981!important}
+
+body:not(.ranch-v91):not(.admin-login-body) .moonshine-request-form :is(h3,label,strong){color:#fff7ed!important}
+body:not(.ranch-v91):not(.admin-login-body) .moonshine-request-form :is(p,small){color:#d1beb3!important}
+body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row .earned{background:#a91d24!important;color:#fff!important;border-color:#ef434b!important}
+body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row span:not(.earned){font-size:0!important}
+body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row span:not(.earned)::before{content:'☆';font-size:1.6rem;color:#bca8a0}
+
+/* Preserve functional white QR surface only. */
+body:not(.ranch-v91):not(.admin-login-body) :is(.reward-qr,.qr-card img,.qr-code,img[alt*="QR code"]){background:#fff!important}
+
+/* Homepage Explore now uses the same clean text-only menu as all inner pages. */
+body.honky-home #nav.menu45-overlay{background:#080505!important}
+body.honky-home #menu45{background:#080505!important}
+body.honky-home #menu45 .menu45-summary-copy{display:block!important}
+body.honky-home #menu45 details.menu45-section>summary svg,
+body.honky-home #menu45 details.menu45-section>summary i{display:none!important}
+body.honky-home #menu45 details.menu45-section>summary{grid-template-columns:minmax(0,1fr) 32px!important}
+body.honky-home #menu45 .menu45-head img{display:none!important}
+
+/* Never allow legacy paper/cream cards to paint pale surfaces on public pages. */
+body:not(.ranch-v91):not(.admin-login-body) :is(.paper,.cream-home,[class*="paper-card"],[class*="cream-card"]){background-color:#100809!important;color:#f7eee7!important}
+
+/* v96.4.39 full public pale-surface sweep — audited from styles.css */
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .portrait,.venue-card,.polaroids figure,.calendar-card,.calendar-weekdays,.calendar-day,
+  .diary-entry,.library-item,.memory-grid figure,.playlist-card,.event-types article,
+  .level-absolute-beginner,.level-beginner,.level-improver,.level-original,
+  .polaroid,.v19-class-card,.premium-playlist-card,.country-social-card,.country-hub-preview-inner,
+  .signature-music-card,.real-merch-card,.business-love-card,.future-hub-grid a,.member-future-grid>div,
+  .map-toolbar select,.map-place-panel,.map-category-grid article,.journey-profile,.journey-main,
+  .account-action-grid article,.deletion-preview,.profile-upload-preview input,.birthday-options select,
+  .birthday-preview-card,.country-guide-toolbar select,.country-guide-card,.dashboard-welcome,.dashboard-card,
+  .privacy-settings-list label,.dance-tool,.passport-principles article,.nora-message,.suggested-questions button,
+  .handbook-lock-card,.country-guide-gateway-card,.featured-venue-card,.dirt-road-story,.summer-stomp-intro,
+  .summer-stomp-learning,.guide-line-card,.inspiration-profile,.guide-card,
+  .booking-filter select,.form-grid input,.form-grid select,.class-card,.booking-alert,.booking-loading,.booking-empty,
+  .booking-dialog,.confirmation-card,.private-event-form input,.private-event-form select,.private-event-form textarea,
+  .travel-policy,.private-event-success,.quote-card,.private-secure-lock,.trail-dashboard,.customer-portal-gate,
+  .customer-booking-card,.customer-reward-card,.customer-achievement
+){background:#100809!important;color:#f7eee7!important;border-color:#64282d!important;box-shadow:none!important}
+
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .venue-card,.calendar-card,.calendar-day,.diary-entry,.library-item,.playlist-card,.event-types article,
+  .v19-class-card,.premium-playlist-card,.country-social-card,.country-hub-preview-inner,.signature-music-card,
+  .real-merch-card,.business-love-card,.map-place-panel,.map-category-grid article,.journey-profile,.journey-main,
+  .account-action-grid article,.birthday-preview-card,.country-guide-card,.dashboard-welcome,.dashboard-card,
+  .passport-principles article,.nora-message,.handbook-lock-card,.country-guide-gateway-card,.featured-venue-card,
+  .dirt-road-story,.summer-stomp-intro,.summer-stomp-learning,.guide-line-card,.inspiration-profile,.guide-card,
+  .class-card,.booking-alert,.booking-loading,.booking-empty,.booking-dialog,.confirmation-card,.travel-policy,
+  .private-event-success,.quote-card,.private-secure-lock,.trail-dashboard,.customer-portal-gate,.customer-booking-card,
+  .customer-reward-card,.customer-achievement
+) :is(h1,h2,h3,h4,strong,b,label,legend){color:#fff7ed!important}
+
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .venue-card,.calendar-card,.calendar-day,.diary-entry,.library-item,.playlist-card,.event-types article,
+  .v19-class-card,.premium-playlist-card,.country-social-card,.country-hub-preview-inner,.signature-music-card,
+  .real-merch-card,.business-love-card,.map-place-panel,.map-category-grid article,.journey-profile,.journey-main,
+  .account-action-grid article,.birthday-preview-card,.country-guide-card,.dashboard-welcome,.dashboard-card,
+  .passport-principles article,.nora-message,.handbook-lock-card,.country-guide-gateway-card,.featured-venue-card,
+  .dirt-road-story,.summer-stomp-intro,.summer-stomp-learning,.guide-line-card,.inspiration-profile,.guide-card,
+  .class-card,.booking-alert,.booking-loading,.booking-empty,.booking-dialog,.confirmation-card,.travel-policy,
+  .private-event-success,.quote-card,.private-secure-lock,.trail-dashboard,.customer-portal-gate,.customer-booking-card,
+  .customer-reward-card,.customer-achievement
+) :is(p,li,small,span,dt,dd){color:#d3c0b5!important}
+
+body:not(.ranch-v91):not(.admin-login-body) :is(
+  .calendar-weekdays,.calendar-day.blank,.booking-filter select,.form-grid input,.form-grid select,
+  .country-guide-toolbar select,.map-toolbar select,.profile-upload-preview input,.birthday-options select,
+  .private-event-form input,.private-event-form select,.private-event-form textarea
+){background:#080505!important;color:#fff7ed!important;border-color:#6f2a2f!important}
+
+/* red accents instead of tan/gold badges */
+body:not(.ranch-v91):not(.admin-login-body) :is(.level-absolute-beginner,.level-beginner,.level-improver,.level-original){background:#241012!important;color:#ff666d!important;border-color:#8e3036!important}

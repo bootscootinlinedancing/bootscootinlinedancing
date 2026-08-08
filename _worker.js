@@ -3034,17 +3034,35 @@ function merchOrderReference(){
 }
 
 async function createMerchOrder(request,env){
-  if(!env.BOOKINGS_DB)return json({error:'Ordering is temporarily unavailable. Please try again shortly.'},503);
+  const contentType=String(request.headers.get('content-type')||'').toLowerCase();
+  const formMode=contentType.includes('application/x-www-form-urlencoded')||contentType.includes('multipart/form-data');
+  const backUrl=(params={})=>{
+    const u=new URL('/community.html',request.url);
+    u.hash='merchandise';
+    Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,String(v)));
+    return u.toString();
+  };
+  const fail=(message,status=400,extra={})=> formMode
+    ? Response.redirect(backUrl({merch_error:message,...extra}),303)
+    : json({error:message,...extra},status);
+  if(!env.BOOKINGS_DB)return fail('Ordering is temporarily unavailable. Please try again shortly.',503);
   await ensureBookingSchema(env);
-  const b=await request.json().catch(()=>null); if(!b)return json({error:'The order form could not be read.'},400);
+  let b=null;
+  if(formMode){
+    const fd=await request.formData().catch(()=>null);
+    if(fd){b=Object.fromEntries(fd.entries());b.terms=fd.get('terms')==='on';}
+  }else{
+    b=await request.json().catch(()=>null);
+  }
+  if(!b)return fail('The order form could not be read.',400);
   const name=clean(b.name,100),email=clean(b.email,160).toLowerCase(),phone=clean(b.phone,40),design=clean(b.design,100),fit=clean(b.fit,20),size=clean(b.size,30),quantity=Math.max(1,Math.min(4,Number(b.quantity)||1));
-  if(!name||!emailOk(email))return json({error:'Please add your name and a valid email address.'},400);
-  if(!['Just One More Dance','No Mistakes, Just Variations'].includes(design))return json({error:'Please choose one of the available T-shirt designs.'},400);
-  if(!['unisex','womens'].includes(fit))return json({error:'Please choose a T-shirt fit.'},400);
+  if(!name||!emailOk(email))return fail('Please add your name and a valid email address.',400);
+  if(!['Just One More Dance','No Mistakes, Just Variations'].includes(design))return fail('Please choose one of the available T-shirt designs.',400);
+  if(!['unisex','womens'].includes(fit))return fail('Please choose a T-shirt fit.',400);
   const unisexSizes=new Set(['S','M','L','XL','2XL','3XL','4XL','5XL']);
   const womensSizes=new Set(['S (UK 10)','M (UK 12)','L (UK 14)','XL (UK 16)','2XL (UK 18)','3XL (UK 20)','4XL (UK 22)']);
-  if(!(fit==='unisex'?unisexSizes:womensSizes).has(size))return json({error:'Please choose an available size.'},400);
-  if(!b.terms)return json({error:'Please confirm that you understand the made-to-order production time.'},400);
+  if(!(fit==='unisex'?unisexSizes:womensSizes).has(size))return fail('Please choose an available size.',400);
+  if(!b.terms)return fail('Please confirm that you understand the made-to-order production time.',400);
   const unit=fit==='womens'?2200:2000,amount=unit*quantity,id=crypto.randomUUID(),reference=merchOrderReference();
   await env.BOOKINGS_DB.prepare(`INSERT INTO merch_orders(id,reference,customer_name,customer_email,customer_phone,design,fit,size,quantity,unit_price_pence,amount_pence,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,'PENDING')`)
     .bind(id,reference,name,email,phone,design,fit,size,quantity,unit,amount).run();
@@ -3052,7 +3070,8 @@ async function createMerchOrder(request,env){
     .bind(email,'MERCH_ORDER_CREATED','merch_order',id,JSON.stringify({reference,design,fit,size,quantity,amount_pence:amount})).run().catch(()=>{});
 
   if(!sumUpConfigured(env)){
-    return json({ok:true,reference,status:'PENDING',payment_enabled:false,message:'Your order has been recorded. Nora will contact you about payment.'},201);
+    const message='Your order has been recorded. Nora will contact you about payment.';
+    return formMode ? Response.redirect(backUrl({merch_order:reference,merch_message:message}),303) : json({ok:true,reference,status:'PENDING',payment_enabled:false,message},201);
   }
   try{
     const origin=new URL(request.url).origin;
@@ -3069,14 +3088,14 @@ async function createMerchOrder(request,env){
     try{const u=new URL(raw);if(u.protocol==='https:')checkoutUrl=u.toString();}catch(_){}
     if(r.ok&&checkout.id&&checkoutUrl){
       await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET provider_checkout_id=? WHERE id=?`).bind(checkout.id,id).run();
-      return json({ok:true,reference,status:'PENDING',payment_enabled:true,checkout_url:checkoutUrl},201);
+      return formMode ? Response.redirect(checkoutUrl,303) : json({ok:true,reference,status:'PENDING',payment_enabled:true,checkout_url:checkoutUrl},201);
     }
     const providerMessage=clean(checkout?.message||checkout?.error_message||checkout?.error||'',180);
     await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAYMENT_ERROR' WHERE id=?`).bind(id).run();
-    return json({error:'SumUp could not open the secure payment page. Your order has been saved, but no payment has been taken.',reference,detail:providerMessage},502);
+    return fail('SumUp could not open the secure payment page. Your order has been saved, but no payment has been taken.',502,{reference,detail:providerMessage});
   }catch(error){
     await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAYMENT_ERROR' WHERE id=?`).bind(id).run().catch(()=>{});
-    return json({error:'The secure payment service is temporarily unavailable. Your order has been saved and no payment has been taken.',reference},502);
+    return fail('The secure payment service is temporarily unavailable. Your order has been saved and no payment has been taken.',502,{reference});
   }
 }
 

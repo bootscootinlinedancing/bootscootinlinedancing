@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=96.4.38">
+  <link rel="stylesheet" href="styles.css?v=96.4.39">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -136,8 +136,8 @@
 }
 </style>
 
-  <link rel="stylesheet" href="honky-theme.css?v=96.4.38">
-  <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.38">
+  <link rel="stylesheet" href="honky-theme.css?v=96.4.39">
+  <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -468,7 +468,7 @@
           <button type="button" class="merch-order-close" aria-label="Close order form">×</button>
           <p class="kicker red">Order &amp; Pay</p>
           <h2 id="merchOrderTitle">Your Boot Scootin’ T-shirt</h2>
-          <form id="merchOrderForm">
+          <form id="merchOrderForm" action="/api/merch-orders" method="post">
             <input type="hidden" name="design" id="merchDesign">
             <label>Design<input id="merchDesignLabel" type="text" disabled></label>
             <fieldset><legend>Fit</legend>
@@ -606,7 +606,7 @@
       <p class="ip-small">™ indicates an unregistered trade mark claim. It does not mean the mark is registered with the UK Intellectual Property Office.</p>
     </div>
   <div class="legal-footer-links"><a href="legal.html#terms">Terms &amp; Conditions</a><a href="legal.html#privacy">Privacy</a><a href="legal.html#cancellations">Cancellation &amp; Refunds</a><a href="legal.html#cookies">Cookies</a><a href="legal.html#accessibility">Accessibility</a></div></footer>
-  <script src="script.js?v=96.4.38"></script>
+  <script src="script.js?v=96.4.39"></script>
 
   <aside class="install-app" id="installApp" hidden aria-label="Install Boot Scootin' on your phone">
     <img src="brand-logo-transparent.png" onerror="this.onerror=null;this.src='logo.webp'" alt="">
@@ -633,7 +633,7 @@
 
   <script src="honky-theme.js?v=96.0.0"></script>
 
-<script id="merch-order-v9638">
+<script id="merch-order-v9639">
 (() => {
   const panel=document.getElementById('merchOrderPanel');
   const form=document.getElementById('merchOrderForm');
@@ -655,21 +655,20 @@
   form.querySelectorAll('input[name="fit"]').forEach(x=>x.addEventListener('change',refreshSizes));
   form.elements.quantity.addEventListener('change',refreshTotal);
   refreshSizes();
-  form.addEventListener('submit',async e=>{
-    e.preventDefault(); status.textContent='Preparing secure payment…'; pay.disabled=true;
-    const fd=new FormData(form);
-    const payload=Object.fromEntries(fd.entries()); payload.quantity=Number(payload.quantity||1); payload.terms=fd.get('terms')==='on';
-    try{
-      const r=await fetch('/api/merch-orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      const d=await r.json().catch(()=>({}));
-      if(!r.ok) throw new Error(d.error||'The order could not be started.');
-      if(d.checkout_url){location.href=d.checkout_url;return;}
-      status.textContent=d.message||'Order received. We’ll contact you with payment details.';
-      pay.disabled=false;
-    }catch(err){status.textContent=err.message||'Something went wrong. Please try again.';pay.disabled=false;}
+  form.addEventListener('submit',()=>{
+    status.textContent='Opening secure SumUp payment…';
+    pay.disabled=true;
+    // Do not preventDefault: a normal same-origin form POST is more reliable on iPhone Safari.
   });
   const qs=new URLSearchParams(location.search); const ref=qs.get('merch_order');
-  if(ref){
+  const merchError=qs.get('merch_error'); const merchMessage=qs.get('merch_message');
+  if(merchError||merchMessage){
+    const banner=document.createElement('div'); banner.className='merch-return-banner';
+    const strong=document.createElement('strong'); strong.textContent=merchError?'Payment could not be opened':'Order received';
+    const span=document.createElement('span'); span.textContent=merchError||merchMessage;
+    banner.append(strong,span); document.getElementById('merchandise').prepend(banner);
+  }
+  if(ref && !merchError){
     fetch(`/api/merch-order-status?reference=${encodeURIComponent(ref)}`).then(r=>r.json()).then(d=>{
       const banner=document.createElement('div');banner.className='merch-return-banner';banner.innerHTML=d.status==='PAID'?'<strong>Payment received — thank you!</strong><span>Your made-to-order T-shirt is now in the queue. We’ll keep you updated.</span>':'<strong>Order received</strong><span>Your payment is being checked. We’ll keep you updated.</span>';document.getElementById('merchandise').prepend(banner);
     }).catch(()=>{});

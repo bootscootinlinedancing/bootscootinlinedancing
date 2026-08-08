@@ -1,55 +1,49 @@
 {
-  "release": "96.4.38",
-  "version": "96.4.38",
-  "release_name": "BROADWAY NEON + NORA PHOTO UPDATE",
-  "description": "Expands the secure customer portal with personal rewards, achievements, lifetime spend and engagement status.",
-  "built_from": "boot-scootin-platform-v94.0.0-PROMOTIONS-REWARDS-ENGINE.zip",
-  "built_at": "2026-08-06T18:49:56.842081+00:00",
+  "release": "96.4.39",
+  "version": "96.4.39",
+  "release_name": "PUBLIC BLACK/RED SWEEP + UNIFIED MENU + MERCH CHECKOUT FIX",
+  "description": "Removes remaining beige public surfaces, standardises the Explore menu, and replaces Safari fetch checkout with a robust same-origin form POST to SumUp.",
+  "built_from": "boot-scootin-platform-v96.4.38-MERCH-ORDERING-BLACK-RED-CLEANUP.zip",
+  "built_at": "2026-08-08T17:56:16.702420+00:00",
   "changes": [
-    "Customer rewards wallet",
-    "Achievement badges",
-    "Lifetime spend",
-    "Customer engagement status",
-    "Enhanced secure customer portal"
+    "Scanned and overridden remaining beige/cream public-facing cards, forms, filters and panels",
+    "Homepage Explore menu now uses the same text-only professional menu as inner pages",
+    "Merch checkout now submits as a normal form POST for iPhone Safari reliability",
+    "Worker accepts JSON and form-encoded merch orders and redirects securely to hosted SumUp checkout",
+    "Mobile and desktop layout fixes from v96.4.38 preserved"
   ],
   "checks": {
-    "root_file_count": 86,
+    "root_file_count": 98,
     "worker_syntax": "passed",
     "zip_integrity": "passed",
-    "zip_file_count": 129
+    "zip_file_count": 141
   },
   "files": {
     "_worker.js": {
-      "size": 193288,
-      "sha256": "1820bb1f7506eb7e29292781285801536b2410acd0b889c63bd243a42e0840d4"
+      "size": 200925,
+      "sha256": "5eca4ffc95e496c8c4b5ae3c2dd99c2ff37867f54dfe484a345ddb38cf3f2e10"
     },
-    "my-bookings.html": {
-      "size": 13015,
-      "sha256": "a6f7fd4f5e728a539e6445ad66c96cf8c61cce69c356cbafbfa02a5717f7a58e"
+    "community.html": {
+      "size": 44821,
+      "sha256": "a0c0890db86d483dad10da3bb141e7945b1b97ff3d8ccd0f262fdf8e46db532f"
+    },
+    "index.html": {
+      "size": 26391,
+      "sha256": "d6a8e0ca032809d91c9feed1705c180506a3b8fe9e5c1d5bedb9b88706245441"
     },
     "styles.css": {
-      "size": 268465,
-      "sha256": "1633ac894fc53db70ec015c4d590a1fd1a341621288769d37126c18ca617abef"
-    },
-    "ranch.js": {
-      "size": 91464,
-      "sha256": "a6a3e6ceee78c5922da1bcafc7b7a9e9f6f2715197ed2424ae928f2bb3fa018d"
-    },
-    "ranch.html": {
-      "size": 37914,
-      "sha256": "5066d79a5e174d215411a68a1627dd01df09cbd27d89e81472eafefc4c13836c"
+      "size": 346097,
+      "sha256": "108baf7de9fd8eabda57697a2609b638160f169151a4c82a4875bdf228e2e53a"
     },
     "service-worker.js": {
-      "size": 515,
-      "sha256": "0ced25c5d752b213b74d50766e95fb864871537db1dea05335ba9ab73f35389a"
+      "size": 545,
+      "sha256": "a2c57bd4d03fe578d0aa7f04a85d8d34f4d64bf932386c5888855aabec7809f7"
     }
   },
   "homepage_refresh": true,
   "notes": [
-    "Added Nora\u2019s supplied portrait to the Meet Nora section",
-    "Reduced white/cream areas in favour of black, deep red and dark timber textures",
-    "Added Broadway-style neon sign details and glow treatments",
-    "Retained all existing booking, loyalty, waiting-list and HQ functionality"
+    "Public QR-code backgrounds intentionally remain white for scan reliability.",
+    "HQ/admin styling was not globally recoloured by the public beige sweep."
   ],
   "desktop_layout_repair": "MacBook/small desktop breakpoint repair; mobile below 768px preserved"
 }

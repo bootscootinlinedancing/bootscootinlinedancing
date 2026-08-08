@@ -1,4 +1,4 @@
-Boot Scootin’ v96.4.38 — Merch ordering + black/red cleanup
+Boot Scootin’ v96.4.39 — Merch ordering + black/red cleanup
 
 - Removed remaining beige/cream public cards from Dance Library, Dance Diary and Rewards.
 - Restored both official Boot Scootin’ T-shirt designs.
