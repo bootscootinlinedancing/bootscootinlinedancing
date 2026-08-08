@@ -10,12 +10,12 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Oswald:wght@400;500;600;700&amp;family=Rye&amp;family=Yellowtail&amp;display=swap" rel="stylesheet"/>
-<link href="styles.css?v=96.4.45" rel="stylesheet"/>
+<link href="styles.css?v=96.4.46" rel="stylesheet"/>
 <link href="honky-authentic.css?v=96.4.43" rel="stylesheet"/>
 <link href="favicon.png" rel="icon" type="image/png"/>
 <link href="apple-touch-icon.png" rel="apple-touch-icon"/>
 <link href="manifest.webmanifest" rel="manifest"/>
-<link href="desktop-final-fix.css?v=96.4.45" rel="stylesheet"/>
+<link href="desktop-final-fix.css?v=96.4.46" rel="stylesheet"/>
 <style id="menu45-style">
 .menu45-overlay{display:none}
 @media(max-width:950px){
@@ -74,6 +74,28 @@
 <p class="boot-entry-tagline">Good Boots. Good Music. Good Times.</p>
 </div>
 </div>
+<script>
+/* v96.4.46 inline fail-safe: entry can never trap the site even if external JS/cache fails. */
+(function(){
+  var i=document.getElementById('intro');
+  if(!i)return;
+  function unlock(e){
+    if(e&&e.type==='click'&&e.detail===0)return;
+    i.classList.add('hide');
+    i.setAttribute('aria-hidden','true');
+    i.style.display='none';
+    document.body.classList.remove('intro-open');
+    try{sessionStorage.setItem('bootIntroSeen','1')}catch(_){}
+  }
+  var seen=false;try{seen=sessionStorage.getItem('bootIntroSeen')==='1'}catch(_){}
+  if(seen){unlock();return;}
+  i.addEventListener('pointerdown',unlock,{capture:true,passive:true});
+  i.addEventListener('touchstart',unlock,{capture:true,passive:true});
+  i.addEventListener('click',unlock,{capture:true});
+  var b=document.getElementById('enterSite');if(b)b.addEventListener('click',unlock,{capture:true});
+  window.setTimeout(function(){if(i.dataset.entering==='1')unlock()},1400);
+})();
+</script>
 <header class="honky-header">
 <a aria-label="Boot Scootin' Line Dancing home" class="honky-logo brand-lockup" href="index.html"><img alt="" src="brand-logo-transparent.png"/><span class="brand-lockup-copy"><strong>BOOT SCOOTIN’</strong><b>LINE DANCING</b><small>EST. 2025</small></span></a>
 <nav aria-label="Main navigation" class="honky-desktop-nav"><a class="active" href="index.html">Home</a><a href="about.html">About</a><a href="bookings.html">Classes</a><a href="private-events.html">Private Events</a><a href="gallery.html">Gallery</a><a href="ask-nora.html">Contact</a><button aria-controls="nav" aria-expanded="false" class="desktop-explore-button" id="desktopExploreButton" type="button">Explore</button></nav>
@@ -273,6 +295,6 @@
 <div class="copyright-line">© 2026 Boot Scootin’ Line Dancing. All rights reserved.</div>
 </div>
 </footer>
-<script src="script.js?v=96.4.45"></script>
+<script src="script.js?v=96.4.46"></script>
 </body>
 </html>
