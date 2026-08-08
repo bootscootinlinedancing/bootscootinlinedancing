@@ -1,7 +1,9 @@
-v96.4.24
-- Fixed desktop Explore button dropping to a second row
-- Kept Book a Class and all primary navigation on one row
-- Removed legacy hero overlays causing the large black desktop gap
-- Preserved full homepage hero image directly beneath header
-- Added extra boot image breathing room so toe and heel remain visible
-- Mobile styling unchanged
+Boot Scootin’ v96.4.38 — Merch ordering + black/red cleanup
+
+- Removed remaining beige/cream public cards from Dance Library, Dance Diary and Rewards.
+- Restored both official Boot Scootin’ T-shirt designs.
+- Added Unisex £20 (S–5XL) and Women’s Premium £22 (S–4XL / UK 10–22).
+- Added made-to-order/DTF production messaging and Threefives attribution.
+- Added an order form and SumUp hosted checkout flow.
+- Added merch order persistence and payment-status lookup in D1.
+- Preserved the desktop navigation/gap repairs from v96.4.37.

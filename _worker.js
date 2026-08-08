@@ -164,6 +164,25 @@ async function ensureBookingSchema(env) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS merch_orders (
+      id TEXT PRIMARY KEY,
+      reference TEXT NOT NULL UNIQUE,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NOT NULL,
+      customer_phone TEXT,
+      design TEXT NOT NULL,
+      fit TEXT NOT NULL CHECK(fit IN ('unisex','womens')),
+      size TEXT NOT NULL,
+      quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 4),
+      unit_price_pence INTEGER NOT NULL,
+      amount_pence INTEGER NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'GBP',
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      provider_checkout_id TEXT,
+      provider_transaction_id TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      paid_at TEXT
+    )`,
     `CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       actor TEXT NOT NULL,
@@ -3007,6 +3026,84 @@ async function adminBookings(request, env, ctx) {
 }
 
 
+
+function merchOrderReference(){
+  const stamp=new Date().toISOString().slice(2,10).replace(/-/g,'');
+  const rand=Math.random().toString(36).slice(2,7).toUpperCase();
+  return `MERCH-${stamp}-${rand}`;
+}
+
+async function createMerchOrder(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Ordering is temporarily unavailable. Please try again shortly.'},503);
+  await ensureBookingSchema(env);
+  const b=await request.json().catch(()=>null); if(!b)return json({error:'The order form could not be read.'},400);
+  const name=clean(b.name,100),email=clean(b.email,160).toLowerCase(),phone=clean(b.phone,40),design=clean(b.design,100),fit=clean(b.fit,20),size=clean(b.size,30),quantity=Math.max(1,Math.min(4,Number(b.quantity)||1));
+  if(!name||!emailOk(email))return json({error:'Please add your name and a valid email address.'},400);
+  if(!['Just One More Dance','No Mistakes, Just Variations'].includes(design))return json({error:'Please choose one of the available T-shirt designs.'},400);
+  if(!['unisex','womens'].includes(fit))return json({error:'Please choose a T-shirt fit.'},400);
+  const unisexSizes=new Set(['S','M','L','XL','2XL','3XL','4XL','5XL']);
+  const womensSizes=new Set(['S (UK 10)','M (UK 12)','L (UK 14)','XL (UK 16)','2XL (UK 18)','3XL (UK 20)','4XL (UK 22)']);
+  if(!(fit==='unisex'?unisexSizes:womensSizes).has(size))return json({error:'Please choose an available size.'},400);
+  if(!b.terms)return json({error:'Please confirm that you understand the made-to-order production time.'},400);
+  const unit=fit==='womens'?2200:2000,amount=unit*quantity,id=crypto.randomUUID(),reference=merchOrderReference();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO merch_orders(id,reference,customer_name,customer_email,customer_phone,design,fit,size,quantity,unit_price_pence,amount_pence,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,'PENDING')`)
+    .bind(id,reference,name,email,phone,design,fit,size,quantity,unit,amount).run();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+    .bind(email,'MERCH_ORDER_CREATED','merch_order',id,JSON.stringify({reference,design,fit,size,quantity,amount_pence:amount})).run().catch(()=>{});
+
+  if(!sumUpConfigured(env)){
+    return json({ok:true,reference,status:'PENDING',payment_enabled:false,message:'Your order has been recorded. Nora will contact you about payment.'},201);
+  }
+  try{
+    const origin=new URL(request.url).origin;
+    const payload={
+      checkout_reference:reference,
+      amount:Number((amount/100).toFixed(2)),currency:'GBP',merchant_code:String(env.SUMUP_MERCHANT_CODE),
+      description:`Boot Scootin’ T-shirt — ${design} — ${fit==='womens'?"Women’s premium":"Unisex"} ${size} × ${quantity}`,
+      redirect_url:`${origin}/community.html?merch_order=${encodeURIComponent(reference)}#merchandise`,
+      hosted_checkout:{enabled:true}
+    };
+    const r=await sumUpFetch(env,'/v0.1/checkouts',{method:'POST',body:JSON.stringify(payload)});
+    const checkout=await r.json().catch(()=>({}));
+    const raw=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||''; let checkoutUrl='';
+    try{const u=new URL(raw);if(u.protocol==='https:')checkoutUrl=u.toString();}catch(_){}
+    if(r.ok&&checkout.id&&checkoutUrl){
+      await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET provider_checkout_id=? WHERE id=?`).bind(checkout.id,id).run();
+      return json({ok:true,reference,status:'PENDING',payment_enabled:true,checkout_url:checkoutUrl},201);
+    }
+    const providerMessage=clean(checkout?.message||checkout?.error_message||checkout?.error||'',180);
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAYMENT_ERROR' WHERE id=?`).bind(id).run();
+    return json({error:'SumUp could not open the secure payment page. Your order has been saved, but no payment has been taken.',reference,detail:providerMessage},502);
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAYMENT_ERROR' WHERE id=?`).bind(id).run().catch(()=>{});
+    return json({error:'The secure payment service is temporarily unavailable. Your order has been saved and no payment has been taken.',reference},502);
+  }
+}
+
+async function merchOrderStatus(request,env,url){
+  if(!env.BOOKINGS_DB)return json({error:'Order lookup is unavailable.'},503);
+  await ensureBookingSchema(env);
+  const reference=clean(url.searchParams.get('reference'),80);
+  if(!reference)return json({error:'Order reference required.'},400);
+  let order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE reference=?`).bind(reference).first();
+  if(!order)return json({error:'Order not found.'},404);
+  if(order.provider_checkout_id&&sumUpConfigured(env)&&order.status!=='PAID'){
+    try{
+      const checkout=await retrieveSumUpCheckout(env,order.provider_checkout_id);
+      const cs=String(checkout?.status||'').toUpperCase();
+      if(cs==='PAID'){
+        const tid=clean(checkoutTransactionId(checkout),180)||null;
+        await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=CURRENT_TIMESTAMP,provider_transaction_id=? WHERE id=?`).bind(tid,order.id).run();
+        await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(order.customer_email,'MERCH_ORDER_PAID','merch_order',order.id,JSON.stringify({reference,transaction_id:tid})).run().catch(()=>{});
+        order.status='PAID';
+      } else if(['FAILED','EXPIRED'].includes(cs)) {
+        await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run(); order.status=cs;
+      }
+    }catch(_){}
+  }
+  return json({ok:true,reference:order.reference,status:order.status,design:order.design,fit:order.fit,size:order.size,quantity:order.quantity,amount_pence:order.amount_pence});
+}
+
 async function adminPrivateEvents(request, env) {
   const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
   if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,q.id quote_id,q.total_pence,q.deposit_pence,q.status quote_status,q.quote_expires_at FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) ORDER BY i.created_at DESC`).all();return json({items:results});}
@@ -3198,6 +3295,8 @@ export default {
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
       if (path === '/api/promotions/validate' && request.method === 'POST') return publicPromoValidate(request, env);
+      if (path === '/api/merch-orders' && request.method === 'POST') return createMerchOrder(request, env);
+      if (path === '/api/merch-order-status' && request.method === 'GET') return merchOrderStatus(request, env, url);
       if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);
       if (path === '/api/sumup/callback' && request.method === 'GET') return sumUpOAuthCallback(request, env, url);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);

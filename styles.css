@@ -7784,3 +7784,35 @@ body:not(.admin-login-body):not(.ranch-v91) :is(.portrait,.polaroids figure,.mem
 .home-shop-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:1.25rem}.home-shop-actions a{padding:.78rem 1.05rem;border:1px solid #d33b42;background:#a71f25;color:#fff;text-decoration:none;text-transform:uppercase;font:700 .8rem Oswald,sans-serif;letter-spacing:.05em}.home-shop-actions a+ a{background:transparent}
 .home-shop-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.home-shop-products a{position:relative;display:block;overflow:hidden;min-height:250px;border:1px solid #55282b;background:#120b0b;color:#fff;text-decoration:none}.home-shop-products img{width:100%;height:100%;min-height:250px;object-fit:cover;display:block;filter:brightness(.84)}.home-shop-products span{position:absolute;left:12px;bottom:12px;padding:.45rem .6rem;background:rgba(5,3,3,.86);border-left:3px solid #d33b42;color:#fff;font:700 .78rem Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em}
 @media(max-width:767px){.home-shop-return{grid-template-columns:1fr;padding:34px 18px}.home-shop-products{grid-template-columns:1fr 1fr}.home-shop-products a,.home-shop-products img{min-height:170px}}
+
+
+/* v96.4.38 — remove remaining beige/cream public surfaces */
+.section.paper,.cream-home,.library-2-intro,.library-controls,.library-youtube-cta,.diary-archive-tools,.diary-content,.reward-benefits,.reward-join-card,.reward-terms .terms-card,.passport-book,.business-transparency-card,.member-profile-settings article,.member-hub-cta-inner{background:#100809!important;color:#f7eee7!important;border-color:#5b2428!important;box-shadow:none!important}
+.section.paper h1,.section.paper h2,.section.paper h3,.section.paper h4,.section.paper strong,.section.paper label,.cream-home h1,.cream-home h2,.cream-home h3{color:#fff6ee!important}
+.section.paper p,.section.paper li,.section.paper small,.section.paper span,.cream-home p{color:#d8c5b7!important}
+.library-progress-preview div,.dance-specs span,.diary-archive-stats div,.member-badge-grid article,.passport-stamps article,.passport-stamps article.stamped,.reward-progress-row span{background:#170b0c!important;color:#f7eee7!important;border:1px solid #6f2a2f!important}
+.library-progress-preview strong,.dance-specs b,.diary-archive-stats strong{color:#ef424a!important}
+.library-filters button,.dance-progress-buttons button,.diary-archive-actions button{background:#170b0c!important;color:#f7eee7!important;border-color:#793037!important}
+.library-filters button.active,.library-filters button:hover,.dance-progress-buttons button[aria-pressed="true"],.diary-archive-actions button:hover{background:#b91f27!important;color:#fff!important;border-color:#ef434b!important}
+.library-controls input,.library-controls select,.dance-confidence,.diary-archive-tools input{background:#080506!important;color:#fff!important;border-color:#6f2a2f!important}
+.library-youtube-cta{border:1px solid #6f2a2f!important}
+.reward-steps article{background:#14090a!important;border-color:#5f282c!important;color:#f7eee7!important}
+.reward-benefits li,.reward-terms p{color:#d8c5b7!important}
+.reward-progress-row span.earned{background:#a91d24!important;color:#fff!important;border-color:#ef434b!important}
+.dance-cards{gap:14px!important}.dance-card{background:#110809!important;color:#fff!important;border:1px solid #5d272b!important;box-shadow:none!important}.dance-card strong{color:#fff!important}.dance-card small{color:#d8c5b7!important}
+.diary-entry summary{background:#13090a!important;color:#fff!important;border-color:#5d272b!important}.diary-intro{color:#e8d9ce!important}
+.learning-card{background:#150a0b!important;border-color:#6f2a2f!important}
+/* merch */
+.merch-dark{background:linear-gradient(180deg,#090506 0%,#13090b 100%)!important;color:#fff;padding-top:clamp(3rem,7vw,6rem)!important}
+.merch-dark .section-title p{color:#d8c5b7!important}.merch-dark h2,.merch-dark h3{color:#fff6ee!important}
+.real-merch-card{background:#100809!important;border:1px solid #6d2b30!important;color:#fff!important;overflow:hidden}.real-merch-card img{background:#050303!important;aspect-ratio:4/3;object-fit:contain!important;padding:.5rem}.real-merch-card p{color:#d8c5b7!important}
+.merch-price-row{display:flex;flex-wrap:wrap;gap:.6rem;margin:1rem 0}.merch-price-row span{padding:.55rem .75rem;border:1px solid #6f2a2f;background:#170b0c;color:#e7d5c8}.merch-price-row b{color:#ff4a52;font-size:1.15rem}
+.merch-maker-note,.merch-size-guide{max-width:980px;margin:1.5rem auto;padding:1.2rem 1.35rem;border-left:4px solid #e12f37;background:#170b0c}.merch-maker-note strong{color:#fff;font:700 1.05rem Oswald,sans-serif}.merch-maker-note p,.merch-size-guide p{color:#d8c5b7;margin:.45rem 0 0}
+.merch-created-by{background:#100809!important;border:1px solid #5b2428!important}.merch-created-by p{color:#d8c5b7!important}
+.merch-order-panel[hidden]{display:none!important}.merch-order-panel{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:1rem;background:rgba(0,0,0,.82);backdrop-filter:blur(6px)}
+.merch-order-card{position:relative;width:min(680px,100%);max-height:92vh;overflow:auto;padding:1.4rem;border:1px solid #7b3035;background:#0d0708;color:#fff;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+.merch-order-close{position:absolute;right:.8rem;top:.8rem;width:42px;height:42px;border:1px solid #7b3035;background:#170b0c;color:#fff;font-size:1.8rem;cursor:pointer}
+#merchOrderForm{display:grid;gap:.9rem}#merchOrderForm label,#merchOrderForm legend{color:#f7eee7;font:700 .82rem Oswald,sans-serif;text-transform:uppercase;letter-spacing:.05em}#merchOrderForm label span{font-weight:400;text-transform:none;color:#bda89a}
+#merchOrderForm input:not([type=radio]):not([type=checkbox]),#merchOrderForm select{width:100%;margin-top:.35rem;padding:.8rem;border:1px solid #6f2a2f;background:#050303;color:#fff;font:500 1rem Oswald,sans-serif;box-sizing:border-box}#merchOrderForm fieldset{display:flex;gap:1rem;flex-wrap:wrap;padding:.8rem;border:1px solid #5b2428;background:#13090a}
+.merch-terms-check{display:flex!important;gap:.65rem;align-items:flex-start;text-transform:none!important;font-family:Oswald,sans-serif!important;font-weight:400!important}.merch-terms-check input{margin-top:.2rem}.merch-order-total{padding:.9rem 1rem;border:1px solid #6f2a2f;background:#170b0c;color:#d8c5b7;font:700 1rem Oswald,sans-serif}.merch-order-total strong{float:right;color:#ff4a52;font-size:1.35rem}.merch-order-status{min-height:1.5em;color:#ffb5b8!important}.merch-return-banner{display:grid;gap:.25rem;max-width:980px;margin:0 auto 1.5rem;padding:1rem 1.2rem;border:1px solid #df3c44;background:#281014;color:#fff}.merch-return-banner strong{font:700 1.15rem Oswald,sans-serif}.merch-return-banner span{color:#e3cfc1}
+@media(max-width:700px){.merch-price-row{display:grid}.merch-order-card{padding:1.2rem}.real-merch-card img{aspect-ratio:1/1}}
