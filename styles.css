@@ -8037,3 +8037,31 @@ svg.western-icon:has(use[href$="#hat"]){
   .community-preview-copy{padding:20px}
   .moonshine-brand-banner{width:calc(100% - 28px);margin-bottom:24px}
 }
+
+
+/* v96.4.43 — Moonshine responsive repair + public-library polish */
+.moonshine-page .moonshine-hero{
+  min-height:0!important; display:block!important; width:100%!important; max-width:none!important;
+  padding:clamp(28px,5vw,64px) 0!important; overflow:hidden!important;
+  background:radial-gradient(circle at 50% 0,rgba(170,24,34,.18),transparent 42%),#090607!important;
+}
+.moonshine-page .moonshine-brand-banner{
+  display:block!important; width:min(1180px,calc(100% - 40px))!important; max-width:1180px!important;
+  height:auto!important; margin:0 auto clamp(24px,4vw,42px)!important; object-fit:contain!important;
+}
+.moonshine-page .moonshine-hero-copy{
+  width:min(980px,calc(100% - 40px))!important; max-width:980px!important; margin:0 auto!important;
+  padding:0!important; display:block!important; overflow:visible!important;
+}
+.moonshine-page .moonshine-hero-copy h1,.moonshine-page .moonshine-hero-copy p{
+  max-width:100%!important; white-space:normal!important; overflow-wrap:anywhere!important; word-break:normal!important;
+}
+.moonshine-page .moonshine-hero h1{font-size:clamp(2.6rem,8vw,5.6rem)!important;line-height:1.02!important}
+@media(max-width:760px){
+  .moonshine-page .moonshine-hero{padding:26px 0 34px!important}
+  .moonshine-page .moonshine-brand-banner,.moonshine-page .moonshine-hero-copy{width:calc(100% - 28px)!important}
+  .moonshine-page .moonshine-hero h1{font-size:clamp(2.4rem,14vw,4.1rem)!important}
+}
+.library-private-note{margin:1rem 0 0;color:#d6c3b8;font-size:.95rem}
+.stepsheet-mini-links{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:16px}
+.library-actions{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}

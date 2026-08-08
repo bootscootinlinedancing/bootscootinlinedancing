@@ -316,7 +316,7 @@ installGuide?.addEventListener("click", event => {
 
 
 
-/* v96.4.42 menu clarity: one submenu at a time + an obvious way back to section list. */
+/* v96.4.43 menu clarity: one submenu at a time + an obvious way back to section list. */
 document.addEventListener('DOMContentLoaded', () => {
   const panel = document.getElementById('menu45');
   if (!panel) return;

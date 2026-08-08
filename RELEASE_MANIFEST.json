@@ -1,6 +1,6 @@
 {
   "release": "96.4.40",
-  "version": "96.4.40",
+  "version": "96.4.43",
   "release_name": "PUBLIC BLACK/RED SWEEP + UNIFIED MENU + MERCH CHECKOUT FIX",
   "description": "Removes remaining beige public surfaces, standardises the Explore menu, and replaces Safari fetch checkout with a robust same-origin form POST to SumUp.",
   "built_from": "boot-scootin-platform-v96.4.38-MERCH-ORDERING-BLACK-RED-CLEANUP.zip",
@@ -41,9 +41,6 @@
     }
   },
   "homepage_refresh": true,
-  "notes": [
-    "Public QR-code backgrounds intentionally remain white for scan reliability.",
-    "HQ/admin styling was not globally recoloured by the public beige sweep."
-  ],
+  "notes": "Public Dance Library privacy cleanup, 7 August diary recap, Glass of Wine, cleaner Western boot/hat icons, Moonshine responsive repair.",
   "desktop_layout_repair": "MacBook/small desktop breakpoint repair; mobile below 768px preserved"
 }
