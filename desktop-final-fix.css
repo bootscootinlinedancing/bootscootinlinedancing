@@ -342,3 +342,7 @@
 @media (max-width: 767px) {
   .desktop-explore-button { display: none !important; }
 }
+
+/* v96.4.37 Backroad Boots logo correction */
+.backroad-visual{background:#050303!important;display:grid!important;place-items:center!important;overflow:hidden!important}
+.backroad-visual img{width:100%!important;height:100%!important;object-fit:contain!important;object-position:center!important;background:#050303!important;padding:0!important}

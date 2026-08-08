@@ -7752,3 +7752,35 @@ html.desktop-mode .gallery-grid,html.desktop-mode .home-gallery-grid{gap:10px!im
   html.desktop-mode .better-hero h1 span{font-size:42px!important}
   html.desktop-mode .better-hero h1 em{font-size:49px!important}
 }
+
+/* ==========================================================
+   v96.4.37 PUBLIC VISIBILITY + SHOP RESTORE
+   Removes leftover cream/white public panels while preserving
+   HQ/admin work areas, and restores readable text contrast.
+   ========================================================== */
+body:not(.admin-login-body):not(.ranch-v91){background:#070505;color:#f7eee5}
+body:not(.admin-login-body):not(.ranch-v91) .section.paper{
+  background:linear-gradient(180deg,#0c0808 0%,#120909 100%)!important;
+  color:#f7eee5!important;
+  border-color:#482224!important;
+}
+body:not(.admin-login-body):not(.ranch-v91) .section.paper :is(h1,h2,h3,h4,strong,label,legend){color:#fff7ed!important}
+body:not(.admin-login-body):not(.ranch-v91) .section.paper :is(p,li,small,span:not(.button):not(.status-chip)){color:#d9c9bd!important}
+body:not(.admin-login-body):not(.ranch-v91) .section.paper :is(a:not(.button),.text-link){color:#ef5157!important}
+body:not(.admin-login-body):not(.ranch-v91) .section.paper :is(article,[class$="-card"],[class*="-card "]){
+  background:#130c0c!important;color:#f7eee5!important;border-color:#563033!important;
+}
+body:not(.admin-login-body):not(.ranch-v91) .section.paper :is(input,select,textarea){
+  background:#0d0909!important;color:#fff7ed!important;border-color:#744045!important;
+}
+body:not(.admin-login-body):not(.ranch-v91) .section.paper :is(input,textarea)::placeholder{color:#aa9690!important}
+
+/* Keep intentional photo/polaroid frames warm, never stark white. */
+body:not(.admin-login-body):not(.ranch-v91) :is(.portrait,.polaroids figure,.memory-grid figure){background:#18100f!important;color:#f7eee5!important}
+
+/* Homepage restored Shop & Rewards block */
+.home-shop-return{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:28px;align-items:center;padding:clamp(36px,5vw,68px) clamp(24px,6vw,80px);background:radial-gradient(circle at 85% 30%,rgba(181,27,34,.16),transparent 35%),#0a0707;border-top:1px solid #421b1e;border-bottom:1px solid #421b1e;color:#f7eee5}
+.home-shop-copy{max-width:620px}.home-shop-copy h2{margin:.35rem 0 .8rem;color:#fff7ed;font:400 clamp(2.2rem,4vw,4.3rem)/1 Rye,serif}.home-shop-copy p:not(.section-label){color:#d8c8bc;line-height:1.65}
+.home-shop-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:1.25rem}.home-shop-actions a{padding:.78rem 1.05rem;border:1px solid #d33b42;background:#a71f25;color:#fff;text-decoration:none;text-transform:uppercase;font:700 .8rem Oswald,sans-serif;letter-spacing:.05em}.home-shop-actions a+ a{background:transparent}
+.home-shop-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.home-shop-products a{position:relative;display:block;overflow:hidden;min-height:250px;border:1px solid #55282b;background:#120b0b;color:#fff;text-decoration:none}.home-shop-products img{width:100%;height:100%;min-height:250px;object-fit:cover;display:block;filter:brightness(.84)}.home-shop-products span{position:absolute;left:12px;bottom:12px;padding:.45rem .6rem;background:rgba(5,3,3,.86);border-left:3px solid #d33b42;color:#fff;font:700 .78rem Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em}
+@media(max-width:767px){.home-shop-return{grid-template-columns:1fr;padding:34px 18px}.home-shop-products{grid-template-columns:1fr 1fr}.home-shop-products a,.home-shop-products img{min-height:170px}}
