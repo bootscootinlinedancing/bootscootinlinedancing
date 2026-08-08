@@ -381,18 +381,3 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.target.closest('#menuButton,#menuToggle,#desktopExploreButton,.menu45-section summary,.menu45-back-sections')) run();
   });
 })();
-
-/* v96.4.46 — secondary landing unlock safeguard. */
-(() => {
-  const i=document.getElementById('intro');
-  if(!i) return;
-  const unlock=()=>{
-    i.classList.add('hide');
-    i.setAttribute('aria-hidden','true');
-    i.style.display='none';
-    document.body.classList.remove('intro-open');
-    try{sessionStorage.setItem('bootIntroSeen','1')}catch(_){}
-  };
-  document.getElementById('enterSite')?.addEventListener('click',unlock,{capture:true});
-  i.addEventListener('pointerdown',unlock,{capture:true,passive:true});
-})();
