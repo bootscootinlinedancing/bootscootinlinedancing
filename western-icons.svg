@@ -1,30 +1,160 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
-  <symbol id="boot" viewBox="0 0 64 64"><path d="M18 6h19v25c0 7 6 12 13 12h8v9H28c-11 0-20-9-20-20V12h10z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M18 18h19M18 28h19M28 43c4 5 8 7 14 9" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="hat" viewBox="0 0 64 64"><path d="M18 33c3-14 8-23 14-23s11 9 14 23c-7 3-21 3-28 0z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M5 38c8 5 20 7 27 7s19-2 27-7c-2 10-14 16-27 16S7 48 5 38z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="guitar" viewBox="0 0 64 64"><path d="M39 9l16-5 5 5-8 13-8 1-9 9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M34 29c7 7 8 18 1 25s-18 6-25-1-8-18-1-25c4-4 10-6 15-4l5-5 10 10-5 5z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="24" cy="40" r="5" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="horseshoe" viewBox="0 0 64 64"><path d="M15 9v20c0 14 7 24 17 24s17-10 17-24V9h-9v20c0 8-3 14-8 14s-8-6-8-14V9z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M12 14h15M37 14h15M14 27h12M38 27h12" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="ticket" viewBox="0 0 64 64"><path d="M8 18h48v10c-6 0-6 8 0 8v10H8V36c6 0 6-8 0-8z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M32 18v28" stroke="currentColor" stroke-width="3" stroke-dasharray="4 4"/></symbol>
-  <symbol id="calendar" viewBox="0 0 64 64"><rect x="9" y="13" width="46" height="42" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M18 7v12M46 7v12M9 25h46M20 35h6M32 35h6M44 35h6M20 45h6M32 45h6" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="pin" viewBox="0 0 64 64"><path d="M32 57S14 39 14 25a18 18 0 1 1 36 0c0 14-18 32-18 32z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="25" r="6" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="camera" viewBox="0 0 64 64"><path d="M8 20h12l5-7h14l5 7h12v31H8z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="35" r="10" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="badge" viewBox="0 0 64 64"><path d="M32 6l7 10 12-2-2 12 9 8-9 8 2 12-12-2-7 10-7-10-12 2 2-12-9-8 9-8-2-12 12 2z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="34" r="9" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="gift" viewBox="0 0 64 64"><rect x="8" y="27" width="48" height="28" fill="none" stroke="currentColor" stroke-width="3"/><path d="M5 18h54v12H5zM32 18v37M18 18c-7-4-7-12-1-12 6 0 15 12 15 12M46 18c7-4 7-12 1-12-6 0-15 12-15 12" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="flame" viewBox="0 0 64 64"><path d="M35 4c4 13-7 18 0 27 4-7 10-10 13-17 8 14 11 27 3 38-9 12-29 11-37-2C5 35 17 22 25 14c0 10 4 14 10 17" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="music" viewBox="0 0 64 64"><path d="M25 13v33M25 17l28-7v32" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="17" cy="48" r="8" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="45" cy="44" r="8" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="heart" viewBox="0 0 64 64"><path d="M32 55S7 40 7 22c0-9 7-15 15-15 5 0 9 3 10 7 2-4 6-7 11-7 8 0 14 6 14 15 0 18-25 33-25 33z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="star" viewBox="0 0 64 64"><path d="M32 6l8 17 19 2-14 13 4 19-17-9-17 9 4-19L5 25l19-2z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="lock" viewBox="0 0 64 64"><rect x="12" y="27" width="40" height="29" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M21 27v-8a11 11 0 0 1 22 0v8" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="people" viewBox="0 0 64 64"><circle cx="23" cy="22" r="9" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="45" cy="25" r="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M7 55c1-13 8-20 16-20s15 7 16 20M37 55c1-10 6-15 13-15 5 0 9 4 11 10" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="user" viewBox="0 0 64 64"><circle cx="32" cy="20" r="11" fill="none" stroke="currentColor" stroke-width="3"/><path d="M10 56c2-15 10-22 22-22s20 7 22 22" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="home" viewBox="0 0 64 64"><path d="M7 30L32 8l25 22v26H40V39H24v17H7z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="chat" viewBox="0 0 64 64"><path d="M8 10h48v34H28L14 55V44H8z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="shield" viewBox="0 0 64 64"><path d="M32 5l22 8v16c0 14-9 24-22 30C19 53 10 43 10 29V13z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="eye" viewBox="0 0 64 64"><path d="M5 32s10-17 27-17 27 17 27 17-10 17-27 17S5 32 5 32z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="32" cy="32" r="7" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="trash" viewBox="0 0 64 64"><path d="M12 17h40M24 17V9h16v8M18 17l3 39h22l3-39M27 27v19M37 27v19" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="cactus" viewBox="0 0 64 64"><path d="M29 58V16c0-7 10-7 10 0v10h6v-7c0-6 9-6 9 0v11c0 5-4 9-9 9h-6v19M29 39h-7c-6 0-11-5-11-11v-8c0-6 9-6 9 0v6h9" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="moon" viewBox="0 0 64 64"><path d="M48 47A24 24 0 0 1 19 9a25 25 0 1 0 29 38z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="tent" viewBox="0 0 64 64"><path d="M6 54L32 8l26 46zM32 8v46M22 54l10-19 10 19" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="trophy" viewBox="0 0 64 64"><path d="M20 8h24v12c0 12-5 19-12 19s-12-7-12-19zM24 50h16M32 39v11M20 12H8v8c0 8 5 13 13 13M44 12h12v8c0 8-5 13-13 13" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="butterfly" viewBox="0 0 64 64"><path d="M30 31C22 8 6 6 7 23c1 10 10 13 23 8zM34 31c8-23 24-25 23-8-1 10-10 13-23 8zM30 34C18 38 11 48 19 56c7 7 13-5 13-20M34 34c12 4 19 14 11 22-7 7-13-5-13-20M32 23v23" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
-  <symbol id="crown" viewBox="0 0 64 64"><path d="M8 18l13 10 11-19 11 19 13-10-6 29H14zM14 47h36v9H14z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
+  <!-- Boot Scootin' custom Western SVG icon set v96.4.40. All artwork is vector code: no emoji/icon font dependency. -->
+  <symbol id="boot" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 8h34l-2 38c-.3 6 2 11 7 15 5 4 12 7 20 9l7 2-3 10H43c-10 0-19-4-25-11-5-6-8-13-8-22V16h14z"/>
+      <path d="M24 17h34M23 31h34M22 45h34" opacity=".72"/>
+      <path d="M55 56c-3 9-2 16 4 25M42 82c-1 4-4 6-10 6H20"/>
+      <path d="M32 18c6 6 10 12 11 20M49 18c-6 6-10 12-11 20" opacity=".65"/>
+      <path d="M31 51l6 5 6-5 6 5" opacity=".65"/>
+      <path d="M77 68c4 1 8 1 12 1"/>
+    </g>
+  </symbol>
+
+  <symbol id="hat" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 49c2-10 5-22 10-32 3-6 7-9 10-9s7 3 10 9c5 10 8 22 10 32"/>
+      <path d="M35 23c7 4 19 4 26 0M31 42c11 5 23 5 34 0" opacity=".7"/>
+      <path d="M8 54c12 7 26 10 40 10s28-3 40-10c-2 14-18 26-40 26S10 68 8 54z"/>
+      <path d="M17 58c8 3 19 5 31 5s23-2 31-5" opacity=".6"/>
+    </g>
+  </symbol>
+
+  <symbol id="guitar" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M59 13l22-7 9 9-13 19-10 1-18 18"/>
+      <path d="M47 47c9 9 10 23 1 32s-23 8-32-1-10-23-1-32c6-6 15-8 22-5l7-7 13 13-7 7c3 7 1 16-5 22"/>
+      <circle cx="31" cy="62" r="7"/>
+      <path d="M56 34l9 9M64 26l9 9M73 17l9 9" opacity=".7"/>
+      <path d="M26 57l10 10"/>
+    </g>
+  </symbol>
+
+  <symbol id="horseshoe" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 12v31c0 23 10 39 24 39s24-16 24-39V12H59v31c0 13-4 24-11 24S37 56 37 43V12z"/>
+      <path d="M20 21h21M55 21h21M21 39h17M58 39h17"/>
+      <circle cx="31" cy="54" r="2" fill="currentColor" stroke="none"/><circle cx="65" cy="54" r="2" fill="currentColor" stroke="none"/>
+    </g>
+  </symbol>
+
+  <symbol id="ticket" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 27h76v15c-8 0-8 12 0 12v15H10V54c8 0 8-12 0-12z"/>
+      <path d="M49 27v42" stroke-dasharray="5 6"/>
+      <path d="M22 38h17M22 48h12M22 58h17" opacity=".65"/>
+    </g>
+  </symbol>
+
+  <symbol id="calendar" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="19" width="72" height="65" rx="6"/>
+      <path d="M27 10v18M69 10v18M12 35h72"/>
+      <path d="M27 49h8M44 49h8M61 49h8M27 64h8M44 64h8"/>
+    </g>
+  </symbol>
+
+  <symbol id="pin" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M48 88S20 61 20 39a28 28 0 1 1 56 0c0 22-28 49-28 49z"/>
+      <circle cx="48" cy="39" r="9"/>
+    </g>
+  </symbol>
+
+  <symbol id="camera" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 31h18l7-11h24l7 11h18v48H11z"/>
+      <circle cx="48" cy="55" r="15"/>
+      <path d="M73 40h4"/>
+    </g>
+  </symbol>
+
+  <symbol id="badge" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M48 7l10 15 18-3-3 18 14 11-14 11 3 18-18-3-10 15-10-15-18 3 3-18L9 48l14-11-3-18 18 3z"/>
+      <path d="M48 31l5 10 11 2-8 8 2 11-10-5-10 5 2-11-8-8 11-2z"/>
+    </g>
+  </symbol>
+
+  <symbol id="gift" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="14" y="42" width="68" height="42"/>
+      <path d="M9 29h78v17H9zM48 29v55"/>
+      <path d="M47 29C35 17 25 12 20 18c-5 7 7 12 27 11zM49 29c12-12 22-17 27-11 5 7-7 12-27 11z"/>
+    </g>
+  </symbol>
+
+  <symbol id="flame" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M53 7c6 20-10 28 0 42 7-11 15-16 20-27 13 22 17 41 5 57-14 18-43 17-56-2C9 57 25 36 38 24c0 15 6 22 15 25"/>
+    </g>
+  </symbol>
+
+  <symbol id="music" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M39 19v50M39 25l42-10v44"/>
+      <ellipse cx="27" cy="72" rx="12" ry="9"/>
+      <ellipse cx="69" cy="63" rx="12" ry="9"/>
+      <path d="M39 35l42-10" opacity=".65"/>
+    </g>
+  </symbol>
+
+  <symbol id="heart" viewBox="0 0 96 96">
+    <path d="M48 84S11 62 11 34c0-13 10-23 23-23 7 0 12 4 14 10 3-6 9-10 16-10 12 0 21 10 21 23 0 28-37 50-37 50z" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="star" viewBox="0 0 96 96">
+    <path d="M48 8l12 25 28 4-20 20 5 28-25-13-25 13 5-28L8 37l28-4z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="lock" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="19" y="42" width="58" height="43" rx="6"/>
+      <path d="M32 42V29a16 16 0 0 1 32 0v13"/>
+      <circle cx="48" cy="61" r="4"/><path d="M48 65v8"/>
+    </g>
+  </symbol>
+
+  <symbol id="people" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="34" cy="31" r="13"/><circle cx="67" cy="34" r="10"/>
+      <path d="M10 84c2-20 11-31 24-31s22 11 24 31M56 84c2-15 9-23 19-23 8 0 14 6 18 16"/>
+    </g>
+  </symbol>
+
+  <symbol id="user" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="48" cy="29" r="16"/><path d="M15 85c3-23 15-34 33-34s30 11 33 34"/>
+    </g>
+  </symbol>
+
+  <symbol id="home" viewBox="0 0 96 96">
+    <path d="M10 43L48 10l38 33v42H60V58H36v27H10z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="chat" viewBox="0 0 96 96">
+    <path d="M12 15h72v51H42L21 82V66h-9z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="shield" viewBox="0 0 96 96">
+    <path d="M48 8l34 12v24c0 21-14 37-34 46C28 81 14 65 14 44V20z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="eye" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 48s15-25 40-25 40 25 40 25-15 25-40 25S8 48 8 48z"/><circle cx="48" cy="48" r="11"/></g>
+  </symbol>
+
+  <symbol id="trash" viewBox="0 0 96 96">
+    <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 27h60M36 27V15h24v12M27 27l5 58h32l5-58M41 43v27M55 43v27"/></g>
+  </symbol>
+
+  <symbol id="cactus" viewBox="0 0 96 96">
+    <path d="M44 88V24c0-11 15-11 15 0v15h9V29c0-9 14-9 14 0v17c0 8-6 14-14 14h-9v28M44 59H34c-9 0-17-8-17-17V30c0-9 14-9 14 0v9h13" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="moon" viewBox="0 0 96 96"><path d="M72 71A36 36 0 0 1 29 14a37 37 0 1 0 43 57z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/></symbol>
+  <symbol id="tent" viewBox="0 0 96 96"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"><path d="M9 83L48 13l39 70zM48 13v70M33 83l15-29 15 29"/></g></symbol>
+  <symbol id="trophy" viewBox="0 0 96 96"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 12h36v18c0 18-8 29-18 29S30 48 30 30zM36 76h24M48 59v17M30 18H12v12c0 12 8 20 19 20M66 18h18v12c0 12-8 20-19 20M28 84h40"/></g></symbol>
+  <symbol id="butterfly" viewBox="0 0 96 96"><g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M45 46C33 12 9 9 11 34c2 15 15 20 34 12zM51 46c12-34 36-37 34-12-2 15-15 20-34 12zM45 51c-18 6-28 21-16 33 10 10 19-7 19-30M51 51c18 6 28 21 16 33-10 10-19-7-19-30M48 34v34"/></g></symbol>
+  <symbol id="crown" viewBox="0 0 96 96"><path d="M12 27l20 15 16-29 16 29 20-15-9 44H21zM21 71h54v13H21z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/></symbol>
 </svg>

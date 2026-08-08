@@ -7786,7 +7786,7 @@ body:not(.admin-login-body):not(.ranch-v91) :is(.portrait,.polaroids figure,.mem
 @media(max-width:767px){.home-shop-return{grid-template-columns:1fr;padding:34px 18px}.home-shop-products{grid-template-columns:1fr 1fr}.home-shop-products a,.home-shop-products img{min-height:170px}}
 
 
-/* v96.4.39 — remove remaining beige/cream public surfaces */
+/* v96.4.40 — remove remaining beige/cream public surfaces */
 .section.paper,.cream-home,.library-2-intro,.library-controls,.library-youtube-cta,.diary-archive-tools,.diary-content,.reward-benefits,.reward-join-card,.reward-terms .terms-card,.passport-book,.business-transparency-card,.member-profile-settings article,.member-hub-cta-inner{background:#100809!important;color:#f7eee7!important;border-color:#5b2428!important;box-shadow:none!important}
 .section.paper h1,.section.paper h2,.section.paper h3,.section.paper h4,.section.paper strong,.section.paper label,.cream-home h1,.cream-home h2,.cream-home h3{color:#fff6ee!important}
 .section.paper p,.section.paper li,.section.paper small,.section.paper span,.cream-home p{color:#d8c5b7!important}
@@ -7819,7 +7819,7 @@ body:not(.admin-login-body):not(.ranch-v91) :is(.portrait,.polaroids figure,.mem
 
 
 /* ==========================================================
-   v96.4.39 — PUBLIC BLACK/RED CONSISTENCY SWEEP
+   v96.4.40 — PUBLIC BLACK/RED CONSISTENCY SWEEP
    Remove remaining beige/cream UI from public-facing pages.
    QR codes intentionally stay white for reliable scanning.
    ========================================================== */
@@ -7887,7 +7887,7 @@ body.honky-home #menu45 .menu45-head img{display:none!important}
 /* Never allow legacy paper/cream cards to paint pale surfaces on public pages. */
 body:not(.ranch-v91):not(.admin-login-body) :is(.paper,.cream-home,[class*="paper-card"],[class*="cream-card"]){background-color:#100809!important;color:#f7eee7!important}
 
-/* v96.4.39 full public pale-surface sweep — audited from styles.css */
+/* v96.4.40 full public pale-surface sweep — audited from styles.css */
 body:not(.ranch-v91):not(.admin-login-body) :is(
   .portrait,.venue-card,.polaroids figure,.calendar-card,.calendar-weekdays,.calendar-day,
   .diary-entry,.library-item,.memory-grid figure,.playlist-card,.event-types article,
@@ -7938,3 +7938,27 @@ body:not(.ranch-v91):not(.admin-login-body) :is(
 
 /* red accents instead of tan/gold badges */
 body:not(.ranch-v91):not(.admin-login-body) :is(.level-absolute-beginner,.level-beginner,.level-improver,.level-original){background:#241012!important;color:#ff666d!important;border-color:#8e3036!important}
+
+/* v96.4.40 — Custom Western SVG icon pack
+   Purpose: replace generic/emoji-looking symbols with consistent, recognisable Western line art. */
+.western-icon{
+  overflow:visible;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  filter:drop-shadow(0 0 2px rgba(226,33,43,.28));
+}
+.event-empty .western-icon,
+.library-icon .western-icon,
+.why-grid .western-icon,
+.value-cards .western-icon,
+.trail-stamps .western-icon,
+.reward-stamps .western-icon{
+  color:#e2212b;
+}
+.event-empty .western-icon{
+  width:92px!important;
+  height:92px!important;
+  filter:drop-shadow(0 0 5px rgba(226,33,43,.38));
+}
+.library-icon .western-icon{width:1.35em;height:1.35em;margin:0;vertical-align:-.22em}
+.why-grid .western-icon{filter:drop-shadow(0 0 4px rgba(226,33,43,.4))}

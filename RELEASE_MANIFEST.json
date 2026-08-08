@@ -1,6 +1,6 @@
 {
-  "release": "96.4.39",
-  "version": "96.4.39",
+  "release": "96.4.40",
+  "version": "96.4.40",
   "release_name": "PUBLIC BLACK/RED SWEEP + UNIFIED MENU + MERCH CHECKOUT FIX",
   "description": "Removes remaining beige public surfaces, standardises the Explore menu, and replaces Safari fetch checkout with a robust same-origin form POST to SumUp.",
   "built_from": "boot-scootin-platform-v96.4.38-MERCH-ORDERING-BLACK-RED-CLEANUP.zip",
