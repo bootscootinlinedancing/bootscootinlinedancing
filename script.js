@@ -343,3 +343,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+
+/* v96.4.44 persistent Moonshine community menu repair */
+(() => {
+  const ensureMoonshine = () => {
+    document.querySelectorAll('#menu45 details.menu45-section').forEach(section => {
+      const title = section.querySelector(':scope > summary strong')?.textContent?.trim();
+      if (title !== 'Community') return;
+      const submenu = section.querySelector('.menu45-submenu');
+      if (!submenu) return;
+      let link = submenu.querySelector('a[href="moonshine.html"]');
+      if (!link) {
+        link = document.createElement('a');
+        link.href = 'moonshine.html';
+        link.innerHTML = '<span>Moonshine &amp; Good Times Gang — Preview</span><b aria-hidden="true">›</b>';
+        submenu.insertBefore(link, submenu.firstElementChild);
+      } else if (submenu.firstElementChild !== link) {
+        submenu.insertBefore(link, submenu.firstElementChild);
+      }
+    });
+  };
+  document.addEventListener('DOMContentLoaded', ensureMoonshine);
+  window.addEventListener('pageshow', ensureMoonshine);
+  document.getElementById('menuToggle')?.addEventListener('click', () => setTimeout(ensureMoonshine, 0));
+  document.getElementById('desktopExploreButton')?.addEventListener('click', () => setTimeout(ensureMoonshine, 0));
+})();

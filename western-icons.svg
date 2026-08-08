@@ -1,24 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
   <!-- Boot Scootin' custom Western SVG icon set v96.4.40. All artwork is vector code: no emoji/icon font dependency. -->
   <symbol id="boot" viewBox="0 0 100 100">
-    <g fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round">
-      <!-- Clean Western boot: pointed toe, stacked heel, decorative shaft; deliberately no spur -->
-      <path d="M27 9h31l2 43c.3 7 4 12 10 16 6 4 13 6 22 8 4 1 6 4 5 7-1 4-5 6-11 6H45c-8 0-14-2-18-7l-5-6-4 13H8l7-20c3-7 7-12 11-16z"/>
-      <path d="M27 9l2 34M58 9l-2 37M28 44h29"/>
-      <path d="M34 18c5 4 10 4 16 0M34 28c5 4 10 4 16 0"/>
-      <path d="M35 52l8 8 8-8M42 63l7 7 7-7"/>
-      <path d="M25 78h17M16 79h12"/>
+    <g fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Simple spur-free Western boot: scalloped shaft, narrow ankle, stacked heel, pointed toe -->
+      <path d="M25 10h34l-2 42c0 7 2 12 7 16 6 5 14 8 25 10 5 1 8 4 8 8 0 4-4 6-10 6H47c-9 0-15-2-20-7l-5-5-4 12H8l7-21c2-7 6-12 11-16z"/>
+      <path d="M25 10c5 4 10 6 17 6s12-2 17-6"/>
+      <path d="M28 26c4 3 9 5 14 5s10-2 14-5"/>
+      <path d="M27 43h29"/>
+      <path d="M34 54l8 7 8-7"/>
+      <path d="M34 66l8 7 8-7"/>
+      <path d="M18 82h14M28 84h18"/>
     </g>
   </symbol>
 
   <symbol id="hat" viewBox="0 0 100 100">
-    <g fill="none" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round">
-      <!-- Classic cowboy hat: pinched crown and curled Western brim -->
-      <path d="M29 55c1-12 3-25 9-34 3-5 7-8 12-10 5 2 9 5 12 10 6 9 8 22 9 34"/>
-      <path d="M38 22c4 5 8 7 12 7s8-2 12-7"/>
-      <path d="M33 42c6 3 12 4 17 4s11-1 17-4"/>
-      <path d="M8 61c10 0 19-2 27-7 9 4 20 4 30 0 8 5 17 7 27 7-5 12-18 19-42 19S13 73 8 61z"/>
-      <path d="M18 64c8 4 19 6 32 6s24-2 32-6"/>
+    <g fill="none" stroke="currentColor" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Classic cattleman cowboy hat: pinched crown + long curled brim -->
+      <path d="M30 56c2-15 4-28 9-37 3-5 7-8 11-10 4 2 8 5 11 10 5 9 7 22 9 37"/>
+      <path d="M39 20c3 5 7 8 11 8s8-3 11-8"/>
+      <path d="M36 39c5 3 10 4 14 4s9-1 14-4"/>
+      <path d="M8 61c8 3 16 4 24 2 6-1 12-4 18-7 6 3 12 6 18 7 8 2 16 1 24-2-3 7-9 12-18 15-7 3-15 4-24 4s-17-1-24-4c-9-3-15-8-18-15z"/>
+      <path d="M18 64c9 5 20 7 32 7s23-2 32-7"/>
     </g>
   </symbol>
 
