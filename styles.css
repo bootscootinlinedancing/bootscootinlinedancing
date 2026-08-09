@@ -7938,3 +7938,20 @@ body:not(.ranch-v91):not(.admin-login-body) :is(
 
 /* red accents instead of tan/gold badges */
 body:not(.ranch-v91):not(.admin-login-body) :is(.level-absolute-beginner,.level-beginner,.level-improver,.level-original){background:#241012!important;color:#ff666d!important;border-color:#8e3036!important}
+
+
+/* v96.4.54 targeted menu / festival / Moonshine polish */
+.moonshine-logo-wrap{width:min(760px,92vw);margin:0 auto 1.5rem;display:flex;justify-content:center}
+.moonshine-main-logo{display:block;width:100%;height:auto;max-height:560px;object-fit:contain;border:0;background:#000}
+@media(max-width:560px){
+  .festival-hub-card{padding:1.35rem 1.15rem}
+  .festival-hub-card>div:not(.festival-card-number){padding-right:3.25rem}
+  .festival-card-number{
+    right:.8rem;top:.85rem;font-size:2rem;line-height:1;opacity:.72;
+    width:2.5rem;max-width:2.5rem;text-align:right;overflow:hidden
+  }
+  .festival-hub-card h2,.festival-hub-card h3{
+    max-width:calc(100% - 3rem);overflow-wrap:anywhere
+  }
+  .moonshine-logo-wrap{width:min(94vw,680px);margin-bottom:1rem}
+}
