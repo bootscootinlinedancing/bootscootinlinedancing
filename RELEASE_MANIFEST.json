@@ -1,6 +1,6 @@
 {
-  "release": "ICON-MOONSHINE-COMMUNITY-FIX",
-  "version": "96.4.45",
+  "release": "96.4.39",
+  "version": "96.4.39",
   "release_name": "PUBLIC BLACK/RED SWEEP + UNIFIED MENU + MERCH CHECKOUT FIX",
   "description": "Removes remaining beige public surfaces, standardises the Explore menu, and replaces Safari fetch checkout with a robust same-origin form POST to SumUp.",
   "built_from": "boot-scootin-platform-v96.4.38-MERCH-ORDERING-BLACK-RED-CLEANUP.zip",
@@ -41,6 +41,9 @@
     }
   },
   "homepage_refresh": true,
-  "notes": "Western boot/hat icon correction; complete BootStepper link coverage; persistent Moonshine menu repair.",
+  "notes": [
+    "Public QR-code backgrounds intentionally remain white for scan reliability.",
+    "HQ/admin styling was not globally recoloured by the public beige sweep."
+  ],
   "desktop_layout_repair": "MacBook/small desktop breakpoint repair; mobile below 768px preserved"
 }

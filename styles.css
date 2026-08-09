@@ -7786,7 +7786,7 @@ body:not(.admin-login-body):not(.ranch-v91) :is(.portrait,.polaroids figure,.mem
 @media(max-width:767px){.home-shop-return{grid-template-columns:1fr;padding:34px 18px}.home-shop-products{grid-template-columns:1fr 1fr}.home-shop-products a,.home-shop-products img{min-height:170px}}
 
 
-/* v96.4.42 — remove remaining beige/cream public surfaces */
+/* v96.4.39 — remove remaining beige/cream public surfaces */
 .section.paper,.cream-home,.library-2-intro,.library-controls,.library-youtube-cta,.diary-archive-tools,.diary-content,.reward-benefits,.reward-join-card,.reward-terms .terms-card,.passport-book,.business-transparency-card,.member-profile-settings article,.member-hub-cta-inner{background:#100809!important;color:#f7eee7!important;border-color:#5b2428!important;box-shadow:none!important}
 .section.paper h1,.section.paper h2,.section.paper h3,.section.paper h4,.section.paper strong,.section.paper label,.cream-home h1,.cream-home h2,.cream-home h3{color:#fff6ee!important}
 .section.paper p,.section.paper li,.section.paper small,.section.paper span,.cream-home p{color:#d8c5b7!important}
@@ -7819,7 +7819,7 @@ body:not(.admin-login-body):not(.ranch-v91) :is(.portrait,.polaroids figure,.mem
 
 
 /* ==========================================================
-   v96.4.42 — PUBLIC BLACK/RED CONSISTENCY SWEEP
+   v96.4.39 — PUBLIC BLACK/RED CONSISTENCY SWEEP
    Remove remaining beige/cream UI from public-facing pages.
    QR codes intentionally stay white for reliable scanning.
    ========================================================== */
@@ -7887,7 +7887,7 @@ body.honky-home #menu45 .menu45-head img{display:none!important}
 /* Never allow legacy paper/cream cards to paint pale surfaces on public pages. */
 body:not(.ranch-v91):not(.admin-login-body) :is(.paper,.cream-home,[class*="paper-card"],[class*="cream-card"]){background-color:#100809!important;color:#f7eee7!important}
 
-/* v96.4.42 full public pale-surface sweep — audited from styles.css */
+/* v96.4.39 full public pale-surface sweep — audited from styles.css */
 body:not(.ranch-v91):not(.admin-login-body) :is(
   .portrait,.venue-card,.polaroids figure,.calendar-card,.calendar-weekdays,.calendar-day,
   .diary-entry,.library-item,.memory-grid figure,.playlist-card,.event-types article,
@@ -7938,183 +7938,3 @@ body:not(.ranch-v91):not(.admin-login-body) :is(
 
 /* red accents instead of tan/gold badges */
 body:not(.ranch-v91):not(.admin-login-body) :is(.level-absolute-beginner,.level-beginner,.level-improver,.level-original){background:#241012!important;color:#ff666d!important;border-color:#8e3036!important}
-
-/* v96.4.42 — Custom Western SVG icon pack
-   Purpose: replace generic/emoji-looking symbols with consistent, recognisable Western line art. */
-.western-icon{
-  overflow:visible;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-  filter:drop-shadow(0 0 2px rgba(226,33,43,.28));
-}
-.event-empty .western-icon,
-.library-icon .western-icon,
-.why-grid .western-icon,
-.value-cards .western-icon,
-.trail-stamps .western-icon,
-.reward-stamps .western-icon{
-  color:#e2212b;
-}
-.event-empty .western-icon{
-  width:92px!important;
-  height:92px!important;
-  filter:drop-shadow(0 0 5px rgba(226,33,43,.38));
-}
-.library-icon .western-icon{width:1.35em;height:1.35em;margin:0;vertical-align:-.22em}
-.why-grid .western-icon{filter:drop-shadow(0 0 4px rgba(226,33,43,.4))}
-
-/* ==========================================================
-   v96.4.42 — FINAL WESTERN POLISH
-   - no parchment/beige public cards
-   - stronger neon cowboy boot/hat presentation
-   - menu navigation clarity
-   ========================================================== */
-body:not(.ranch-v91):not(.admin-login-body) :is(
-  .about-training-note,
-  [class$="-card"],[class*="-card "],
-  [class$="-panel"],[class*="-panel "],
-  [class$="-note"],[class*="-note "],
-  [class$="-box"],[class*="-box "],
-  [class$="-stat"],[class*="-stat "]
-):not(.reward-qr):not(.qr-card){
-  background:#100809!important;
-  color:#f7eee7!important;
-  border-color:#6b2b30!important;
-  box-shadow:none!important;
-}
-body:not(.ranch-v91):not(.admin-login-body) .about-training-note{
-  border-left:4px solid #d72b34!important;
-  color:#d8c6bb!important;
-}
-body:not(.ranch-v91):not(.admin-login-body) :is(
-  .about-training-note,[class$="-card"],[class*="-card "],[class$="-panel"],[class*="-panel "],[class$="-note"],[class*="-note "]
-) :is(h1,h2,h3,h4,strong,label){color:#fff6ee!important}
-body:not(.ranch-v91):not(.admin-login-body) :is(
-  .about-training-note,[class$="-card"],[class*="-card "],[class$="-panel"],[class*="-panel "],[class$="-note"],[class*="-note "]
-) :is(p,li,small,span){color:#d6c3b7!important}
-
-/* Dark form surfaces throughout public pages. QR itself remains white via earlier rule. */
-body:not(.ranch-v91):not(.admin-login-body) :is(input:not([type="checkbox"]):not([type="radio"]),textarea,select){
-  background:#090505!important;color:#fff7ed!important;border-color:#713036!important;
-}
-body:not(.ranch-v91):not(.admin-login-body) :is(input,textarea)::placeholder{color:#9e8b82!important}
-
-/* Make the custom Western icons read like deliberate neon signage. */
-.western-icon{color:#ef313b!important;filter:drop-shadow(0 0 2px rgba(239,49,59,.72)) drop-shadow(0 0 7px rgba(176,20,29,.34))!important}
-.event-empty .western-icon,.why-grid .western-icon,.about-values-grid .western-icon,.library-icon .western-icon{color:#ff343e!important}
-.event-empty .western-icon{width:104px!important;height:104px!important;stroke-width:3.7!important}
-.about-values-grid .western-icon,.why-grid .western-icon{width:62px!important;height:62px!important}
-
-/* Menu: clearer hierarchy; no duplicate About section. */
-#menu45 details.menu45-section[open]{border-bottom-color:#7b3035!important}
-#menu45 details.menu45-section[open]>summary{background:linear-gradient(90deg,rgba(173,28,36,.11),transparent 68%)!important}
-#menu45 .menu45-submenu{padding-bottom:8px!important}
-#menu45 .menu45-back-sections{display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;margin:8px 0 12px!important;padding:12px 0!important;border:0!important;border-top:1px solid #4d272a!important;background:transparent!important;color:#d84a50!important;text-align:left!important;text-transform:uppercase!important;letter-spacing:.08em!important;font:700 12px/1 Oswald,sans-serif!important;cursor:pointer!important}
-#menu45 .menu45-back-sections::before{content:'←';font-size:17px;line-height:1}
-
-
-/* v96.4.42 — authentic western icons + community previews */
-.western-icon{overflow:visible}
-/* Real CC0 western silhouettes are now used for boot + hat; keep them crisp and neon. */
-svg.western-icon:has(use[href$="#boot"]),
-svg.western-icon:has(use[href$="#hat"]){
-  filter:drop-shadow(0 0 4px rgba(255,42,61,.8)) drop-shadow(0 0 10px rgba(210,18,37,.45));
-}
-.event-empty svg.western-icon{width:190px!important;height:190px!important;max-width:55vw;color:#d11f2d!important}
-.community-preview-grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:1.25fr .75fr;gap:24px}
-.community-preview-card{border:1px solid #7d2a30;background:#12090a;box-shadow:0 18px 45px rgba(0,0,0,.3);overflow:hidden}
-.community-preview-card>img{display:block;width:100%;height:auto;background:#080606}
-.moonshine-preview-card>img{aspect-ratio:3/1;object-fit:cover}
-.handbook-preview-card>img{aspect-ratio:4/3;object-fit:cover;object-position:top}
-.community-preview-copy{padding:clamp(22px,3vw,36px)}
-.community-preview-copy h2{color:#fff7ed;margin:.25rem 0 .7rem}
-.community-preview-copy p{color:#d7c2b5}
-.community-preview-copy .kicker{color:#ef3d4c}
-.moonshine-brand-banner{display:block;width:min(1180px,calc(100% - 40px));height:auto;margin:0 auto 34px;border:1px solid #7d2a30;box-shadow:0 0 32px rgba(210,18,37,.2)}
-@media(max-width:760px){
-  .community-preview-grid{grid-template-columns:1fr;gap:18px}
-  .moonshine-preview-card>img{aspect-ratio:auto}
-  .community-preview-copy{padding:20px}
-  .moonshine-brand-banner{width:calc(100% - 28px);margin-bottom:24px}
-}
-
-
-/* v96.4.43 — Moonshine responsive repair + public-library polish */
-.moonshine-page .moonshine-hero{
-  min-height:0!important; display:block!important; width:100%!important; max-width:none!important;
-  padding:clamp(28px,5vw,64px) 0!important; overflow:hidden!important;
-  background:radial-gradient(circle at 50% 0,rgba(170,24,34,.18),transparent 42%),#090607!important;
-}
-.moonshine-page .moonshine-brand-banner{
-  display:block!important; width:min(1180px,calc(100% - 40px))!important; max-width:1180px!important;
-  height:auto!important; margin:0 auto clamp(24px,4vw,42px)!important; object-fit:contain!important;
-}
-.moonshine-page .moonshine-hero-copy{
-  width:min(980px,calc(100% - 40px))!important; max-width:980px!important; margin:0 auto!important;
-  padding:0!important; display:block!important; overflow:visible!important;
-}
-.moonshine-page .moonshine-hero-copy h1,.moonshine-page .moonshine-hero-copy p{
-  max-width:100%!important; white-space:normal!important; overflow-wrap:anywhere!important; word-break:normal!important;
-}
-.moonshine-page .moonshine-hero h1{font-size:clamp(2.6rem,8vw,5.6rem)!important;line-height:1.02!important}
-@media(max-width:760px){
-  .moonshine-page .moonshine-hero{padding:26px 0 34px!important}
-  .moonshine-page .moonshine-brand-banner,.moonshine-page .moonshine-hero-copy{width:calc(100% - 28px)!important}
-  .moonshine-page .moonshine-hero h1{font-size:clamp(2.4rem,14vw,4.1rem)!important}
-}
-.library-private-note{margin:1rem 0 0;color:#d6c3b8;font-size:.95rem}
-.stepsheet-mini-links{display:flex;flex-wrap:wrap;gap:12px 22px;margin-top:16px}
-.library-actions{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
-
-/* v96.4.45 — cleaner Western icon treatment + Moonshine mobile repair */
-.western-icon{
-  color:#ef2634!important;
-  filter:drop-shadow(0 0 3px rgba(239,38,52,.72)) drop-shadow(0 0 8px rgba(166,12,25,.34))!important;
-  stroke-width:3.6!important;
-}
-.library-icon .western-icon,.why-grid .western-icon,.about-values-grid .western-icon{
-  stroke-width:3.4!important;
-}
-/* Keep large hero icons crisp rather than cartoonishly thick. */
-.event-empty .western-icon{stroke-width:3.2!important;}
-
-.moonshine-page .moonshine-hero{
-  display:block!important;
-  width:100%!important;
-  max-width:1180px!important;
-  margin:0 auto!important;
-  padding:36px 20px 48px!important;
-  box-sizing:border-box!important;
-}
-.moonshine-page .moonshine-brand-banner{
-  display:block!important;
-  width:min(720px,100%)!important;
-  max-width:100%!important;
-  height:auto!important;
-  object-fit:contain!important;
-  margin:0 auto 32px!important;
-  border:1px solid #7d2a30!important;
-  box-shadow:0 0 28px rgba(210,18,37,.18)!important;
-}
-.moonshine-page .moonshine-hero-copy{
-  display:block!important;
-  width:min(820px,100%)!important;
-  max-width:100%!important;
-  margin:0 auto!important;
-  padding:0!important;
-  writing-mode:horizontal-tb!important;
-  text-orientation:mixed!important;
-}
-.moonshine-page .moonshine-hero-copy *{
-  max-width:100%!important;
-  writing-mode:horizontal-tb!important;
-  text-orientation:mixed!important;
-  word-break:normal!important;
-  overflow-wrap:break-word!important;
-}
-@media(max-width:700px){
-  .moonshine-page .moonshine-hero{padding:24px 18px 34px!important;}
-  .moonshine-page .moonshine-brand-banner{width:100%!important;margin-bottom:24px!important;}
-  .moonshine-page .moonshine-hero-copy{width:100%!important;}
-  .moonshine-page .moonshine-hero-copy h1{font-size:clamp(2.45rem,13vw,4rem)!important;line-height:1.02!important;}
-}

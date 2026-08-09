@@ -253,3 +253,49 @@ html.desktop-mode .gallery-grid,html.desktop-mode .home-gallery-grid{gap:10px!im
   html.desktop-mode .better-hero h1 span{font-size:42px!important}
   html.desktop-mode .better-hero h1 em{font-size:49px!important}
 }
+
+/* v96.4.53 SAFE RESTORE: public black/red consistency sweep.
+   Deliberately excludes admin/HQ/ranch surfaces and QR codes. */
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .paper,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .cream,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .cream-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .paper-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .note-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .info-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .stat-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .diary-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .dance-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .reward-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .form-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .about-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .advice-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .feature-card {
+  background:#100909!important;
+  color:#f5ece6!important;
+  border-color:#5e2529!important;
+}
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .paper h1,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .paper h2,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .paper h3,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .paper h4,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .cream h1,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .cream h2,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .cream h3,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .cream h4 {
+  color:#f7eee8!important;
+}
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .paper p,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .paper li,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .cream p,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .cream li {
+  color:#d8c9c0!important;
+}
+body:not(.admin-page):not(.ranch-page):not(.hq-page) input:not([type="checkbox"]):not([type="radio"]),
+body:not(.admin-page):not(.ranch-page):not(.hq-page) select,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) textarea {
+  background:#0b0606!important;
+  color:#f7eee8!important;
+  border-color:#6b292e!important;
+}
+/* Preserve deliberately white scannable QR surfaces. */
+.qr-card,.qr-wrap,.qr-code,.qr-code img,[class*="qr-"] img { background:#fff!important; }

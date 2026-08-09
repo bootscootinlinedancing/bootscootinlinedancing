@@ -7,10 +7,10 @@
   <title>My Bookings | Boot Scootin' Line Dancing</title>
   <meta name="description" content="View and manage your Boot Scootin' class bookings, cancellations, calendar links and loyalty progress.">
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=96.4.45">
-  <link rel="stylesheet" href="honky-theme.css?v=96.4.45">
-  <link rel="stylesheet" href="honky-authentic.css?v=96.4.45">
-  <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.45">
+  <link rel="stylesheet" href="styles.css?v=96.4.39">
+  <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
+  <link rel="stylesheet" href="honky-authentic.css?v=96.4.39">
+  <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -30,7 +30,6 @@
       <a class="menu45-first" href="bookings.html">Book a Class</a>
       <a class="menu45-first" href="my-bookings.html">My Bookings</a>
       <a class="menu45-first" href="member-hub.html">Member Hub Preview</a>
-      <a class="menu45-first" href="moonshine.html">Moonshine &amp; Good Times Gang</a>
       <a class="menu45-first" href="contact.html">Contact</a>
     </div>
   </nav>
@@ -131,7 +130,7 @@
     </div>
   <div class="legal-footer-links"><a href="legal.html#terms">Terms &amp; Conditions</a><a href="legal.html#privacy">Privacy</a><a href="legal.html#cancellations">Cancellation &amp; Refunds</a><a href="legal.html#cookies">Cookies</a><a href="legal.html#accessibility">Accessibility</a></div></footer>
 
-  <script src="script.js?v=96.4.45"></script>
+  <script src="script.js?v=96.4.39"></script>
   <script>
 (()=>{
   const params=new URLSearchParams(location.search);
@@ -189,7 +188,7 @@
     achievements.innerHTML=(data.achievements||[]).map(a=>`<article class="customer-achievement ${a.earned?'earned':'locked'}"><span aria-hidden="true">${a.icon}</span><div><h4>${esc(a.title)}</h4><p>${esc(a.description)}</p></div><strong>${a.earned?'Unlocked':'Locked'}</strong></article>`).join('');
 
     const stamps=document.getElementById('customerLoyaltyStamps');
-    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.45#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.45#star"></use></svg>'}</span>`).join('');
+    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg>'}</span>`).join('');
 
     document.getElementById('customerUpcomingBookings').innerHTML=data.upcoming.length
       ?data.upcoming.map(b=>bookingCard(b,true)).join('')
