@@ -284,6 +284,61 @@ installGuide?.addEventListener("click", event => {
 
 
 
+// v96.4.57 — persistent menu self-repair and homepage mailing list
+(() => {
+  const panel = document.getElementById('menu45');
+  if (panel) {
+    const findSection = label => [...panel.querySelectorAll('details.menu45-section')].find(d =>
+      d.querySelector(':scope > summary strong')?.textContent.trim() === label
+    );
+    const ensureFirstLink = (section, href, label) => {
+      const submenu = section?.querySelector(':scope > .menu45-submenu');
+      if (!submenu) return;
+      [...submenu.querySelectorAll('a')].forEach(a => {
+        if (a.getAttribute('href') === href || a.textContent.trim() === label) a.remove();
+      });
+      const a = document.createElement('a');
+      a.href = href;
+      a.innerHTML = `<span>${label}</span><b aria-hidden="true">›</b>`;
+      submenu.prepend(a);
+    };
+    ensureFirstLink(findSection('Community'), 'moonshine.html', 'Moonshine & Good Times Gang');
+    ensureFirstLink(findSection('Shop & Rewards'), 'community.html#merchandise', 'Official Merchandise');
+  }
+
+  const form = document.getElementById('homeMailingPreview');
+  if (form && !form.dataset.bound) {
+    form.dataset.bound = 'true';
+    const status = document.getElementById('homeMailingStatus');
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = form.querySelector('button[type="submit"]');
+      const data = new FormData(form);
+      const payload = {
+        name: String(data.get('name') || '').trim(),
+        email: String(data.get('email') || '').trim(),
+        consent: data.get('consent') === 'on'
+      };
+      if (!payload.email || !payload.consent) return;
+      button.disabled = true;
+      if (status) status.textContent = 'Joining…';
+      try {
+        const response = await fetch('/api/mailing-list/subscribe', {
+          method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify(payload)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Could not join the mailing list.');
+        if (status) status.textContent = result.message || 'You’re on the list — welcome to the Boot Scootin’ Round-Up!';
+        form.reset();
+      } catch (error) {
+        if (status) status.textContent = error.message || 'Something went wrong. Please try again.';
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+})();
+
 // VERSION 96.1 — CONTAINED DRILL-DOWN MENU
 (() => {
   const overlay = document.getElementById('nav');

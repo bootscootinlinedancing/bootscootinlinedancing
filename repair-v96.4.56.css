@@ -20,3 +20,14 @@ body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper a:not(.butto
 .bootstepper-link{font-weight:700!important}
 /* Keep form controls usable while eliminating beige fills */
 body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(input,select,textarea){background:#080505!important;color:#fff!important;border-color:#713037!important}
+
+
+/* v96.4.57 targeted repairs */
+.moonshine-title-stacked{display:flex!important;flex-direction:column!important;align-items:center!important;text-align:center!important;gap:.02em!important;line-height:.92!important;max-width:100%!important}
+.moonshine-title-stacked>span{display:block!important;max-width:100%!important}
+.moonshine-title-stacked .moonshine-amp{font-size:.72em!important;line-height:.72!important;color:#f3e8dc!important;text-shadow:0 0 18px rgba(209,25,35,.55)!important;margin:.06em 0!important}
+.global-ip-notice{max-width:1100px;margin:0 auto;padding:32px clamp(24px,5vw,70px) 42px;text-align:center;background:#030202;color:#a99589;border-top:1px solid #5b1e23;font-size:14px;line-height:1.55}
+.global-ip-notice strong{color:#f5ece6}.global-ip-notice p{max-width:900px;margin:0 auto 10px}.global-ip-notice .ip-small{font-size:12px}
+.home-mailing-section{border-top:1px solid #5b1e23;border-bottom:1px solid #5b1e23}
+.home-mailing-section .mailing-box{max-width:1100px;margin:0 auto}
+@media(max-width:700px){.moonshine-title-stacked{font-size:clamp(54px,15vw,88px)!important}.global-ip-notice{padding:28px 28px 110px;font-size:12px}.global-ip-notice .ip-small{font-size:10px}}
