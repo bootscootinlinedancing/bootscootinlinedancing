@@ -1,0 +1,10 @@
+Boot Scootin Platform v96.4.56
+
+- Fixed Community menu persistence: Moonshine & Good Times Gang is always present and removed from My Boot Scootin'.
+- Fixed Shop & Rewards persistence: Official Merchandise always appears.
+- Added Friday 7th August 2026 recap: Ziggy, Cowgirl and Glass of Wine.
+- Added Glass of Wine (32 counts, 4 walls, Absolute Beginner) with Nora tutorial link.
+- Added BootStepper link to every Dance Library card; exact verified links used where available, BootStepper dance-search link used as fallback.
+- Removed public confidence/learned/favourite controls from Dance Library; these remain account-type features rather than public library controls.
+- Added targeted dark-theme repair for remaining beige panels and low-contrast beige text.
+- Entry page and boot animation files were not changed.

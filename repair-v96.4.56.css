@@ -1,0 +1,22 @@
+/* Boot Scootin v96.4.56 targeted repair: no layout/entry-page changes */
+:root{--bs-bg:#080505;--bs-panel:#100809;--bs-panel2:#170b0c;--bs-red:#e52a35;--bs-cream:#fff4e8;--bs-muted:#d7c7bb;--bs-border:#67272c}
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .about-training-note,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .library-progress-preview>div,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .library-youtube-cta,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .diary-archive-tools,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .reward-benefits,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .reward-join-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .terms-card,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .business-transparency-card{
+  background:var(--bs-panel2)!important;color:var(--bs-cream)!important;border-color:var(--bs-border)!important;box-shadow:none!important}
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .about-training-note,
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .about-training-note *{color:var(--bs-muted)!important}
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(h1,h2,h3,h4,strong,label,legend){color:var(--bs-cream)!important}
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(p,li,small){color:var(--bs-muted)!important}
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper a:not(.button){color:#f15a61!important}
+#menu45 .menu45-submenu>a{color:#f0e5dc!important}
+#menu45 .menu45-summary-copy small{color:#cdb7a8!important}
+.library-actions-three{display:flex!important;flex-wrap:wrap!important;gap:.85rem 1.1rem!important;align-items:center!important}
+.bootstepper-link{font-weight:700!important}
+/* Keep form controls usable while eliminating beige fills */
+body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(input,select,textarea){background:#080505!important;color:#fff!important;border-color:#713037!important}
