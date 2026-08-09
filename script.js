@@ -339,34 +339,38 @@ installGuide?.addEventListener("click", event => {
   }
 })();
 
-// VERSION 96.1 — CONTAINED DRILL-DOWN MENU
+
+
+
+
+
+// v96.4.58 — authoritative mobile drill-down menu controller
 (() => {
   const overlay = document.getElementById('nav');
-  const sections = [...document.querySelectorAll('#menu45 details.menu45-section')];
-  if (!overlay || !sections.length) return;
-
+  const panel = document.getElementById('menu45');
+  if (!overlay || !panel) return;
+  const sections = [...panel.querySelectorAll(':scope .menu45-section')];
+  const resetDrilldown = () => {
+    sections.forEach(s => { s.open = false; s.classList.remove('menu58-active','menu46-active'); });
+    panel.classList.remove('menu58-drilldown','menu46-drilldown','submenu-active');
+    overlay.scrollTop = 0;
+  };
   sections.forEach(section => {
-    section.addEventListener('toggle', () => {
-      const panel = document.getElementById('menu45');
-      if (section.open) {
-        sections.forEach(other => { if (other !== section) other.open = false; });
-        panel?.classList.add('submenu-active');
-        requestAnimationFrame(() => {
-          overlay.scrollTop = 0;
-          section.querySelector(':scope > summary')?.focus?.({preventScroll:true});
-        });
-      } else if (!sections.some(item => item.open)) {
-        panel?.classList.remove('submenu-active');
+    const summary = section.querySelector(':scope > summary');
+    summary?.addEventListener('click', event => {
+      if (window.matchMedia('(max-width:950px)').matches) {
+        event.preventDefault();
+        const already = section.classList.contains('menu58-active');
+        if (already) { resetDrilldown(); return; }
+        sections.forEach(s => { s.open=false; s.classList.remove('menu58-active','menu46-active'); });
+        section.open = true;
+        section.classList.add('menu58-active');
+        panel.classList.add('menu58-drilldown');
+        panel.classList.remove('menu46-drilldown');
         overlay.scrollTop = 0;
       }
-    });
+    }, true);
   });
-
-  // Safari back/forward cache can preserve a stale open overlay.
-  window.addEventListener('pageshow', () => {
-    setMenuOpen(false);
-  });
+  document.getElementById('navClose')?.addEventListener('click', resetDrilldown, true);
+  window.addEventListener('pageshow', resetDrilldown);
 })();
-
-
-

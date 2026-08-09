@@ -31,3 +31,20 @@ body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(input,se
 .home-mailing-section{border-top:1px solid #5b1e23;border-bottom:1px solid #5b1e23}
 .home-mailing-section .mailing-box{max-width:1100px;margin:0 auto}
 @media(max-width:700px){.moonshine-title-stacked{font-size:clamp(54px,15vw,88px)!important}.global-ip-notice{padding:28px 28px 110px;font-size:12px}.global-ip-notice .ip-small{font-size:10px}}
+
+
+/* v96.4.58 — mobile Explore drill-down: one section at a time, no bleed into neighbours */
+@media (max-width:950px){
+  #nav.menu45-overlay.open{overscroll-behavior:contain!important;overflow-y:auto!important}
+  #menu45.menu58-drilldown .menu45-first,
+  #menu45.menu58-drilldown .menu45-home,
+  #menu45.menu58-drilldown .menu45-section:not(.menu58-active){display:none!important}
+  #menu45.menu58-drilldown .menu45-sections{display:block!important}
+  #menu45.menu58-drilldown details.menu45-section.menu58-active{display:block!important;min-height:calc(100dvh - 115px)!important;border:0!important}
+  #menu45.menu58-drilldown details.menu45-section.menu58-active>summary{position:sticky!important;top:88px!important;z-index:8!important;background:#080505!important;border-bottom:1px solid #6b292d!important}
+  #menu45.menu58-drilldown details.menu45-section.menu58-active .menu45-submenu{display:block!important;padding-bottom:48px!important}
+  body.menu-open{overflow:hidden!important;touch-action:none!important}
+  #nav.menu45-overlay.open{touch-action:pan-y!important}
+}
+/* Nora's Choreography link is an intentional one-dance view */
+body.nora-original-only .library-controls .filter-row{display:none!important}

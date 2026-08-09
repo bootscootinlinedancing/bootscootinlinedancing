@@ -38,28 +38,4 @@
     el.replaceChildren(makeIcon('🔒'), document.createTextNode(` ${text}`));
   });
 
-  const panel = document.getElementById('menu45');
-  if (!panel) return;
-  const sections = [...panel.querySelectorAll('details.menu45-section')];
-
-  sections.forEach(section => {
-    section.addEventListener('toggle', () => {
-      if (section.open) {
-        sections.forEach(other => { if (other !== section) other.open = false; });
-        sections.forEach(other => other.classList.toggle('menu46-active', other === section));
-        panel.classList.add('menu46-drilldown');
-        section.scrollIntoView({block:'start'});
-      } else if (section.classList.contains('menu46-active')) {
-        section.classList.remove('menu46-active');
-        panel.classList.remove('menu46-drilldown');
-        panel.scrollTo({top:0,behavior:'instant'});
-      }
-    });
-  });
-
-  const close = document.getElementById('navClose');
-  close?.addEventListener('click', () => {
-    sections.forEach(s => { s.open = false; s.classList.remove('menu46-active'); });
-    panel.classList.remove('menu46-drilldown');
-  });
 })();

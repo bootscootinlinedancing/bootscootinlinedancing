@@ -170,7 +170,7 @@
 <a href="dance-library.html"><span>Dance Library</span><b aria-hidden="true">›</b></a>
 <a href="dance-diary.html"><span>Dance Diary</span><b aria-hidden="true">›</b></a>
 <a href="requests.html"><span>Request a Dance</span><b aria-hidden="true">›</b></a>
-<a href="dance-library.html?dance=my-future-feels-like-mine"><span>Nora’s Choreography</span><b aria-hidden="true">›</b></a>
+<a href="dance-library.html?filter=original"><span>Nora’s Choreography</span><b aria-hidden="true">›</b></a>
 </div>
 </details>
 <details class="menu45-section">
@@ -638,7 +638,7 @@
       learned.setAttribute("aria-pressed", String(state.learned));
       learned.textContent = state.learned ? "✓ Learned" : "Mark as learned";
       favourite.setAttribute("aria-pressed", String(state.favourite));
-      favourite.textContent = state.favourite ? "<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg> Favourite" : "<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg> Favourite";
+      favourite.textContent = state.favourite ? "★ Favourite" : "☆ Favourite";
       confidence.value = state.confidence;
       card.classList.toggle("is-learned", state.learned);
       card.classList.toggle("is-favourite", state.favourite);
@@ -687,11 +687,19 @@
   }));
   sort.addEventListener("change", () => { sortCards(); updateLibrary(); });
 
+  const queryParams = new URLSearchParams(window.location.search);
+  const requestedFilter = queryParams.get("filter");
+  if (requestedFilter === "original") {
+    activeFilter = "original";
+    filters.forEach(item => item.classList.toggle("active", item.dataset.filter === "original"));
+    document.body.classList.add("nora-original-only");
+  }
+
   sortCards();
   updateCounts();
   updateLibrary();
 
-  const requestedDance = new URLSearchParams(window.location.search).get("dance");
+  const requestedDance = queryParams.get("dance");
   if (requestedDance) {
     const requestedCard = document.getElementById(`dance-${requestedDance}`);
     if (requestedCard) {
