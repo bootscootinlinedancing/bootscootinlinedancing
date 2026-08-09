@@ -8172,3 +8172,40 @@ body:not(.intro-open) .poster-intro.boot-entry{pointer-events:none}
 
 /* Empty image/card areas must collapse rather than presenting as giant blank squares. */
 .home-class-card img,.nora-polaroid img,.desktop-nora-v32 img,.mini-gallery img,.event-polaroids img{background:#0b0505!important}
+
+
+/* VERSION 96.4.52 — FINAL MOBILE ENTRY ISOLATION
+   Overrides the accumulated legacy entry rules only on phones. */
+@media (max-width: 760px){
+  .poster-intro.boot-entry{
+    position:fixed!important; inset:0!important; width:100vw!important; height:100dvh!important;
+    min-height:100dvh!important; z-index:2147483000!important; overflow:hidden!important;
+    background:#070303!important; display:block!important;
+  }
+  .poster-intro.boot-entry .boot-entry-shell{
+    position:relative!important; width:100vw!important; height:100dvh!important; min-height:100dvh!important;
+    max-width:none!important; max-height:none!important; aspect-ratio:auto!important; overflow:hidden!important;
+  }
+  .poster-intro.boot-entry .entry-boot{
+    position:absolute!important; left:50%!important; top:23.7%!important; bottom:auto!important;
+    width:82vw!important; height:39vh!important; min-height:0!important; max-height:none!important;
+    transform:translateX(-50%)!important; overflow:visible!important; background:none!important;
+    border:0!important; box-shadow:none!important; filter:none!important;
+  }
+  .poster-intro.boot-entry .entry-boot-photo{
+    display:block!important; width:100%!important; height:100%!important; max-width:100%!important; max-height:100%!important;
+    object-fit:contain!important; object-position:center center!important; transform:none!important; clip-path:none!important;
+    opacity:1!important; visibility:visible!important; filter:drop-shadow(0 18px 20px rgba(0,0,0,.52))!important;
+  }
+  .poster-intro.boot-entry .entry-boot::before,.poster-intro.boot-entry .entry-boot::after{display:none!important;content:none!important;}
+  .poster-intro.boot-entry .boot-entry-button{
+    position:absolute!important; left:50%!important; right:auto!important; top:auto!important; bottom:10.0%!important;
+    width:78vw!important; min-height:60px!important; height:auto!important; transform:translateX(-50%)!important;
+    z-index:20!important; pointer-events:auto!important; touch-action:manipulation!important;
+  }
+  .poster-intro.boot-entry .boot-entry-tagline{bottom:3.1%!important;}
+}
+@media (max-width:390px){
+  .poster-intro.boot-entry .entry-boot{top:24.2%!important;width:84vw!important;height:37vh!important;}
+}
+.poster-intro.boot-entry[aria-hidden="true"]{display:none!important;pointer-events:none!important;}

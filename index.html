@@ -75,25 +75,31 @@
 </div>
 </div>
 <script>
-/* v96.4.46 inline fail-safe: entry can never trap the site even if external JS/cache fails. */
+/* v96.4.52 iPhone-safe entry dismissal. This deliberately removes the overlay
+   from the DOM immediately on a genuine tap, before any animation bundle runs. */
 (function(){
-  var i=document.getElementById('intro');
-  if(!i)return;
-  function unlock(e){
-    if(e&&e.type==='click'&&e.detail===0)return;
-    i.classList.add('hide');
-    i.setAttribute('aria-hidden','true');
-    i.style.display='none';
+  var intro=document.getElementById('intro');
+  if(!intro)return;
+  function removeIntro(){
     document.body.classList.remove('intro-open');
-    try{sessionStorage.setItem('bootIntroSeen_v48','1')}catch(_){}
+    document.documentElement.classList.remove('intro-open');
+    intro.setAttribute('aria-hidden','true');
+    intro.style.setProperty('display','none','important');
+    intro.style.setProperty('pointer-events','none','important');
+    try{sessionStorage.setItem('bootIntroSeen_v52','1')}catch(e){}
+    if(intro.parentNode) intro.parentNode.removeChild(intro);
   }
-  var seen=false;try{seen=sessionStorage.getItem('bootIntroSeen_v48')==='1'}catch(_){}
-  if(seen){unlock();return;}
-  i.addEventListener('pointerdown',unlock,{capture:true,passive:true});
-  i.addEventListener('touchstart',unlock,{capture:true,passive:true});
-  i.addEventListener('click',unlock,{capture:true});
-  var b=document.getElementById('enterSite');if(b)b.addEventListener('click',unlock,{capture:true});
-  window.setTimeout(function(){if(i.dataset.entering==='1')unlock()},1400);
+  var seen=false;
+  try{seen=sessionStorage.getItem('bootIntroSeen_v52')==='1'}catch(e){}
+  if(seen){removeIntro();return;}
+  var button=document.getElementById('enterSite');
+  if(button){
+    button.addEventListener('pointerup',function(e){e.preventDefault();removeIntro();},{capture:true});
+    button.addEventListener('click',function(e){e.preventDefault();removeIntro();},{capture:true});
+  }
+  intro.addEventListener('pointerup',function(e){e.preventDefault();removeIntro();},{capture:true});
+  intro.addEventListener('click',function(e){e.preventDefault();removeIntro();},{capture:true});
+  intro.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();removeIntro();}},{capture:true});
 })();
 </script>
 <script>
