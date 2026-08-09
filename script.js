@@ -389,34 +389,99 @@ installGuide?.addEventListener("click", event => {
 
 
 
-// v96.4.58 — authoritative mobile drill-down menu controller
+// v96.4.61 — isolated mobile Explore drill-down.
+// Do not reuse the <details> layout for an opened submenu on phones: older
+// theme rules and Safari history restoration could clip the first rows.
+// Instead render the selected submenu into its own clean view.
 (() => {
   const overlay = document.getElementById('nav');
   const panel = document.getElementById('menu45');
   if (!overlay || !panel) return;
-  const sections = [...panel.querySelectorAll(':scope .menu45-section')];
-  const resetDrilldown = () => {
-    sections.forEach(s => { s.open = false; s.classList.remove('menu58-active','menu46-active'); });
-    panel.classList.remove('menu58-drilldown','menu46-drilldown','submenu-active');
+
+  const sections = [...panel.querySelectorAll('.menu45-section')];
+  const first = panel.querySelector('.menu45-first');
+  const sectionsWrap = panel.querySelector('.menu45-sections');
+  const home = panel.querySelector('.menu45-home');
+  const footerBrand = panel.querySelector('.menu45-footer-brand');
+
+  let drill = panel.querySelector('.menu61-drilldown-view');
+  if (!drill) {
+    drill = document.createElement('section');
+    drill.className = 'menu61-drilldown-view';
+    drill.hidden = true;
+    const head = panel.querySelector('.menu45-head');
+    head?.insertAdjacentElement('afterend', drill);
+  }
+
+  function scrollMenuTop(){
+    overlay.style.scrollBehavior = 'auto';
     overlay.scrollTop = 0;
-  };
-  sections.forEach(section => {
+    panel.scrollTop = 0;
+    requestAnimationFrame(() => {
+      overlay.scrollTop = 0;
+      panel.scrollTop = 0;
+      requestAnimationFrame(() => { overlay.scrollTop = 0; panel.scrollTop = 0; });
+    });
+  }
+
+  function showRoot(){
+    drill.hidden = true;
+    drill.innerHTML = '';
+    first?.removeAttribute('hidden');
+    sectionsWrap?.removeAttribute('hidden');
+    home?.removeAttribute('hidden');
+    footerBrand?.removeAttribute('hidden');
+    sections.forEach(s => { s.open = false; s.classList.remove('menu58-active','menu46-active'); });
+    panel.classList.remove('menu58-drilldown','menu46-drilldown','submenu-active','menu61-active');
+    scrollMenuTop();
+  }
+
+  function showSection(section){
+    repairPersistentExploreLinks();
     const summary = section.querySelector(':scope > summary');
-    summary?.addEventListener('click', event => {
-      if (window.matchMedia('(max-width:950px)').matches) {
-        event.preventDefault();
-        repairPersistentExploreLinks();
-        const already = section.classList.contains('menu58-active');
-        if (already) { resetDrilldown(); return; }
-        sections.forEach(s => { s.open=false; s.classList.remove('menu58-active','menu46-active'); });
-        section.open = true;
-        section.classList.add('menu58-active');
-        panel.classList.add('menu58-drilldown');
-        panel.classList.remove('menu46-drilldown');
-        overlay.scrollTop = 0;
-      }
+    const title = summary?.querySelector('strong')?.textContent?.trim() || 'Explore';
+    const subtitle = summary?.querySelector('small')?.textContent?.trim() || '';
+    const submenu = section.querySelector(':scope > .menu45-submenu');
+    const links = submenu ? [...submenu.querySelectorAll(':scope > a')] : [];
+
+    drill.innerHTML = `
+      <div class="menu61-section-head">
+        <button type="button" class="menu61-back" aria-label="Back to Explore sections">‹</button>
+        <div class="menu61-section-copy"><strong>${title}</strong>${subtitle ? `<small>${subtitle}</small>` : ''}</div>
+      </div>
+      <div class="menu61-links"></div>
+      <button type="button" class="menu61-back-text">← Back to Explore sections</button>`;
+
+    const target = drill.querySelector('.menu61-links');
+    links.forEach(link => {
+      const clone = link.cloneNode(true);
+      clone.removeAttribute('style');
+      clone.classList.remove('menu-pinned-link');
+      clone.addEventListener('click', () => setMenuOpen(false));
+      target.appendChild(clone);
+    });
+
+    first?.setAttribute('hidden','');
+    sectionsWrap?.setAttribute('hidden','');
+    home?.setAttribute('hidden','');
+    footerBrand?.setAttribute('hidden','');
+    drill.hidden = false;
+    panel.classList.add('menu61-active');
+    panel.classList.remove('menu58-drilldown','menu46-drilldown','submenu-active');
+    drill.querySelector('.menu61-back')?.addEventListener('click', showRoot);
+    drill.querySelector('.menu61-back-text')?.addEventListener('click', showRoot);
+    scrollMenuTop();
+  }
+
+  sections.forEach(section => {
+    section.querySelector(':scope > summary')?.addEventListener('click', event => {
+      if (!window.matchMedia('(max-width:950px)').matches) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      showSection(section);
     }, true);
   });
-  document.getElementById('navClose')?.addEventListener('click', resetDrilldown, true);
-  window.addEventListener('pageshow', resetDrilldown);
-})();
+
+  document.getElementById('navClose')?.addEventListener('click', showRoot, true);
+  window.addEventListener('pageshow', showRoot);
+})();;
