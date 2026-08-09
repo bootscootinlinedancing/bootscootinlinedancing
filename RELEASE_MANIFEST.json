@@ -1,10 +1,12 @@
 {
-  "version": "96.4.47",
-  "name": "EMERGENCY-HOMEPAGE-LOAD-RECOVERY",
+  "version": "96.4.48",
+  "name": "SITE RECOVERY + ENTRY RESTORE + REAL BRICK BACKGROUND",
+  "base": "96.4.46",
   "changes": [
-    "Removed landing gate from homepage to eliminate blank-screen/trapped-entry failure",
-    "Restored known-working v96.4.45 application base",
-    "Added safe staggered dark brick background texture",
-    "Bumped service-worker cache to force fresh assets"
+    "Restored the Boot Stomp entry screen",
+    "Added an inline fail-safe menu controller",
+    "Replaced grid-square background with staggered brickwork",
+    "Bumped entry/session and service-worker cache keys to avoid stale broken state",
+    "Preserved v96.4.45 community, Moonshine, dance library and western icon changes"
   ]
 }

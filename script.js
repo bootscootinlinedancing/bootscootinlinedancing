@@ -47,7 +47,7 @@ function finishIntro(){
   intro.classList.add('hide');
   document.body.classList.remove('intro-open');
   try {
-    sessionStorage.setItem('bootIntroSeen','1');
+    sessionStorage.setItem('bootIntroSeen_v48','1');
   } catch (_) {}
 }
 
@@ -74,7 +74,7 @@ function enterWebsite(event){
 if (intro) {
   let alreadySeen = false;
   try {
-    alreadySeen = sessionStorage.getItem('bootIntroSeen') === '1';
+    alreadySeen = sessionStorage.getItem('bootIntroSeen_v48') === '1';
   } catch (_) {}
 
   if (alreadySeen) {
@@ -125,18 +125,18 @@ function setMenuOpen(open) {
 }
 
 if (menuButton && nav) {
-  // A single click handler works for touch, mouse and keyboard.
-  menuButton.addEventListener('click', event => {
+  // Bind only when the inline critical fallback has not already done so.
+  if (!menuButton.dataset.v48bound) menuButton.addEventListener('click', event => {
     event.preventDefault();
     setMenuOpen(!nav.classList.contains('open'));
   });
 
-  desktopExploreButton?.addEventListener('click', event => {
+  if (desktopExploreButton && !desktopExploreButton.dataset.v48bound) desktopExploreButton.addEventListener('click', event => {
     event.preventDefault();
     setMenuOpen(!nav.classList.contains('open'));
   });
 
-  navClose?.addEventListener('click', event => {
+  if (navClose && !navClose.dataset.v48bound) navClose.addEventListener('click', event => {
     event.preventDefault();
     setMenuOpen(false);
   });
@@ -380,4 +380,19 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', event => {
     if (event.target.closest('#menuButton,#menuToggle,#desktopExploreButton,.menu45-section summary,.menu45-back-sections')) run();
   });
+})();
+
+/* v96.4.46 — secondary landing unlock safeguard. */
+(() => {
+  const i=document.getElementById('intro');
+  if(!i) return;
+  const unlock=()=>{
+    i.classList.add('hide');
+    i.setAttribute('aria-hidden','true');
+    i.style.display='none';
+    document.body.classList.remove('intro-open');
+    try{sessionStorage.setItem('bootIntroSeen_v48','1')}catch(_){}
+  };
+  document.getElementById('enterSite')?.addEventListener('click',unlock,{capture:true});
+  i.addEventListener('pointerdown',unlock,{capture:true,passive:true});
 })();
