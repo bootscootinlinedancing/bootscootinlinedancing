@@ -2291,6 +2291,7 @@ async function ensureEmailCentreSchema(env){
     `CREATE TABLE IF NOT EXISTS email_campaigns (id TEXT PRIMARY KEY,subject TEXT NOT NULL,body_text TEXT NOT NULL,audience_type TEXT NOT NULL,audience_json TEXT,recipient_count INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'DRAFT',scheduled_at TEXT,sent_at TEXT,created_by TEXT,provider_message TEXT,error_message TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS email_campaign_recipients (id TEXT PRIMARY KEY,campaign_id TEXT NOT NULL,email TEXT NOT NULL,name TEXT,status TEXT NOT NULL DEFAULT 'PENDING',provider_id TEXT,error_message TEXT,sent_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,UNIQUE(campaign_id,email))`,
     `CREATE TABLE IF NOT EXISTS mailing_unsubscribes (email TEXT PRIMARY KEY,unsubscribed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,source TEXT)`,
+    `CREATE TABLE IF NOT EXISTS mailing_subscribers (email TEXT PRIMARY KEY,name TEXT,source TEXT NOT NULL DEFAULT 'website',subscribed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS email_automation_log (automation_key TEXT PRIMARY KEY,automation_type TEXT NOT NULL,email TEXT,class_id TEXT,booking_id TEXT,provider_id TEXT,status TEXT NOT NULL DEFAULT 'SENT',error_message TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
     `CREATE TABLE IF NOT EXISTS email_automation_settings (setting_key TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 1,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`
   ];
@@ -2391,7 +2392,21 @@ async function resolveEmailAudience(env,type,payload={}){
   let rows=[]; let klass=null;
   const classId=String(payload.class_id||'').trim();
   if(type==='subscribers'){
-    const r=await env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name FROM bookings b LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(b.customer_email) WHERE b.marketing_consent=1 AND u.email IS NULL GROUP BY lower(b.customer_email) ORDER BY MAX(b.created_at) DESC`).all(); rows=r.results||[];
+    const r=await env.BOOKINGS_DB.prepare(`
+      SELECT email,MAX(name) name FROM (
+        SELECT lower(b.customer_email) email,MAX(b.customer_name) name
+        FROM bookings b
+        LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(b.customer_email)
+        WHERE b.marketing_consent=1 AND u.email IS NULL
+        GROUP BY lower(b.customer_email)
+        UNION ALL
+        SELECT lower(s.email) email,MAX(s.name) name
+        FROM mailing_subscribers s
+        LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(s.email)
+        WHERE u.email IS NULL
+        GROUP BY lower(s.email)
+      ) GROUP BY email ORDER BY email
+    `).all(); rows=r.results||[];
   }else if(type==='all_customers'){
     const r=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name FROM bookings WHERE customer_email IS NOT NULL AND customer_email<>'' GROUP BY lower(customer_email) ORDER BY MAX(created_at) DESC`).all(); rows=r.results||[];
   }else if(type==='class_bookings'){
@@ -2549,7 +2564,21 @@ async function adminEmailCentreInner(request,env,ctx){
     const [templates,campaigns,subscribers,classes]=await Promise.all([
       env.BOOKINGS_DB.prepare(`SELECT * FROM email_templates ORDER BY is_system DESC,name`).all(),
       env.BOOKINGS_DB.prepare(`SELECT * FROM email_campaigns ORDER BY created_at DESC LIMIT 50`).all(),
-      env.BOOKINGS_DB.prepare(`SELECT lower(b.customer_email) email,MAX(b.customer_name) name,MAX(b.customer_phone) phone,MAX(b.created_at) last_booking_at FROM bookings b LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(b.customer_email) WHERE b.marketing_consent=1 AND u.email IS NULL GROUP BY lower(b.customer_email) ORDER BY last_booking_at DESC`).all(),
+      env.BOOKINGS_DB.prepare(`
+        SELECT email,MAX(name) name,MAX(phone) phone,MAX(last_booking_at) last_booking_at FROM (
+          SELECT lower(b.customer_email) email,MAX(b.customer_name) name,MAX(b.customer_phone) phone,MAX(b.created_at) last_booking_at
+          FROM bookings b
+          LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(b.customer_email)
+          WHERE b.marketing_consent=1 AND u.email IS NULL
+          GROUP BY lower(b.customer_email)
+          UNION ALL
+          SELECT lower(s.email) email,MAX(s.name) name,'' phone,MAX(s.subscribed_at) last_booking_at
+          FROM mailing_subscribers s
+          LEFT JOIN mailing_unsubscribes u ON lower(u.email)=lower(s.email)
+          WHERE u.email IS NULL
+          GROUP BY lower(s.email)
+        ) GROUP BY email ORDER BY last_booking_at DESC
+      `).all(),
       env.BOOKINGS_DB.prepare(`SELECT id,title,starts_at,venue,capacity,sold FROM classes ORDER BY starts_at DESC LIMIT 100`).all()
     ]);
     const customers=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name,MAX(created_at) last_booking_at FROM bookings WHERE customer_email IS NOT NULL AND customer_email<>'' GROUP BY lower(customer_email) ORDER BY last_booking_at DESC LIMIT 1000`).all();
@@ -2601,6 +2630,34 @@ async function adminEmailCentreInner(request,env,ctx){
   }
   if(action==='PROCESS_DUE')return json({ok:true,results:await processDueCampaigns(env)});
   return json({error:'Unknown email action.'},400);
+}
+
+
+async function subscribeMailingList(request,env){
+  await ensureEmailCentreSchema(env);
+  let body;
+  try{ body=await request.json(); }catch{ return json({error:'Please enter your details again.'},400); }
+
+  const name=clean(body?.name||'',80);
+  const email=String(body?.email||'').trim().toLowerCase();
+  const consent=body?.consent===true;
+
+  if(!consent) return json({error:'Please tick the consent box to join the mailing list.'},400);
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({error:'Please enter a valid email address.'},400);
+
+  await env.BOOKINGS_DB.prepare(`DELETE FROM mailing_unsubscribes WHERE lower(email)=lower(?)`).bind(email).run().catch(()=>{});
+  await env.BOOKINGS_DB.prepare(`
+    INSERT INTO mailing_subscribers(email,name,source,subscribed_at,updated_at)
+    VALUES(?,?, 'website', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(email) DO UPDATE SET
+      name=CASE WHEN excluded.name<>'' THEN excluded.name ELSE mailing_subscribers.name END,
+      source='website',
+      updated_at=CURRENT_TIMESTAMP
+  `).bind(email,name).run();
+
+  try{ await sendMailingWelcome(env,email,name); }catch(error){ console.error('MAILING_WELCOME_ERROR',error?.message||error); }
+
+  return json({ok:true,message:'You’re on the list — welcome to the Boot Scootin’ Round-Up!'});
 }
 
 async function unsubscribeEmail(request,env,url){
@@ -3336,6 +3393,7 @@ export default {
       if (path === '/api/admin/customers') return adminCustomers(request, env);
       if (path === '/api/admin/promotions') return adminPromotions(request, env);
       if (path === '/api/admin/emails') return adminEmailCentre(request, env, ctx);
+      if (path === '/api/mailing-list/subscribe' && request.method === 'POST') return subscribeMailingList(request, env);
       if (path === '/api/email/unsubscribe' && request.method === 'GET') return unsubscribeEmail(request, env, url);
       if (path === '/api/automation/run') return runProtectedEmailAutomations(request, env);
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);

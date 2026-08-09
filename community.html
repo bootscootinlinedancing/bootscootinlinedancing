@@ -483,13 +483,14 @@
         <div>
           <p class="kicker">Join the Boot Scootin’ Round-Up</p>
           <h2>Class dates, new dances and special announcements.</h2>
-          <p>The mailing-list design is ready. We’ll connect it to your chosen email provider before collecting any addresses.</p>
+          <p>Join the mailing list for Boot Scootin’ class dates, new dances, special events and occasional news. You can unsubscribe at any time.</p>
         </div>
         <form class="mailing-preview" id="mailingPreview">
-          <label>First name<input type="text" disabled placeholder="Your first name"></label>
-          <label>Email address<input type="email" disabled placeholder="you@example.com"></label>
-          <label class="consent-preview"><input type="checkbox" disabled> I’d like to receive Boot Scootin’ news and can unsubscribe at any time.</label>
-          <button class="button" type="button" disabled>Mailing list connection coming next</button>
+          <label>First name<input type="text" name="name" autocomplete="given-name" maxlength="80" placeholder="Your first name"></label>
+          <label>Email address<input type="email" name="email" autocomplete="email" maxlength="160" required placeholder="you@example.com"></label>
+          <label class="consent-preview"><input type="checkbox" name="consent" required> <span>I’d like to receive Boot Scootin’ news and can unsubscribe at any time.</span></label>
+          <button class="button" type="submit">Join the Mailing List</button>
+          <p class="mailing-status" id="mailingStatus" aria-live="polite"></p>
         </form>
       </div>
     </section>
@@ -662,6 +663,48 @@
       const banner=document.createElement('div');banner.className='merch-return-banner';banner.innerHTML=d.status==='PAID'?'<strong>Payment received — thank you!</strong><span>Your made-to-order T-shirt is now in the queue. We’ll keep you updated.</span>':'<strong>Order received</strong><span>Your payment is being checked. We’ll keep you updated.</span>';document.getElementById('merchandise').prepend(banner);
     }).catch(()=>{});
   }
+})();
+</script>
+
+
+<script id="mailing-list-live-v96455">
+(() => {
+  const form = document.getElementById('mailingPreview');
+  const status = document.getElementById('mailingStatus');
+  if (!form || !status) return;
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+
+    const button = form.querySelector('button[type="submit"]');
+    const data = new FormData(form);
+    const payload = {
+      name: String(data.get('name') || '').trim(),
+      email: String(data.get('email') || '').trim(),
+      consent: data.get('consent') === 'on'
+    };
+
+    button.disabled = true;
+    status.textContent = 'Joining…';
+
+    try {
+      const response = await fetch('/api/mailing-list/subscribe', {
+        method: 'POST',
+        headers: {'content-type':'application/json'},
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not join the mailing list.');
+
+      status.textContent = result.message || 'You’re on the list — welcome to the Boot Scootin’ Round-Up!';
+      form.reset();
+    } catch (error) {
+      status.textContent = error.message || 'Something went wrong. Please try again.';
+    } finally {
+      button.disabled = false;
+    }
+  });
 })();
 </script>
 
