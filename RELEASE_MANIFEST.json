@@ -1,12 +1,11 @@
 {
   "version": "96.4.48",
-  "name": "SITE RECOVERY + ENTRY RESTORE + REAL BRICK BACKGROUND",
-  "base": "96.4.46",
+  "name": "SAFE-RESTORE-BOOT-ENTRY",
   "changes": [
-    "Restored the Boot Stomp entry screen",
-    "Added an inline fail-safe menu controller",
-    "Replaced grid-square background with staggered brickwork",
-    "Bumped entry/session and service-worker cache keys to avoid stale broken state",
-    "Preserved v96.4.45 community, Moonshine, dance library and western icon changes"
+    "Restored Boot Stomp entry as an isolated fixed overlay",
+    "Preserved v96.4.47 known-working homepage and menu layout",
+    "Replaced grid-like background with staggered dark brick texture",
+    "Added clean boot crop sourced from the approved landing artwork",
+    "Bumped service-worker cache for a clean deployment"
   ]
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "boot-scootin-v96-4-48";
+const CACHE_NAME = "boot-scootin-v96-4-48-safe-restore";
 self.addEventListener("install", event => self.skipWaiting());
 self.addEventListener("activate", event => {
   event.waitUntil(

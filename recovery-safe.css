@@ -1,0 +1,248 @@
+/* v96.4.48 SAFE RESTORE — intentionally isolated recovery layer.
+   Restores the boot entry without changing the known-working homepage/menu layout. */
+
+/* Real staggered dark brick texture: horizontal mortar + alternating vertical joints. */
+html, body { background:#070404 !important; }
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  pointer-events:none;
+  background-color:#080505;
+  background-image:
+    linear-gradient(to bottom, transparent 0 61px, rgba(112,24,28,.28) 61px 63px, transparent 63px 126px),
+    linear-gradient(to right, rgba(112,24,28,.22) 0 2px, transparent 2px 118px),
+    linear-gradient(to right, transparent 0 59px, rgba(112,24,28,.22) 59px 61px, transparent 61px 120px);
+  background-size:100% 126px,120px 126px,120px 126px;
+  background-position:0 0,0 0,0 63px;
+  opacity:.46;
+}
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(131,15,22,.10), transparent 34%),
+    linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.34));
+}
+
+/* Restore the entry as a self-contained fixed layer. */
+#intro.poster-intro.boot-entry{
+  display:flex !important;
+  position:fixed !important;
+  inset:0 !important;
+  z-index:2147483600 !important;
+  align-items:stretch !important;
+  justify-content:center !important;
+  width:100vw !important;
+  height:100dvh !important;
+  min-height:100dvh !important;
+  margin:0 !important;
+  padding:0 !important;
+  overflow:hidden !important;
+  background:#030202 !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  transition:opacity .28s ease, visibility .28s ease !important;
+}
+#intro.poster-intro.hide{
+  display:none !important;
+  opacity:0 !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+body.intro-open{ overflow:hidden !important; }
+
+#intro .boot-entry-shell{
+  position:relative !important;
+  width:min(100vw,720px) !important;
+  height:100dvh !important;
+  min-height:100dvh !important;
+  margin:0 auto !important;
+  overflow:hidden !important;
+  background:
+    radial-gradient(circle at 50% 28%,rgba(179,16,25,.13),transparent 31%),
+    linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.22)),
+    #080404 !important;
+  border-left:1px solid rgba(108,26,31,.26) !important;
+  border-right:1px solid rgba(108,26,31,.26) !important;
+}
+#intro .boot-entry-shell::before{
+  content:"" !important;
+  position:absolute !important;
+  inset:0 !important;
+  z-index:0 !important;
+  pointer-events:none !important;
+  background-image:
+    linear-gradient(to bottom, transparent 0 73px, rgba(107,23,27,.24) 73px 75px, transparent 75px 150px),
+    linear-gradient(to right, rgba(107,23,27,.18) 0 2px, transparent 2px 136px),
+    linear-gradient(to right, transparent 0 68px, rgba(107,23,27,.18) 68px 70px, transparent 70px 136px) !important;
+  background-size:100% 150px,136px 150px,136px 150px !important;
+  background-position:0 0,0 0,0 75px !important;
+  opacity:.46 !important;
+}
+#intro .boot-entry-brand,
+#intro .boot-entry-kicker,
+#intro .boot-entry-neon,
+#intro .entry-boot,
+#intro .boot-entry-button,
+#intro .boot-entry-tagline{ position:absolute !important; z-index:2 !important; }
+
+#intro .boot-entry-brand{
+  top:4.3% !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  width:90% !important;
+  display:flex !important;
+  justify-content:center !important;
+  align-items:center !important;
+  gap:12px !important;
+  text-align:left !important;
+}
+#intro .boot-entry-brand img{
+  width:60px !important;
+  height:60px !important;
+  object-fit:contain !important;
+  filter:drop-shadow(0 0 12px rgba(228,31,41,.32)) !important;
+}
+#intro .boot-entry-brand-copy{ display:grid !important; gap:2px !important; }
+#intro .boot-entry-brand strong{
+  color:#ef2932 !important;
+  font:400 clamp(25px,7vw,39px)/1 Rye,serif !important;
+  letter-spacing:.03em !important;
+  text-shadow:0 0 14px rgba(239,41,50,.22) !important;
+}
+#intro .boot-entry-brand span{
+  color:#fff4ec !important;
+  font:700 14px/1.1 Oswald,sans-serif !important;
+  letter-spacing:.26em !important;
+}
+#intro .boot-entry-brand small{
+  color:#d8b8aa !important;
+  font:600 9px/1.2 Oswald,sans-serif !important;
+  letter-spacing:.23em !important;
+}
+#intro .boot-entry-kicker{
+  top:15.2% !important;
+  left:6% !important;
+  right:6% !important;
+  margin:0 !important;
+  text-align:center !important;
+  color:#d8b8aa !important;
+  font:600 9px/1.2 Oswald,sans-serif !important;
+  letter-spacing:.27em !important;
+}
+#intro .boot-entry-neon{
+  top:18.2% !important;
+  left:0 !important;
+  right:0 !important;
+  margin:0 !important;
+  text-align:center !important;
+  color:#ff2933 !important;
+  font:400 clamp(48px,14vw,78px)/1 Yellowtail,cursive !important;
+  text-shadow:0 0 4px #ff2933,0 0 16px #dd111b,0 0 36px rgba(221,17,27,.68) !important;
+}
+#intro .entry-boot{
+  top:27% !important;
+  left:50% !important;
+  width:min(92%,610px) !important;
+  height:45% !important;
+  transform:translateX(-50%) !important;
+  transform-origin:32% 89% !important;
+  overflow:hidden !important;
+  background:#020202 !important;
+  border:0 !important;
+  box-shadow:none !important;
+  filter:drop-shadow(0 18px 24px rgba(0,0,0,.52)) !important;
+}
+#intro .entry-boot-photo{
+  display:block !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:contain !important;
+  object-position:center !important;
+  transform:none !important;
+  clip-path:none !important;
+  user-select:none !important;
+  -webkit-user-drag:none !important;
+  pointer-events:none !important;
+}
+#intro .impact-dust{ display:none !important; }
+#intro .boot-entry-button{
+  left:50% !important;
+  bottom:10.3% !important;
+  transform:translateX(-50%) !important;
+  width:min(82%,560px) !important;
+  min-height:68px !important;
+  padding:11px 16px !important;
+  border:1px solid #ff424a !important;
+  border-radius:6px !important;
+  background:linear-gradient(180deg,#e7242e,#c3111a) !important;
+  color:#fff !important;
+  box-shadow:0 0 20px rgba(232,31,42,.35) !important;
+  text-align:center !important;
+  cursor:pointer !important;
+}
+#intro .boot-entry-button span{
+  display:block !important;
+  color:#fff !important;
+  font:700 clamp(20px,5vw,28px)/1 Oswald,sans-serif !important;
+  letter-spacing:.16em !important;
+}
+#intro .boot-entry-button small{
+  display:block !important;
+  margin-top:6px !important;
+  color:#f2c9c6 !important;
+  font:500 9px/1.2 Oswald,sans-serif !important;
+  letter-spacing:.12em !important;
+}
+#intro .boot-entry-tagline{
+  left:5% !important;
+  right:5% !important;
+  bottom:4.1% !important;
+  margin:0 !important;
+  text-align:center !important;
+  color:#f0dfd4 !important;
+  font:400 clamp(18px,5vw,24px)/1 Yellowtail,cursive !important;
+}
+
+#intro.stomping .entry-boot{ animation:safeBootStomp .84s cubic-bezier(.18,.82,.22,1) both !important; }
+#intro.stomping .boot-entry-button{ animation:safeEntryGlow .84s ease both !important; }
+@keyframes safeBootStomp{
+  0%{transform:translateX(-50%) translateY(0) rotate(0)}
+  32%{transform:translateX(-50%) translateY(-26px) rotate(-1deg)}
+  59%{transform:translateX(-50%) translateY(9px) rotate(.3deg)}
+  76%{transform:translateX(-50%) translateY(-4px) rotate(-.15deg)}
+  100%{transform:translateX(-50%) translateY(0) rotate(0)}
+}
+@keyframes safeEntryGlow{
+  0%,48%{box-shadow:0 0 18px rgba(232,31,42,.32)}
+  63%{box-shadow:0 0 34px rgba(255,45,55,.75)}
+  100%{box-shadow:0 0 18px rgba(232,31,42,.32)}
+}
+
+@media(max-width:430px){
+  #intro .boot-entry-brand{top:4.0% !important;gap:9px !important}
+  #intro .boot-entry-brand img{width:52px !important;height:52px !important}
+  #intro .boot-entry-brand strong{font-size:25px !important}
+  #intro .boot-entry-brand span{font-size:12px !important}
+  #intro .boot-entry-kicker{top:14.3% !important;font-size:8px !important}
+  #intro .boot-entry-neon{top:17.0% !important}
+  #intro .entry-boot{top:26.4% !important;width:94% !important;height:45% !important}
+  #intro .boot-entry-button{bottom:10.1% !important;width:84% !important;min-height:64px !important}
+  #intro .boot-entry-tagline{bottom:4.0% !important}
+}
+@media(max-height:720px){
+  #intro .boot-entry-brand{top:2.8% !important}
+  #intro .boot-entry-kicker{top:13.0% !important}
+  #intro .boot-entry-neon{top:15.5% !important}
+  #intro .entry-boot{top:24.5% !important;height:45% !important}
+  #intro .boot-entry-button{bottom:9.6% !important;min-height:58px !important}
+  #intro .boot-entry-tagline{bottom:2.8% !important}
+}
+@media(prefers-reduced-motion:reduce){
+  #intro.stomping .entry-boot,#intro.stomping .boot-entry-button{animation:none !important}
+}
