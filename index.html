@@ -53,10 +53,6 @@
 }
 @media(max-width:420px){#menu45{padding-inline:18px!important}#menu45 .menu45-first strong{font-size:19px!important}#menu45 details.menu45-section>summary>span{font-size:19px!important}}
 </style>
-<style id="v9650-intro-kill-switch">
-#intro[aria-hidden="true"],#intro.v9650-dismissed{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-body.intro-open{overflow:hidden!important;touch-action:none}
-</style>
 </head>
 <body class="honky-home home-v9635 intro-open">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -79,46 +75,25 @@ body.intro-open{overflow:hidden!important;touch-action:none}
 </div>
 </div>
 <script>
-/* v96.4.50 — hard landing dismiss for iPhone/Safari.
-   The intro is physically removed from the DOM on entry so it cannot remain
-   visually stuck while the homepage scrolls underneath. */
+/* v96.4.46 inline fail-safe: entry can never trap the site even if external JS/cache fails. */
 (function(){
-  var intro=document.getElementById('intro');
-  if(!intro)return;
-
-  function dismissIntro(event){
-    if(event && event.cancelable){ try{ event.preventDefault(); }catch(_){} }
-    try{ sessionStorage.setItem('bootIntroSeen_v50','1'); }catch(_){}
+  var i=document.getElementById('intro');
+  if(!i)return;
+  function unlock(e){
+    if(e&&e.type==='click'&&e.detail===0)return;
+    i.classList.add('hide');
+    i.setAttribute('aria-hidden','true');
+    i.style.display='none';
     document.body.classList.remove('intro-open');
-    document.documentElement.classList.remove('intro-open');
-    intro.setAttribute('aria-hidden','true');
-    intro.style.cssText += ';display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;';
-    /* Removing the node is deliberate: no stale CSS rule can resurrect it. */
-    if(intro.parentNode) intro.parentNode.removeChild(intro);
-    try{ window.scrollTo(0,0); }catch(_){}
+    try{sessionStorage.setItem('bootIntroSeen_v48','1')}catch(_){}
   }
-
-  var seen=false;
-  try{ seen=sessionStorage.getItem('bootIntroSeen_v50')==='1'; }catch(_){}
-  if(seen){ dismissIntro(); return; }
-
-  var enter=document.getElementById('enterSite');
-  ['pointerup','touchend','click'].forEach(function(type){
-    intro.addEventListener(type,dismissIntro,{capture:true,passive:false,once:true});
-    if(enter) enter.addEventListener(type,dismissIntro,{capture:true,passive:false,once:true});
-  });
-
-  /* Last-resort document capture for Safari edge cases. */
-  document.addEventListener('pointerup',function(e){
-    if(document.getElementById('intro')) dismissIntro(e);
-  },{capture:true,passive:false,once:true});
-
-  /* If another legacy script removes the body lock but leaves the overlay,
-     destroy the overlay immediately instead of allowing the page to scroll below it. */
-  new MutationObserver(function(){
-    var live=document.getElementById('intro');
-    if(live && !document.body.classList.contains('intro-open')) dismissIntro();
-  }).observe(document.body,{attributes:true,attributeFilter:['class']});
+  var seen=false;try{seen=sessionStorage.getItem('bootIntroSeen_v48')==='1'}catch(_){}
+  if(seen){unlock();return;}
+  i.addEventListener('pointerdown',unlock,{capture:true,passive:true});
+  i.addEventListener('touchstart',unlock,{capture:true,passive:true});
+  i.addEventListener('click',unlock,{capture:true});
+  var b=document.getElementById('enterSite');if(b)b.addEventListener('click',unlock,{capture:true});
+  window.setTimeout(function(){if(i.dataset.entering==='1')unlock()},1400);
 })();
 </script>
 <script>

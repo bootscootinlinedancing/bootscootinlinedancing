@@ -44,11 +44,18 @@ const nav = document.getElementById('nav');
 
 function finishIntro(){
   if (!intro) return;
-  intro.classList.add('hide');
+  // Hard-dismiss the opening screen. Removing it from the DOM prevents
+  // iPhone Safari from leaving an invisible/stuck overlay above the homepage.
   document.body.classList.remove('intro-open');
+  document.documentElement.classList.remove('intro-open');
+  intro.setAttribute('aria-hidden','true');
+  intro.classList.add('hide');
   try {
     sessionStorage.setItem('bootIntroSeen_v48','1');
   } catch (_) {}
+  intro.style.display = 'none';
+  intro.style.pointerEvents = 'none';
+  if (intro.parentNode) intro.parentNode.removeChild(intro);
 }
 
 function enterWebsite(event){
@@ -387,11 +394,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const i=document.getElementById('intro');
   if(!i) return;
   const unlock=()=>{
+    document.body.classList.remove('intro-open');
+    document.documentElement.classList.remove('intro-open');
     i.classList.add('hide');
     i.setAttribute('aria-hidden','true');
     i.style.display='none';
-    document.body.classList.remove('intro-open');
+    i.style.pointerEvents='none';
     try{sessionStorage.setItem('bootIntroSeen_v48','1')}catch(_){}
+    if(i.parentNode) i.parentNode.removeChild(i);
   };
   document.getElementById('enterSite')?.addEventListener('click',unlock,{capture:true});
   i.addEventListener('pointerdown',unlock,{capture:true,passive:true});
