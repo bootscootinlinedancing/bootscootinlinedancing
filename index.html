@@ -10,12 +10,12 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Oswald:wght@400;500;600;700&amp;family=Rye&amp;family=Yellowtail&amp;display=swap" rel="stylesheet"/>
-<link href="styles.css?v=96.4.46" rel="stylesheet"/>
+<link href="styles.css?v=96.4.45" rel="stylesheet"/>
 <link href="honky-authentic.css?v=96.4.43" rel="stylesheet"/>
 <link href="favicon.png" rel="icon" type="image/png"/>
 <link href="apple-touch-icon.png" rel="apple-touch-icon"/>
 <link href="manifest.webmanifest" rel="manifest"/>
-<link href="desktop-final-fix.css?v=96.4.46" rel="stylesheet"/>
+<link href="desktop-final-fix.css?v=96.4.45" rel="stylesheet"/>
 <style id="menu45-style">
 .menu45-overlay{display:none}
 @media(max-width:950px){
@@ -74,54 +74,6 @@
 <p class="boot-entry-tagline">Good Boots. Good Music. Good Times.</p>
 </div>
 </div>
-<script>
-/* v96.4.52 iPhone-safe entry dismissal. This deliberately removes the overlay
-   from the DOM immediately on a genuine tap, before any animation bundle runs. */
-(function(){
-  var intro=document.getElementById('intro');
-  if(!intro)return;
-  function removeIntro(){
-    document.body.classList.remove('intro-open');
-    document.documentElement.classList.remove('intro-open');
-    intro.setAttribute('aria-hidden','true');
-    intro.style.setProperty('display','none','important');
-    intro.style.setProperty('pointer-events','none','important');
-    try{sessionStorage.setItem('bootIntroSeen_v52','1')}catch(e){}
-    if(intro.parentNode) intro.parentNode.removeChild(intro);
-  }
-  var seen=false;
-  try{seen=sessionStorage.getItem('bootIntroSeen_v52')==='1'}catch(e){}
-  if(seen){removeIntro();return;}
-  var button=document.getElementById('enterSite');
-  if(button){
-    button.addEventListener('pointerup',function(e){e.preventDefault();removeIntro();},{capture:true});
-    button.addEventListener('click',function(e){e.preventDefault();removeIntro();},{capture:true});
-  }
-  intro.addEventListener('pointerup',function(e){e.preventDefault();removeIntro();},{capture:true});
-  intro.addEventListener('click',function(e){e.preventDefault();removeIntro();},{capture:true});
-  intro.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();removeIntro();}},{capture:true});
-})();
-</script>
-<script>
-/* v96.4.48 critical navigation fallback: the menu remains usable even if the main bundle is delayed. */
-(function(){
-  function ready(){
-    var nav=document.getElementById('nav'), mb=document.getElementById('menuButton'), db=document.getElementById('desktopExploreButton'), close=document.getElementById('navClose');
-    if(!nav||!mb)return;
-    function set(open){
-      nav.classList.toggle('open',!!open);
-      nav.setAttribute('aria-hidden',open?'false':'true');
-      mb.setAttribute('aria-expanded',open?'true':'false');
-      if(db)db.setAttribute('aria-expanded',open?'true':'false');
-      document.body.classList.toggle('menu-open',!!open);
-    }
-    if(!mb.dataset.v48bound){mb.dataset.v48bound='1';mb.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();set(!nav.classList.contains('open'));});}
-    if(db&&!db.dataset.v48bound){db.dataset.v48bound='1';db.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();set(!nav.classList.contains('open'));});}
-    if(close&&!close.dataset.v48bound){close.dataset.v48bound='1';close.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();set(false);});}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true}); else ready();
-})();
-</script>
 <header class="honky-header">
 <a aria-label="Boot Scootin' Line Dancing home" class="honky-logo brand-lockup" href="index.html"><img alt="" src="brand-logo-transparent.png"/><span class="brand-lockup-copy"><strong>BOOT SCOOTIN’</strong><b>LINE DANCING</b><small>EST. 2025</small></span></a>
 <nav aria-label="Main navigation" class="honky-desktop-nav"><a class="active" href="index.html">Home</a><a href="about.html">About</a><a href="bookings.html">Classes</a><a href="private-events.html">Private Events</a><a href="gallery.html">Gallery</a><a href="ask-nora.html">Contact</a><button aria-controls="nav" aria-expanded="false" class="desktop-explore-button" id="desktopExploreButton" type="button">Explore</button></nav>
@@ -321,6 +273,6 @@
 <div class="copyright-line">© 2026 Boot Scootin’ Line Dancing. All rights reserved.</div>
 </div>
 </footer>
-<script src="script.js?v=96.4.48"></script>
+<script src="script.js?v=96.4.45"></script>
 </body>
 </html>
