@@ -49,18 +49,21 @@ body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(input,se
 /* Nora's Choreography link is an intentional one-dance view */
 body.nora-original-only .library-controls .filter-row{display:none!important}
 
-/* v96.4.59 — force required submenu rows to remain visible in mobile drill-down */
+/* v96.4.59 — menu first-link persistence guard. Prevent Safari/history navigation from hiding the first entries. */
 @media (max-width:950px){
-  #menu45.menu58-drilldown details.menu45-section.menu58-active .menu45-submenu>a{
+  #menu45 details.menu45-section[open] > .menu45-submenu > a,
+  #menu45 details.menu45-section.menu58-active > .menu45-submenu > a{
     display:grid!important;
     visibility:visible!important;
     opacity:1!important;
-    position:relative!important;
-    transform:none!important;
-  }
-  #menu45.menu58-drilldown details.menu45-section.menu58-active .menu45-submenu{
-    overflow:visible!important;
     max-height:none!important;
     height:auto!important;
+    transform:none!important;
+  }
+  #menu45 details.menu45-section.menu58-active > .menu45-submenu > a:nth-child(1),
+  #menu45 details.menu45-section.menu58-active > .menu45-submenu > a:nth-child(2){
+    display:grid!important;
+    visibility:visible!important;
+    opacity:1!important;
   }
 }

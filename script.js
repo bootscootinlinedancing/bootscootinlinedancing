@@ -284,50 +284,34 @@ installGuide?.addEventListener("click", event => {
 
 
 
-// v96.4.59 — authoritative Explore menu repair + homepage mailing list
+// v96.4.57 — persistent menu self-repair and homepage mailing list
 (() => {
   const panel = document.getElementById('menu45');
-  const repairExploreMenu = () => {
-    if (!panel) return;
+  if (panel) {
     const findSection = label => [...panel.querySelectorAll('details.menu45-section')].find(d =>
       d.querySelector(':scope > summary strong')?.textContent.trim() === label
     );
-    const setRequiredFirstLinks = (section, required) => {
+    const ensureFirstLink = (section, href, label) => {
       const submenu = section?.querySelector(':scope > .menu45-submenu');
       if (!submenu) return;
-      required.slice().reverse().forEach(({href,label}) => {
-        [...submenu.querySelectorAll('a')].forEach(a => {
-          const txt = a.textContent.trim();
-          if (a.getAttribute('href') === href || txt === label ||
-              (href === 'community.html#merchandise' && /Official Merchandise|Merch Shop/i.test(txt)) ||
-              (href === 'rewards.html' && /Boot Scootin.? Rewards|Loyalty Rewards/i.test(txt))) a.remove();
-        });
-        const a = document.createElement('a');
+      let a = [...submenu.querySelectorAll(':scope > a')].find(link =>
+        link.getAttribute('href') === href || link.textContent.trim() === label
+      );
+      if (!a) {
+        a = document.createElement('a');
         a.href = href;
         a.innerHTML = `<span>${label}</span><b aria-hidden="true">›</b>`;
-        submenu.prepend(a);
-      });
-      [...submenu.querySelectorAll(':scope > a')].forEach(a => {
-        a.hidden = false;
-        a.removeAttribute('aria-hidden');
-        a.style.removeProperty('display');
-        a.style.removeProperty('visibility');
-        a.style.removeProperty('opacity');
-      });
+      }
+      submenu.prepend(a);
+      a.hidden = false;
+      a.removeAttribute('aria-hidden');
+      a.style.removeProperty('display');
     };
-    setRequiredFirstLinks(findSection('Community'), [
-      {href:'moonshine.html', label:'Moonshine & Good Times Gang'},
-      {href:'community.html', label:'Boot Scootin’ Community'}
-    ]);
-    setRequiredFirstLinks(findSection('Shop & Rewards'), [
-      {href:'community.html#merchandise', label:'Merch Shop'},
-      {href:'rewards.html', label:'Loyalty Rewards'}
-    ]);
-  };
-  repairExploreMenu();
-  window.addEventListener('pageshow', repairExploreMenu);
-  document.getElementById('menuButton')?.addEventListener('click', repairExploreMenu, true);
-  document.getElementById('desktopExploreButton')?.addEventListener('click', repairExploreMenu, true);
+    ensureFirstLink(findSection('Community'), 'community.html', 'Boot Scootin’ Community');
+    ensureFirstLink(findSection('Community'), 'moonshine.html', 'Moonshine & Good Times Gang');
+    ensureFirstLink(findSection('Shop & Rewards'), 'rewards.html', 'Boot Scootin’ Rewards');
+    ensureFirstLink(findSection('Shop & Rewards'), 'community.html#merchandise', 'Official Merchandise');
+  }
 
   const form = document.getElementById('homeMailingPreview');
   if (form && !form.dataset.bound) {
@@ -361,6 +345,10 @@ installGuide?.addEventListener("click", event => {
     });
   }
 })();
+
+
+
+
 
 
 // v96.4.58 — authoritative mobile drill-down menu controller
