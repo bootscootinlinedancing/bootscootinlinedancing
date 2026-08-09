@@ -8026,3 +8026,25 @@ body:not(.ranch-v91):not(.admin-login-body) :is(.level-absolute-beginner,.level-
   font-weight:600;
 }
 .mailing-preview button:disabled{opacity:.65;cursor:wait}
+
+
+/* v96.4.60 — persistent first submenu rows (iOS Safari hardening) */
+@media(max-width:950px){
+  #menu45 .menu45-submenu > a.menu-pinned-link{
+    display:grid!important;
+    visibility:visible!important;
+    opacity:1!important;
+    position:relative!important;
+    transform:none!important;
+    clip:auto!important;
+    clip-path:none!important;
+    height:auto!important;
+    min-height:58px!important;
+    max-height:none!important;
+    overflow:visible!important;
+    pointer-events:auto!important;
+  }
+  #menu45 details.menu45-section[open] > .menu45-submenu > a.menu-pinned-link{
+    display:grid!important;
+  }
+}

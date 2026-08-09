@@ -101,6 +101,43 @@ if (intro) {
   }
 }
 
+
+
+// v96.4.60 — canonical persistent submenu repair.
+// Rebuild the two affected submenus from a fixed source of truth whenever
+// Explore opens or a drill-down is entered. This prevents Safari/history
+// restoration or older menu scripts from dropping the first menu rows.
+function repairPersistentExploreLinks(){
+  const panel=document.getElementById('menu45');
+  if(!panel) return;
+  const findSection=(label)=>[...panel.querySelectorAll('details.menu45-section')].find(section =>
+    section.querySelector(':scope > summary strong')?.textContent.trim()===label
+  );
+  const render=(label,items)=>{
+    const section=findSection(label);
+    const submenu=section?.querySelector(':scope > .menu45-submenu');
+    if(!submenu) return;
+    submenu.innerHTML=items.map(([href,text,pinned]) =>
+      `<a${pinned?' class="menu-pinned-link"':''} href="${href}"><span>${text}</span><b aria-hidden="true">›</b></a>`
+    ).join('');
+  };
+  render('Community',[
+    ['moonshine.html','Moonshine &amp; Good Times Gang',true],
+    ['community.html','Boot Scootin’ Community',true],
+    ['long-road-handbook.html','Long Road Handbook',false],
+    ['businesses.html#backroad-boots','Backroad Boots UK',false],
+    ['country-guide-festivals.html','Festivals &amp; Country Events',false]
+  ]);
+  render('Shop & Rewards',[
+    ['community.html#merchandise','Official Merchandise',true],
+    ['rewards.html','Boot Scootin’ Rewards',true],
+    ['passport.html#trail-rewards','Trail Rewards Preview',false]
+  ]);
+}
+
+document.addEventListener('DOMContentLoaded',repairPersistentExploreLinks);
+window.addEventListener('pageshow',repairPersistentExploreLinks);
+
 // VERSION 81 — ONE STABLE MENU CONTROLLER
 const navClose = document.getElementById('navClose');
 
@@ -114,6 +151,7 @@ function setMenuOpen(open) {
   document.body.classList.toggle('menu-open', open);
 
   if (open) {
+    repairPersistentExploreLinks();
     nav.scrollTop = 0;
     requestAnimationFrame(() => navClose?.focus({preventScroll:true}));
   } else {
@@ -367,6 +405,7 @@ installGuide?.addEventListener("click", event => {
     summary?.addEventListener('click', event => {
       if (window.matchMedia('(max-width:950px)').matches) {
         event.preventDefault();
+        repairPersistentExploreLinks();
         const already = section.classList.contains('menu58-active');
         if (already) { resetDrilldown(); return; }
         sections.forEach(s => { s.open=false; s.classList.remove('menu58-active','menu46-active'); });
