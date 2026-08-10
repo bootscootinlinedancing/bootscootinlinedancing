@@ -3277,6 +3277,9 @@ async function adminMerchOrders(request,env){
   const check=requireAccessAdmin(request,env); if(check.response)return check.response;
   await ensureBookingSchema(env);
   if(request.method==='GET'){
+    // v96.4.64: remove the pre-live checkout test rows created before 10 Aug 2026.
+    // Paid orders (including Lisa's real paid order) are never touched.
+    await env.BOOKINGS_DB.prepare(`DELETE FROM merch_orders WHERE status<>'PAID' AND datetime(created_at) < datetime('2026-08-10 00:00:00')`).run().catch(()=>{});
     const rows=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders ORDER BY created_at DESC LIMIT 250`).all();
     return json({items:rows.results||[]});
   }

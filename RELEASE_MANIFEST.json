@@ -1,6 +1,6 @@
 {
-  "release": "96.4.39",
-  "version": "96.4.63",
+  "release": "96.4.64",
+  "version": "96.4.64",
   "release_name": "PUBLIC BLACK/RED SWEEP + UNIFIED MENU + MERCH CHECKOUT FIX",
   "description": "Removes remaining beige public surfaces, standardises the Explore menu, and replaces Safari fetch checkout with a robust same-origin form POST to SumUp.",
   "built_from": "boot-scootin-platform-v96.4.38-MERCH-ORDERING-BLACK-RED-CLEANUP.zip",
@@ -13,7 +13,7 @@
     "Mobile and desktop layout fixes from v96.4.38 preserved",
     "HQ paid revenue now combines paid class bookings and paid merchandise orders.",
     "HQ overview shows class revenue, merchandise revenue and estimated merchandise profit separately.",
-    "Merch Orders shows estimated production cost and item profit using £12 unisex and £17 women’s premium production costs.",
+    "Merch Orders shows estimated production cost and item profit using \u00a312 unisex and \u00a317 women\u2019s premium production costs.",
     "Class editor now includes reusable Edgbaston Community Centre and Low Places Bar templates with venue address, usual times, capacity and concise first-class guidance.",
     "HQ cream/beige admin panels were converted to the black/red/cream brand palette.",
     "Homepage opening headline now uses the Western Rye display type selectively.",
@@ -48,13 +48,7 @@
     }
   },
   "homepage_refresh": true,
-  "notes": [
-    "Persistent Moonshine and Official Merchandise menu entries",
-    "7 August 2026 Dance Diary restored",
-    "Glass of Wine added to Dance Library",
-    "BootStepper link present on every Dance Library card",
-    "Remaining beige panel/text contrast repaired without changing entry page"
-  ],
+  "notes": "Homepage story sections restored; HQ dark sweep; iOS HQ drawer scroll fix; pre-live pending merch test cleanup.",
   "desktop_layout_repair": "MacBook/small desktop breakpoint repair; mobile below 768px preserved",
   "name": "HQ-REVENUE-VENUE-TEMPLATES-DARK-SWEEP"
 }

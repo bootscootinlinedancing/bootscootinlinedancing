@@ -215,6 +215,7 @@
 
   // Drawer
   const drawer=$('#ranch91Drawer'),backdrop=$('#ranch91Backdrop'),menuButton=$('#ranch91Menu'),closeButton=$('#ranch91Close');
+  let drawerPageScrollY=0;
   function setDrawer(open){
     if(!drawer||!menuButton)return;
     drawer.classList.toggle('open',open);
@@ -222,7 +223,19 @@
     menuButton.setAttribute('aria-expanded',String(open));
     document.body.classList.toggle('ranch91-drawer-open',open);
     if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
-    if(open){drawer.scrollTop=0;if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);}
+    if(open){
+      drawerPageScrollY=window.scrollY||document.documentElement.scrollTop||0;
+      document.body.style.position='fixed';
+      document.body.style.top=`-${drawerPageScrollY}px`;
+      document.body.style.left='0';
+      document.body.style.right='0';
+      document.body.style.width='100%';
+      drawer.scrollTop=0;
+      if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);
+    }else if(document.body.style.position==='fixed'){
+      document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';
+      window.scrollTo(0,drawerPageScrollY);
+    }
   }
   menuButton?.addEventListener('click',event=>{
     if(typeof window.BootScootinHQMenuToggle==='function')return;
