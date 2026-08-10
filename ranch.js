@@ -225,16 +225,14 @@
     if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
     if(open){
       drawerPageScrollY=window.scrollY||document.documentElement.scrollTop||0;
-      document.body.style.position='fixed';
-      document.body.style.top=`-${drawerPageScrollY}px`;
-      document.body.style.left='0';
-      document.body.style.right='0';
-      document.body.style.width='100%';
+      document.documentElement.classList.add('ranch91-menu-lock');
+      document.body.classList.add('ranch91-menu-lock');
       drawer.scrollTop=0;
+      requestAnimationFrame(()=>{ drawer.scrollTop=0; });
       if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);
-    }else if(document.body.style.position==='fixed'){
-      document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';
-      window.scrollTo(0,drawerPageScrollY);
+    }else{
+      document.documentElement.classList.remove('ranch91-menu-lock');
+      document.body.classList.remove('ranch91-menu-lock');
     }
   }
   menuButton?.addEventListener('click',event=>{
@@ -476,6 +474,12 @@
     console.info('[HQ] Running health checks');
     try{
       const h=await jsonFetch(`${ADMIN_API_PREFIX}/system-health`,{cache:'no-store'},10000);state.health=h;
+      const settingsPay=$('#settingsSumupStatus');
+      if(settingsPay){
+        const pay=h?.payments||{}; const ready=String(pay.status||'').toLowerCase()==='ready';
+        settingsPay.classList.toggle('ready',ready);settingsPay.classList.toggle('attention',!ready);
+        settingsPay.innerHTML=`<span></span> ${esc(pay.detail||pay.label||(ready?'SumUp payment checkout ready':'Check payment setup in System Health'))}`;
+      }
       renderHealthPanels(h);
     }catch(error){
       if(summary)summary.innerHTML=setupPanel('Live check unavailable',error.message);
@@ -1395,6 +1399,14 @@ Type REFUNDED to continue.`);
   }
   loadBootstrap(false,{silent:Boolean(state.bootstrap)}).catch(()=>{});
   renderDiagnostics();
+
+  document.addEventListener('click',event=>{
+    const jump=event.target.closest('[data-view-jump]');
+    if(!jump)return;
+    const name=jump.dataset.viewJump;
+    const nav=document.querySelector(`.ranch91-nav [data-view="${name}"]`);
+    if(nav)nav.click();
+  });
   loadHealth();
   setTimeout(()=>{
     const replacements=[
