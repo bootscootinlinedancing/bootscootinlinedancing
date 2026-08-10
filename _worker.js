@@ -390,7 +390,13 @@ async function ensureBookingSchema(env) {
     `ALTER TABLE bookings ADD COLUMN original_amount_pence INTEGER`,
     `ALTER TABLE bookings ADD COLUMN discount_pence INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE bookings ADD COLUMN promo_code TEXT`,
-    `ALTER TABLE waiting_list ADD COLUMN secure_token TEXT`
+    `ALTER TABLE waiting_list ADD COLUMN secure_token TEXT`,
+    `ALTER TABLE merch_orders ADD COLUMN fulfilment_method TEXT NOT NULL DEFAULT 'collection'`,
+    `ALTER TABLE merch_orders ADD COLUMN delivery_address TEXT`,
+    `ALTER TABLE merch_orders ADD COLUMN delivery_pence INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE merch_orders ADD COLUMN fulfilment_status TEXT NOT NULL DEFAULT 'NEW'`,
+    `ALTER TABLE merch_orders ADD COLUMN confirmation_email_sent_at TEXT`,
+    `ALTER TABLE merch_orders ADD COLUMN fulfilment_email_sent_at TEXT`
   ];
   for (const migration of migrations) {
     try { await env.BOOKINGS_DB.prepare(migration).run(); } catch (_) {}
@@ -1540,10 +1546,20 @@ async function sumUpWebhook(request, env) {
   const booking = await env.BOOKINGS_DB.prepare(
     `SELECT * FROM bookings WHERE provider_checkout_id=?`
   ).bind(checkoutId).first();
-  if (!booking) return new Response(null, { status: 204 });
-
   const checkout = await retrieveSumUpCheckout(env, checkoutId);
-  if (checkout) await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
+  if (booking) {
+    if (checkout) await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
+    return new Response(null, { status: 204 });
+  }
+  const order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE provider_checkout_id=?`).bind(checkoutId).first();
+  if(order&&checkout){
+    const cs=String(checkout?.status||'').toUpperCase();
+    if(cs==='PAID'){
+      const tid=clean(checkoutTransactionId(checkout),180)||null;
+      await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_transaction_id=? WHERE id=?`).bind(tid,order.id).run();
+      try{await sendMerchConfirmation(env,{...order,status:'PAID',provider_transaction_id:tid});}catch(_){}
+    } else if(['FAILED','EXPIRED'].includes(cs)) await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run();
+  }
   return new Response(null, { status: 204 });
 }
 
@@ -3087,7 +3103,39 @@ async function adminBookings(request, env, ctx) {
 function merchOrderReference(){
   const stamp=new Date().toISOString().slice(2,10).replace(/-/g,'');
   const rand=Math.random().toString(36).slice(2,7).toUpperCase();
-  return `MERCH-${stamp}-${rand}`;
+  return `BS-${stamp}-${rand}`;
+}
+
+
+function merchDeliveryLabel(order){
+  return order.fulfilment_method==='delivery'?'UK delivery':'Collection from Boot Scootin’';
+}
+function merchOrderText(order,heading){
+  const money=p=>`£${(Number(p||0)/100).toFixed(2)}`;
+  const lines=[heading,`Order ${order.reference}`,`${order.design} — ${order.fit==='womens'?"Women’s premium":"Unisex"} — ${order.size} × ${order.quantity}`,`Items: ${money(Number(order.unit_price_pence||0)*Number(order.quantity||0))}`,`${merchDeliveryLabel(order)}: ${order.delivery_pence?money(order.delivery_pence):'FREE'}`,`Total: ${money(order.amount_pence)}`];
+  if(order.fulfilment_method==='delivery'&&order.delivery_address) lines.push(`Delivery address: ${order.delivery_address}`);
+  return lines.join('\n');
+}
+async function sendMerchConfirmation(env,order){
+  if(order.confirmation_email_sent_at)return;
+  const money=p=>`£${(Number(p||0)/100).toFixed(2)}`;
+  const detail=`${order.design} · ${order.fit==='womens'?"Women’s premium":"Unisex"} · ${order.size} · Qty ${order.quantity} · ${merchDeliveryLabel(order)}${order.delivery_pence?` ${money(order.delivery_pence)}`:' FREE'} · Total ${money(order.amount_pence)}`;
+  const paragraphs=[`Thanks for your order, ${order.customer_name}. Your payment has been received and your made-to-order Boot Scootin’ T-shirt is now in the queue.`,order.fulfilment_method==='delivery'?'We’ll email you again as soon as your order has been dispatched.':'We’ll email you again as soon as your order is ready to collect.'];
+  const html=brandedEmailHtml({heading:'Yeehaw — your order’s in!',greeting:`Order ${order.reference}`,paragraphs,detail});
+  const text=merchOrderText(order,'Your Boot Scootin’ order is confirmed.')+'\n\n'+paragraphs.join('\n\n');
+  const sent=await sendTransactionalEmail(env,order.customer_email,`Boot Scootin’ order ${order.reference} confirmed`,html,text,'general').catch(()=>null);
+  if(sent&&!sent.skipped)await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET confirmation_email_sent_at=CURRENT_TIMESTAMP WHERE id=?`).bind(order.id).run().catch(()=>{});
+}
+async function sendMerchFulfilmentEmail(env,order){
+  const delivery=order.fulfilment_method==='delivery';
+  const heading=delivery?'Your Boot Scootin’ order is on its way!':'Your Boot Scootin’ order is ready!';
+  const paragraphs=delivery
+    ? [`Great news, ${order.customer_name}. Order ${order.reference} has been marked as dispatched.`,`It’s heading to the delivery address you gave us. Thank you for supporting Boot Scootin’!`]
+    : [`Great news, ${order.customer_name}. Order ${order.reference} is ready to collect.`,`You can collect it from Nora at your next Boot Scootin’ class. Just quote your order number when you arrive.`];
+  const html=brandedEmailHtml({heading,greeting:`Order ${order.reference}`,paragraphs});
+  const text=heading+'\n\n'+paragraphs.join('\n\n');
+  const sent=await sendTransactionalEmail(env,order.customer_email,`${heading} — ${order.reference}`,html,text,'general');
+  if(!sent.skipped)await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_email_sent_at=CURRENT_TIMESTAMP WHERE id=?`).bind(order.id).run().catch(()=>{});
 }
 
 async function createMerchOrder(request,env){
@@ -3113,6 +3161,8 @@ async function createMerchOrder(request,env){
   }
   if(!b)return fail('The order form could not be read.',400);
   const name=clean(b.name,100),email=clean(b.email,160).toLowerCase(),phone=clean(b.phone,40),design=clean(b.design,100),fit=clean(b.fit,20),size=clean(b.size,30),quantity=Math.max(1,Math.min(4,Number(b.quantity)||1));
+  const fulfilment=clean(b.fulfilment_method,20)==='delivery'?'delivery':'collection';
+  const deliveryAddress=clean(b.delivery_address,500);
   if(!name||!emailOk(email))return fail('Please add your name and a valid email address.',400);
   if(!['Just One More Dance','No Mistakes, Just Variations'].includes(design))return fail('Please choose one of the available T-shirt designs.',400);
   if(!['unisex','womens'].includes(fit))return fail('Please choose a T-shirt fit.',400);
@@ -3120,11 +3170,12 @@ async function createMerchOrder(request,env){
   const womensSizes=new Set(['S (UK 10)','M (UK 12)','L (UK 14)','XL (UK 16)','2XL (UK 18)','3XL (UK 20)','4XL (UK 22)']);
   if(!(fit==='unisex'?unisexSizes:womensSizes).has(size))return fail('Please choose an available size.',400);
   if(!b.terms)return fail('Please confirm that you understand the made-to-order production time.',400);
-  const unit=fit==='womens'?2200:2000,amount=unit*quantity,id=crypto.randomUUID(),reference=merchOrderReference();
-  await env.BOOKINGS_DB.prepare(`INSERT INTO merch_orders(id,reference,customer_name,customer_email,customer_phone,design,fit,size,quantity,unit_price_pence,amount_pence,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,'PENDING')`)
-    .bind(id,reference,name,email,phone,design,fit,size,quantity,unit,amount).run();
+  if(fulfilment==='delivery'&&!deliveryAddress)return fail('Please add the delivery address, including postcode.',400);
+  const unit=fit==='womens'?2200:2000,deliveryPence=fulfilment==='delivery'?395:0,amount=(unit*quantity)+deliveryPence,id=crypto.randomUUID(),reference=merchOrderReference();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO merch_orders(id,reference,customer_name,customer_email,customer_phone,design,fit,size,quantity,unit_price_pence,amount_pence,status,fulfilment_method,delivery_address,delivery_pence,fulfilment_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,'PENDING',?,?,?,'NEW')`)
+    .bind(id,reference,name,email,phone,design,fit,size,quantity,unit,amount,fulfilment,deliveryAddress||null,deliveryPence).run();
   await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-    .bind(email,'MERCH_ORDER_CREATED','merch_order',id,JSON.stringify({reference,design,fit,size,quantity,amount_pence:amount})).run().catch(()=>{});
+    .bind(email,'MERCH_ORDER_CREATED','merch_order',id,JSON.stringify({reference,design,fit,size,quantity,amount_pence:amount,fulfilment_method:fulfilment,delivery_pence:deliveryPence})).run().catch(()=>{});
 
   if(!sumUpConfigured(env)){
     const message='Your order has been recorded. Nora will contact you about payment.';
@@ -3172,12 +3223,41 @@ async function merchOrderStatus(request,env,url){
         await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=CURRENT_TIMESTAMP,provider_transaction_id=? WHERE id=?`).bind(tid,order.id).run();
         await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(order.customer_email,'MERCH_ORDER_PAID','merch_order',order.id,JSON.stringify({reference,transaction_id:tid})).run().catch(()=>{});
         order.status='PAID';
+        order.provider_transaction_id=tid;
+        try{await sendMerchConfirmation(env,{...order,status:'PAID'});}catch(_){}
       } else if(['FAILED','EXPIRED'].includes(cs)) {
         await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run(); order.status=cs;
       }
     }catch(_){}
   }
-  return json({ok:true,reference:order.reference,status:order.status,design:order.design,fit:order.fit,size:order.size,quantity:order.quantity,amount_pence:order.amount_pence});
+  return json({ok:true,reference:order.reference,status:order.status,design:order.design,fit:order.fit,size:order.size,quantity:order.quantity,amount_pence:order.amount_pence,fulfilment_method:order.fulfilment_method,delivery_pence:order.delivery_pence,fulfilment_status:order.fulfilment_status});
+}
+
+
+async function adminMerchOrders(request,env){
+  const check=requireAccessAdmin(request,env); if(check.response)return check.response;
+  await ensureBookingSchema(env);
+  if(request.method==='GET'){
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders ORDER BY created_at DESC LIMIT 250`).all();
+    return json({items:rows.results||[]});
+  }
+  const body=await request.json().catch(()=>null); if(!body)return json({error:'Invalid merchandise order request.'},400);
+  const id=clean(body.id,120),action=clean(body.action,40);
+  const order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE id=?`).bind(id).first();
+  if(!order)return json({error:'Merchandise order not found.'},404);
+  if(action==='READY'){
+    if(order.fulfilment_method!=='collection')return json({error:'This order is set for delivery.'},409);
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='READY_FOR_COLLECTION' WHERE id=?`).bind(id).run();
+    await sendMerchFulfilmentEmail(env,{...order,fulfilment_status:'READY_FOR_COLLECTION'});
+  } else if(action==='DISPATCHED'){
+    if(order.fulfilment_method!=='delivery')return json({error:'This order is set for collection.'},409);
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='DISPATCHED' WHERE id=?`).bind(id).run();
+    await sendMerchFulfilmentEmail(env,{...order,fulfilment_status:'DISPATCHED'});
+  } else if(action==='COMPLETE'){
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='COMPLETED' WHERE id=?`).bind(id).run();
+  } else return json({error:'Unknown merchandise action.'},400);
+  await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email,`MERCH_${action}`,'merch_order',id,JSON.stringify({reference:order.reference})).run().catch(()=>{});
+  return json({ok:true});
 }
 
 async function adminPrivateEvents(request, env) {
@@ -3373,6 +3453,7 @@ export default {
       if (path === '/api/promotions/validate' && request.method === 'POST') return publicPromoValidate(request, env);
       if (path === '/api/merch-orders' && request.method === 'POST') return createMerchOrder(request, env);
       if (path === '/api/merch-order-status' && request.method === 'GET') return merchOrderStatus(request, env, url);
+      if (path === '/api/admin/merch-orders' && ['GET','PATCH'].includes(request.method)) return adminMerchOrders(request, env);
       if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);
       if (path === '/api/sumup/callback' && request.method === 'GET') return sumUpOAuthCallback(request, env, url);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);

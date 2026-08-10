@@ -426,6 +426,11 @@
 <label>Your name<input autocomplete="name" maxlength="100" name="name" required=""/></label>
 <label>Email address<input autocomplete="email" maxlength="160" name="email" required="" type="email"/></label>
 <label>Phone number <span>(optional)</span><input autocomplete="tel" maxlength="40" name="phone" type="tel"/></label>
+<fieldset class="merch-fulfilment"><legend>How would you like to receive it?</legend>
+<label><input checked name="fulfilment_method" type="radio" value="collection"/> Collect from Boot Scootin’ — FREE</label>
+<label><input name="fulfilment_method" type="radio" value="delivery"/> UK delivery — £3.95</label>
+</fieldset>
+<label id="merchDeliveryAddressWrap" hidden>Delivery address<textarea autocomplete="street-address" maxlength="500" name="delivery_address" rows="4" placeholder="House number and street, town/city, postcode"></textarea></label>
 <label class="merch-terms-check"><input name="terms" required="" type="checkbox"/> I understand this item is made to order and DTF production can take a couple of weeks.</label>
 <div class="merch-order-total">Total: <strong id="merchOrderTotal">£20.00</strong></div>
 <button class="button" id="merchPayButton" type="submit">Continue to secure payment</button>
@@ -581,12 +586,15 @@
   const womens=['S (UK 10)','M (UK 12)','L (UK 14)','XL (UK 16)','2XL (UK 18)','3XL (UK 20)','4XL (UK 22)'];
   function fit(){return form.querySelector('input[name="fit"]:checked').value}
   function refreshSizes(){const list=fit()==='womens'?womens:unisex; const current=size.value; size.innerHTML=list.map(x=>`<option>${x}</option>`).join(''); if(list.includes(current))size.value=current; refreshTotal();}
-  function refreshTotal(){const q=Number(form.elements.quantity.value||1); const price=fit()==='womens'?22:20; total.textContent=`£${(q*price).toFixed(2)}`;}
+  function refreshTotal(){const q=Number(form.elements.quantity.value||1); const price=fit()==='womens'?22:20; const delivery=form.elements.fulfilment_method.value==='delivery'?3.95:0; total.textContent=`£${(q*price+delivery).toFixed(2)}`;}
   document.querySelectorAll('.merch-open-order').forEach(btn=>btn.addEventListener('click',()=>{const card=btn.closest('.merch-product'); design.value=card.dataset.design; designLabel.value=card.dataset.design; status.textContent=''; panel.hidden=false; document.body.style.overflow='hidden'; refreshSizes();}));
   panel.querySelector('.merch-order-close').addEventListener('click',()=>{panel.hidden=true;document.body.style.overflow='';});
   panel.addEventListener('click',e=>{if(e.target===panel){panel.hidden=true;document.body.style.overflow='';}});
   form.querySelectorAll('input[name="fit"]').forEach(x=>x.addEventListener('change',refreshSizes));
   form.elements.quantity.addEventListener('change',refreshTotal);
+  const addressWrap=document.getElementById('merchDeliveryAddressWrap');
+  const addressField=form.elements.delivery_address;
+  form.querySelectorAll('input[name="fulfilment_method"]').forEach(x=>x.addEventListener('change',()=>{const delivery=form.elements.fulfilment_method.value==='delivery'; addressWrap.hidden=!delivery; addressField.required=delivery; refreshTotal();}));
   refreshSizes();
   form.addEventListener('submit',()=>{
     status.textContent='Opening secure SumUp payment…';

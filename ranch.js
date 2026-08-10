@@ -234,7 +234,7 @@
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
   window.addEventListener('pageshow',()=>setDrawer(false));
 
-  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
+  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
     state.currentView=name;
     $$('.ranch-view').forEach(panel=>panel.classList.toggle('active',panel.dataset.viewPanel===name));
@@ -245,6 +245,7 @@
     if(name==='classes')loadClasses();
     if(name==='bookings')loadBookings();
     if(name==='customers')loadCustomers();
+    if(name==='merch-orders')loadMerchOrders();
     if(name==='emails')loadEmailCentre();
     if(name==='promotions')loadPromotions();
     if(name==='operations')renderOperationsFromBootstrap();
@@ -259,6 +260,19 @@
     const open=event.target.closest('[data-open-settings]');
     if(open)showView('settings');
   });
+
+  function moneyPence(value){return `£${(Number(value||0)/100).toFixed(2)}`;}
+  async function loadMerchOrders(){
+    const box=$('#ranchMerchOrders'); if(!box)return;
+    box.innerHTML='<div class="ranch91-loading">Loading merchandise orders…</div>';
+    try{
+      const data=await jsonFetch('/api/admin/merch-orders'); const rows=data.items||[];
+      if(!rows.length){box.innerHTML='<div class="ranch91-empty">No merchandise orders yet.</div>';return;}
+      box.innerHTML=rows.map(o=>`<article class="ranch91-list-card merch-admin-card"><div><strong>${esc(o.reference)}</strong><span>${esc(o.customer_name)} · ${esc(o.customer_email)}</span><span>${esc(o.design)} · ${esc(o.fit==='womens'?"Women’s premium":"Unisex")} · ${esc(o.size)} × ${o.quantity}</span><span>${o.fulfilment_method==='delivery'?`Delivery · ${esc(o.delivery_address||'Address missing')}`:'Collection'} · ${moneyPence(o.amount_pence)} · ${esc(o.status)}</span><span>Fulfilment: ${esc(o.fulfilment_status||'NEW')}</span></div><div class="ranch91-row-actions">${o.status==='PAID'&&o.fulfilment_method==='collection'&&o.fulfilment_status!=='READY_FOR_COLLECTION'?`<button class="button compact" data-merch-action="READY" data-id="${esc(o.id)}">Ready for collection</button>`:''}${o.status==='PAID'&&o.fulfilment_method==='delivery'&&o.fulfilment_status!=='DISPATCHED'?`<button class="button compact" data-merch-action="DISPATCHED" data-id="${esc(o.id)}">Mark dispatched</button>`:''}${['READY_FOR_COLLECTION','DISPATCHED'].includes(o.fulfilment_status)?`<button class="button secondary compact" data-merch-action="COMPLETE" data-id="${esc(o.id)}">Complete</button>`:''}</div></article>`).join('');
+      box.querySelectorAll('[data-merch-action]').forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{await jsonFetch('/api/admin/merch-orders',{method:'PATCH',body:JSON.stringify({id:btn.dataset.id,action:btn.dataset.merchAction})});await loadMerchOrders();}catch(e){alert(e.message||'Could not update order.');btn.disabled=false;}}));
+    }catch(e){box.innerHTML=`<div class="ranch91-error">${esc(e.message||'Could not load merchandise orders.')}</div>`;}
+  }
+  $('#refreshMerchOrders')?.addEventListener('click',loadMerchOrders);
 
   function displayNameFromEmail(email){
     if(!email)return 'Nora';

@@ -138,3 +138,10 @@ body.nora-original-only .library-controls .filter-row{display:none!important}
     font:700 15px/1 Oswald,sans-serif!important;
   }
 }
+
+/* v96.4.62 — safe homepage + merchandise fulfilment polish */
+.home-first-message h2{font-size:clamp(2.6rem,6vw,5.4rem);line-height:.98;margin:.35rem 0 1rem;text-transform:uppercase}.home-first-actions{display:flex;gap:12px;flex-wrap:wrap}.home-first-actions .secondary{background:transparent}.home-meet-nora-lower{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.75fr);gap:36px;align-items:center;padding:clamp(42px,7vw,90px) clamp(24px,6vw,90px);background:#0b0606;border-top:1px solid #3f2022;border-bottom:1px solid #3f2022}.home-meet-nora-lower figure{margin:0}.home-meet-nora-lower img{width:100%;max-height:560px;object-fit:cover;border:1px solid #5b2a2c}.home-meet-nora-lower .handwritten{font-size:clamp(1.8rem,4vw,3rem)}
+.merch-fulfilment{border:1px solid #6f3436;padding:14px;margin:14px 0}.merch-fulfilment legend{padding:0 8px;text-transform:uppercase;letter-spacing:.08em}.merch-fulfilment label{display:block;margin:8px 0}.merch-order-card textarea{width:100%;box-sizing:border-box;padding:.85rem;border:1px solid #6f3436;background:#110909;color:#fff;font:inherit}.merch-admin-card{display:flex;gap:18px;justify-content:space-between;align-items:flex-start}.merch-admin-card>div:first-child{display:grid;gap:5px}.ranch91-row-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* Beige sweep: pale paper blocks become dark honky-tonk panels, while preserving cream text. */
+body:not(.legal-page) .note-box,body:not(.legal-page) .info-box,body:not(.legal-page) .tip-box,body:not(.legal-page) .qualification-note{background:#170c0c!important;color:#efe2d4!important;border-color:#713338!important}
+@media(max-width:760px){.home-meet-nora-lower{grid-template-columns:1fr}.home-meet-nora-lower figure{order:2}.home-first-actions{flex-direction:column}.home-first-actions a{width:100%;box-sizing:border-box}.merch-admin-card{flex-direction:column}}

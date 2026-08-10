@@ -96,6 +96,7 @@
       <button type="button" data-view="classes">Classes</button>
       <button type="button" data-view="bookings">Bookings</button>
       <button type="button" data-view="customers">Customers</button>
+      <button type="button" data-view="merch-orders">Merch Orders</button>
       <button type="button" data-view="emails">Emails &amp; Mailing List</button>
       <button type="button" data-view="promotions">Promotions &amp; Rewards</button>
       <button type="button" data-view="operations">Operations</button>
@@ -320,6 +321,14 @@
             <button class="button secondary compact" id="exportCustomersCsv" type="button">Export CSV</button>
           </div>
           <div id="ranchCustomers">Loading…</div>
+        </div>
+      </section>
+
+
+      <section class="ranch-view" data-view-panel="merch-orders">
+        <div class="ranch-panel">
+          <div class="ranch-panel-head"><div><p class="kicker red">T-shirts & fulfilment</p><h2>Merchandise Orders</h2><p>Paid orders, collection/delivery details and fulfilment emails.</p></div><button class="button secondary compact" id="refreshMerchOrders" type="button">Refresh</button></div>
+          <div id="ranchMerchOrders" class="ranch-list">Loading…</div>
         </div>
       </section>
 
