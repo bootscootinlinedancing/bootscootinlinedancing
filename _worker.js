@@ -1831,7 +1831,30 @@ async function privateEventInquiry(request, env) {
     env.BOOKINGS_DB.prepare(`INSERT INTO private_event_inquiries(id,reference,secure_token,customer_name,customer_email,customer_phone,event_type,event_type_other,preferred_date,alternative_date,start_time,end_time,venue_name,venue_address,venue_postcode,guest_count,age_range,experience_level,session_length,format_requested,music_requests,sound_system_provided,microphone_provided,dance_floor_confirmed,power_available,parking_loading_available,equipment_notes,accessibility_notes,additional_notes) VALUES(${Array(29).fill('?').join(',')})`).bind(...values),
     env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'CUSTOMER',email,'INQUIRY_SUBMITTED',JSON.stringify({preferred_date:preferred,postcode}))
   ]);
-  return json({ok:true,reference,status_url:`/private-quote.html?token=${encodeURIComponent(token)}`,message:'Your inquiry has been sent. This is not a confirmed booking.'},201);
+
+  // Notify Nora/HQ about every new private-event inquiry. This is deliberately
+  // non-blocking: the customer's inquiry remains safely stored even if email
+  // delivery is temporarily unavailable.
+  let adminEmailSent=false, adminEmailWarning='';
+  const adminEmail=clean(env.ADMIN_EMAIL || env.EVENTS_NOTIFY_EMAIL || '',254).toLowerCase();
+  if(emailOk(adminEmail)){
+    try{
+      const origin=new URL(request.url).origin;
+      const hqUrl=`${origin}/ranch.html`;
+      const subject=`New private event inquiry — ${reference}`;
+      const timeLabel=[clean(b.start_time,8),clean(b.end_time,8)].filter(Boolean).join('–') || 'Not supplied';
+      const textBody=`New private-event inquiry received.\n\nReference: ${reference}\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nEvent: ${type}\nPreferred date: ${preferred}\nTime: ${timeLabel}\nGuests: ${guests}\nVenue: ${clean(b.venue_name,160)||'Not supplied'}\nAddress: ${address}, ${postcode}\n\nOpen Boot Scootin’ HQ to review and quote:\n${hqUrl}`;
+      const htmlBody=`<div style="font-family:Arial,sans-serif;line-height:1.55;color:#1a1111"><h2>New private event inquiry</h2><p><strong>${reference}</strong></p><p><strong>Customer:</strong> ${name}<br><strong>Email:</strong> ${email}<br><strong>Phone:</strong> ${phone||'Not supplied'}<br><strong>Event:</strong> ${type}<br><strong>Preferred date:</strong> ${preferred}<br><strong>Time:</strong> ${timeLabel}<br><strong>Guests:</strong> ${guests}<br><strong>Venue:</strong> ${clean(b.venue_name,160)||'Not supplied'}<br><strong>Address:</strong> ${address}, ${postcode}</p><p><a href="${hqUrl}" style="display:inline-block;padding:14px 20px;background:#c81924;color:#fff;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
+      const sent=await sendTransactionalEmail(env,adminEmail,subject,htmlBody,textBody,'events');
+      adminEmailSent=!sent?.skipped;
+      if(sent?.skipped) adminEmailWarning=sent.reason||'Email provider is not configured.';
+    }catch(error){adminEmailWarning=clean(error?.message||error,300);}
+  }else{
+    adminEmailWarning='ADMIN_EMAIL is not configured with a valid notification address.';
+  }
+  await env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'SYSTEM','email','ADMIN_INQUIRY_EMAIL',JSON.stringify({sent:adminEmailSent,warning:adminEmailWarning,recipient:adminEmail||null})).run().catch(()=>{});
+
+  return json({ok:true,reference,status_url:`/private-quote.html?token=${encodeURIComponent(token)}`,message:'Your inquiry has been sent. This is not a confirmed booking.',admin_email_sent:adminEmailSent},201);
 }
 
 async function publicPrivateQuote(request, env, url) {
@@ -3422,6 +3445,15 @@ async function adminPrivateEvents(request, env) {
   if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,q.id quote_id,q.total_pence,q.deposit_pence,q.status quote_status,q.quote_expires_at FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) ORDER BY i.created_at DESC`).all();return json({items:results});}
   const b=await request.json().catch(()=>null);if(!b)return json({error:'Invalid private event request.'},400);
   if(request.method==='PATCH'&&b.action==='STATUS'){const status=clean(b.status,40);if(!privateStatuses.has(status))return json({error:'Invalid status.'},400);await env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,clean(b.id,120)).run();return json({ok:true});}
+  if(request.method==='DELETE'&&b.action==='DELETE'){
+    const inquiryId=clean(b.id,120);
+    const inquiry=await env.BOOKINGS_DB.prepare(`SELECT id,reference,customer_name,status FROM private_event_inquiries WHERE id=?`).bind(inquiryId).first();
+    if(!inquiry)return json({error:'Private-event inquiry not found.'},404);
+    // D1 foreign keys are ON DELETE CASCADE, so removing the inquiry also removes
+    // its quote versions, payment rows and timeline entries.
+    await env.BOOKINGS_DB.prepare(`DELETE FROM private_event_inquiries WHERE id=?`).bind(inquiryId).run();
+    return json({ok:true,deleted_reference:inquiry.reference});
+  }
   if(request.method==='POST'&&b.action==='QUOTE'){
     const inquiryId=clean(b.inquiry_id,120);
     const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE id=?`).bind(inquiryId).first();

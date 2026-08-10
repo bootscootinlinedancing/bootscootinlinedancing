@@ -1105,6 +1105,7 @@ Type REFUNDED to continue.`);
           <button type="button" class="button secondary" data-private-status="REVIEWING">Mark reviewing</button>
           <button type="button" class="button" data-private-status="AWAITING_CUSTOMER">Approve for quote</button>
           <button type="button" class="button danger" data-private-status="DECLINED">Decline inquiry</button>
+          <button type="button" class="button danger private-delete-inquiry" data-private-delete="1">Delete test / unwanted inquiry</button>
         </div>
       </section>
 
@@ -1143,6 +1144,18 @@ Type REFUNDED to continue.`);
   async function setPrivateEventStatus(id,status){
     try{await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'STATUS',id,status})});toast(`Inquiry marked ${privateStatusLabel(status).toLowerCase()}.`,'success');$('#privateEventDialog')?.close();await loadPrivateEvents();}
     catch(error){toast(error.message,'error');}
+  }
+  async function deletePrivateEvent(id){
+    const item=state.privateEvents.find(row=>String(row.id)===String(id));
+    if(!item)return;
+    const ok=window.confirm(`Delete ${item.reference}?\n\nThis permanently removes this private-event inquiry and its test quote/payment history from HQ.`);
+    if(!ok)return;
+    try{
+      const result=await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE',id})});
+      toast(`${result.deleted_reference||item.reference} deleted.`,'success');
+      $('#privateEventDialog')?.close();
+      await loadPrivateEvents();
+    }catch(error){toast(error.message,'error');}
   }
   async function submitPrivateQuote(event){
     event.preventDefault();
@@ -1558,4 +1571,11 @@ Type REFUNDED to continue.`);
     }
   },7000);
 
+
+  document.addEventListener('click',event=>{
+    const del=event.target.closest('[data-private-delete]');
+    if(!del)return;
+    const id=del.closest('.private-detail')?.dataset.privateId;
+    if(id) deletePrivateEvent(id);
+  });
 })();
