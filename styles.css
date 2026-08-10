@@ -8252,3 +8252,9 @@ body.ranch-v91 .launch-readiness p,body.ranch-v91 .launch-readiness li,body.ranc
 .private-quote-admin-form{display:grid;gap:12px}.private-quote-admin-form label{display:grid;gap:6px;color:#f3e6dc;font-weight:700}.private-quote-admin-form input,.private-quote-admin-form textarea{width:100%;box-sizing:border-box;border:1px solid #743137;background:#080505;color:#fff;padding:12px;font:inherit}.private-form-help{margin:-4px 0 4px;color:#bda99c}.private-money-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.private-quote-total{padding:14px;border-left:4px solid #e32631;background:#090606;color:#fff;font-size:22px;font-weight:800}.private-quote-admin-form .booking-submit{width:100%;min-height:54px}
 @media(max-width:780px){.private-detail-head{display:grid}.private-status.large{justify-self:start}.private-detail-grid{grid-template-columns:1fr 1fr}.private-money-grid{grid-template-columns:1fr 1fr}.private-status-actions{display:grid}.private-status-actions .button{width:100%}}
 @media(max-width:480px){.private-event-dialog{width:100%;max-width:none;height:100dvh;max-height:100dvh;border:0}.private-event-dialog-shell{max-height:100dvh;min-height:100dvh;box-sizing:border-box;padding:16px}.private-detail-grid,.private-money-grid{grid-template-columns:1fr}}
+
+/* v96.4.70 private-event quote submit feedback */
+.private-quote-submit-status{margin:12px 0 4px;padding:12px 14px;border:1px solid rgba(235,67,78,.55);background:#12090a;color:#f5e9e1;font-weight:700;line-height:1.45}
+.private-quote-submit-status.success{border-color:#36a667;background:#0c1912;color:#c9f4d9}
+.private-quote-submit-status.error{border-color:#e33b48;background:#24090c;color:#ffd5d8}
+.private-quote-admin-form button[disabled]{opacity:.65;cursor:wait}

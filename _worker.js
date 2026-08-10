@@ -3310,15 +3310,35 @@ async function adminPrivateEvents(request, env) {
   const b=await request.json().catch(()=>null);if(!b)return json({error:'Invalid private event request.'},400);
   if(request.method==='PATCH'&&b.action==='STATUS'){const status=clean(b.status,40);if(!privateStatuses.has(status))return json({error:'Invalid status.'},400);await env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,clean(b.id,120)).run();return json({ok:true});}
   if(request.method==='POST'&&b.action==='QUOTE'){
-    const inquiryId=clean(b.inquiry_id,120);const current=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(MAX(version),0) v FROM private_event_quotes WHERE inquiry_id=?`).bind(inquiryId).first();const version=Number(current?.v||0)+1;
+    const inquiryId=clean(b.inquiry_id,120);
+    const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE id=?`).bind(inquiryId).first();
+    if(!inquiry)return json({error:'Private-event inquiry not found.'},404);
+    const current=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(MAX(version),0) v FROM private_event_quotes WHERE inquiry_id=?`).bind(inquiryId).first();const version=Number(current?.v||0)+1;
     const base=Math.max(0,Number(b.base_fee_pence)||0),travel=Math.max(0,Number(b.travel_fee_pence)||0),equipment=Math.max(0,Number(b.equipment_fee_pence)||0),extra=Math.max(0,Number(b.extra_fee_pence)||0),discount=Math.max(0,Number(b.discount_pence)||0),total=Math.max(0,base+travel+equipment+extra-discount),deposit=Math.min(total,Math.max(0,Number(b.deposit_pence)||0));
+    if(base<=0||total<=0)return json({error:'Add a session/base fee before sending the quote.'},400);
     const quoteId=crypto.randomUUID();
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`INSERT INTO private_event_quotes(id,inquiry_id,version,agreed_date,agreed_start_time,agreed_end_time,agreed_venue,agreed_address,package_description,base_fee_pence,travel_fee_pence,equipment_fee_pence,extra_fee_pence,discount_pence,total_pence,deposit_pence,balance_due_pence,balance_due_date,quote_expires_at,cancellation_terms,customer_notes,internal_notes,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'QUOTE_SENT')`).bind(quoteId,inquiryId,version,clean(b.agreed_date,10),clean(b.agreed_start_time,8),clean(b.agreed_end_time,8),clean(b.agreed_venue,160),clean(b.agreed_address,300),clean(b.package_description,1000),base,travel,equipment,extra,discount,total,deposit,total-deposit,clean(b.balance_due_date,10),clean(b.quote_expires_at,30),clean(b.cancellation_terms,1200),clean(b.customer_notes,1200),clean(b.internal_notes,1200)),
       env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status='QUOTE_SENT',updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(inquiryId),
       env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiryId,'ADMIN',check.state.email,'QUOTE_SENT',JSON.stringify({quote_id:quoteId,total_pence:total,deposit_pence:deposit}))
     ]);
-    return json({ok:true,quote_id:quoteId});
+    let emailSent=false,emailWarning='';
+    const customerEmail=clean(inquiry.customer_email,254);
+    if(emailOk(customerEmail)){
+      try{
+        const origin=new URL(request.url).origin;
+        const proposalUrl=`${origin}/private-quote.html?token=${encodeURIComponent(inquiry.secure_token)}`;
+        const pounds=p=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(p)||0)/100);
+        const subject=`Your Boot Scootin’ private event quote — ${clean(inquiry.reference,80)}`;
+        const text=`Hi ${clean(inquiry.customer_name,120)||'there'},\n\nYour private event quote is ready.\n\nTotal: ${pounds(total)}\nDeposit: ${pounds(deposit)}\nBalance after deposit: ${pounds(total-deposit)}\n\nReview your secure proposal here:\n${proposalUrl}\n\nYou can review the details and request changes from that page.\n\nNora\nBoot Scootin’ Line Dancing`;
+        const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>Your Boot Scootin’ private event quote is ready</h2><p>Hi ${clean(inquiry.customer_name,120)||'there'},</p><p>Your private event proposal is ready to review.</p><p><strong>Total:</strong> ${pounds(total)}<br><strong>Deposit:</strong> ${pounds(deposit)}<br><strong>Balance after deposit:</strong> ${pounds(total-deposit)}</p><p><a href="${proposalUrl}" style="display:inline-block;padding:14px 20px;background:#c81924;color:white;text-decoration:none;font-weight:700">REVIEW YOUR PROPOSAL</a></p><p>You can review the details and request changes securely from that page.</p><p>Nora<br><strong>Boot Scootin’ Line Dancing</strong></p></div>`;
+        const sent=await sendTransactionalEmail(env,customerEmail,subject,html,text,'events');
+        emailSent=!sent?.skipped;
+        if(sent?.skipped)emailWarning=sent.reason||'Email provider is not configured.';
+      }catch(error){emailWarning=clean(error?.message||error,300);}
+    }else emailWarning='The inquiry does not contain a valid customer email address.';
+    await env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiryId,'SYSTEM','email','QUOTE_EMAIL',JSON.stringify({sent:emailSent,warning:emailWarning})).run().catch(()=>{});
+    return json({ok:true,quote_id:quoteId,email_sent:emailSent,email_warning:emailWarning});
   }
   return json({error:'Method not allowed.'},405);
 }

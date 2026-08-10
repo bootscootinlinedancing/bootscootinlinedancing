@@ -1128,6 +1128,7 @@ Type REFUNDED to continue.`);
         <label>Cancellation terms<textarea name="cancellation_terms" rows="3" placeholder="Add the agreed cancellation / refund terms"></textarea></label>
         <label>Private HQ note<textarea name="internal_notes" rows="3" placeholder="Internal note — not shown to the customer"></textarea></label>
         <div class="private-quote-total" id="privateQuoteTotal">Quote total: £0.00</div>
+        <div id="privateQuoteSubmitStatus" class="private-quote-submit-status" hidden aria-live="polite"></div>
         <button type="submit" class="button booking-submit">Save & send quote</button>
       </form>
     </section>`;
@@ -1144,11 +1145,48 @@ Type REFUNDED to continue.`);
     catch(error){toast(error.message,'error');}
   }
   async function submitPrivateQuote(event){
-    event.preventDefault();const form=event.currentTarget;const id=$('.private-detail')?.dataset.privateId;if(!id)return;
-    const payload={action:'QUOTE',inquiry_id:id,agreed_date:form.agreed_date.value,agreed_start_time:form.agreed_start_time.value,agreed_end_time:form.agreed_end_time.value,agreed_venue:form.agreed_venue.value,agreed_address:form.agreed_address.value,package_description:form.package_description.value,base_fee_pence:privatePence(form.base_fee.value),travel_fee_pence:privatePence(form.travel_fee.value),equipment_fee_pence:privatePence(form.equipment_fee.value),extra_fee_pence:privatePence(form.extra_fee.value),discount_pence:privatePence(form.discount.value),deposit_pence:privatePence(form.deposit.value),balance_due_date:form.balance_due_date.value,quote_expires_at:form.quote_expires_at.value,cancellation_terms:form.cancellation_terms.value,customer_notes:form.customer_notes.value,internal_notes:form.internal_notes.value};
-    if(payload.base_fee_pence<=0)return toast('Add the base fee before sending the quote.','error');
-    try{await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Quote saved and inquiry moved to QUOTE SENT.','success');$('#privateEventDialog')?.close();await loadPrivateEvents();}
-    catch(error){toast(error.message,'error');}
+    event.preventDefault();
+    const form=event.currentTarget;
+    const id=$('.private-detail')?.dataset.privateId;
+    if(!id)return;
+    const fd=new FormData(form);
+    const value=name=>String(fd.get(name)||'').trim();
+    const payload={
+      action:'QUOTE',inquiry_id:id,
+      agreed_date:value('agreed_date'),agreed_start_time:value('agreed_start_time'),agreed_end_time:value('agreed_end_time'),
+      agreed_venue:value('agreed_venue'),agreed_address:value('agreed_address'),package_description:value('package_description'),
+      base_fee_pence:privatePence(value('base_fee')),travel_fee_pence:privatePence(value('travel_fee')),
+      equipment_fee_pence:privatePence(value('equipment_fee')),extra_fee_pence:privatePence(value('extra_fee')),
+      discount_pence:privatePence(value('discount')),deposit_pence:privatePence(value('deposit')),
+      balance_due_date:value('balance_due_date'),quote_expires_at:value('quote_expires_at'),
+      cancellation_terms:value('cancellation_terms'),customer_notes:value('customer_notes'),internal_notes:value('internal_notes')
+    };
+    const status=$('#privateQuoteSubmitStatus');
+    const button=form.querySelector('button[type="submit"]');
+    if(payload.base_fee_pence<=0){
+      if(status){status.hidden=false;status.className='private-quote-submit-status error';status.textContent='Please add the session/base fee before sending the quote.';}
+      form.elements.namedItem('base_fee')?.focus();
+      form.elements.namedItem('base_fee')?.scrollIntoView({behavior:'smooth',block:'center'});
+      toast('Add the base fee before sending the quote.','error');
+      return;
+    }
+    if(payload.deposit_pence>payload.base_fee_pence+payload.travel_fee_pence+payload.equipment_fee_pence+payload.extra_fee_pence-payload.discount_pence){
+      if(status){status.hidden=false;status.className='private-quote-submit-status error';status.textContent='The deposit cannot be more than the quote total.';}
+      return;
+    }
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='SAVING & SENDING…';}
+    if(status){status.hidden=false;status.className='private-quote-submit-status';status.textContent='Saving the quote and sending the customer their secure proposal link…';}
+    try{
+      const result=await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+      if(status){status.className='private-quote-submit-status success';status.textContent=result.email_sent===false?'Quote saved. The customer email could not be sent automatically, so please send the secure proposal link manually.':'Quote saved and emailed to the customer.';}
+      toast(result.email_sent===false?'Quote saved — email needs sending manually.':'Quote saved and sent to the customer.','success');
+      setTimeout(async()=>{$('#privateEventDialog')?.close();await loadPrivateEvents();},700);
+    } catch(error){
+      if(status){status.hidden=false;status.className='private-quote-submit-status error';status.textContent=error.message||'The quote could not be saved.';}
+      toast(error.message,'error');
+    } finally {
+      if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Save & send quote';}
+    }
   }
 
   // Media
