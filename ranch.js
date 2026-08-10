@@ -1073,8 +1073,82 @@ Type REFUNDED to continue.`);
     try{
       const data=await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{cache:'no-store'});
       state.privateEvents=data.items||[];
-      box.innerHTML=state.privateEvents.length?state.privateEvents.map(i=>`<article class="private-admin-card"><header><div><span class="private-status">${esc(String(i.status).replaceAll('_',' '))}</span><h3>${esc(i.event_type)} · ${esc(i.reference)}</h3></div><strong>${esc(i.customer_name)}</strong></header><p>${esc(i.preferred_date)} · ${esc(i.venue_postcode)}</p></article>`).join(''):emptyPanel('No private-event inquiries yet.');
+      box.innerHTML=state.privateEvents.length?state.privateEvents.map(i=>`<button type="button" class="private-admin-card private-admin-open" data-private-event-id="${esc(i.id)}" aria-label="Open ${esc(i.reference)}"><header><div><span class="private-status">${esc(String(i.status).replaceAll('_',' '))}</span><h3>${esc(i.event_type)} · ${esc(i.reference)}</h3></div><strong>${esc(i.customer_name)}</strong></header><p>${esc(i.preferred_date)} · ${esc(i.venue_postcode)}</p><span class="private-open-hint">Open inquiry →</span></button>`).join(''):emptyPanel('No private-event inquiries yet.');
     }catch(error){box.innerHTML=lockedPanel('Private events unavailable',error.message);}
+  }
+
+
+  function privateStatusLabel(value){return String(value||'NEW_INQUIRY').replaceAll('_',' ');}
+  function privateMoneyInput(pence){return ((Number(pence||0))/100).toFixed(2);}
+  function privatePence(value){const n=Number.parseFloat(String(value||'0').replace(/[^0-9.-]/g,''));return Number.isFinite(n)?Math.max(0,Math.round(n*100)):0;}
+  function privateField(label,value){return `<div class="private-detail-field"><span>${esc(label)}</span><strong>${esc(value||'—')}</strong></div>`;}
+  function openPrivateEvent(id){
+    const item=state.privateEvents.find(row=>String(row.id)===String(id));
+    const dialog=$('#privateEventDialog'),box=$('#privateEventDetail');
+    if(!item||!dialog||!box)return;
+    const phone=item.customer_phone?`<a href="tel:${esc(item.customer_phone)}">${esc(item.customer_phone)}</a>`:'—';
+    const email=item.customer_email?`<a href="mailto:${esc(item.customer_email)}">${esc(item.customer_email)}</a>`:'—';
+    box.innerHTML=`<section class="private-detail" data-private-id="${esc(item.id)}">
+      <div class="private-detail-head"><div><p class="kicker red">Private event inquiry</p><h2>${esc(item.event_type)} · ${esc(item.reference)}</h2><p>${esc(item.customer_name)} · ${email} · ${phone}</p></div><span class="private-status large">${esc(privateStatusLabel(item.status))}</span></div>
+      <div class="private-detail-grid">
+        ${privateField('Preferred date',item.preferred_date)}${privateField('Alternative date',item.alternative_date)}${privateField('Time',[item.start_time,item.end_time].filter(Boolean).join(' – '))}${privateField('Guests',item.guest_count)}
+        ${privateField('Venue',item.venue_name)}${privateField('Postcode',item.venue_postcode)}${privateField('Experience',item.experience_level)}${privateField('Session length',item.session_length)}
+      </div>
+      <div class="private-detail-block"><span>Venue address</span><p>${esc(item.venue_address||'—')}</p></div>
+      <div class="private-detail-block"><span>Requested format</span><p>${esc(item.format_requested||'—')}</p></div>
+      <div class="private-detail-block"><span>Music requests</span><p>${esc(item.music_requests||'—')}</p></div>
+      <div class="private-detail-block"><span>Accessibility / additional notes</span><p>${esc([item.accessibility_notes,item.additional_notes].filter(Boolean).join('\n\n')||'—')}</p></div>
+
+      <section class="private-workflow-box">
+        <h3>Review decision</h3>
+        <div class="private-status-actions">
+          <button type="button" class="button secondary" data-private-status="REVIEWING">Mark reviewing</button>
+          <button type="button" class="button" data-private-status="AWAITING_CUSTOMER">Approve for quote</button>
+          <button type="button" class="button danger" data-private-status="DECLINED">Decline inquiry</button>
+        </div>
+      </section>
+
+      <form id="privateQuoteForm" class="private-quote-admin-form">
+        <h3>Create / revise quote</h3>
+        <p class="private-form-help">Submitting this creates a new quote version and marks the inquiry as QUOTE SENT.</p>
+        <div class="hq-form-grid"><label>Agreed date<input name="agreed_date" type="date" value="${esc(item.preferred_date||'')}"></label><label>Quote expires<input name="quote_expires_at" type="date"></label></div>
+        <div class="hq-form-grid"><label>Start time<input name="agreed_start_time" type="time" value="${esc((item.start_time||'').slice(0,5))}"></label><label>End time<input name="agreed_end_time" type="time" value="${esc((item.end_time||'').slice(0,5))}"></label></div>
+        <label>Agreed venue<input name="agreed_venue" value="${esc(item.venue_name||'')}"></label>
+        <label>Agreed address<textarea name="agreed_address" rows="3">${esc(item.venue_address||'')}</textarea></label>
+        <label>Package / session description<textarea name="package_description" rows="4" placeholder="e.g. 1-hour beginner-friendly private line dancing session, music and teaching included"></textarea></label>
+        <div class="private-money-grid">
+          <label>Base fee (£)<input name="base_fee" inputmode="decimal" value="${item.total_pence?privateMoneyInput(item.total_pence):''}" placeholder="200.00"></label>
+          <label>Travel (£)<input name="travel_fee" inputmode="decimal" value="0.00"></label>
+          <label>Equipment (£)<input name="equipment_fee" inputmode="decimal" value="0.00"></label>
+          <label>Extras (£)<input name="extra_fee" inputmode="decimal" value="0.00"></label>
+          <label>Discount (£)<input name="discount" inputmode="decimal" value="0.00"></label>
+          <label>Deposit (£)<input name="deposit" inputmode="decimal" value="${item.deposit_pence?privateMoneyInput(item.deposit_pence):'50.00'}"></label>
+        </div>
+        <div class="hq-form-grid"><label>Balance due date<input name="balance_due_date" type="date"></label><label>Customer note<input name="customer_notes" placeholder="Anything the customer should know"></label></div>
+        <label>Cancellation terms<textarea name="cancellation_terms" rows="3" placeholder="Add the agreed cancellation / refund terms"></textarea></label>
+        <label>Private HQ note<textarea name="internal_notes" rows="3" placeholder="Internal note — not shown to the customer"></textarea></label>
+        <div class="private-quote-total" id="privateQuoteTotal">Quote total: £0.00</div>
+        <button type="submit" class="button booking-submit">Save & send quote</button>
+      </form>
+    </section>`;
+    dialog.showModal();
+    updatePrivateQuoteTotal();
+  }
+  function updatePrivateQuoteTotal(){
+    const f=$('#privateQuoteForm'),out=$('#privateQuoteTotal');if(!f||!out)return;
+    const total=privatePence(f.base_fee.value)+privatePence(f.travel_fee.value)+privatePence(f.equipment_fee.value)+privatePence(f.extra_fee.value)-privatePence(f.discount.value);
+    out.textContent=`Quote total: ${money(Math.max(0,total))}`;
+  }
+  async function setPrivateEventStatus(id,status){
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'STATUS',id,status})});toast(`Inquiry marked ${privateStatusLabel(status).toLowerCase()}.`,'success');$('#privateEventDialog')?.close();await loadPrivateEvents();}
+    catch(error){toast(error.message,'error');}
+  }
+  async function submitPrivateQuote(event){
+    event.preventDefault();const form=event.currentTarget;const id=$('.private-detail')?.dataset.privateId;if(!id)return;
+    const payload={action:'QUOTE',inquiry_id:id,agreed_date:form.agreed_date.value,agreed_start_time:form.agreed_start_time.value,agreed_end_time:form.agreed_end_time.value,agreed_venue:form.agreed_venue.value,agreed_address:form.agreed_address.value,package_description:form.package_description.value,base_fee_pence:privatePence(form.base_fee.value),travel_fee_pence:privatePence(form.travel_fee.value),equipment_fee_pence:privatePence(form.equipment_fee.value),extra_fee_pence:privatePence(form.extra_fee.value),discount_pence:privatePence(form.discount.value),deposit_pence:privatePence(form.deposit.value),balance_due_date:form.balance_due_date.value,quote_expires_at:form.quote_expires_at.value,cancellation_terms:form.cancellation_terms.value,customer_notes:form.customer_notes.value,internal_notes:form.internal_notes.value};
+    if(payload.base_fee_pence<=0)return toast('Add the base fee before sending the quote.','error');
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Quote saved and inquiry moved to QUOTE SENT.','success');$('#privateEventDialog')?.close();await loadPrivateEvents();}
+    catch(error){toast(error.message,'error');}
   }
 
   // Media
@@ -1266,6 +1340,10 @@ Type REFUNDED to continue.`);
   $('#saveEmailAutomations')?.addEventListener('click',saveEmailAutomations);
   $('#clearEmailTemplate')?.addEventListener('click',clearEmailTemplate);
   $('#emailTemplateSelect')?.addEventListener('change',event=>event.target.value&&applyEmailTemplate(event.target.value));
+  $('#closePrivateEventDialog')?.addEventListener('click',()=>$('#privateEventDialog')?.close());
+  $('#privateEventDialog')?.addEventListener('click',event=>{if(event.target.id==='privateEventDialog')event.currentTarget.close();});
+  $('#privateEventDetail')?.addEventListener('input',event=>{if(event.target.closest('#privateQuoteForm'))updatePrivateQuoteTotal();});
+  $('#privateEventDetail')?.addEventListener('submit',event=>{if(event.target.id==='privateQuoteForm')submitPrivateQuote(event);});
   $('#closeCustomerCrm')?.addEventListener('click',()=>$('#customerCrmDialog')?.close());
   $('#customerCrmDialog')?.addEventListener('click',event=>{if(event.target.id==='customerCrmDialog')event.currentTarget.close();});
   $('#processDueEmails')?.addEventListener('click',async()=>{try{const r=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'PROCESS_DUE'})},60000);toast(`Processed ${r.results?.length||0} due campaign(s).`,'success');loadEmailCentre();}catch(error){toast(error.message,'error');}});
@@ -1307,6 +1385,8 @@ Type REFUNDED to continue.`);
     const delNote=event.target.closest?.('.crm-delete-note');if(delNote&&confirm('Delete this private note?')){const key=$('.crm-profile')?.dataset.customerKey;try{await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE_NOTE',customer_key:key,note_id:delNote.dataset.noteId})});await openCustomerCrm(key);}catch(error){toast(error.message,'error');}return;}
     if(event.target.closest?.('[data-crm-email]')){$('#customerCrmDialog')?.close();showView('emails');const email=state.customerProfile?.customer?.customer_email;if($('#emailSelectedRecipients'))$('#emailSelectedRecipients').value=email||'';if($('#emailAudienceType'))$('#emailAudienceType').value='selected';return;}
 
+    const privateOpen=event.target.closest?.('[data-private-event-id]');if(privateOpen){event.preventDefault();openPrivateEvent(privateOpen.dataset.privateEventId);return;}
+    const privateStatus=event.target.closest?.('[data-private-status]');if(privateStatus){event.preventDefault();const id=$('.private-detail')?.dataset.privateId;if(id)setPrivateEventStatus(id,privateStatus.dataset.privateStatus);return;}
     const use=event.target.closest?.('[data-use-template]');if(use){applyEmailTemplate(use.dataset.useTemplate);return;}
     const edit=event.target.closest?.('[data-edit-template]');if(edit){applyEmailTemplate(edit.dataset.editTemplate,true);return;}
     const del=event.target.closest?.('[data-delete-template]');if(del&&confirm('Delete this email template?')){try{await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE_TEMPLATE',id:del.dataset.deleteTemplate})});loadEmailCentre();}catch(error){toast(error.message,'error');}return;}
