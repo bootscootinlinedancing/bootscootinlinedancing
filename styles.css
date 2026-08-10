@@ -8258,3 +8258,14 @@ body.ranch-v91 .launch-readiness p,body.ranch-v91 .launch-readiness li,body.ranc
 .private-quote-submit-status.success{border-color:#36a667;background:#0c1912;color:#c9f4d9}
 .private-quote-submit-status.error{border-color:#e33b48;background:#24090c;color:#ffd5d8}
 .private-quote-admin-form button[disabled]{opacity:.65;cursor:wait}
+\n/* v96.4.73 private event payment reliability + high contrast */
+.quote-card{background:#120909!important;border:1px solid #7d3034!important;color:#f8eee6!important}
+.quote-card h1,.quote-card strong,.quote-card p{color:#f8eee6!important}
+.quote-details article{background:#0a0606!important;border-color:#7d3034!important}
+.quote-details span,.quote-details small{color:#d7bfb2!important}
+.quote-money{background:#090606!important;border:1px solid #7d3034!important;padding:1.15rem!important}
+.quote-money span{color:#e7d2c7!important;font-weight:600!important}
+.quote-money strong{color:#fff!important;font-size:1.08em!important}
+.quote-money .total{border-top-color:#e11d2e!important}
+.quote-actions .payment-link{display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;text-decoration:none!important;min-height:64px!important}
+.quote-actions .disabled-link{display:flex!important;align-items:center!important;justify-content:center!important;opacity:.45!important;cursor:not-allowed!important}

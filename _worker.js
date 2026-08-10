@@ -1885,8 +1885,10 @@ async function privateEventPay(request, env) {
   if(!env.BOOKINGS_DB) return json({error:'The private booking service is unavailable.'},503);
   await ensureBookingSchema(env);
   if(!sumUpConfigured(env)) return json({error:'Secure SumUp payment is not available right now. No payment has been taken.'},503);
-  const b=await request.json().catch(()=>null);
-  if(!b) return json({error:'The payment request could not be read.'},400);
+  const isGet=request.method==='GET';
+  const url=new URL(request.url);
+  const b=isGet ? {token:url.searchParams.get('token'),kind:url.searchParams.get('kind')} : await request.json().catch(()=>null);
+  if(!b) return isGet ? Response.redirect(`${url.origin}/private-quote.html?payment=error`,303) : json({error:'The payment request could not be read.'},400);
   const token=clean(b.token,120), requested=clean(b.kind,20).toUpperCase();
   if(!['DEPOSIT','FULL','BALANCE'].includes(requested)) return json({error:'Please choose deposit or full payment.'},400);
   let inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE secure_token=?`).bind(token).first();
@@ -1942,6 +1944,7 @@ async function privateEventPay(request, env) {
       env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(requested==='DEPOSIT'?'AWAITING_DEPOSIT':'QUOTE_ACCEPTED',inquiry.id),
       env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'CUSTOMER','secure link','PAYMENT_STARTED',JSON.stringify({payment_id:id,kind:requested,amount_pence:amount,checkout_id:checkout.id}))
     ]);
+    if(isGet) return Response.redirect(checkoutUrl,303);
     return json({ok:true,checkout_url:checkoutUrl,payment_id:id,kind:requested,amount_pence:amount});
   }catch(error){
     return json({error:'The secure payment service is temporarily unavailable. No payment has been taken. Please try again.'},502);
@@ -3646,7 +3649,7 @@ export default {
       if (path === '/api/private-events/inquiries' && request.method === 'POST') return privateEventInquiry(request, env);
       if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);
-      if (path === '/api/private-events/pay' && request.method === 'POST') return privateEventPay(request, env);
+      if (path === '/api/private-events/pay' && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
