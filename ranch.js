@@ -1146,9 +1146,16 @@ Type REFUNDED to continue.`);
   }
   async function submitPrivateQuote(event){
     event.preventDefault();
-    const form=event.currentTarget;
-    const id=$('.private-detail')?.dataset.privateId;
-    if(!id)return;
+    // This handler is delegated from #privateEventDetail, so currentTarget is the
+    // container rather than the form. Use the submitted form itself.
+    const form=event.target?.closest?.('#privateQuoteForm') || document.getElementById('privateQuoteForm');
+    const id=form?.closest('.private-detail')?.dataset.privateId || $('.private-detail')?.dataset.privateId;
+    const status=$('#privateQuoteSubmitStatus');
+    if(!form||!id){
+      if(status){status.hidden=false;status.className='private-quote-submit-status error';status.textContent='The quote form could not be read. Please close this inquiry and open it again.';}
+      toast('Could not read the quote form. Please reopen the inquiry.','error');
+      return;
+    }
     const fd=new FormData(form);
     const value=name=>String(fd.get(name)||'').trim();
     const payload={
@@ -1161,7 +1168,6 @@ Type REFUNDED to continue.`);
       balance_due_date:value('balance_due_date'),quote_expires_at:value('quote_expires_at'),
       cancellation_terms:value('cancellation_terms'),customer_notes:value('customer_notes'),internal_notes:value('internal_notes')
     };
-    const status=$('#privateQuoteSubmitStatus');
     const button=form.querySelector('button[type="submit"]');
     if(payload.base_fee_pence<=0){
       if(status){status.hidden=false;status.className='private-quote-submit-status error';status.textContent='Please add the session/base fee before sending the quote.';}
