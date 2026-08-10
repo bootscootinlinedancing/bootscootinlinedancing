@@ -8067,7 +8067,7 @@ body:not(.ranch-v91):not(.admin-login-body) :is(.level-absolute-beginner,.level-
 @media(max-width:760px){.home-story-feature,.home-story-feature.reverse{grid-template-columns:1fr}.home-story-feature.reverse figure,.home-story-feature.reverse>div{order:initial}.home-story-feature h2{font-size:clamp(2.15rem,10vw,3.35rem)}}
 
 /* HQ should stay black/red, not return to beige cards. */
-.ranch91-body,.ranch-body{background:#0b0506!important;color:#f7ede4!important}
+body.ranch-v91,.ranch-body{background:#0b0506!important;color:#f7ede4!important}
 .ranch91-shell,.ranch91-main,.ranch-main{background:#0b0506!important;color:#f7ede4!important}
 .ranch91-panel,.ranch-panel,.ranch91-card,.ranch-stats article,.ranch91-list-card,.merch-admin-card,.ranch91-empty,.ranch91-loading,.ranch91-error,.ranch91-notice,.ranch-notice,.ranch91-health-card,.ranch91-attention-item{background:#14090a!important;color:#f7ede4!important;border-color:#6e2d32!important;box-shadow:none!important}
 .ranch91-panel h1,.ranch91-panel h2,.ranch91-panel h3,.ranch-panel h1,.ranch-panel h2,.ranch-panel h3,.ranch91-list-card strong,.merch-admin-card strong{color:#fff7ee!important}
@@ -8088,3 +8088,81 @@ body.ranch91-drawer-open{overflow:hidden!important;overscroll-behavior:none!impo
 .class-poster{grid-column:1/-1;margin:-1px -1px .25rem;overflow:hidden;background:#080505;border-bottom:1px solid #6e2d32;}
 .class-poster img{display:block;width:100%;height:auto;max-height:520px;object-fit:cover;}
 @media(min-width:760px){.class-poster img{max-height:380px;}}
+
+/* =========================================================
+   v96.4.66 — HQ mobile usability, CRM dark sweep, mailing count
+   ========================================================= */
+/* Customer/member profile: remove beige/white panels and make every label legible. */
+body.ranch-v91 .crm-dialog-shell,
+body.ranch-v91 .crm-box,
+body.ranch-v91 .crm-metrics article,
+body.ranch-v91 .crm-notes article,
+body.ranch-v91 .crm-privacy-note,
+body.ranch-v91 .crm-tag-list label,
+body.ranch-v91 .crm-tabs button,
+body.ranch-v91 .email-centre-card,
+body.ranch-v91 .email-template-item,
+body.ranch-v91 .email-empty,
+body.ranch-v91 .email-audience-result,
+body.ranch-v91 .email-compose-status{
+  background:#14090a!important;
+  color:#f8eee5!important;
+  border-color:#713137!important;
+}
+body.ranch-v91 .crm-dialog-shell :is(h2,h3,strong,label,p,span,small),
+body.ranch-v91 .crm-box :is(h3,strong,label,p,span,small),
+body.ranch-v91 .crm-tag-list label,
+body.ranch-v91 .email-centre-card :is(h2,h3,strong,label,p,span,small){color:#f2e3d8!important}
+body.ranch-v91 .crm-metrics span,
+body.ranch-v91 .crm-timeline p,
+body.ranch-v91 .crm-booking-list p,
+body.ranch-v91 .email-placeholder-help{color:#c9b3a6!important}
+body.ranch-v91 .crm-tabs{border-bottom-color:#8e3036!important}
+body.ranch-v91 .crm-tabs button{border:1px solid #713137!important;color:#f7ede4!important}
+body.ranch-v91 .crm-tabs button.active{background:#a8252d!important;color:#fff!important;border-color:#d13b44!important}
+body.ranch-v91 .crm-close{background:#180b0c!important;color:#fff!important;border-color:#a83b42!important}
+body.ranch-v91 .crm-box input,
+body.ranch-v91 .crm-box textarea,
+body.ranch-v91 .crm-profile textarea,
+body.ranch-v91 .email-centre-card input,
+body.ranch-v91 .email-centre-card select,
+body.ranch-v91 .email-centre-card textarea{background:#080505!important;color:#fff!important;border-color:#77343a!important}
+body.ranch-v91 .crm-tag-list input{accent-color:#d7252e}
+body.ranch-v91 .crm-privacy-note{border-left-color:#d7252e!important}
+
+/* Mailing list register: clear count + readable subscriber rows. */
+.email-subscriber-summary{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin:.75rem 0 1rem;padding:1rem;border:1px solid #7b343a;background:#0d0607;color:#fff}
+.email-subscriber-summary strong{font-size:2rem!important;color:#ff6068!important}
+.email-subscriber-summary span{color:#d7c2b7!important}
+body.ranch-v91 .email-subscriber-row{background:#0d0607!important;border:1px solid #5e292e!important;padding:.85rem!important;margin:.55rem 0!important;color:#fff!important}
+body.ranch-v91 .email-subscriber-row strong{color:#fff!important}body.ranch-v91 .email-subscriber-row span{color:#f0dcd0!important}body.ranch-v91 .email-subscriber-row small{color:#bca69a!important}
+
+/* Class cards on phones: actions must remain horizontal, never letter-stacked. */
+@media(max-width:760px){
+  .ranch-class-row{display:grid!important;grid-template-columns:1fr!important;gap:.8rem!important;align-items:start!important}
+  .ranch-class-main,.ranch-class-meta{min-width:0!important;width:100%!important}
+  .ranch-class-actions{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:.4rem!important;width:100%!important;justify-content:stretch!important}
+  .ranch-class-actions button{width:100%!important;min-width:0!important;min-height:46px!important;padding:.55rem .25rem!important;white-space:nowrap!important;word-break:normal!important;writing-mode:horizontal-tb!important;text-orientation:mixed!important;font-size:.7rem!important;line-height:1.1!important}
+}
+
+/* HQ drawer: make the drawer the ONLY scroll container on iOS. */
+@media(max-width:999px){
+  .ranch91-drawer{
+    display:block!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    touch-action:pan-y!important;
+    overscroll-behavior-y:contain!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    padding-bottom:calc(2rem + env(safe-area-inset-bottom))!important;
+  }
+  .ranch91-drawer-head,.ranch91-nav,.ranch91-drawer-foot{display:flex!important;flex-direction:column!important;flex:none!important}
+  .ranch91-drawer-head{align-items:stretch!important}
+  .ranch91-drawer-head .ranch91-brand{padding-right:3.3rem}
+  .ranch91-close{position:absolute!important;right:1rem!important;top:max(1rem,env(safe-area-inset-top))!important}
+  .ranch91-nav{margin:1rem 0!important;padding-bottom:.5rem!important}
+  .ranch91-drawer-foot{margin-top:0!important;padding-bottom:2rem!important}
+  body.ranch91-drawer-open{overflow:hidden!important;position:fixed!important;width:100%!important;touch-action:none!important}
+}
