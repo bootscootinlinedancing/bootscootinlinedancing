@@ -3649,7 +3649,9 @@ export default {
       if (path === '/api/private-events/inquiries' && request.method === 'POST') return privateEventInquiry(request, env);
       if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);
-      if (path === '/api/private-events/pay' && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
+      // Private-event payment compatibility route. Safari/Pages may preserve a trailing slash
+      // or an older payment alias from a cached proposal page, so accept all known variants.
+      if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);

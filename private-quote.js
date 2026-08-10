@@ -42,9 +42,9 @@
             ? '<div class="booking-alert">Thanks. We are checking the SumUp payment status now. If you have just paid, refresh this page in a moment.</div>'
             : '';
       const payDisabled=!d.payments_enabled||paidFull;
-      const depositHref=`/api/private-events/pay?token=${encodeURIComponent(token)}&kind=DEPOSIT`;
+      const depositHref=`/api/private-event-pay?token=${encodeURIComponent(token)}&kind=DEPOSIT`;
       const fullKind=paidDeposit?'BALANCE':'FULL';
-      const fullHref=`/api/private-events/pay?token=${encodeURIComponent(token)}&kind=${fullKind}`;
+      const fullHref=`/api/private-event-pay?token=${encodeURIComponent(token)}&kind=${fullKind}`;
       root.innerHTML=`<section class="quote-card"><p class="kicker red">Private event proposal</p><h1>${esc(d.inquiry.event_type)} with Boot Scootin’</h1><p class="quote-reference">Reference ${esc(d.inquiry.reference)}</p>
       <div class="quote-details"><article><span>Date</span><strong>${esc(q?.agreed_date||d.inquiry.preferred_date)}</strong></article><article><span>Time</span><strong>${esc([q?.agreed_start_time||d.inquiry.start_time,q?.agreed_end_time||d.inquiry.end_time].filter(Boolean).join(' – ')||'To be agreed')}</strong></article><article><span>Venue</span><strong>${esc(q?.agreed_venue||d.inquiry.venue_name||'To be agreed')}</strong><small>${esc(q?.agreed_address||d.inquiry.venue_address)}</small></article><article><span>Guests</span><strong>${esc(d.inquiry.guest_count)}</strong></article></div>
       ${q?`<div class="quote-money"><div><span>Session/package</span><strong>${money(q.base_fee_pence)}</strong></div>${q.travel_fee_pence?`<div><span>Travel</span><strong>${money(q.travel_fee_pence)}</strong></div>`:''}${q.equipment_fee_pence?`<div><span>Equipment</span><strong>${money(q.equipment_fee_pence)}</strong></div>`:''}${q.extra_fee_pence?`<div><span>Additional items</span><strong>${money(q.extra_fee_pence)}</strong></div>`:''}${q.discount_pence?`<div><span>Discount</span><strong>−${money(q.discount_pence)}</strong></div>`:''}<div class="total"><span>Total</span><strong>${money(q.total_pence)}</strong></div><div><span>Deposit</span><strong>${money(q.deposit_pence)}</strong></div><div><span>Balance after deposit</span><strong>${money(q.balance_due_pence)}</strong></div></div>
