@@ -1561,6 +1561,13 @@ async function sumUpWebhook(request, env) {
       await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_transaction_id=? WHERE id=?`).bind(tid,order.id).run();
       try{await sendMerchConfirmation(env,{...order,status:'PAID',provider_transaction_id:tid});}catch(_){}
     } else if(['FAILED','EXPIRED'].includes(cs)) await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run();
+    return new Response(null, { status: 204 });
+  }
+  const privatePayment=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first();
+  if(privatePayment&&checkout){
+    const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE id=?`).bind(privatePayment.inquiry_id).first();
+    const quote=privatePayment.quote_id?await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE id=?`).bind(privatePayment.quote_id).first():null;
+    if(inquiry&&quote) await syncPrivateEventPayment(env,privatePayment,inquiry,quote,'SUMUP_WEBHOOK');
   }
   return new Response(null, { status: 204 });
 }
@@ -1833,9 +1840,112 @@ async function publicPrivateQuote(request, env, url) {
   const token=clean(url.searchParams.get('token'),120);
   const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE secure_token=?`).bind(token).first();
   if(!inquiry) return json({error:'This private booking link is invalid or has expired.'},404);
-  const quote=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE inquiry_id=? ORDER BY version DESC LIMIT 1`).bind(inquiry.id).first();
-  const safeInquiry={reference:inquiry.reference,event_type:inquiry.event_type,preferred_date:inquiry.preferred_date,start_time:inquiry.start_time,end_time:inquiry.end_time,venue_name:inquiry.venue_name,venue_address:inquiry.venue_address,guest_count:inquiry.guest_count,status:inquiry.status};
-  return json({inquiry:safeInquiry,quote,payments_enabled:Boolean(env.SUMUP_API_KEY&&env.SUMUP_MERCHANT_CODE)});
+  let quote=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE inquiry_id=? ORDER BY version DESC LIMIT 1`).bind(inquiry.id).first();
+  let currentInquiry=inquiry;
+  let latestPayment=null;
+  if(quote){
+    latestPayment=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE inquiry_id=? AND quote_id=? ORDER BY created_at DESC LIMIT 1`).bind(inquiry.id,quote.id).first();
+    if(latestPayment){
+      const synced=await syncPrivateEventPayment(env,latestPayment,currentInquiry,quote,'PRIVATE_QUOTE_VIEW');
+      latestPayment=synced.payment; currentInquiry=synced.inquiry; quote=synced.quote;
+    }
+  }
+  const safeInquiry={reference:currentInquiry.reference,event_type:currentInquiry.event_type,preferred_date:currentInquiry.preferred_date,start_time:currentInquiry.start_time,end_time:currentInquiry.end_time,venue_name:currentInquiry.venue_name,venue_address:currentInquiry.venue_address,guest_count:currentInquiry.guest_count,status:currentInquiry.status};
+  const safePayment=latestPayment?{payment_kind:latestPayment.payment_kind,amount_pence:latestPayment.amount_pence,status:latestPayment.status,paid_at:latestPayment.paid_at}:null;
+  return json({inquiry:safeInquiry,quote,payment:safePayment,payments_enabled:sumUpConfigured(env)});
+}
+
+
+async function syncPrivateEventPayment(env, payment, inquiry, quote, actor='PRIVATE_PAYMENT_SYNC') {
+  if(!payment?.provider_reference || !sumUpConfigured(env)) return {payment,inquiry,quote};
+  const checkout=await retrieveSumUpCheckout(env,payment.provider_reference).catch(()=>null);
+  if(!checkout) return {payment,inquiry,quote};
+  const status=String(checkout.status||'').toUpperCase();
+  if(status==='PAID' && payment.status!=='PAID'){
+    const tx=clean(checkoutTransactionId(checkout),180)||null;
+    const kind=String(payment.payment_kind||'').toUpperCase();
+    const nextInquiry=kind==='DEPOSIT'?'CONFIRMED_DEPOSIT':'CONFIRMED_PAID';
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE private_event_payments SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_reference=? WHERE id=?`).bind(payment.provider_reference,payment.id),
+      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(nextInquiry,inquiry.id),
+      env.BOOKINGS_DB.prepare(`UPDATE private_event_quotes SET status='QUOTE_ACCEPTED',updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(quote.id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'SYSTEM',actor,kind==='DEPOSIT'?'DEPOSIT_PAID':'FULL_PAYMENT_PAID',JSON.stringify({payment_id:payment.id,checkout_id:payment.provider_reference,transaction_id:tx,amount_pence:payment.amount_pence}))
+    ]);
+    payment={...payment,status:'PAID',paid_at:new Date().toISOString()};
+    inquiry={...inquiry,status:nextInquiry};
+    quote={...quote,status:'QUOTE_ACCEPTED'};
+  }else if(['FAILED','EXPIRED'].includes(status) && payment.status==='PENDING'){
+    await env.BOOKINGS_DB.prepare(`UPDATE private_event_payments SET status=? WHERE id=?`).bind(status,payment.id).run().catch(()=>{});
+    payment={...payment,status};
+  }
+  return {payment,inquiry,quote};
+}
+
+async function privateEventPay(request, env) {
+  if(!env.BOOKINGS_DB) return json({error:'The private booking service is unavailable.'},503);
+  await ensureBookingSchema(env);
+  if(!sumUpConfigured(env)) return json({error:'Secure SumUp payment is not available right now. No payment has been taken.'},503);
+  const b=await request.json().catch(()=>null);
+  if(!b) return json({error:'The payment request could not be read.'},400);
+  const token=clean(b.token,120), requested=clean(b.kind,20).toUpperCase();
+  if(!['DEPOSIT','FULL','BALANCE'].includes(requested)) return json({error:'Please choose deposit or full payment.'},400);
+  let inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE secure_token=?`).bind(token).first();
+  if(!inquiry) return json({error:'This private booking link is invalid.'},404);
+  let quote=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE inquiry_id=? ORDER BY version DESC LIMIT 1`).bind(inquiry.id).first();
+  if(!quote) return json({error:'A quote has not been issued for this booking yet.'},409);
+
+  // Reconcile the latest payment first so a second tap cannot accidentally create another charge after payment.
+  let latest=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE inquiry_id=? AND quote_id=? ORDER BY created_at DESC LIMIT 1`).bind(inquiry.id,quote.id).first();
+  if(latest){
+    const synced=await syncPrivateEventPayment(env,latest,inquiry,quote,'PRIVATE_PAYMENT_PRECHECK');
+    latest=synced.payment; inquiry=synced.inquiry; quote=synced.quote;
+  }
+  if(inquiry.status==='CONFIRMED_PAID') return json({error:'This event has already been paid in full.'},409);
+  if(requested==='DEPOSIT' && ['CONFIRMED_DEPOSIT','BALANCE_DUE'].includes(inquiry.status)) return json({error:'The deposit has already been paid.'},409);
+
+  const kind=requested==='BALANCE'?'FULL':requested;
+  const amount= requested==='DEPOSIT'
+    ? Math.max(0,Number(quote.deposit_pence)||0)
+    : requested==='BALANCE'
+      ? Math.max(0,Number(quote.balance_due_pence)||0)
+      : Math.max(0,Number(quote.total_pence)||0);
+  if(amount<=0) return json({error:'There is no payment amount due for this option.'},409);
+
+  const id=crypto.randomUUID();
+  const suffix=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
+  const reference=`PE-${clean(inquiry.reference,40)}-${requested}-${suffix}`.slice(0,90);
+  const origin=new URL(request.url).origin;
+  const description=requested==='DEPOSIT'
+    ? `Boot Scootin’ private event deposit — ${clean(inquiry.reference,60)}`
+    : requested==='BALANCE'
+      ? `Boot Scootin’ private event balance — ${clean(inquiry.reference,60)}`
+      : `Boot Scootin’ private event — ${clean(inquiry.reference,60)}`;
+  const payload={
+    checkout_reference:reference,
+    amount:Number((amount/100).toFixed(2)),currency:'GBP',merchant_code:String(env.SUMUP_MERCHANT_CODE),
+    description,
+    redirect_url:`${origin}/private-quote.html?token=${encodeURIComponent(token)}&payment=return`,
+    return_url:`${origin}/api/sumup-webhook`,
+    hosted_checkout:{enabled:true}
+  };
+  try{
+    const r=await sumUpFetch(env,'/v0.1/checkouts',{method:'POST',body:JSON.stringify(payload)});
+    const checkout=await r.json().catch(()=>({}));
+    const raw=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||''; let checkoutUrl='';
+    try{const u=new URL(raw);if(u.protocol==='https:')checkoutUrl=u.toString();}catch(_){}
+    if(!r.ok||!checkout.id||!checkoutUrl){
+      const providerMessage=clean(checkout?.message||checkout?.error_message||checkout?.error||'',180);
+      return json({error:'SumUp could not open the secure payment page. No payment has been taken.',detail:providerMessage},502);
+    }
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_payments(id,inquiry_id,quote_id,payment_kind,amount_pence,provider,provider_reference,status) VALUES(?,?,?,?,?,'SUMUP',?,'PENDING')`).bind(id,inquiry.id,quote.id,requested,amount,checkout.id),
+      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(requested==='DEPOSIT'?'AWAITING_DEPOSIT':'QUOTE_ACCEPTED',inquiry.id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'CUSTOMER','secure link','PAYMENT_STARTED',JSON.stringify({payment_id:id,kind:requested,amount_pence:amount,checkout_id:checkout.id}))
+    ]);
+    return json({ok:true,checkout_url:checkoutUrl,payment_id:id,kind:requested,amount_pence:amount});
+  }catch(error){
+    return json({error:'The secure payment service is temporarily unavailable. No payment has been taken. Please try again.'},502);
+  }
 }
 
 async function privateEventRespond(request, env) {
@@ -3536,6 +3646,7 @@ export default {
       if (path === '/api/private-events/inquiries' && request.method === 'POST') return privateEventInquiry(request, env);
       if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);
+      if (path === '/api/private-events/pay' && request.method === 'POST') return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
