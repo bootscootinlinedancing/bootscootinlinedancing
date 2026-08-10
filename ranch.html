@@ -6,27 +6,25 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=96.4.67">
+  <link rel="stylesheet" href="styles.css?v=96.4.68">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
-  <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.67">
+  <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.68">
 </head>
 <body class="ranch-v91">
 
   <script>
     (function () {
-      var hqLockedScrollY = 0;
       function setHQBodyLock(open){
-        if(open){
-          hqLockedScrollY = window.scrollY || window.pageYOffset || 0;
-          document.body.style.position='fixed';
-          document.body.style.top=`-${hqLockedScrollY}px`;
-          document.body.style.left='0';
-          document.body.style.right='0';
-          document.body.style.width='100%';
-        }else if(document.body.style.position==='fixed'){
-          document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';
-          window.scrollTo(0,hqLockedScrollY);
+        document.documentElement.classList.toggle('ranch91-menu-lock', Boolean(open));
+        document.body.classList.toggle('ranch91-menu-lock', Boolean(open));
+        if(!open){
+          /* Clear stale inline locks left by older HQ builds on iPhone. */
+          document.body.style.position='';
+          document.body.style.top='';
+          document.body.style.left='';
+          document.body.style.right='';
+          document.body.style.width='';
         }
       }
       function getHQMenuParts() {
@@ -629,8 +627,8 @@
         </section>
 
         <div class="ranch-grid-2">
-          <section class="ranch-panel launch-readiness"><p class="kicker red">Launch readiness</p><h2>What still needs checking</h2><p>The original low-cost pilot checklist has mostly been completed. Use <strong>System Health</strong> for live connection status. Before the wider public launch, keep these final checks on the list:</p><ul class="ranch-checklist"><li>Run a complete class booking → SumUp payment → confirmation email test</li><li>Test full-capacity, waiting-list, cancellation and refund journeys</li><li>Confirm poster uploads and media storage on a real class</li><li>Confirm promotions, birthday rewards and loyalty codes end-to-end</li><li>Review ICO/data-protection requirements before public member accounts launch</li></ul></section>
-          <section class="ranch-panel sumup-status-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Boot Scootin’ uses SumUp hosted checkout, so card details are entered with SumUp rather than stored on this website.</p><div class="ranch-connection" id="settingsSumupStatus"><span></span> Checking live payment status…</div><button type="button" class="ranch-button secondary" data-view-jump="health">Open System Health</button></section>
+          <section class="ranch-panel"><p class="kicker red">Free pilot</p><h2>Low-cost launch checklist</h2><ul class="ranch-checklist"><li>Protect HQ pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Use test data and test every booking and capacity rule</li><li>Connect SumUp Sandbox before any live payments</li><li>Review ICO fee status before public member accounts launch</li></ul></section>
+          <section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Not connected yet. This is safe: no card details are collected and no live booking is confirmed.</p><div class="ranch-connection"><span></span> Awaiting sandbox connection</div></section>
         </div>
       </section>
     
@@ -699,7 +697,7 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=96.4.67"></script>
+  <script src="ranch.js?v=96.4.66"></script>
 
 
   <script src="honky-theme.js?v=96.0.0"></script>

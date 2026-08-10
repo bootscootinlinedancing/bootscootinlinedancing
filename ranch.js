@@ -233,6 +233,8 @@
     }else{
       document.documentElement.classList.remove('ranch91-menu-lock');
       document.body.classList.remove('ranch91-menu-lock');
+      /* Recover from stale iOS body locks from older releases. */
+      document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';
     }
   }
   menuButton?.addEventListener('click',event=>{

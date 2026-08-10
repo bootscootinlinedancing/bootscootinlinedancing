@@ -8191,3 +8191,48 @@ body.ranch-v91 .launch-readiness p,body.ranch-v91 .launch-readiness li,body.ranc
 .event-details-dialog{width:min(720px,calc(100vw - 24px));max-height:90dvh;overflow:auto;background:#12090a!important;color:#f7eee7!important;border:1px solid #7b3439!important;padding:clamp(1.2rem,4vw,2rem)!important}
 .event-details-dialog h2{font-family:Rye,serif;font-size:clamp(2rem,8vw,3.4rem);margin:.2rem 0 1rem}.event-detail-poster{width:100%;max-height:440px;object-fit:contain;background:#050303;border:1px solid #713238}.event-detail-meta{color:#e7d2c5;line-height:1.7}.event-full-description{margin:1rem 0;padding:1rem;border-left:4px solid #b82a32;background:#190c0d;color:#ead8cc;line-height:1.65}.event-detail-actions{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem}.event-detail-actions .button{flex:1 1 180px}.event-share-note{font-size:.9rem;color:#bfa99d!important}.event-details-dialog .dialog-close{position:sticky;top:0;float:right;z-index:2}
 @media(max-width:650px){.class-card-actions{display:grid;grid-template-columns:1fr 1fr}.class-card-actions .button{min-width:0;padding:.75rem .5rem}.class-info .class-public-note{font-size:.95rem;line-height:1.45}}
+
+
+/* V96.4.68 — iPhone HQ drawer: one dedicated scroll area, no stale page lock */
+@media(max-width:999px){
+  .ranch91-drawer{
+    display:flex!important;
+    flex-direction:column!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+    padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom))!important;
+    touch-action:auto!important;
+    contain:none!important;
+  }
+  .ranch91-drawer-head{flex:0 0 auto!important;min-height:64px!important}
+  .ranch91-nav{
+    display:flex!important;
+    flex-direction:column!important;
+    flex:1 1 auto!important;
+    min-height:0!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior:contain!important;
+    touch-action:pan-y!important;
+    margin:1rem 0!important;
+    padding:0 0 1rem!important;
+  }
+  .ranch91-nav button{flex:0 0 auto!important}
+  .ranch91-drawer-foot{flex:0 0 auto!important;margin-top:0!important;padding:0!important}
+  html.ranch91-menu-lock,body.ranch91-menu-lock{overflow:hidden!important;height:100%!important;touch-action:auto!important}
+  body.ranch91-drawer-open{position:static!important;overflow:hidden!important;touch-action:auto!important}
+}
+
+/* Public class listings stay compact. Full notes only appear after View details. */
+.class-card .class-public-note,.class-card .class-public-note-summary{display:none!important}
+@media(max-width:700px){
+  .class-card{grid-template-columns:76px minmax(0,1fr)!important;gap:14px!important;align-items:start!important;padding:16px!important}
+  .class-date{min-height:76px!important}
+  .class-date strong{font-size:34px!important}
+  .class-info h3{font-size:23px!important;line-height:1.15!important}
+  .class-info>p:not(.class-venue){font-size:.95rem!important;line-height:1.35!important}
+  .class-footer{gap:.45rem 1rem!important;margin-top:.65rem!important}
+  .class-card-actions{grid-column:1/-1!important;display:grid!important;grid-template-columns:1fr 1fr!important;margin-top:.75rem!important}
+}

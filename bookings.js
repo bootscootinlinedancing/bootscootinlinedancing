@@ -31,7 +31,6 @@
         <div class="class-info">
           <p class="class-venue">${esc(c.venue)}</p><h3>${esc(c.title)}</h3>
           <p>${esc(dateFmt(c.starts_at))}</p><p>${esc(c.location)}</p>
-          ${c.public_notes?`<p class="class-public-note class-public-note-summary">${esc(summaryText(c.public_notes))}</p>`:''}
           <div class="class-footer"><span><b>${money(c.price)}</b> per person</span>
           <span class="spaces ${nearly?'low':''} ${full?'full':''}">${full?'Class full':`${c.spaces_remaining} spaces left`}</span></div>
           <div class="class-card-actions"><button type="button" class="button secondary view-event" data-id="${esc(c.id)}">View details</button><button class="button book-class" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button></div>
