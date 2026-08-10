@@ -268,7 +268,7 @@
     try{
       const data=await jsonFetch('/api/admin/merch-orders'); const rows=data.items||[];
       if(!rows.length){box.innerHTML='<div class="ranch91-empty">No merchandise orders yet.</div>';return;}
-      box.innerHTML=rows.map(o=>`<article class="ranch91-list-card merch-admin-card"><div><strong>${esc(o.reference)}</strong><span>${esc(o.customer_name)} · ${esc(o.customer_email)}</span><span>${esc(o.design)} · ${esc(o.fit==='womens'?"Women’s premium":"Unisex")} · ${esc(o.size)} × ${o.quantity}</span><span>${o.fulfilment_method==='delivery'?`Delivery · ${esc(o.delivery_address||'Address missing')}`:'Collection'} · ${moneyPence(o.amount_pence)} · ${esc(o.status)}</span><span>Fulfilment: ${esc(o.fulfilment_status||'NEW')}</span></div><div class="ranch91-row-actions">${o.status==='PAID'&&o.fulfilment_method==='collection'&&o.fulfilment_status!=='READY_FOR_COLLECTION'?`<button class="button compact" data-merch-action="READY" data-id="${esc(o.id)}">Ready for collection</button>`:''}${o.status==='PAID'&&o.fulfilment_method==='delivery'&&o.fulfilment_status!=='DISPATCHED'?`<button class="button compact" data-merch-action="DISPATCHED" data-id="${esc(o.id)}">Mark dispatched</button>`:''}${['READY_FOR_COLLECTION','DISPATCHED'].includes(o.fulfilment_status)?`<button class="button secondary compact" data-merch-action="COMPLETE" data-id="${esc(o.id)}">Complete</button>`:''}</div></article>`).join('');
+      box.innerHTML=rows.map(o=>{const qty=Number(o.quantity||1),productionCost=(o.fit==='womens'?1700:1200)*qty,itemSales=Number(o.unit_price_pence||0)*qty,itemProfit=Math.max(0,itemSales-productionCost);return `<article class="ranch91-list-card merch-admin-card"><div><strong>${esc(o.reference)}</strong><span>${esc(o.customer_name)} · ${esc(o.customer_email)}</span><span>${esc(o.design)} · ${esc(o.fit==='womens'?"Women’s premium":"Unisex")} · ${esc(o.size)} × ${qty}</span><span>${o.fulfilment_method==='delivery'?`Delivery · ${esc(o.delivery_address||'Address missing')}`:'Collection'} · ${moneyPence(o.amount_pence)} · ${esc(o.status)}</span><span class="merch-profit-line">T-shirt sales ${moneyPence(itemSales)} · Production cost ${moneyPence(productionCost)} · Est. item profit ${moneyPence(itemProfit)}</span><small class="merch-profit-note">Estimated profit is before SumUp fees and excludes the delivery charge/postage cost.</small><span>Fulfilment: ${esc(o.fulfilment_status||'NEW')}</span></div><div class="ranch91-row-actions">${o.status==='PAID'&&o.fulfilment_method==='collection'&&o.fulfilment_status!=='READY_FOR_COLLECTION'?`<button class="button compact" data-merch-action="READY" data-id="${esc(o.id)}">Ready for collection</button>`:''}${o.status==='PAID'&&o.fulfilment_method==='delivery'&&o.fulfilment_status!=='DISPATCHED'?`<button class="button compact" data-merch-action="DISPATCHED" data-id="${esc(o.id)}">Mark dispatched</button>`:''}${['READY_FOR_COLLECTION','DISPATCHED'].includes(o.fulfilment_status)?`<button class="button secondary compact" data-merch-action="COMPLETE" data-id="${esc(o.id)}">Complete</button>`:''}</div></article>`}).join('');
       box.querySelectorAll('[data-merch-action]').forEach(btn=>btn.addEventListener('click',async()=>{btn.disabled=true;try{await jsonFetch('/api/admin/merch-orders',{method:'PATCH',body:JSON.stringify({id:btn.dataset.id,action:btn.dataset.merchAction})});await loadMerchOrders();}catch(e){alert(e.message||'Could not update order.');btn.disabled=false;}}));
     }catch(e){box.innerHTML=`<div class="ranch91-error">${esc(e.message||'Could not load merchandise orders.')}</div>`;}
   }
@@ -345,6 +345,7 @@
     const cleanupCard=document.getElementById('knownTestCleanupCard');
     if(cleanupCard)cleanupCard.hidden=Number(b.summary.pending_payments||0)===0;
     $('#overviewRevenue').textContent=money(b.summary.paid_revenue);
+    const revenueBreakdown=$('#overviewRevenueBreakdown');if(revenueBreakdown)revenueBreakdown.textContent=`Classes ${money(b.summary.class_revenue||0)} · Merch ${money(b.summary.merch_revenue||0)} · Est. merch profit ${money(b.summary.merch_profit||0)}`;
     $('#overviewMedia').textContent=b.summary.media_files;
 
     const upcoming=$('#ranchUpcoming');
@@ -535,6 +536,25 @@
       box.innerHTML=(error.status===401||error.status===403)?lockedPanel('Class editing is locked','Cloudflare Access must authorise this HQ session.'):setupPanel('Classes unavailable',error.message);
     }
   }
+  const CLASS_VENUE_TEMPLATES={
+    edgbaston:{title:'Friday Line Dancing',venue:'Edgbaston Community Centre',location:'40 Woodview Drive, Edgbaston, Birmingham B15 2HU',start:'19:30',end:'20:30',price:'6.00',capacity:20,level:'Beginner friendly',notes:'Beginner-friendly line dancing. No partner or previous experience needed. Free parking is available at the venue. Wear comfortable clothing and secure shoes or boots you can move in, and bring water. For more first-class advice, open New Here on the website.'},
+    lowplaces:{title:'Class & Social Dancing',venue:'Low Places Bar Birmingham',location:'60–64 Heath Mill Lane, Digbeth, Birmingham B9 4AR',start:'19:15',end:'21:00',price:'6.00',capacity:50,level:'Beginner friendly',notes:'Beginner-friendly class with social dancing at Low Places. No partner or previous experience needed. Paid parking is available opposite the venue. Wear comfortable clothing and secure shoes or boots you can move in. For more first-class advice, open New Here on the website.'}
+  };
+  let activeClassTemplate='';
+  function applyTemplateTimes(form,key){
+    const t=CLASS_VENUE_TEMPLATES[key];if(!t||!form)return;
+    const current=String(form.elements.starts_at.value||'');
+    const date=current.slice(0,10);
+    if(date){form.elements.starts_at.value=`${date}T${t.start}`;form.elements.ends_at.value=`${date}T${t.end}`;}
+  }
+  function applyClassTemplate(key){
+    const form=$('#classEditorForm'),status=$('#classTemplateStatus');if(!form)return;
+    if(key==='custom'){activeClassTemplate='';['title','venue','location','starts_at','ends_at','public_notes'].forEach(n=>{if(form.elements[n])form.elements[n].value='';});form.elements.price_gbp.value='6.00';form.elements.capacity.value=20;form.elements.level.value='Beginner friendly';if(status)status.textContent='Custom venue mode — enter the details manually.';return;}
+    const t=CLASS_VENUE_TEMPLATES[key];if(!t)return;activeClassTemplate=key;
+    form.elements.title.value=t.title;form.elements.venue.value=t.venue;form.elements.location.value=t.location;form.elements.price_gbp.value=t.price;form.elements.capacity.value=t.capacity;form.elements.level.value=t.level;form.elements.public_notes.value=t.notes;applyTemplateTimes(form,key);
+    if(status)status.textContent=`${t.venue} loaded · usual time ${t.start}–${t.end} · capacity ${t.capacity}. Choose/change the date as needed.`;
+  }
+
   function openClassEditor(item=null){
     // Opening the editor is a local UI action and must never depend on the
     // asynchronous bootstrap request. Cloudflare Access and the Worker still
@@ -545,6 +565,8 @@
       return;
     }
     form.reset();
+    activeClassTemplate='';
+    const templateStatus=$('#classTemplateStatus');if(templateStatus)templateStatus.textContent=item?'Editing an existing class — fields remain fully editable.':'Pick a template, then choose the date. The usual start and finish times will be applied automatically.';
     form.elements.id.value=item?.id||'';
     form.elements.title.value=item?.title||'';
     form.elements.venue.value=item?.venue||'';
@@ -1190,6 +1212,8 @@ Type REFUNDED to continue.`);
   $('#refreshRanch')?.addEventListener('click',loadClasses);
   $('#ranchClassFilter')?.addEventListener('change',renderClasses);
   $('#classEditorForm')?.addEventListener('submit',saveClass);
+  $$('[data-class-template]').forEach(node=>node.addEventListener('click',()=>applyClassTemplate(node.dataset.classTemplate)));
+  $('#classEditorForm')?.elements?.starts_at?.addEventListener('change',event=>{if(activeClassTemplate)applyTemplateTimes(event.currentTarget.form,activeClassTemplate);});
   $$('[data-close-class-modal]').forEach(node=>node.addEventListener('click',closeClassEditor));
   $('#exportBookingsCsv')?.addEventListener('click',exportBookingsCsv);
   $('#exportCustomersCsv')?.addEventListener('click',exportCustomersCsv);

@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=96.4.39">
+  <link rel="stylesheet" href="styles.css?v=96.4.63">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
-  <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.56">
+  <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.63">
 </head>
 <body class="ranch-v91">
 
@@ -136,7 +136,7 @@
         <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
         <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
       </div>
-      <div class="ranch91-release">V96.0.0</div>
+      <div class="ranch91-release">V96.4.63</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -154,7 +154,7 @@
         <div class="ranch91-summary">
           <article><span>Upcoming classes</span><strong id="overviewUpcoming">—</strong></article>
           <article><span>Places booked</span><strong id="overviewBooked">—</strong></article>
-          <article><span>Revenue</span><strong id="overviewRevenue">—</strong></article>
+          <article class="revenue-summary-card"><span>Total paid revenue</span><strong id="overviewRevenue">—</strong><small id="overviewRevenueBreakdown">Classes — · Merch — · Est. merch profit —</small></article>
           <article><span>Media files</span><strong id="overviewMedia">—</strong></article>
         </div>
 
@@ -633,6 +633,15 @@
       </div>
       <form id="classEditorForm" class="hq-class-form">
         <input type="hidden" name="id">
+        <section class="hq-class-templates" aria-labelledby="classTemplateHeading">
+          <div><p class="kicker red">Quick venue setup</p><h3 id="classTemplateHeading">Class templates</h3><p>Choose one of your regular venues to pre-fill the usual venue details, time, capacity and customer notes. Everything stays editable.</p></div>
+          <div class="hq-class-template-actions">
+            <button type="button" class="button secondary compact" data-class-template="edgbaston">Edgbaston Community Centre</button>
+            <button type="button" class="button secondary compact" data-class-template="lowplaces">Low Places Bar</button>
+            <button type="button" class="button secondary compact" data-class-template="custom">Custom / new venue</button>
+          </div>
+          <small id="classTemplateStatus">Pick a template, then choose the date. The usual start and finish times will be applied automatically.</small>
+        </section>
         <label>Class title<input name="title" type="text" required maxlength="160" placeholder="Friday Line Dancing"></label>
         <div class="hq-form-grid">
           <label>Venue<input name="venue" type="text" required maxlength="160" placeholder="Edgbaston Community Centre"></label>
@@ -667,7 +676,7 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=95.0.0"></script>
+  <script src="ranch.js?v=96.4.63"></script>
 
   <script>
   (function(){

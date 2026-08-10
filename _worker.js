@@ -2025,6 +2025,9 @@ async function adminBootstrap(request, env) {
       upcoming_classes: 0,
       places_booked: 0,
       paid_revenue: 0,
+      class_revenue: 0,
+      merch_revenue: 0,
+      merch_profit: 0,
       media_files: 0,
       pending_payments: 0,
       waiting_guests: 0,
@@ -2092,11 +2095,47 @@ async function adminBootstrap(request, env) {
         FROM bookings
       `).first();
       result.summary.places_booked = Number(stats?.places_booked || 0);
-      result.summary.paid_revenue = Number(stats?.paid_revenue || 0);
+      result.summary.class_revenue = Number(stats?.paid_revenue || 0);
+      result.summary.paid_revenue = result.summary.class_revenue;
       result.summary.pending_payments = Number(stats?.pending_payments || 0);
       result.summary.refund_review = Number(stats?.refund_review || 0);
     } catch (error) {
       result.warnings.push(`Booking totals: ${String(error?.message || error)}`);
+    }
+
+    try {
+      if (sumUpConfigured(env)) {
+        const pendingMerch = await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE status='PENDING' AND provider_checkout_id IS NOT NULL ORDER BY created_at DESC LIMIT 15`).all();
+        for (const order of (pendingMerch.results || [])) {
+          try {
+            const checkout = await retrieveSumUpCheckout(env, order.provider_checkout_id);
+            const status = String(checkout?.status || '').toUpperCase();
+            if (status === 'PAID') {
+              const transactionId = clean(checkoutTransactionId(checkout),180) || null;
+              await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_transaction_id=COALESCE(provider_transaction_id,?) WHERE id=?`).bind(transactionId,order.id).run();
+              try { await sendMerchConfirmation(env,{...order,status:'PAID',provider_transaction_id:transactionId}); } catch (_) {}
+            } else if (['FAILED','EXPIRED'].includes(status)) {
+              await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(status,order.id).run();
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (error) {
+      result.warnings.push(`Merchandise reconciliation: ${String(error?.message || error)}`);
+    }
+
+    try {
+      const merchStats = await env.BOOKINGS_DB.prepare(`
+        SELECT
+          COALESCE(SUM(CASE WHEN status='PAID' THEN amount_pence ELSE 0 END),0) merch_revenue,
+          COALESCE(SUM(CASE WHEN status='PAID' THEN ((unit_price_pence - CASE WHEN fit='womens' THEN 1700 ELSE 1200 END) * quantity) ELSE 0 END),0) merch_profit
+        FROM merch_orders
+      `).first();
+      result.summary.merch_revenue = Number(merchStats?.merch_revenue || 0);
+      result.summary.merch_profit = Number(merchStats?.merch_profit || 0);
+      result.summary.paid_revenue = Number(result.summary.class_revenue || 0) + result.summary.merch_revenue;
+    } catch (error) {
+      result.warnings.push(`Merchandise totals: ${String(error?.message || error)}`);
     }
 
     try {

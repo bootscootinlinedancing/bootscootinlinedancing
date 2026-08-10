@@ -1,6 +1,6 @@
 {
   "release": "96.4.39",
-  "version": "96.4.62",
+  "version": "96.4.63",
   "release_name": "PUBLIC BLACK/RED SWEEP + UNIFIED MENU + MERCH CHECKOUT FIX",
   "description": "Removes remaining beige public surfaces, standardises the Explore menu, and replaces Safari fetch checkout with a robust same-origin form POST to SumUp.",
   "built_from": "boot-scootin-platform-v96.4.38-MERCH-ORDERING-BLACK-RED-CLEANUP.zip",
@@ -10,7 +10,14 @@
     "Homepage Explore menu now uses the same text-only professional menu as inner pages",
     "Merch checkout now submits as a normal form POST for iPhone Safari reliability",
     "Worker accepts JSON and form-encoded merch orders and redirects securely to hosted SumUp checkout",
-    "Mobile and desktop layout fixes from v96.4.38 preserved"
+    "Mobile and desktop layout fixes from v96.4.38 preserved",
+    "HQ paid revenue now combines paid class bookings and paid merchandise orders.",
+    "HQ overview shows class revenue, merchandise revenue and estimated merchandise profit separately.",
+    "Merch Orders shows estimated production cost and item profit using £12 unisex and £17 women’s premium production costs.",
+    "Class editor now includes reusable Edgbaston Community Centre and Low Places Bar templates with venue address, usual times, capacity and concise first-class guidance.",
+    "HQ cream/beige admin panels were converted to the black/red/cream brand palette.",
+    "Homepage opening headline now uses the Western Rye display type selectively.",
+    "HQ refresh reconciles pending SumUp merchandise checkouts so paid T-shirt sales appear in revenue even if the customer did not return to the website after payment."
   ],
   "checks": {
     "root_file_count": 98,
@@ -49,5 +56,5 @@
     "Remaining beige panel/text contrast repaired without changing entry page"
   ],
   "desktop_layout_repair": "MacBook/small desktop breakpoint repair; mobile below 768px preserved",
-  "name": "MERCH-FULFILMENT-HQ-HOMEPAGE"
+  "name": "HQ-REVENUE-VENUE-TEMPLATES-DARK-SWEEP"
 }

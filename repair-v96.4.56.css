@@ -145,3 +145,97 @@ body.nora-original-only .library-controls .filter-row{display:none!important}
 /* Beige sweep: pale paper blocks become dark honky-tonk panels, while preserving cream text. */
 body:not(.legal-page) .note-box,body:not(.legal-page) .info-box,body:not(.legal-page) .tip-box,body:not(.legal-page) .qualification-note{background:#170c0c!important;color:#efe2d4!important;border-color:#713338!important}
 @media(max-width:760px){.home-meet-nora-lower{grid-template-columns:1fr}.home-meet-nora-lower figure{order:2}.home-first-actions{flex-direction:column}.home-first-actions a{width:100%;box-sizing:border-box}.merch-admin-card{flex-direction:column}}
+
+
+/* V96.4.63 — HQ dark sweep, revenue clarity, venue templates and selective western type */
+.home-first-message h2{
+  font-family:Rye,serif!important;
+  font-style:normal!important;
+  font-weight:400!important;
+  letter-spacing:.01em!important;
+  text-transform:none!important;
+  line-height:1.03!important;
+}
+body.ranch-v91{background:#080405!important;color:#f7eee7!important}
+body.ranch-v91 .ranch91-main{color:#f7eee7!important}
+body.ranch-v91 .ranch91-summary article,
+body.ranch-v91 .ranch91-card,
+body.ranch-v91 .booking-admin-card,
+body.ranch-v91 .diagnostic-summary-grid article,
+body.ranch-v91 .hq-modal-dialog,
+body.ranch-v91 .crm-box,
+body.ranch-v91 .email-centre-shell,
+body.ranch-v91 .email-template-item,
+body.ranch-v91 .email-campaign-row,
+body.ranch-v91 .email-subscriber-row,
+body.ranch-v91 .ranch91-list-card,
+body.ranch-v91 .ranch92-state,
+body.ranch-v91 .ranch92-connection,
+body.ranch-v91 .booking-cleanup-panel{
+  background:#12090a!important;color:#f7eee7!important;border-color:#6a2b30!important;box-shadow:none!important;
+}
+body.ranch-v91 .ranch91-summary span,
+body.ranch-v91 .ranch91-card-head p,
+body.ranch-v91 .ranch91-loading,
+body.ranch-v91 .ranch91-health-row small,
+body.ranch-v91 .ranch91-attention-item span,
+body.ranch-v91 .ranch-class-row small,
+body.ranch-v91 .booking-admin-card dt,
+body.ranch-v91 .email-placeholder-help,
+body.ranch-v91 .merch-profit-note{color:#cbb7aa!important}
+body.ranch-v91 .ranch91-summary strong{color:#ff4a52!important}
+body.ranch-v91 .ranch91-loading,
+body.ranch-v91 .ranch91-empty,
+body.ranch-v91 .ranch91-attention-item,
+body.ranch-v91 .ranch91-health-row{background:#170d0e!important;color:#f7eee7!important;border-color:#5b292d!important}
+body.ranch-v91 .ranch91-modebar{background:#231417!important;color:#f0dcd0!important;border-left-color:#c58a3e!important}
+body.ranch-v91 .ranch91-modebar.protected{background:#102419!important;color:#cce7d5!important;border-left-color:#38945b!important}
+body.ranch-v91 .hq-class-form label{color:#f7eee7!important}
+body.ranch-v91 .hq-class-form input,
+body.ranch-v91 .hq-class-form select,
+body.ranch-v91 .hq-class-form textarea,
+body.ranch-v91 .ranch-filter-row select{background:#070405!important;color:#fff!important;border-color:#7a3439!important}
+body.ranch-v91 .hq-modal-head{border-color:#5b292d!important}
+body.ranch-v91 .ranch91-warning{background:#2a1113!important;color:#ffd8da!important;border-left-color:#d6454b!important}
+body.ranch-v91 .danger-outline{background:#160b0c!important;color:#ffb9bd!important;border-color:#a72e35!important}
+body.ranch-v91 .status-pill{background:#2a1719!important;color:#f7eee7!important}
+body.ranch-v91 .status-pill.open{background:#102419!important;color:#bce1c8!important}
+body.ranch-v91 .revenue-summary-card small{display:block;margin-top:.45rem;color:#cbb7aa!important;font:500 .64rem/1.45 Oswald,sans-serif;text-transform:none;letter-spacing:0}
+.hq-class-templates{display:grid;gap:.8rem;padding:1rem;border:1px solid #6a2b30;background:#170c0d;color:#f7eee7}
+.hq-class-templates h3{margin:.1rem 0;font:400 1.55rem/1 Rye,serif;color:#fff4eb}
+.hq-class-templates p{margin:.25rem 0;color:#cbb7aa;line-height:1.5}
+.hq-class-templates>small{color:#e0c8ba;line-height:1.45}
+.hq-class-template-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.55rem}
+.hq-class-template-actions .button{white-space:normal;line-height:1.2}
+.merch-profit-line{color:#ff8d93!important;font-weight:700!important}
+.merch-profit-note{display:block;margin-top:.2rem;font-size:.72rem}
+@media(max-width:700px){.hq-class-template-actions{grid-template-columns:1fr}.hq-class-template-actions .button{width:100%}}
+
+body.ranch-v91 .email-centre-card,
+body.ranch-v91 .email-customer-picker,
+body.ranch-v91 .email-customer-picker-list,
+body.ranch-v91 .email-centre-status,
+body.ranch-v91 .email-audience-result,
+body.ranch-v91 .email-compose-status,
+body.ranch-v91 .email-empty,
+body.ranch-v91 .crm-dialog-shell,
+body.ranch-v91 .crm-tab-panel,
+body.ranch-v91 .ranch92-steps,
+body.ranch-v91 .private-admin-card,
+body.ranch-v91 .operations-activity-row,
+body.ranch-v91 .operations-class-row{
+  background:#12090a!important;color:#f7eee7!important;border-color:#6a2b30!important;
+}
+body.ranch-v91 .email-centre-status.ready{background:#102419!important;color:#cce7d5!important;border-left-color:#38945b!important}
+body.ranch-v91 .email-centre-status.setup{background:#24180b!important;color:#f4dec0!important;border-left-color:#b78331!important}
+body.ranch-v91 .email-centre-card input,
+body.ranch-v91 .email-centre-card select,
+body.ranch-v91 .email-centre-card textarea,
+body.ranch-v91 .email-customer-picker input,
+body.ranch-v91 .email-picker-actions button{
+  background:#070405!important;color:#fff!important;border-color:#7a3439!important;
+}
+body.ranch-v91 .email-template-item strong,
+body.ranch-v91 .email-template-item span,
+body.ranch-v91 .email-centre-card h3,
+body.ranch-v91 .email-centre-card label{color:#f7eee7!important}
