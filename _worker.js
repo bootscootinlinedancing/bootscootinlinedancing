@@ -98,6 +98,7 @@ async function ensureBookingSchema(env) {
       status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('draft','open','closed','cancelled')),
       level TEXT NOT NULL DEFAULT 'Beginner friendly',
       public_notes TEXT,
+      poster_url TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
@@ -396,7 +397,8 @@ async function ensureBookingSchema(env) {
     `ALTER TABLE merch_orders ADD COLUMN delivery_pence INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE merch_orders ADD COLUMN fulfilment_status TEXT NOT NULL DEFAULT 'NEW'`,
     `ALTER TABLE merch_orders ADD COLUMN confirmation_email_sent_at TEXT`,
-    `ALTER TABLE merch_orders ADD COLUMN fulfilment_email_sent_at TEXT`
+    `ALTER TABLE merch_orders ADD COLUMN fulfilment_email_sent_at TEXT`,
+    `ALTER TABLE classes ADD COLUMN poster_url TEXT`
   ];
   for (const migration of migrations) {
     try { await env.BOOKINGS_DB.prepare(migration).run(); } catch (_) {}
@@ -447,7 +449,7 @@ async function publicClasses(env) {
         FROM bookings b
         WHERE b.class_id=c.id AND b.status='PAID'
       ),0) AS sold,
-      c.status,c.level,c.public_notes,
+      c.status,c.level,c.public_notes,c.poster_url,
       MAX(
         0,
         c.capacity
@@ -1872,7 +1874,7 @@ async function adminClasses(request, env) {
       const response=await env.BOOKINGS_DB.prepare(`
         SELECT
           c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
-          c.status,c.level,c.public_notes,c.created_at,c.updated_at,
+          c.status,c.level,c.public_notes,c.poster_url,c.created_at,c.updated_at,
           COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS sold,
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
           COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count
@@ -1904,11 +1906,11 @@ async function adminClasses(request, env) {
     start.setDate(start.getDate()+7);
     if(end)end.setDate(end.getDate()+7);
     await env.BOOKINGS_DB.prepare(`
-      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       id,original.title,original.venue,original.location,start.toISOString(),end?end.toISOString():null,
-      original.price_pence,original.capacity,'draft',original.level,original.public_notes
+      original.price_pence,original.capacity,'draft',original.level,original.public_notes,original.poster_url||''
     ).run();
     return json({ok:true,id},201);
   }
@@ -1970,13 +1972,13 @@ async function adminClasses(request, env) {
   const vals=[
     title,venue,location,starts.toISOString(),ends?ends.toISOString():null,
     Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),
-    status,clean(b.level,80)||'Beginner friendly',clean(b.public_notes,600)
+    status,clean(b.level,80)||'Beginner friendly',clean(b.public_notes,4000),clean(b.poster_url,500)
   ];
 
   if(request.method==='POST'){
     await env.BOOKINGS_DB.prepare(`
-      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(id,...vals).run();
     const created=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(id).first();
     try{await createNewClassDraft(env,created,check.state.email||'hq');}catch(error){console.error('NEW_CLASS_DRAFT_FAILED',error?.message||error);}
@@ -1991,7 +1993,7 @@ async function adminClasses(request, env) {
     }
     await env.BOOKINGS_DB.prepare(`
       UPDATE classes
-      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,updated_at=CURRENT_TIMESTAMP
+      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,poster_url=?,updated_at=CURRENT_TIMESTAMP
       WHERE id=?
     `).bind(...vals,id).run();
     const detailsChanged=existing && (existing.starts_at!==starts.toISOString() || String(existing.venue||'')!==venue || String(existing.location||'')!==location || String(existing.title||'')!==title);

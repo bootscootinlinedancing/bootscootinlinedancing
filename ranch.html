@@ -6,15 +6,29 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=96.4.63">
+  <link rel="stylesheet" href="styles.css?v=96.4.65">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
-  <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.63">
+  <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.65">
 </head>
 <body class="ranch-v91">
 
   <script>
     (function () {
+      var hqLockedScrollY = 0;
+      function setHQBodyLock(open){
+        if(open){
+          hqLockedScrollY = window.scrollY || window.pageYOffset || 0;
+          document.body.style.position='fixed';
+          document.body.style.top=`-${hqLockedScrollY}px`;
+          document.body.style.left='0';
+          document.body.style.right='0';
+          document.body.style.width='100%';
+        }else if(document.body.style.position==='fixed'){
+          document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';
+          window.scrollTo(0,hqLockedScrollY);
+        }
+      }
       function getHQMenuParts() {
         return {
           drawer: document.getElementById('ranch91Drawer'),
@@ -32,6 +46,7 @@
         parts.drawer.setAttribute('aria-hidden', String(!open));
         parts.button.setAttribute('aria-expanded', String(open));
         document.body.classList.toggle('ranch91-drawer-open', open);
+        setHQBodyLock(open);
 
         if (parts.backdrop) {
           parts.backdrop.hidden = !open;
@@ -123,7 +138,7 @@
 
   <div class="ranch91-app">
     <header class="ranch91-topbar">
-      <button id="ranch91Menu" class="ranch91-menu" type="button" aria-controls="ranch91Drawer" aria-expanded="false" onclick="return window.BootScootinHQMenuToggle(event)" ontouchend="return window.BootScootinHQMenuToggle(event)">
+      <button id="ranch91Menu" class="ranch91-menu" type="button" aria-controls="ranch91Drawer" aria-expanded="false" onclick="return window.BootScootinHQMenuToggle(event)">
         <span aria-hidden="true"></span>
         <span>Menu</span>
       </button>
@@ -136,7 +151,7 @@
         <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
         <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
       </div>
-      <div class="ranch91-release">V96.4.64</div>
+      <div class="ranch91-release">V96.4.65</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -657,7 +672,15 @@
           <label>Status<select name="status"><option value="draft">Draft</option><option value="open">Open</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label>
         </div>
         <label>Level<input name="level" type="text" maxlength="80" value="Beginner friendly"></label>
-        <label>Public notes<textarea name="public_notes" rows="4" maxlength="600"></textarea></label>
+        <label>Public class description<textarea name="public_notes" rows="10" maxlength="4000" placeholder="What guests should expect, what to bring, parking and any venue notes."></textarea></label>
+        <section class="hq-class-poster" aria-labelledby="classPosterHeading">
+          <div><p class="kicker red">Event poster</p><h3 id="classPosterHeading">Optional class poster</h3><p>Upload a JPG, PNG or WebP poster. It will appear with the class on the public booking page.</p></div>
+          <input type="hidden" name="poster_url">
+          <label class="hq-poster-file">Choose poster image<input id="classPosterFile" type="file" accept="image/jpeg,image/png,image/webp"></label>
+          <div class="hq-poster-preview-wrap" id="classPosterPreviewWrap" hidden><img id="classPosterPreview" alt="Class poster preview"></div>
+          <button type="button" class="button secondary compact" id="removeClassPoster" hidden>Remove poster</button>
+          <small id="classPosterStatus">No poster selected.</small>
+        </section>
         <p id="classEditorMessage" class="form-message" aria-live="polite"></p>
         <div class="hq-modal-actions">
           <button type="button" class="button secondary" data-close-class-modal>Cancel</button>
@@ -676,31 +699,9 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=96.4.63"></script>
+  <script src="ranch.js?v=96.4.65"></script>
 
-  <script>
-  (function(){
-    function initEmergencyMenu(){
-      var button=document.getElementById('ranch91Menu');
-      var drawer=document.getElementById('ranch91Drawer');
-      var close=document.getElementById('ranch91Close');
-      var backdrop=document.getElementById('ranch91Backdrop');
-      if(!button||!drawer||button.dataset.recoveryBound==='1')return;
-      button.dataset.recoveryBound='1';
-      function toggle(open){
-        drawer.classList.toggle('open',open);
-        drawer.setAttribute('aria-hidden',String(!open));
-        button.setAttribute('aria-expanded',String(open));
-        document.body.classList.toggle('ranch91-drawer-open',open);
-        if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
-      }
-      button.addEventListener('click',function(){toggle(!drawer.classList.contains('open'));});
-      if(close)close.addEventListener('click',function(){toggle(false);});
-      if(backdrop)backdrop.addEventListener('click',function(){toggle(false);});
-    }
-    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initEmergencyMenu);else initEmergencyMenu();
-  })();
-  </script>
+
   <script src="honky-theme.js?v=96.0.0"></script>
 
 <section class="global-ip-notice" aria-label="Copyright and trade mark notice">

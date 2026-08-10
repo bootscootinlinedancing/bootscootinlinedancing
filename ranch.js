@@ -550,8 +550,40 @@
     }
   }
   const CLASS_VENUE_TEMPLATES={
-    edgbaston:{title:'Friday Line Dancing',venue:'Edgbaston Community Centre',location:'40 Woodview Drive, Edgbaston, Birmingham B15 2HU',start:'19:30',end:'20:30',price:'6.00',capacity:20,level:'Beginner friendly',notes:'Beginner-friendly line dancing. No partner or previous experience needed. Free parking is available at the venue. Wear comfortable clothing and secure shoes or boots you can move in, and bring water. For more first-class advice, open New Here on the website.'},
-    lowplaces:{title:'Class & Social Dancing',venue:'Low Places Bar Birmingham',location:'60–64 Heath Mill Lane, Digbeth, Birmingham B9 4AR',start:'19:15',end:'21:00',price:'6.00',capacity:50,level:'Beginner friendly',notes:'Beginner-friendly class with social dancing at Low Places. No partner or previous experience needed. Paid parking is available opposite the venue. Wear comfortable clothing and secure shoes or boots you can move in. For more first-class advice, open New Here on the website.'}
+    edgbaston:{
+      title:'Beginner Line Dancing',venue:'Edgbaston Community Centre',location:'40 Woodview Drive, Birmingham, B15 2HU',start:'19:30',end:'20:30',price:'6.00',capacity:20,level:'Beginner friendly',
+      notes:`Come and join Boot Scootin’ Line Dancing for a fun, friendly beginner class in the heart of Edgbaston. Whether you are completely new or have a little experience, the session is relaxed, welcoming and taught step-by-step — no pressure, no judgement and no partner needed.
+
+What to expect:
+• Beginner-friendly line dances
+• Clear step-by-step guidance
+• Great music, good energy and plenty of laughs
+• A fun way to stay active without the gym
+
+Venue: Edgbaston Community Centre, 40 Woodview Drive, Birmingham, B15 2HU. Free parking is available at the venue. Wear comfortable clothing and secure shoes or boots you can move in, and bring water.
+
+Spaces are limited, so advance booking is recommended. Coming solo is absolutely fine. For more detailed first-class advice, open “New Here?” on the Boot Scootin’ website.
+
+Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing on Facebook for class updates, dance videos and upcoming events.`
+    },
+    lowplaces:{
+      title:'Class & Social Dancing',venue:'Low Places Bar Birmingham',location:'60–64 Heath Mill Lane, Deritend, Birmingham, B9 4AR',start:'19:15',end:'21:00',price:'6.00',capacity:50,level:'Beginner friendly',
+      notes:`Boot Scootin’ Line Dancing at Low Places — Birmingham’s country dive bar / honky-tonk. Join us for a fun, beginner-friendly evening of country music, line dancing, social dancing and good vibes. Everyone is welcome, whether it is your first ever class or you are already a regular on the dance floor.
+
+The usual Low Places lineup:
+• 7:15–7:30pm — Saddle Up warm-up
+• 7:30–8:30pm — Beginner-friendly line dancing class, taught step-by-step
+• 8:30–9:00pm — Your Requests & Social Dancing
+• From 9:00pm — Stay for a drink, music and the Low Places atmosphere
+
+Venue: Low Places Bar, 60–64 Heath Mill Lane, Deritend, Birmingham, B9 4AR. Paid parking is available nearby/opposite the venue. No partner is needed. Wear comfortable clothing and secure shoes or boots you can move in.
+
+£6 per person plus any applicable booking fee. Advance booking is required to take part in the class. Not dancing? You are still welcome to come along, grab a drink and enjoy the atmosphere.
+
+Send dance requests before the session and we will fit in as many favourites as we can. For more detailed first-class advice, open “New Here?” on the Boot Scootin’ website.
+
+Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing on Facebook for class updates, dance videos and upcoming events.`
+    }
   };
   let activeClassTemplate='';
   function applyTemplateTimes(form,key){
@@ -566,6 +598,26 @@
     const t=CLASS_VENUE_TEMPLATES[key];if(!t)return;activeClassTemplate=key;
     form.elements.title.value=t.title;form.elements.venue.value=t.venue;form.elements.location.value=t.location;form.elements.price_gbp.value=t.price;form.elements.capacity.value=t.capacity;form.elements.level.value=t.level;form.elements.public_notes.value=t.notes;applyTemplateTimes(form,key);
     if(status)status.textContent=`${t.venue} loaded · usual time ${t.start}–${t.end} · capacity ${t.capacity}. Choose/change the date as needed.`;
+  }
+
+  function setClassPosterPreview(url=''){
+    const form=$('#classEditorForm'),wrap=$('#classPosterPreviewWrap'),img=$('#classPosterPreview'),remove=$('#removeClassPoster'),status=$('#classPosterStatus');
+    if(!form)return;
+    form.elements.poster_url.value=url||'';
+    if(url){if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent='Poster ready to use.';}
+    else{if(img)img.removeAttribute('src');if(wrap)wrap.hidden=true;if(remove)remove.hidden=true;if(status)status.textContent='No poster selected.';}
+  }
+  async function uploadClassPosterIfNeeded(){
+    const input=$('#classPosterFile'),form=$('#classEditorForm'),status=$('#classPosterStatus');
+    const file=input?.files?.[0];
+    if(!file)return form?.elements.poster_url?.value||'';
+    if(status)status.textContent='Uploading poster…';
+    const data=new FormData();data.append('file',file);data.append('title',`${form.elements.title.value||'Boot Scootin class'} poster`);data.append('description','Class/event poster uploaded from Boot Scootin HQ');data.append('placement','class-poster');data.append('published','1');
+    const result=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'POST',body:data},30000);
+    setClassPosterPreview(result.url||'');
+    input.value='';
+    if(status)status.textContent='Poster uploaded and linked to this class.';
+    return result.url||'';
   }
 
   function openClassEditor(item=null){
@@ -591,6 +643,8 @@
     form.elements.status.value=item?.status||'draft';
     form.elements.level.value=item?.level||'Beginner friendly';
     form.elements.public_notes.value=item?.public_notes||'';
+    if($('#classPosterFile'))$('#classPosterFile').value='';
+    setClassPosterPreview(item?.poster_url||'');
     $('#classEditorTitle').textContent=item?'Edit class':'Create class';
     $('#classEditorMessage').textContent='';
     modal.hidden=false;document.body.classList.add('hq-modal-open');
@@ -604,11 +658,13 @@
     event.preventDefault();
     const form=event.currentTarget,button=$('#saveClassButton'),message=$('#classEditorMessage');
     const id=form.elements.id.value;
+    let posterUrl=form.elements.poster_url.value||'';
+    try{posterUrl=await uploadClassPosterIfNeeded();}catch(error){message.textContent=`Poster upload failed: ${error.message}`;toast(message.textContent,'error');return;}
     const payload={
       id:id||undefined,title:form.elements.title.value.trim(),venue:form.elements.venue.value.trim(),location:form.elements.location.value.trim(),
       starts_at:form.elements.starts_at.value,ends_at:form.elements.ends_at.value||null,
       price_pence:Math.round(Number(form.elements.price_gbp.value||0)*100),capacity:Number(form.elements.capacity.value||0),
-      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim()
+      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl
     };
     button.disabled=true;button.textContent='Saving…';message.textContent='Saving class…';
     try{
@@ -1223,6 +1279,8 @@ Type REFUNDED to continue.`);
   });
   $$('[data-open-class]').forEach(button=>button.dataset.classOpenHandled='1');
   $('#refreshRanch')?.addEventListener('click',loadClasses);
+  $('#classPosterFile')?.addEventListener('change',event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const wrap=$('#classPosterPreviewWrap'),img=$('#classPosterPreview'),remove=$('#removeClassPoster'),status=$('#classPosterStatus');if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent=`Selected: ${file.name}. It will upload when you save the class.`;});
+  $('#removeClassPoster')?.addEventListener('click',()=>{const input=$('#classPosterFile');if(input)input.value='';setClassPosterPreview('');});
   $('#ranchClassFilter')?.addEventListener('change',renderClasses);
   $('#classEditorForm')?.addEventListener('submit',saveClass);
   $$('[data-class-template]').forEach(node=>node.addEventListener('click',()=>applyClassTemplate(node.dataset.classTemplate)));

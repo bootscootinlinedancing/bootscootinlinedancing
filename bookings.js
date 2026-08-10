@@ -19,6 +19,7 @@
       const full=Number(c.spaces_remaining)<1;
       const nearly=Number(c.spaces_remaining)>0&&Number(c.spaces_remaining)<5;
       return `<article class="class-card">
+        ${c.poster_url?`<div class="class-poster"><img src="${esc(c.poster_url)}" alt="${esc(c.title)} poster" loading="lazy"></div>`:''}
         <div class="class-date"><span>${new Date(c.starts_at).toLocaleDateString('en-GB',{month:'short'}).toUpperCase()}</span><strong>${new Date(c.starts_at).getDate()}</strong></div>
         <div class="class-info">
           <p class="class-venue">${esc(c.venue)}</p><h3>${esc(c.title)}</h3>
