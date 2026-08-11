@@ -88,9 +88,9 @@ async function memberSha256Hex(value){
   return bytesToHex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(value||''))));
 }
 async function passwordHash(password,saltHex){
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(password||'')),'PBKDF2',false,['deriveBits']);
-  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:hexToBytes(saltHex),iterations:160000},key,256);
-  return bytesToHex(bits);
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(password||'')),{name:'PBKDF2'},false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:{name:'SHA-256'},salt:hexToBytes(String(saltHex||'')),iterations:160000},key,256);
+  return bytesToHex(new Uint8Array(bits));
 }
 function randomHex(bytes=32){
   const arr=new Uint8Array(bytes); crypto.getRandomValues(arr); return bytesToHex(arr);
@@ -2033,8 +2033,9 @@ async function memberRegister(request,env){
         .bind(name,phone,phone,marketing,customer.id).run();
     }
 
-    stage='PASSWORD';
+    stage='PASSWORD_SALT';
     const salt=randomHex(16);
+    stage='PASSWORD_HASH';
     const hash=await passwordHash(password,salt);
     const memberId=existing?.id||crypto.randomUUID();
 
