@@ -73,6 +73,132 @@ function requireAdmin(request, env) {
 }
 
 
+
+const MEMBER_COOKIE = 'bs_member_session';
+
+function bytesToHex(bytes){
+  return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function hexToBytes(hex){
+  const out=new Uint8Array(Math.floor(String(hex||'').length/2));
+  for(let i=0;i<out.length;i++) out[i]=parseInt(hex.slice(i*2,i*2+2),16);
+  return out;
+}
+async function sha256Hex(value){
+  return bytesToHex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(value||''))));
+}
+async function passwordHash(password,saltHex){
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(password||'')),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:hexToBytes(saltHex),iterations:160000},key,256);
+  return bytesToHex(bits);
+}
+function randomHex(bytes=32){
+  const arr=new Uint8Array(bytes); crypto.getRandomValues(arr); return bytesToHex(arr);
+}
+function memberCookie(request){
+  const raw=request.headers.get('Cookie')||'';
+  const match=raw.match(/(?:^|;\s*)bs_member_session=([^;]+)/);
+  return match?decodeURIComponent(match[1]):'';
+}
+function memberCookieHeader(token,maxAge=60*60*24*30){
+  return `${MEMBER_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+}
+function sameOriginWrite(request){
+  const origin=request.headers.get('Origin');
+  if(!origin) return true;
+  try{return new URL(origin).origin===new URL(request.url).origin;}catch{return false;}
+}
+function passwordValid(password){
+  const p=String(password||'');
+  return p.length>=10 && /[A-Za-z]/.test(p) && /\d/.test(p);
+}
+async function memberSession(request,env){
+  const token=memberCookie(request); if(!token) return null;
+  const hash=await sha256Hex(token);
+  const row=await env.BOOKINGS_DB.prepare(`
+    SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,
+           c.name,c.phone,c.marketing_consent,
+           mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak
+    FROM member_sessions s
+    JOIN member_accounts a ON a.id=s.member_id
+    JOIN customers c ON c.id=a.customer_id
+    LEFT JOIN member_profiles mp ON mp.customer_id=c.id
+    WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP
+    LIMIT 1
+  `).bind(hash).first();
+  return row||null;
+}
+async function createMemberSession(env,memberId){
+  const token=randomHex(32), hash=await sha256Hex(token);
+  const expires=new Date(Date.now()+30*86400000).toISOString();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO member_sessions(id,member_id,token_hash,expires_at) VALUES(?,?,?,?)`)
+    .bind(crypto.randomUUID(),memberId,hash,expires).run();
+  return token;
+}
+async function createMemberEmailToken(env,memberId,purpose,hours){
+  const token=randomHex(32), hash=await sha256Hex(token);
+  const expires=new Date(Date.now()+hours*3600000).toISOString();
+  await env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND purpose=? AND used_at IS NULL`).bind(memberId,purpose).run().catch(()=>{});
+  await env.BOOKINGS_DB.prepare(`INSERT INTO member_email_tokens(id,member_id,token_hash,purpose,expires_at) VALUES(?,?,?,?,?)`)
+    .bind(crypto.randomUUID(),memberId,hash,purpose,expires).run();
+  return token;
+}
+async function syncLoyaltyForEmail(env,email){
+  const normalized=String(email||'').trim().toLowerCase(); if(!emailOk(normalized)) return;
+  const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(normalized).first();
+  const paid=await env.BOOKINGS_DB.prepare(`
+    SELECT id,status,amount_pence,refund_status,refund_amount_pence
+    FROM bookings WHERE lower(customer_email)=lower(?) AND amount_pence>0
+  `).bind(normalized).all();
+  for(const b of (paid.results||[])){
+    if(b.status==='PAID' && b.refund_status!=='REFUNDED'){
+      await env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO loyalty_stamp_ledger(id,customer_email,member_id,booking_id,event_key,stamp_delta,reason)
+        VALUES(?,?,?,?,?,1,'QUALIFYING_CLASS_PAYMENT')
+      `).bind(crypto.randomUUID(),normalized,member?.id||null,b.id,`PAYMENT:${b.id}`).run();
+    }
+    if(b.status==='REFUNDED' || (b.refund_status==='REFUNDED' && Number(b.refund_amount_pence||0)>=Number(b.amount_pence||0))){
+      await env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO loyalty_stamp_ledger(id,customer_email,member_id,booking_id,event_key,stamp_delta,reason)
+        VALUES(?,?,?,?,?,-1,'FULL_REFUND_REVERSAL')
+      `).bind(crypto.randomUUID(),normalized,member?.id||null,b.id,`REFUND:${b.id}`).run();
+    }
+  }
+  if(member?.id){
+    await env.BOOKINGS_DB.prepare(`UPDATE loyalty_stamp_ledger SET member_id=? WHERE lower(customer_email)=lower(?) AND member_id IS NULL`).bind(member.id,normalized).run().catch(()=>{});
+  }
+}
+async function awardLoyaltyStampForBooking(env,bookingId){
+  const b=await env.BOOKINGS_DB.prepare(`SELECT id,customer_email,amount_pence,status,refund_status FROM bookings WHERE id=?`).bind(bookingId).first();
+  if(!b || b.status!=='PAID' || Number(b.amount_pence||0)<=0 || b.refund_status==='REFUNDED') return;
+  const email=String(b.customer_email||'').toLowerCase();
+  const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
+  await env.BOOKINGS_DB.prepare(`
+    INSERT OR IGNORE INTO loyalty_stamp_ledger(id,customer_email,member_id,booking_id,event_key,stamp_delta,reason)
+    VALUES(?,?,?,?,?,1,'QUALIFYING_CLASS_PAYMENT')
+  `).bind(crypto.randomUUID(),email,member?.id||null,b.id,`PAYMENT:${b.id}`).run();
+}
+async function reverseLoyaltyStampForBooking(env,bookingId){
+  const b=await env.BOOKINGS_DB.prepare(`SELECT id,customer_email FROM bookings WHERE id=?`).bind(bookingId).first();
+  if(!b) return;
+  const email=String(b.customer_email||'').toLowerCase();
+  const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
+  const earned=await env.BOOKINGS_DB.prepare(`SELECT id FROM loyalty_stamp_ledger WHERE event_key=?`).bind(`PAYMENT:${bookingId}`).first();
+  if(!earned) return;
+  await env.BOOKINGS_DB.prepare(`
+    INSERT OR IGNORE INTO loyalty_stamp_ledger(id,customer_email,member_id,booking_id,event_key,stamp_delta,reason)
+    VALUES(?,?,?,?,?,-1,'FULL_REFUND_REVERSAL')
+  `).bind(crypto.randomUUID(),email,member?.id||null,bookingId,`REFUND:${bookingId}`).run();
+}
+async function loyaltySummary(env,email){
+  await syncLoyaltyForEmail(env,email);
+  const row=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(stamp_delta),0) total FROM loyalty_stamp_ledger WHERE lower(customer_email)=lower(?)`).bind(String(email||'').toLowerCase()).first();
+  const total=Math.max(0,Number(row?.total||0));
+  const completed=Math.floor(total/9);
+  const progress=total===0?0:(total%9===0?9:total%9);
+  return {total_stamps:total,progress,goal:9,free_class_milestones:completed,reward_ready:total>=9};
+}
+
 async function ensureBookingSchema(env) {
   if (!env.BOOKINGS_DB) throw new Error('BOOKINGS_DB binding is missing.');
   const statements = [
@@ -345,6 +471,51 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_private_event_status ON private_event_inquiries(status,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_private_event_token ON private_event_inquiries(secure_token)`,
     `CREATE INDEX IF NOT EXISTS idx_private_quote_inquiry ON private_event_quotes(inquiry_id,version)`,
+    `CREATE TABLE IF NOT EXISTS member_accounts (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      password_salt TEXT NOT NULL,
+      verified_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS member_sessions (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL REFERENCES member_accounts(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS member_email_tokens (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL REFERENCES member_accounts(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      purpose TEXT NOT NULL CHECK(purpose IN ('VERIFY','RESET')),
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS member_login_attempts (
+      key TEXT PRIMARY KEY,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      window_started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      blocked_until TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS loyalty_stamp_ledger (
+      id TEXT PRIMARY KEY,
+      customer_email TEXT NOT NULL,
+      member_id TEXT REFERENCES member_accounts(id) ON DELETE SET NULL,
+      booking_id TEXT REFERENCES bookings(id) ON DELETE CASCADE,
+      event_key TEXT NOT NULL UNIQUE,
+      stamp_delta INTEGER NOT NULL CHECK(stamp_delta IN (-1,1)),
+      reason TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_member_sessions_token ON member_sessions(token_hash)`,
+    `CREATE INDEX IF NOT EXISTS idx_member_tokens_token ON member_email_tokens(token_hash)`,
+    `CREATE INDEX IF NOT EXISTS idx_loyalty_email ON loyalty_stamp_ledger(customer_email,created_at)`,
     `CREATE TABLE IF NOT EXISTS customer_crm_profiles (
       customer_key TEXT PRIMARY KEY,
       birthday TEXT,
@@ -1477,6 +1648,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
       ]);
       const confirmedBooking = await bookingWithClass(env, booking.id);
       if (confirmedBooking) await deliverBookingNotification(env, confirmedBooking, 'BOOKING_CONFIRMED');
+      await awardLoyaltyStampForBooking(env, booking.id);
     }
     booking.status = 'PAID';
     if(booking.promo_code){const pc=await env.BOOKINGS_DB.prepare(`SELECT id FROM promotion_codes WHERE code=?`).bind(booking.promo_code).first();if(pc)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotion_redemptions(id,promotion_code_id,booking_id,customer_email,discount_pence) VALUES(?,?,?,?,?)`).bind(crypto.randomUUID(),pc.id,booking.id,booking.customer_email,Number(booking.discount_pence||0)).run();}
@@ -1687,6 +1859,131 @@ async function systemHealth(request, env) {
   };
 
   return json(result);
+}
+
+
+async function memberRegister(request,env){
+  await ensureBookingSchema(env);
+  if(!sameOriginWrite(request)) return json({error:'This request could not be verified.'},403);
+  const body=await request.json().catch(()=>null); if(!body) return json({error:'Please complete the registration form.'},400);
+  const first=clean(body.first_name,60), last=clean(body.last_name,80);
+  const name=clean(`${first} ${last}`.trim(),120), email=clean(body.email,160).toLowerCase(), phone=clean(body.phone,30);
+  const password=String(body.password||''), marketing=body.marketing_consent?1:0;
+  if(!first||!last||!emailOk(email)) return json({error:'Please enter your first name, surname and a valid email address.'},400);
+  if(!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
+
+  const existing=await env.BOOKINGS_DB.prepare(`SELECT id,verified_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
+  if(existing?.verified_at) return json({error:'An account already exists for this email. Please log in instead.'},409);
+
+  let customer=await env.BOOKINGS_DB.prepare(`SELECT * FROM customers WHERE lower(email)=lower(?)`).bind(email).first();
+  if(!customer){
+    customer={id:crypto.randomUUID()};
+    await env.BOOKINGS_DB.prepare(`INSERT INTO customers(id,name,email,phone,marketing_consent) VALUES(?,?,?,?,?)`).bind(customer.id,name,email,phone,marketing).run();
+  }else{
+    await env.BOOKINGS_DB.prepare(`UPDATE customers SET name=?,phone=CASE WHEN ?<>'' THEN ? ELSE phone END,marketing_consent=MAX(marketing_consent,?),updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+      .bind(name,phone,phone,marketing,customer.id).run();
+  }
+
+  const salt=randomHex(16), hash=await passwordHash(password,salt);
+  let memberId=existing?.id||crypto.randomUUID();
+  if(existing){
+    await env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET customer_id=?,password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(customer.id,hash,salt,memberId).run();
+  }else{
+    await env.BOOKINGS_DB.prepare(`INSERT INTO member_accounts(id,customer_id,email,password_hash,password_salt) VALUES(?,?,?,?,?)`).bind(memberId,customer.id,email,hash,salt).run();
+  }
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO member_profiles(id,customer_id,display_name) VALUES(?,?,?)`).bind(crypto.randomUUID(),customer.id,first).run();
+  await syncLoyaltyForEmail(env,email);
+
+  const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
+  const verifyUrl=`${new URL(request.url).origin}/member-hub.html?verify=${encodeURIComponent(token)}`;
+  const html=buildBrandedEmail({greeting:`Hi ${first},`,heading:'Verify your Boot Scootin’ account',bodyHtml:`<p>Welcome to My Boot Scootin’. Verify your email to activate your secure member login.</p><p><a href="${verifyUrl}" style="display:inline-block;padding:12px 18px;background:#d61f2c;color:#fff;text-decoration:none;border-radius:8px;font-weight:800">Verify my email</a></p><p>This link expires in 24 hours.</p>`});
+  const text=`Hi ${first},\n\nVerify your Boot Scootin’ account:\n${verifyUrl}\n\nThis link expires in 24 hours.`;
+  await sendTransactionalEmail(env,email,'Verify your Boot Scootin’ member account',html,text,'members').catch(()=>null);
+  return json({ok:true,message:'Account created. Check your email to verify it before logging in.'},201);
+}
+async function memberVerify(request,env){
+  await ensureBookingSchema(env);
+  const body=await request.json().catch(()=>null); const token=String(body?.token||'');
+  if(!token) return json({error:'The verification link is incomplete.'},400);
+  const hash=await sha256Hex(token);
+  const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_email_tokens WHERE token_hash=? AND purpose='VERIFY' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP`).bind(hash).first();
+  if(!row) return json({error:'This verification link has expired or has already been used.'},400);
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE member_email_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.id),
+    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET verified_at=COALESCE(verified_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.member_id)
+  ]);
+  return json({ok:true,message:'Email verified. You can now log in.'});
+}
+async function memberLogin(request,env){
+  await ensureBookingSchema(env);
+  if(!sameOriginWrite(request)) return json({error:'This request could not be verified.'},403);
+  const body=await request.json().catch(()=>null); const email=clean(body?.email,160).toLowerCase(), password=String(body?.password||'');
+  if(!emailOk(email)||!password) return json({error:'Enter your email and password.'},400);
+  const account=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
+  if(!account) return json({error:'Email or password is incorrect.'},401);
+  const hash=await passwordHash(password,account.password_salt);
+  if(hash!==account.password_hash) return json({error:'Email or password is incorrect.'},401);
+  if(!account.verified_at) return json({error:'Please verify your email before logging in.'},403);
+  await env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE member_id=? OR expires_at<=CURRENT_TIMESTAMP`).bind(account.id).run().catch(()=>{});
+  const token=await createMemberSession(env,account.id);
+  const response=json({ok:true,message:'Welcome back.'});
+  response.headers.set('Set-Cookie',memberCookieHeader(token));
+  return response;
+}
+async function memberLogout(request,env){
+  await ensureBookingSchema(env);
+  const token=memberCookie(request);
+  if(token){const hash=await sha256Hex(token); await env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE token_hash=?`).bind(hash).run().catch(()=>{});}
+  const response=json({ok:true}); response.headers.set('Set-Cookie',memberCookieHeader('',0)); return response;
+}
+async function memberForgot(request,env){
+  await ensureBookingSchema(env);
+  const body=await request.json().catch(()=>null); const email=clean(body?.email,160).toLowerCase();
+  const generic=json({ok:true,message:'If an account exists for that email, a reset link has been sent.'});
+  if(!emailOk(email)) return generic;
+  const account=await env.BOOKINGS_DB.prepare(`SELECT a.id,c.name FROM member_accounts a JOIN customers c ON c.id=a.customer_id WHERE lower(a.email)=lower(?) AND a.verified_at IS NOT NULL`).bind(email).first();
+  if(!account) return generic;
+  const token=await createMemberEmailToken(env,account.id,'RESET',2);
+  const resetUrl=`${new URL(request.url).origin}/member-hub.html?reset=${encodeURIComponent(token)}`;
+  const first=String(account.name||'there').split(/\s+/)[0];
+  const html=buildBrandedEmail({greeting:`Hi ${first},`,heading:'Reset your Boot Scootin’ password',bodyHtml:`<p>Use the secure link below to choose a new password.</p><p><a href="${resetUrl}" style="display:inline-block;padding:12px 18px;background:#d61f2c;color:#fff;text-decoration:none;border-radius:8px;font-weight:800">Reset password</a></p><p>This link expires in 2 hours.</p>`});
+  await sendTransactionalEmail(env,email,'Reset your Boot Scootin’ password',html,`Reset your password:\n${resetUrl}\n\nThis link expires in 2 hours.`,'members').catch(()=>null);
+  return generic;
+}
+async function memberReset(request,env){
+  await ensureBookingSchema(env);
+  const body=await request.json().catch(()=>null); const token=String(body?.token||''), password=String(body?.password||'');
+  if(!token||!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
+  const hash=await sha256Hex(token);
+  const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_email_tokens WHERE token_hash=? AND purpose='RESET' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP`).bind(hash).first();
+  if(!row) return json({error:'This reset link has expired or has already been used.'},400);
+  const salt=randomHex(16), passHash=await passwordHash(password,salt);
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(passHash,salt,row.member_id),
+    env.BOOKINGS_DB.prepare(`UPDATE member_email_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.id),
+    env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE member_id=?`).bind(row.member_id)
+  ]);
+  return json({ok:true,message:'Password updated. You can now log in.'});
+}
+async function memberMe(request,env){
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session) return json({authenticated:false},401);
+  await syncLoyaltyForEmail(env,session.email);
+  const loyalty=await loyaltySummary(env,session.email);
+  const bookings=await env.BOOKINGS_DB.prepare(`
+    SELECT b.reference,b.status,b.amount_pence,b.paid_at,c.title,c.starts_at,c.venue
+    FROM bookings b LEFT JOIN classes c ON c.id=b.class_id
+    WHERE lower(b.customer_email)=lower(?) ORDER BY b.created_at DESC LIMIT 12
+  `).bind(session.email).all();
+  const orders=await env.BOOKINGS_DB.prepare(`
+    SELECT reference,design,fit,size,quantity,amount_pence,status,fulfilment_method,fulfilment_status,created_at
+    FROM merch_orders WHERE lower(customer_email)=lower(?) ORDER BY created_at DESC LIMIT 12
+  `).bind(session.email).all();
+  return json({authenticated:true,member:{
+    id:session.member_id,email:session.email,name:session.name,display_name:session.display_name||String(session.name||'').split(/\s+/)[0],
+    phone:session.phone||'',trail_rank:session.trail_rank||'First Steps'
+  },loyalty,bookings:bookings.results||[],orders:orders.results||[]});
 }
 
 async function customerPortalLink(request,env){
@@ -3229,6 +3526,7 @@ async function adminBookings(request, env, ctx) {
     if(booking.status!=='PAID'){
       await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
       const confirmed=await bookingWithClass(env,id);if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED');
+      await awardLoyaltyStampForBooking(env,id);
     }
   }else if(action==='CANCEL'){
     if(['PENDING','PAID'].includes(booking.status)){
@@ -3268,6 +3566,7 @@ async function adminBookings(request, env, ctx) {
         await refundSumUpTransaction(env,transactionId,isFull?null:requested);
         await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,provider_transaction_id=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
           .bind(isFull?'REFUNDED':'CANCELLED',requested,transactionId,clean(`Refund confirmed by SumUp. Trace ${refundTraceId}. ${body.admin_notes||''}`,600),id).run();
+        if(isFull) await reverseLoyaltyStampForBooking(env,id);
         await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
           .bind(check.state.email,'REFUND_SUMUP','booking',id,JSON.stringify({trace_id:refundTraceId,requested_amount_pence:requested,transaction_id:transactionId,full_refund:isFull})).run().catch(()=>{});
         try {
@@ -3294,6 +3593,7 @@ async function adminBookings(request, env, ctx) {
     const refundAmount=Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence);
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)
       .bind(refundAmount,clean(body.admin_notes,600),id).run();
+    await reverseLoyaltyStampForBooking(env,id); // MANUAL_LOYALTY_REFUND_REVERSAL
     const refunded=await bookingWithClass(env,id);if(refunded)await deliverBookingNotification(env,{...refunded,refund_amount_pence:refundAmount},'REFUND_CONFIRMED');
   }else if(action==='ISSUE_CREDIT'){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='CLASS_CREDIT_ISSUED',admin_notes=? WHERE id=?`).bind(clean(body.admin_notes,600),id).run();
@@ -3710,6 +4010,13 @@ export default {
       if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);
       if (path === '/api/admin/cleanup-known-august-tests' && request.method === 'POST') return cleanupKnownAugustTestBookings(request, env);
       if (path === '/api/admin/bootstrap' && request.method === 'GET') return adminBootstrap(request, env);
+      if (path === '/api/member/register' && request.method === 'POST') return memberRegister(request, env);
+      if (path === '/api/member/verify' && request.method === 'POST') return memberVerify(request, env);
+      if (path === '/api/member/login' && request.method === 'POST') return memberLogin(request, env);
+      if (path === '/api/member/logout' && request.method === 'POST') return memberLogout(request, env);
+      if (path === '/api/member/forgot' && request.method === 'POST') return memberForgot(request, env);
+      if (path === '/api/member/reset' && request.method === 'POST') return memberReset(request, env);
+      if (path === '/api/member/me' && request.method === 'GET') return memberMe(request, env);
       if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
       if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);
       if (path === '/api/booking-calendar' && request.method === 'GET') return bookingCalendar(request, env, url);

@@ -8269,3 +8269,33 @@ body.ranch-v91 .launch-readiness p,body.ranch-v91 .launch-readiness li,body.ranc
 .quote-money .total{border-top-color:#e11d2e!important}
 .quote-actions .payment-link{display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;text-decoration:none!important;min-height:64px!important}
 .quote-actions .disabled-link{display:flex!important;align-items:center!important;justify-content:center!important;opacity:.45!important;cursor:not-allowed!important}
+
+
+/* v96.4.77 — secure member accounts + live Trail Rewards foundation */
+.member-auth-shell{min-height:72vh;display:grid;place-items:center;padding:3rem 1rem;background:#080606}
+.member-auth-shell[hidden],.member-app-shell[hidden]{display:none!important}
+.member-auth-card{width:min(620px,100%);background:linear-gradient(180deg,#171010,#090707);border:1px solid rgba(220,38,48,.6);border-radius:22px;padding:clamp(1.25rem,4vw,2.4rem);box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.member-auth-card h1{margin:.25rem 0 .65rem;color:#fff}
+.member-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:1.3rem 0}
+.member-auth-tabs button,.member-link-button,.member-logout{border:1px solid rgba(220,38,48,.55);background:#100909;color:#f7e6df;border-radius:10px;padding:.8rem 1rem;font-weight:800}
+.member-auth-tabs button.active{background:#b91522;color:#fff}
+.member-auth-form{display:grid;gap:1rem}
+.member-auth-form label{display:grid;gap:.35rem;color:#f4ded6;font-weight:700}
+.member-auth-form input{width:100%;border:1px solid rgba(220,38,48,.55);background:#050404;color:#fff;border-radius:10px;padding:.85rem .9rem}
+.member-auth-two{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.member-auth-check{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:.65rem!important;font-weight:500!important}
+.member-auth-check input{width:auto;margin-top:.2rem}
+.member-auth-status{min-height:1.4em;margin:.9rem 0 0;color:#f5ded6;font-weight:700}
+.member-auth-status.error{color:#ff7b83}
+.member-top-actions{display:flex;align-items:center;gap:.6rem}
+.member-live-loyalty{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1.2rem;align-items:center;margin:1rem 0 1.35rem}
+.member-stamp-row{display:grid;grid-template-columns:repeat(9,1fr);gap:.35rem;min-width:min(360px,42vw)}
+.member-stamp-row span{display:grid;place-items:center;aspect-ratio:1;border-radius:50%;background:#120a0a;border:1px solid rgba(220,38,48,.35);filter:grayscale(1);opacity:.45}
+.member-stamp-row span.earned{filter:none;opacity:1;background:#2a0d10;border-color:#e12a37;box-shadow:0 0 14px rgba(225,42,55,.25)}
+@media(max-width:720px){
+  .member-auth-two{grid-template-columns:1fr}
+  .member-live-loyalty{grid-template-columns:1fr}
+  .member-stamp-row{min-width:0;width:100%;gap:.22rem}
+  .member-top-actions{flex-direction:column;align-items:flex-end;gap:.35rem}
+  .member-logout{padding:.55rem .75rem}
+}

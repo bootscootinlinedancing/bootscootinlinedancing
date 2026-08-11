@@ -22,17 +22,58 @@
       <img src="brand-logo-transparent.png" alt="Boot Scootin' Line Dancing">
       <span>My Boot Scootin’</span>
     </a>
-    <div class="member-preview-pill">Preview mode · Login coming later</div>
-    <a class="member-exit" href="index.html">Back to website</a>
+    <div class="member-preview-pill">Secure member area · Phase 1</div>
+    <div class="member-top-actions"><button class="member-logout" type="button" onclick="memberLogout()">Log out</button><a class="member-exit" href="index.html">Back to website</a></div>
   </header>
 
-  <main id="main-content" class="member-app-shell">
+  <section class="member-auth-shell" id="memberAuthShell">
+    <div class="member-auth-card">
+      <p class="kicker red">My Boot Scootin’</p>
+      <h1>Your dancing. Your journey. Your rewards.</h1>
+      <p id="memberAuthIntro">Create your secure account or log in to see your personal Trail Rewards and member area.</p>
+
+      <div class="member-auth-tabs" id="memberAuthTabs">
+        <button type="button" class="active" data-auth-tab="login">Log in</button>
+        <button type="button" data-auth-tab="register">Create account</button>
+      </div>
+
+      <form id="memberLoginForm" class="member-auth-form">
+        <label>Email address<input type="email" name="email" autocomplete="email" required></label>
+        <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="button" type="submit">Log in to My Boot Scootin’</button>
+        <button class="member-link-button" type="button" id="memberForgotButton">Forgot password?</button>
+      </form>
+
+      <form id="memberRegisterForm" class="member-auth-form" hidden>
+        <div class="member-auth-two">
+          <label>First name<input type="text" name="first_name" autocomplete="given-name" required></label>
+          <label>Surname<input type="text" name="last_name" autocomplete="family-name" required></label>
+        </div>
+        <label>Email address<input type="email" name="email" autocomplete="email" required></label>
+        <label>Mobile number<input type="tel" name="phone" autocomplete="tel"></label>
+        <label>Password<input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
+        <small>Use at least 10 characters with letters and a number.</small>
+        <label class="member-auth-check"><input type="checkbox" name="terms" required> I agree to the Terms and Privacy Policy.</label>
+        <label class="member-auth-check"><input type="checkbox" name="marketing_consent"> Send me occasional Boot Scootin’ news and class updates.</label>
+        <button class="button" type="submit">Create my account</button>
+      </form>
+
+      <form id="memberResetForm" class="member-auth-form" hidden>
+        <label>New password<input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
+        <button class="button" type="submit">Save new password</button>
+      </form>
+
+      <p class="member-auth-status" id="memberAuthStatus" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <main id="main-content" class="member-app-shell" hidden>
     <aside class="member-sidebar" aria-label="Member area navigation">
       <div class="member-mini-profile">
-        <div class="member-avatar">NA</div>
+        <div class="member-avatar" id="memberAvatar">BS</div>
         <div>
-          <strong>Howdy, Cowgirl <svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#hat"></use></svg></strong>
-          <span>Trail Rider · Preview profile</span>
+          <strong>Howdy, <span id="memberDisplayName">Dancer</span> <svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#hat"></use></svg></strong>
+          <span><span id="memberTrailRank">First Steps</span> · Secure member profile</span>
         </div>
       </div>
 
@@ -49,8 +90,8 @@
       </nav>
 
       <div class="member-sidebar-note">
-        <strong>Future secure access</strong>
-        <p>Email verification, password reset and member privacy controls will be connected before real accounts launch.</p>
+        <strong>Secure access is live</strong>
+        <p>Email verification, password reset and secure member sessions are now connected.</p>
       </div>
     </aside>
 
@@ -75,7 +116,7 @@
           <div>
             <p class="kicker red">Welcome home</p>
             <h1 id="memberGreeting">The dance floor missed you.</h1>
-            <p>This preview shows how Trail, Passport, Journey, bookings and dances will come together after secure member login launches.</p>
+            <p>Your secure member home brings bookings, Trail Rewards, dances and your Boot Scootin’ journey together.</p>
           </div>
           <div class="member-rank-card">
             <small>TRAIL RANK</small>
@@ -91,6 +132,15 @@
           <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#music"></use></svg></span><strong>12</strong><small>Dances learned</small></article>
           <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#flame"></use></svg></span><strong>6</strong><small>Week streak</small></article>
         </div>
+
+        <article class="member-card member-live-loyalty">
+          <div>
+            <p class="kicker red">Boot Scootin’ Trail Rewards</p>
+            <h2><span id="memberStampProgress">0</span> / 9 stamps</h2>
+            <p id="memberStampMessage">Paid class bookings automatically add a stamp once SumUp confirms payment. A confirmed full refund removes that stamp again.</p>
+          </div>
+          <div class="member-stamp-row" id="memberStampRow" aria-label="Loyalty stamps"></div>
+        </article>
 
         <div class="member-dashboard-grid">
           <article class="member-card member-next-booking">
@@ -315,10 +365,100 @@
 
   <script>
   (() => {
+    const authShell = document.getElementById('memberAuthShell');
+    const app = document.querySelector('.member-app-shell');
+    const status = document.getElementById('memberAuthStatus');
+    const loginForm = document.getElementById('memberLoginForm');
+    const registerForm = document.getElementById('memberRegisterForm');
+    const resetForm = document.getElementById('memberResetForm');
+    const tabs = [...document.querySelectorAll('[data-auth-tab]')];
+
+    const setStatus = (message, isError=false) => {
+      if (!status) return;
+      status.textContent = message || '';
+      status.classList.toggle('error', Boolean(isError));
+    };
+    async function api(path, options={}) {
+      const response = await fetch(path, {
+        credentials:'same-origin',
+        cache:'no-store',
+        headers:{'content-type':'application/json', ...(options.headers||{})},
+        ...options
+      });
+      const data = await response.json().catch(()=>({}));
+      if (!response.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+      return data;
+    }
+    function showAuth(tab) {
+      const register = tab === 'register';
+      loginForm.hidden = register;
+      registerForm.hidden = !register;
+      resetForm.hidden = true;
+      tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.authTab === tab));
+      setStatus('');
+    }
+    tabs.forEach(btn => btn.addEventListener('click', () => showAuth(btn.dataset.authTab)));
+
+    loginForm?.addEventListener('submit', async e => {
+      e.preventDefault(); setStatus('Logging in…');
+      const fd = new FormData(loginForm);
+      try {
+        await api('/api/member/login',{method:'POST',body:JSON.stringify({email:fd.get('email'),password:fd.get('password')})});
+        await loadMember();
+      } catch(err) { setStatus(err.message,true); }
+    });
+    registerForm?.addEventListener('submit', async e => {
+      e.preventDefault(); setStatus('Creating your account…');
+      const fd = new FormData(registerForm);
+      try {
+        const result = await api('/api/member/register',{method:'POST',body:JSON.stringify({
+          first_name:fd.get('first_name'),last_name:fd.get('last_name'),email:fd.get('email'),
+          phone:fd.get('phone'),password:fd.get('password'),marketing_consent:fd.get('marketing_consent')==='on'
+        })});
+        setStatus(result.message || 'Account created. Check your email.');
+        loginForm.querySelector('[name="email"]').value = String(fd.get('email')||'');
+        showAuth('login');
+        setStatus(result.message || 'Account created. Check your email.');
+      } catch(err) { setStatus(err.message,true); }
+    });
+    document.getElementById('memberForgotButton')?.addEventListener('click', async () => {
+      const email = loginForm.querySelector('[name="email"]').value.trim();
+      if (!email) { setStatus('Enter your email address first.',true); return; }
+      setStatus('Sending reset link…');
+      try {
+        const result=await api('/api/member/forgot',{method:'POST',body:JSON.stringify({email})});
+        setStatus(result.message);
+      } catch(err){ setStatus(err.message,true); }
+    });
+
+    async function handleLinkTokens() {
+      const params = new URLSearchParams(location.search);
+      const verify = params.get('verify');
+      const reset = params.get('reset');
+      if (verify) {
+        setStatus('Verifying your email…');
+        try {
+          const result=await api('/api/member/verify',{method:'POST',body:JSON.stringify({token:verify})});
+          history.replaceState(null,'',location.pathname);
+          showAuth('login'); setStatus(result.message);
+        } catch(err){ setStatus(err.message,true); }
+      }
+      if (reset) {
+        loginForm.hidden = true; registerForm.hidden = true; resetForm.hidden = false;
+        tabs.forEach(btn=>btn.classList.remove('active'));
+        resetForm.addEventListener('submit', async e => {
+          e.preventDefault(); const fd=new FormData(resetForm); setStatus('Saving new password…');
+          try {
+            const result=await api('/api/member/reset',{method:'POST',body:JSON.stringify({token:reset,password:fd.get('password')})});
+            history.replaceState(null,'',location.pathname); showAuth('login'); setStatus(result.message);
+          } catch(err){ setStatus(err.message,true); }
+        },{once:true});
+      }
+    }
+
     const panels = [...document.querySelectorAll('[data-member-panel]')];
     const buttons = [...document.querySelectorAll('[data-member-view]')];
     const select = document.getElementById('memberViewSelect');
-
     function show(view, updateHash = true) {
       const valid = panels.some(panel => panel.dataset.memberPanel === view) ? view : 'dashboard';
       panels.forEach(panel => panel.classList.toggle('active', panel.dataset.memberPanel === valid));
@@ -327,24 +467,41 @@
       if (updateHash) history.replaceState(null, '', '#' + valid);
       window.scrollTo({top: 0, behavior: 'smooth'});
     }
-
     buttons.forEach(button => button.addEventListener('click', () => show(button.dataset.memberView)));
     document.querySelectorAll('[data-jump]').forEach(button => button.addEventListener('click', () => show(button.dataset.jump)));
     if (select) select.addEventListener('change', () => show(select.value));
 
-    const initial = location.hash.replace('#', '') || 'dashboard';
-    show(initial, false);
+    function renderMember(data) {
+      const m=data.member||{}, loyalty=data.loyalty||{};
+      const first=(m.display_name||m.name||'Dancer').trim();
+      document.getElementById('memberDisplayName').textContent=first;
+      document.getElementById('memberTrailRank').textContent=m.trail_rank||'First Steps';
+      const avatar=document.getElementById('memberAvatar');
+      if(avatar) avatar.textContent=(m.name||first).split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||'BS';
+      const progress=Math.max(0,Math.min(9,Number(loyalty.progress||0)));
+      document.getElementById('memberStampProgress').textContent=String(progress);
+      const row=document.getElementById('memberStampRow');
+      if(row) row.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<progress?'earned':''}" aria-hidden="true">👢</span>`).join('');
+      const msg=document.getElementById('memberStampMessage');
+      if(msg) msg.textContent=loyalty.reward_ready
+        ? 'You have reached a 9-stamp milestone. Your free-class reward connection is the next Trail Rewards step.'
+        : `${9-progress} more qualifying paid class ${9-progress===1?'booking':'bookings'} until your next free-class milestone. Confirmed full refunds automatically remove the matching stamp.`;
+    }
+    async function loadMember() {
+      try {
+        const data=await api('/api/member/me',{method:'GET',headers:{}});
+        authShell.hidden=true; app.hidden=false; renderMember(data);
+        const initial = location.hash.replace('#', '') || 'dashboard'; show(initial,false);
+      } catch {
+        app.hidden=true; authShell.hidden=false;
+      }
+    }
+    window.memberLogout = async () => {
+      await api('/api/member/logout',{method:'POST',body:'{}'}).catch(()=>{});
+      location.reload();
+    };
 
-    const greetings = [
-      'The dance floor missed you.',
-      'Ready to make another memory?',
-      'Your Trail is waiting…',
-      'Welcome home, Cowgirl.',
-      'Let’s add another stamp to your Passport.',
-      'Another adventure starts here.'
-    ];
-    const greeting = document.getElementById('memberGreeting');
-    if (greeting) greeting.textContent = greetings[Math.floor(Math.random() * greetings.length)];
+    handleLinkTokens().then(loadMember);
   })();
   </script>
   <script src="honky-theme.js?v=96.0.0"></script>
