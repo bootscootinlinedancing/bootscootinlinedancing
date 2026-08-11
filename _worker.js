@@ -136,11 +136,18 @@ async function createMemberSession(env,memberId){
   return token;
 }
 async function createMemberEmailToken(env,memberId,purpose,hours){
-  const token=randomHex(32), hash=await memberSha256Hex(token);
+  const token=randomHex(32);
+  let hash;
+  try{ hash=await memberSha256Hex(token); }
+  catch(e){ throw new Error('EMAIL_TOKEN_HASH'); }
   const expires=new Date(Date.now()+hours*3600000).toISOString();
-  await env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND purpose=? AND used_at IS NULL`).bind(memberId,purpose).run().catch(()=>{});
-  await env.BOOKINGS_DB.prepare(`INSERT INTO member_email_tokens(id,member_id,token_hash,purpose,expires_at) VALUES(?,?,?,?,?)`)
-    .bind(crypto.randomUUID(),memberId,hash,purpose,expires).run();
+  try{
+    await env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND purpose=? AND used_at IS NULL`).bind(memberId,purpose).run();
+  }catch(e){ throw new Error('EMAIL_TOKEN_DELETE'); }
+  try{
+    await env.BOOKINGS_DB.prepare(`INSERT INTO member_email_tokens(id,member_id,token_hash,purpose,expires_at) VALUES(?,?,?,?,?)`)
+      .bind(crypto.randomUUID(),memberId,hash,purpose,expires).run();
+  }catch(e){ throw new Error('EMAIL_TOKEN_INSERT'); }
   return token;
 }
 async function syncLoyaltyForEmail(env,email){
