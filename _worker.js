@@ -1890,9 +1890,115 @@ async function systemHealth(request, env) {
 }
 
 
+
+async function ensureMemberSchema(env){
+  if(!env.BOOKINGS_DB) throw new Error('BOOKINGS_DB binding is missing.');
+
+  // Core customer table. CREATE IF NOT EXISTS is harmless on the existing live DB.
+  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS customers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    phone TEXT,
+    marketing_consent INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+
+  // The live customer table predates some member fields on older deployments.
+  for(const sql of [
+    `ALTER TABLE customers ADD COLUMN phone TEXT`,
+    `ALTER TABLE customers ADD COLUMN marketing_consent INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE customers ADD COLUMN updated_at TEXT`
+  ]){
+    try{ await env.BOOKINGS_DB.prepare(sql).run(); }catch(_){}
+  }
+
+  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_accounts (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    password_salt TEXT NOT NULL,
+    verified_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+
+  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_profiles (
+    id TEXT PRIMARY KEY,
+    customer_id TEXT UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+    display_name TEXT,
+    trail_rank TEXT NOT NULL DEFAULT 'First Steps',
+    boot_points INTEGER NOT NULL DEFAULT 0,
+    classes_attended INTEGER NOT NULL DEFAULT 0,
+    current_streak INTEGER NOT NULL DEFAULT 0,
+    whos_going_opt_in INTEGER NOT NULL DEFAULT 0,
+    profile_visibility TEXT NOT NULL DEFAULT 'private',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+
+  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_sessions (
+    id TEXT PRIMARY KEY,
+    member_id TEXT NOT NULL REFERENCES member_accounts(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+
+  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_email_tokens (
+    id TEXT PRIMARY KEY,
+    member_id TEXT NOT NULL REFERENCES member_accounts(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    purpose TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`).run();
+
+  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_login_attempts (
+    key TEXT PRIMARY KEY,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    window_started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    blocked_until TEXT
+  )`).run();
+
+  // Compatibility migrations if an earlier preview created partial member tables.
+  const migrations = [
+    `ALTER TABLE member_accounts ADD COLUMN customer_id TEXT`,
+    `ALTER TABLE member_accounts ADD COLUMN email TEXT`,
+    `ALTER TABLE member_accounts ADD COLUMN password_hash TEXT`,
+    `ALTER TABLE member_accounts ADD COLUMN password_salt TEXT`,
+    `ALTER TABLE member_accounts ADD COLUMN verified_at TEXT`,
+    `ALTER TABLE member_accounts ADD COLUMN updated_at TEXT`,
+    `ALTER TABLE member_profiles ADD COLUMN customer_id TEXT`,
+    `ALTER TABLE member_profiles ADD COLUMN display_name TEXT`,
+    `ALTER TABLE member_profiles ADD COLUMN trail_rank TEXT NOT NULL DEFAULT 'First Steps'`,
+    `ALTER TABLE member_profiles ADD COLUMN boot_points INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE member_profiles ADD COLUMN classes_attended INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE member_profiles ADD COLUMN current_streak INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE member_email_tokens ADD COLUMN purpose TEXT`,
+    `ALTER TABLE member_email_tokens ADD COLUMN used_at TEXT`
+  ];
+  for(const sql of migrations){
+    try{ await env.BOOKINGS_DB.prepare(sql).run(); }catch(_){}
+  }
+
+  for(const sql of [
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_member_accounts_email ON member_accounts(email)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_member_sessions_token ON member_sessions(token_hash)`,
+    `CREATE INDEX IF NOT EXISTS idx_member_tokens_token ON member_email_tokens(token_hash)`
+  ]){
+    try{ await env.BOOKINGS_DB.prepare(sql).run(); }catch(_){}
+  }
+}
+
 async function memberRegister(request,env){
+  let stage='START';
   try{
-    await ensureBookingSchema(env);
+    stage='SCHEMA';
+    await ensureMemberSchema(env);
     if(!sameOriginWrite(request)) return json({error:'This request could not be verified. Please refresh the page and try again.'},403);
     const body=await request.json().catch(()=>null);
     if(!body) return json({error:'Please complete the registration form.'},400);
@@ -1907,9 +2013,11 @@ async function memberRegister(request,env){
     if(!first||!last||!emailOk(email)) return json({error:'Please enter your first name, surname and a valid email address.'},400);
     if(!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
 
+    stage='LOOKUP_ACCOUNT';
     const existing=await env.BOOKINGS_DB.prepare(`SELECT id,verified_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
     if(existing?.verified_at) return json({error:'An account already exists for this email. Please log in instead, or use Forgotten your password.'},409);
 
+    stage='LOOKUP_CUSTOMER';
     let customer=await env.BOOKINGS_DB.prepare(`SELECT * FROM customers WHERE lower(email)=lower(?)`).bind(email).first();
     if(!customer){
       customer={id:crypto.randomUUID()};
@@ -1925,10 +2033,12 @@ async function memberRegister(request,env){
         .bind(name,phone,phone,marketing,customer.id).run();
     }
 
+    stage='PASSWORD';
     const salt=randomHex(16);
     const hash=await passwordHash(password,salt);
     const memberId=existing?.id||crypto.randomUUID();
 
+    stage='SAVE_ACCOUNT';
     if(existing){
       await env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET customer_id=?,email=?,password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
         .bind(customer.id,email,hash,salt,memberId).run();
@@ -1937,12 +2047,14 @@ async function memberRegister(request,env){
         .bind(memberId,customer.id,email,hash,salt).run();
     }
 
+    stage='SAVE_PROFILE';
     await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO member_profiles(id,customer_id,display_name) VALUES(?,?,?)`)
       .bind(crypto.randomUUID(),customer.id,first).run();
 
     // Loyalty is useful, but it must never stop a member account from being created.
     await syncLoyaltyForEmail(env,email).catch(()=>null);
 
+    stage='VERIFY_TOKEN';
     const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
     const verifyUrl=`${new URL(request.url).origin}/member-hub.html?verify=${encodeURIComponent(token)}`;
     const html=buildBrandedEmail({
@@ -1964,12 +2076,12 @@ async function memberRegister(request,env){
     return json({
       error:'We could not create your member account yet. Please try again.',
       detail,
-      code:'MEMBER_REGISTER_FAILED'
+      code:`MEMBER_REGISTER_${stage}`
     },500);
   }
 }
 async function memberVerify(request,env){
-  await ensureBookingSchema(env);
+  await ensureMemberSchema(env);
   const body=await request.json().catch(()=>null); const token=String(body?.token||'');
   if(!token) return json({error:'The verification link is incomplete.'},400);
   const hash=await memberSha256Hex(token);
@@ -1982,7 +2094,7 @@ async function memberVerify(request,env){
   return json({ok:true,message:'Email verified. You can now log in.'});
 }
 async function memberLogin(request,env){
-  await ensureBookingSchema(env);
+  await ensureMemberSchema(env);
   if(!sameOriginWrite(request)) return json({error:'This request could not be verified.'},403);
   const body=await request.json().catch(()=>null); const email=clean(body?.email,160).toLowerCase(), password=String(body?.password||'');
   if(!emailOk(email)||!password) return json({error:'Enter your email and password.'},400);
@@ -1998,13 +2110,13 @@ async function memberLogin(request,env){
   return response;
 }
 async function memberLogout(request,env){
-  await ensureBookingSchema(env);
+  await ensureMemberSchema(env);
   const token=memberCookie(request);
   if(token){const hash=await memberSha256Hex(token); await env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE token_hash=?`).bind(hash).run().catch(()=>{});}
   const response=json({ok:true}); response.headers.set('Set-Cookie',memberCookieHeader('',0)); return response;
 }
 async function memberForgot(request,env){
-  await ensureBookingSchema(env);
+  await ensureMemberSchema(env);
   const body=await request.json().catch(()=>null); const email=clean(body?.email,160).toLowerCase();
   const generic=json({ok:true,message:'If an account exists for that email, a reset link has been sent.'});
   if(!emailOk(email)) return generic;
@@ -2018,7 +2130,7 @@ async function memberForgot(request,env){
   return generic;
 }
 async function memberReset(request,env){
-  await ensureBookingSchema(env);
+  await ensureMemberSchema(env);
   const body=await request.json().catch(()=>null); const token=String(body?.token||''), password=String(body?.password||'');
   if(!token||!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
   const hash=await memberSha256Hex(token);
@@ -2033,7 +2145,7 @@ async function memberReset(request,env){
   return json({ok:true,message:'Password updated. You can now log in.'});
 }
 async function memberMe(request,env){
-  await ensureBookingSchema(env);
+  await ensureMemberSchema(env);
   const session=await memberSession(request,env);
   if(!session) return json({authenticated:false},401);
   await syncLoyaltyForEmail(env,session.email);
