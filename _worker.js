@@ -573,6 +573,10 @@ async function ensureBookingSchema(env) {
   // V86 booking self-service and cancellation fields. D1 does not support
   // ADD COLUMN IF NOT EXISTS, so each migration is attempted safely.
   const migrations = [
+    // Member-account compatibility migrations for older live D1 schemas.
+    `ALTER TABLE customers ADD COLUMN marketing_consent INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE customers ADD COLUMN updated_at TEXT`,
+    `ALTER TABLE customers ADD COLUMN phone TEXT`,
     `ALTER TABLE bookings ADD COLUMN secure_token TEXT`,
     `ALTER TABLE bookings ADD COLUMN customer_token TEXT`,
     `ALTER TABLE bookings ADD COLUMN terms_accepted_at TEXT`,
@@ -1912,7 +1916,12 @@ async function memberRegister(request,env){
       await env.BOOKINGS_DB.prepare(`INSERT INTO customers(id,name,email,phone,marketing_consent) VALUES(?,?,?,?,?)`)
         .bind(customer.id,name,email,phone,marketing).run();
     }else{
-      await env.BOOKINGS_DB.prepare(`UPDATE customers SET name=?,phone=CASE WHEN ?<>'' THEN ? ELSE phone END,marketing_consent=MAX(marketing_consent,?),updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+      await env.BOOKINGS_DB.prepare(`UPDATE customers
+        SET name=?,
+            phone=CASE WHEN ?<>'' THEN ? ELSE phone END,
+            marketing_consent=CASE WHEN marketing_consent=1 OR ?=1 THEN 1 ELSE 0 END,
+            updated_at=CURRENT_TIMESTAMP
+        WHERE id=?`)
         .bind(name,phone,phone,marketing,customer.id).run();
     }
 
