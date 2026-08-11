@@ -140,6 +140,22 @@ async function createMemberEmailToken(env,memberId,purpose,hours){
   let hash;
   try{ hash=await memberSha256Hex(token); }
   catch(e){ throw new Error('EMAIL_TOKEN_HASH'); }
+
+  // Self-heal older production D1 databases that pre-date member email tokens.
+  try{
+    await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_email_tokens (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      purpose TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`).run();
+    await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_member_email_tokens_hash ON member_email_tokens(token_hash)`).run();
+    await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_member_email_tokens_member ON member_email_tokens(member_id,purpose)`).run();
+  }catch(e){ throw new Error('EMAIL_TOKEN_SCHEMA'); }
+
   const expires=new Date(Date.now()+hours*3600000).toISOString();
   try{
     await env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND purpose=? AND used_at IS NULL`).bind(memberId,purpose).run();
@@ -2084,7 +2100,7 @@ async function memberRegister(request,env){
     return json({
       error:'We could not create your member account yet. Please try again.',
       detail,
-      code:`MEMBER_REGISTER_${stage}`
+      code:`MEMBER_REGISTER_${stage}${err?.message?.startsWith?.('EMAIL_TOKEN_')?'_'+err.message:''}`
     },500);
   }
 }
