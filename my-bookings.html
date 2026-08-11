@@ -8,7 +8,7 @@
 <title>My Bookings | Boot Scootin' Line Dancing</title>
 <meta content="View and manage your Boot Scootin' class bookings, cancellations, calendar links and loyalty progress." name="description"/>
 <link href="favicon.png" rel="icon"/>
-<link href="styles.css?v=96.4.78" rel="stylesheet"/>
+<link href="styles.css?v=96.4.79" rel="stylesheet"/>
 <link href="honky-theme.css?v=96.4.53" rel="stylesheet"/>
 <link href="honky-authentic.css?v=96.4.39" rel="stylesheet"/>
 <link href="desktop-final-fix.css?v=96.4.39" rel="stylesheet"/>
@@ -176,7 +176,7 @@
     achievements.innerHTML=(data.achievements||[]).map(a=>`<article class="customer-achievement ${a.earned?'earned':'locked'}"><span aria-hidden="true">${a.icon}</span><div><h4>${esc(a.title)}</h4><p>${esc(a.description)}</p></div><strong>${a.earned?'Unlocked':'Locked'}</strong></article>`).join('');
 
     const stamps=document.getElementById('customerLoyaltyStamps');
-    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.78#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.78#star"></use></svg>'}</span>`).join('');
+    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#star"></use></svg>'}</span>`).join('');
 
     document.getElementById('customerUpcomingBookings').innerHTML=data.upcoming.length
       ?data.upcoming.map(b=>bookingCard(b,true)).join('')

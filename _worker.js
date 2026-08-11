@@ -84,7 +84,7 @@ function hexToBytes(hex){
   for(let i=0;i<out.length;i++) out[i]=parseInt(hex.slice(i*2,i*2+2),16);
   return out;
 }
-async function sha256Hex(value){
+async function memberSha256Hex(value){
   return bytesToHex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(value||''))));
 }
 async function passwordHash(password,saltHex){
@@ -114,7 +114,7 @@ function passwordValid(password){
 }
 async function memberSession(request,env){
   const token=memberCookie(request); if(!token) return null;
-  const hash=await sha256Hex(token);
+  const hash=await memberSha256Hex(token);
   const row=await env.BOOKINGS_DB.prepare(`
     SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,
            c.name,c.phone,c.marketing_consent,
@@ -129,14 +129,14 @@ async function memberSession(request,env){
   return row||null;
 }
 async function createMemberSession(env,memberId){
-  const token=randomHex(32), hash=await sha256Hex(token);
+  const token=randomHex(32), hash=await memberSha256Hex(token);
   const expires=new Date(Date.now()+30*86400000).toISOString();
   await env.BOOKINGS_DB.prepare(`INSERT INTO member_sessions(id,member_id,token_hash,expires_at) VALUES(?,?,?,?)`)
     .bind(crypto.randomUUID(),memberId,hash,expires).run();
   return token;
 }
 async function createMemberEmailToken(env,memberId,purpose,hours){
-  const token=randomHex(32), hash=await sha256Hex(token);
+  const token=randomHex(32), hash=await memberSha256Hex(token);
   const expires=new Date(Date.now()+hours*3600000).toISOString();
   await env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND purpose=? AND used_at IS NULL`).bind(memberId,purpose).run().catch(()=>{});
   await env.BOOKINGS_DB.prepare(`INSERT INTO member_email_tokens(id,member_id,token_hash,purpose,expires_at) VALUES(?,?,?,?,?)`)
@@ -1905,7 +1905,7 @@ async function memberVerify(request,env){
   await ensureBookingSchema(env);
   const body=await request.json().catch(()=>null); const token=String(body?.token||'');
   if(!token) return json({error:'The verification link is incomplete.'},400);
-  const hash=await sha256Hex(token);
+  const hash=await memberSha256Hex(token);
   const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_email_tokens WHERE token_hash=? AND purpose='VERIFY' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP`).bind(hash).first();
   if(!row) return json({error:'This verification link has expired or has already been used.'},400);
   await env.BOOKINGS_DB.batch([
@@ -1933,7 +1933,7 @@ async function memberLogin(request,env){
 async function memberLogout(request,env){
   await ensureBookingSchema(env);
   const token=memberCookie(request);
-  if(token){const hash=await sha256Hex(token); await env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE token_hash=?`).bind(hash).run().catch(()=>{});}
+  if(token){const hash=await memberSha256Hex(token); await env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE token_hash=?`).bind(hash).run().catch(()=>{});}
   const response=json({ok:true}); response.headers.set('Set-Cookie',memberCookieHeader('',0)); return response;
 }
 async function memberForgot(request,env){
@@ -1954,7 +1954,7 @@ async function memberReset(request,env){
   await ensureBookingSchema(env);
   const body=await request.json().catch(()=>null); const token=String(body?.token||''), password=String(body?.password||'');
   if(!token||!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
-  const hash=await sha256Hex(token);
+  const hash=await memberSha256Hex(token);
   const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_email_tokens WHERE token_hash=? AND purpose='RESET' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP`).bind(hash).first();
   if(!row) return json({error:'This reset link has expired or has already been used.'},400);
   const salt=randomHex(16), passHash=await passwordHash(password,salt);
