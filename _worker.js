@@ -2100,7 +2100,7 @@ async function memberRegister(request,env){
     return json({
       error:'We could not create your member account yet. Please try again.',
       detail,
-      code:`MEMBER_REGISTER_${stage}${err?.message?.startsWith?.('EMAIL_TOKEN_')?'_'+err.message:''}`
+      code:`MEMBER_REGISTER_${stage}${error?.message?.startsWith?.('EMAIL_TOKEN_')?'_'+error.message:''}`
     },500);
   }
 }
