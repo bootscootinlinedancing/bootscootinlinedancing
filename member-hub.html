@@ -8,7 +8,7 @@
   <link rel="icon" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=96.4.79">
+  <link rel="stylesheet" href="styles.css?v=96.4.81">
   <meta name="theme-color" content="#080606">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="honky-authentic.css?v=96.4.39">
@@ -22,24 +22,17 @@
       <img src="brand-logo-transparent.png" alt="Boot Scootin' Line Dancing">
       <span>My Boot Scootin’</span>
     </a>
-    <div class="member-preview-pill">Member login & registration</div>
+    <div class="member-preview-pill">MEMBER LOGIN & REGISTRATION</div>
     <div class="member-top-actions"><button class="member-logout" type="button" onclick="memberLogout()">Log out</button><a class="member-exit" href="index.html">Back to website</a></div>
   </header>
 
-  <section class="membership-preview" id="membership-preview">
-    <p class="kicker red">My Boot Scootin’ Membership</p>
-    <h1>Everything in one member area.</h1>
-    <p class="membership-preview-lead">Create one profile and your member login brings all of this together:</p>
-    <div class="membership-preview-grid">
-      <article><strong>My Trail</strong><span>Automatic loyalty stamps, milestones and rewards.</span></article>
-      <article><strong>My Passport</strong><span>Your Boot Scootin’ achievements and memories.</span></article>
-      <article><strong>My Journey</strong><span>Classes, progress and your dancing story.</span></article>
-      <article><strong>My Bookings</strong><span>Your class booking history in one place.</span></article>
-      <article><strong>Dance Library</strong><span>Your dances, tutorials and practice links.</span></article>
-      <article><strong>Profile</strong><span>Your own secure Boot Scootin’ member profile.</span></article>
-    </div>
-    <p class="membership-preview-note">Already a member? Log in below. New here? Register and create your profile.</p>
+  <section class="member-entry-heading">
+    <p class="kicker red">MY BOOT SCOOTIN’</p>
+    <h1>Member Login &amp; Registration</h1>
+    <p>Already registered? Log in below. New to My Boot Scootin’? Create your account and profile here.</p>
   </section>
+
+
 
   <section class="member-auth-shell" id="memberAuthShell">
     <div class="member-auth-card">
@@ -56,7 +49,7 @@
         <label>Email address<input type="email" name="email" autocomplete="email" required></label>
         <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
         <button class="button" type="submit">Log in to My Boot Scootin’</button>
-        <button class="member-link-button" type="button" id="memberForgotButton">Forgot password?</button>
+        <button class="member-link-button" type="button" id="memberForgotButton">Forgotten your password? Click here to reset it.</button>
       </form>
 
       <form id="memberRegisterForm" class="member-auth-form" hidden>
@@ -73,7 +66,18 @@
         <button class="button" type="submit">Create my account</button>
       </form>
 
+
+      <form id="memberForgotForm" class="member-auth-form" hidden>
+        <h2>Reset your password</h2>
+        <p>Enter the email address registered to your Boot Scootin’ account. We’ll email you a secure reset link.</p>
+        <label>Email address<input type="email" name="email" autocomplete="email" required></label>
+        <button class="button" type="submit">Email me a reset link</button>
+        <button class="member-link-button" type="button" id="memberBackToLogin">Back to login</button>
+      </form>
+
       <form id="memberResetForm" class="member-auth-form" hidden>
+        <h2>Choose a new password</h2>
+        <p>Your secure reset link has been accepted. Choose your new password below.</p>
         <label>New password<input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
         <button class="button" type="submit">Save new password</button>
       </form>
@@ -82,26 +86,42 @@
     </div>
   </section>
 
+
+  <section class="membership-preview" id="membership-preview">
+    <p class="kicker red">My Boot Scootin’ Membership</p>
+    <h1>What your membership includes.</h1>
+    <p class="membership-preview-lead">One login gives you access to all of these member features:</p>
+    <div class="membership-preview-grid">
+      <article><strong>My Trail</strong><span>Automatic loyalty stamps, milestones and rewards.</span></article>
+      <article><strong>My Passport</strong><span>Your Boot Scootin’ achievements and memories.</span></article>
+      <article><strong>My Journey</strong><span>Classes, progress and your dancing story.</span></article>
+      <article><strong>My Bookings</strong><span>Your class booking history in one place.</span></article>
+      <article><strong>Dance Library</strong><span>Your dances, tutorials and practice links.</span></article>
+      <article><strong>Profile</strong><span>Your own secure Boot Scootin’ member profile.</span></article>
+    </div>
+    <p class="membership-preview-note">Already a member? Log in below. New here? Register and create your profile.</p>
+  </section>
+
   <main id="main-content" class="member-app-shell" hidden>
     <aside class="member-sidebar" aria-label="Member area navigation">
       <div class="member-mini-profile">
         <div class="member-avatar" id="memberAvatar">BS</div>
         <div>
-          <strong>Howdy, <span id="memberDisplayName">Dancer</span> <svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#hat"></use></svg></strong>
+          <strong>Howdy, <span id="memberDisplayName">Dancer</span> <svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#hat"></use></svg></strong>
           <span><span id="memberTrailRank">First Steps</span> · Secure member profile</span>
         </div>
       </div>
 
       <nav class="member-nav">
-        <button class="active" data-member-view="dashboard"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#home"></use></svg></span> Dashboard</button>
-        <button data-member-view="trail"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#cactus"></use></svg></span> My Trail</button>
-        <button data-member-view="passport"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#ticket"></use></svg></span> My Passport</button>
-        <button data-member-view="journey"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#heart"></use></svg>️</span> My Journey</button>
-        <button data-member-view="bookings"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#calendar"></use></svg></span> My Bookings</button>
-        <button data-member-view="library"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#music"></use></svg></span> Dance Library</button>
-        <button data-member-view="outfitters"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#gift"></use></svg></span> Trail Outfitters</button>
-        <button data-member-view="lounge"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#moon"></use></svg></span> Apply for Moonshine</button>
-        <button data-member-view="profile"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#user"></use></svg></span> My Profile</button>
+        <button class="active" data-member-view="dashboard"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#home"></use></svg></span> Dashboard</button>
+        <button data-member-view="trail"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#cactus"></use></svg></span> My Trail</button>
+        <button data-member-view="passport"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#ticket"></use></svg></span> My Passport</button>
+        <button data-member-view="journey"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#heart"></use></svg>️</span> My Journey</button>
+        <button data-member-view="bookings"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#calendar"></use></svg></span> My Bookings</button>
+        <button data-member-view="library"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#music"></use></svg></span> Dance Library</button>
+        <button data-member-view="outfitters"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#gift"></use></svg></span> Trail Outfitters</button>
+        <button data-member-view="lounge"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#moon"></use></svg></span> Apply for Moonshine</button>
+        <button data-member-view="profile"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#user"></use></svg></span> My Profile</button>
       </nav>
 
       <div class="member-sidebar-note">
@@ -135,7 +155,7 @@
           </div>
           <div class="member-rank-card">
             <small>TRAIL RANK</small>
-            <strong><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#star"></use></svg> Trail Rider</strong>
+            <strong><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#star"></use></svg> Trail Rider</strong>
             <div class="member-progress"><i style="width:68%"></i></div>
             <span>680 / 1,000 Boot Points</span>
           </div>
@@ -143,9 +163,9 @@
 
         <div class="member-stat-grid">
           <article><span>⭐</span><strong>680</strong><small>Boot Points</small></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#people"></use></svg></span><strong>18</strong><small>Classes attended</small></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#music"></use></svg></span><strong>12</strong><small>Dances learned</small></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#flame"></use></svg></span><strong>6</strong><small>Week streak</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#people"></use></svg></span><strong>18</strong><small>Classes attended</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#music"></use></svg></span><strong>12</strong><small>Dances learned</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#flame"></use></svg></span><strong>6</strong><small>Week streak</small></article>
         </div>
 
         <article class="member-card member-live-loyalty">
@@ -171,7 +191,7 @@
           <article class="member-card">
             <p class="kicker red">Latest achievement</p>
             <div class="member-achievement-feature">
-              <span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#flame"></use></svg></span>
+              <span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#flame"></use></svg></span>
               <div><h2>Fireball Survivor</h2><p>Completed Fireball without stopping.</p></div>
             </div>
             <button data-jump="trail">View achievements</button>
@@ -194,10 +214,10 @@
         </div>
 
         <div class="member-quick-links">
-          <button data-jump="trail"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#cactus"></use></svg></span><strong>My Trail</strong><small>Points, ranks and challenges</small></button>
-          <button data-jump="passport"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#ticket"></use></svg></span><strong>My Passport</strong><small>Stamps and milestones</small></button>
-          <button data-jump="journey"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#heart"></use></svg>️</span><strong>My Journey</strong><small>Memories and timeline</small></button>
-          <button data-jump="library"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#music"></use></svg></span><strong>Dance Library</strong><small>Learned and favourite dances</small></button>
+          <button data-jump="trail"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#cactus"></use></svg></span><strong>My Trail</strong><small>Points, ranks and challenges</small></button>
+          <button data-jump="passport"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#ticket"></use></svg></span><strong>My Passport</strong><small>Stamps and milestones</small></button>
+          <button data-jump="journey"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#heart"></use></svg>️</span><strong>My Journey</strong><small>Memories and timeline</small></button>
+          <button data-jump="library"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#music"></use></svg></span><strong>Dance Library</strong><small>Learned and favourite dances</small></button>
         </div>
       </section>
 
@@ -209,9 +229,9 @@
         <div class="member-trail-layout">
           <article class="member-card member-rank-large">
             <small>CURRENT RANK</small>
-            <span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#star"></use></svg></span>
+            <span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#star"></use></svg></span>
             <h2>Trail Rider</h2>
-            <p>Next: <svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#music"></use></svg> Honky Tonk Hero at 20 lifetime classes.</p>
+            <p>Next: <svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#music"></use></svg> Honky Tonk Hero at 20 lifetime classes.</p>
             <div class="member-progress"><i style="width:90%"></i></div>
             <b>18 / 20 classes</b>
           </article>
@@ -227,12 +247,12 @@
         </div>
         <h2 class="member-subheading">Achievements</h2>
         <div class="member-badge-grid">
-          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#star"></use></svg></span><strong>Hay Bale Hopper</strong><small>First class</small></article>
-          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#flame"></use></svg></span><strong>Fireball Survivor</strong><small>Dance challenge</small></article>
-          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#moon"></use></svg></span><strong>Moonshine Family</strong><small>Community milestone</small></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#butterfly"></use></svg></span><strong>Butterfly Season</strong><small>Spring challenge</small></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#tent"></use></svg></span><strong>Festival Friend</strong><small>Festival meetup</small></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#cactus"></use></svg></span><strong>Wanderer</strong><small>Three venues</small></article>
+          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#star"></use></svg></span><strong>Hay Bale Hopper</strong><small>First class</small></article>
+          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#flame"></use></svg></span><strong>Fireball Survivor</strong><small>Dance challenge</small></article>
+          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#moon"></use></svg></span><strong>Moonshine Family</strong><small>Community milestone</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#butterfly"></use></svg></span><strong>Butterfly Season</strong><small>Spring challenge</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#tent"></use></svg></span><strong>Festival Friend</strong><small>Festival meetup</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#cactus"></use></svg></span><strong>Wanderer</strong><small>Three venues</small></article>
         </div>
       </section>
 
@@ -249,11 +269,11 @@
             <div><small>TRAIL RANK</small><strong>Trail Rider</strong></div>
           </div>
           <div class="passport-stamps">
-            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#boot"></use></svg></span><strong>First Class</strong><small>ECC · 2026</small></article>
-            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#moon"></use></svg></span><strong>Moonshine Family</strong><small>Community</small></article>
-            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#tent"></use></svg></span><strong>Summer Social</strong><small>Special event</small></article>
-            <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#tent"></use></svg>️</span><strong>Long Road</strong><small>Not collected</small></article>
-            <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#cactus"></use></svg></span><strong>Christmas Party</strong><small>Not collected</small></article>
+            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#boot"></use></svg></span><strong>First Class</strong><small>ECC · 2026</small></article>
+            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#moon"></use></svg></span><strong>Moonshine Family</strong><small>Community</small></article>
+            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#tent"></use></svg></span><strong>Summer Social</strong><small>Special event</small></article>
+            <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#tent"></use></svg>️</span><strong>Long Road</strong><small>Not collected</small></article>
+            <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#cactus"></use></svg></span><strong>Christmas Party</strong><small>Not collected</small></article>
             <article><span>⭐</span><strong>Anniversary</strong><small>Not collected</small></article>
           </div>
         </div>
@@ -265,11 +285,11 @@
           <span>18 classes · 12 dances · countless memories</span>
         </div>
         <div class="journey-timeline">
-          <article><time>7 AUG 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#people"></use></svg></span><h2>First Boot Scootin’ class</h2><p>Edgbaston Community Centre · Ziggy and Wagon Wheel.</p></div></article>
-          <article><time>21 AUG 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#trophy"></use></svg></span><h2>Hay Bale Hopper unlocked</h2><p>Your first Trail achievement became part of your story.</p></div></article>
-          <article><time>SEPT 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#tent"></use></svg></span><h2>First community meetup</h2><p>A future Journey entry with photos, dances and memories.</p></div></article>
+          <article><time>7 AUG 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#people"></use></svg></span><h2>First Boot Scootin’ class</h2><p>Edgbaston Community Centre · Ziggy and Wagon Wheel.</p></div></article>
+          <article><time>21 AUG 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#trophy"></use></svg></span><h2>Hay Bale Hopper unlocked</h2><p>Your first Trail achievement became part of your story.</p></div></article>
+          <article><time>SEPT 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#tent"></use></svg></span><h2>First community meetup</h2><p>A future Journey entry with photos, dances and memories.</p></div></article>
         </div>
-        <div class="member-memory-note"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#heart"></use></svg>️ Made countless memories.</div>
+        <div class="member-memory-note"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#heart"></use></svg>️ Made countless memories.</div>
       </section>
 
       <section class="member-panel" data-member-panel="bookings">
@@ -300,9 +320,9 @@
           <a href="dance-library.html">Open full public library</a>
         </div>
         <div class="member-library-grid">
-          <article><span class="learned-tag">Learned</span><h2>Ziggy</h2><p>I Wanna Dance With Somebody</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#heart"></use></svg> Favourite</button></article>
-          <article><span class="learned-tag">Learned</span><h2>Wagon Wheel</h2><p>Rockin’ the Wagon Wheel</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#heart"></use></svg> Favourite</button></article>
-          <article><span class="learned-tag">Learned</span><h2>Fireball</h2><p>Challenge dance</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#heart"></use></svg> Favourite</button></article>
+          <article><span class="learned-tag">Learned</span><h2>Ziggy</h2><p>I Wanna Dance With Somebody</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#heart"></use></svg> Favourite</button></article>
+          <article><span class="learned-tag">Learned</span><h2>Wagon Wheel</h2><p>Rockin’ the Wagon Wheel</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#heart"></use></svg> Favourite</button></article>
+          <article><span class="learned-tag">Learned</span><h2>Fireball</h2><p>Challenge dance</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#heart"></use></svg> Favourite</button></article>
           <article><span class="learned-tag original">Nora’s Original</span><h2>My Future (Feels Like Mine)</h2><p>Emily Ann Roberts</p><a href="dance-library.html#dance-my-future-feels-like-mine">Practice</a></article>
         </div>
       </section>
@@ -313,12 +333,12 @@
           <span>Balance: 680 points</span>
         </div>
         <div class="member-shop-grid">
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#music"></use></svg></span><h2>Dance Request Vote</h2><strong>50 points</strong><button disabled>Redeem after launch</button></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#ticket"></use></svg>️</span><h2>£5 Class Credit</h2><strong>100 points</strong><button disabled>Redeem after launch</button></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#people"></use></svg></span><h2>Free Standard Class</h2><strong>120 points</strong><button disabled>Redeem after launch</button></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#gift"></use></svg></span><h2>Mystery Trail Reward</h2><strong>150 points</strong><button disabled>Redeem after launch</button></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#people"></use></svg></span><h2>Bring a Friend</h2><strong>400 points</strong><button disabled>Redeem after launch</button></article>
-          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#trophy"></use></svg></span><h2>Legend Reward</h2><strong>1,000 points</strong><button disabled>Keep following the Trail</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#music"></use></svg></span><h2>Dance Request Vote</h2><strong>50 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#ticket"></use></svg>️</span><h2>£5 Class Credit</h2><strong>100 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#people"></use></svg></span><h2>Free Standard Class</h2><strong>120 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#gift"></use></svg></span><h2>Mystery Trail Reward</h2><strong>150 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#people"></use></svg></span><h2>Bring a Friend</h2><strong>400 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#trophy"></use></svg></span><h2>Legend Reward</h2><strong>1,000 points</strong><button disabled>Keep following the Trail</button></article>
         </div>
       </section>
 
@@ -328,12 +348,12 @@
             <p class="kicker red">Approval-only community</p>
             <h1>Moonshine &amp; Good Times Gang</h1>
           </div>
-          <span class="moonshine-locked-label"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#lock"></use></svg> Not automatically included</span>
+          <span class="moonshine-locked-label"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#lock"></use></svg> Not automatically included</span>
         </div>
 
         <div class="moonshine-application-layout">
           <article class="member-card moonshine-application-card">
-            <span class="member-feature-icon"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.79#moon"></use></svg></span>
+            <span class="member-feature-icon"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.81#moon"></use></svg></span>
             <h2>Would you like to apply?</h2>
             <p>Moonshine &amp; Good Times is a private community. Creating a Boot Scootin’ website account will not automatically provide access.</p>
             <p>Members will need to choose to apply, agree to the community rules and wait for Nora to personally approve the application.</p>
@@ -386,6 +406,7 @@
     const loginForm = document.getElementById('memberLoginForm');
     const registerForm = document.getElementById('memberRegisterForm');
     const resetForm = document.getElementById('memberResetForm');
+    const forgotForm = document.getElementById('memberForgotForm');
     const tabs = [...document.querySelectorAll('[data-auth-tab]')];
 
     const setStatus = (message, isError=false) => {
@@ -409,6 +430,7 @@
       loginForm.hidden = register;
       registerForm.hidden = !register;
       resetForm.hidden = true;
+      if (forgotForm) forgotForm.hidden = true;
       tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.authTab === tab));
       setStatus('');
     }
@@ -436,13 +458,24 @@
         setStatus(result.message || 'Account created. Check your email.');
       } catch(err) { setStatus(err.message,true); }
     });
-    document.getElementById('memberForgotButton')?.addEventListener('click', async () => {
-      const email = loginForm.querySelector('[name="email"]').value.trim();
-      if (!email) { setStatus('Enter your email address first.',true); return; }
-      setStatus('Sending reset link…');
+    document.getElementById('memberForgotButton')?.addEventListener('click', () => {
+      const currentEmail = loginForm.querySelector('[name="email"]')?.value?.trim() || '';
+      loginForm.hidden = true;
+      registerForm.hidden = true;
+      resetForm.hidden = true;
+      forgotForm.hidden = false;
+      tabs.forEach(btn=>btn.classList.remove('active'));
+      if (currentEmail && forgotForm.querySelector('[name="email"]')) forgotForm.querySelector('[name="email"]').value = currentEmail;
+      setStatus('');
+    });
+    document.getElementById('memberBackToLogin')?.addEventListener('click', () => showAuth('login'));
+    forgotForm?.addEventListener('submit', async e => {
+      e.preventDefault();
+      const email = forgotForm.querySelector('[name="email"]')?.value?.trim() || '';
+      setStatus('Sending your secure reset link…');
       try {
         const result=await api('/api/member/forgot',{method:'POST',body:JSON.stringify({email})});
-        setStatus(result.message);
+        setStatus(result.message || 'If an account exists for that email, a reset link has been sent.');
       } catch(err){ setStatus(err.message,true); }
     });
 
@@ -459,7 +492,7 @@
         } catch(err){ setStatus(err.message,true); }
       }
       if (reset) {
-        loginForm.hidden = true; registerForm.hidden = true; resetForm.hidden = false;
+        loginForm.hidden = true; registerForm.hidden = true; if (forgotForm) forgotForm.hidden = true; resetForm.hidden = false;
         tabs.forEach(btn=>btn.classList.remove('active'));
         resetForm.addEventListener('submit', async e => {
           e.preventDefault(); const fd=new FormData(resetForm); setStatus('Saving new password…');

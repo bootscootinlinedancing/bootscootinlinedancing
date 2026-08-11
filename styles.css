@@ -8307,3 +8307,43 @@ body.ranch-v91 .launch-readiness p,body.ranch-v91 .launch-readiness li,body.ranc
 .membership-preview-grid article{display:grid;gap:.3rem;padding:1rem;background:#090606;border:1px solid rgba(220,38,48,.32);border-radius:12px}
 .membership-preview-grid strong{color:#fff;font-size:1.05rem}.membership-preview-grid span{color:#cdb5ad;line-height:1.45}
 @media(max-width:760px){.membership-preview-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.membership-preview-grid{grid-template-columns:1fr}}
+
+
+/* v96.4.80 — member entry visibility + consolidated member navigation */
+.member-entry-heading{
+  width:min(760px,calc(100% - 2rem));
+  margin:2.25rem auto .75rem;
+  text-align:center;
+}
+.member-entry-heading h1{
+  margin:.15rem 0 .55rem;
+  color:#fff;
+  font-size:clamp(2rem,7vw,4.2rem);
+  line-height:.95;
+}
+.member-entry-heading p:last-child{color:#d7c0b7;font-size:1.05rem}
+#memberAuthShell{padding-top:.75rem!important}
+#memberAuthShell .member-auth-card{
+  border:2px solid #d61f2c;
+  box-shadow:0 0 0 1px rgba(255,255,255,.04),0 0 32px rgba(214,31,44,.18);
+}
+#memberAuthTabs button{
+  min-height:54px;
+  font-size:1rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+#memberAuthTabs button.active{
+  background:linear-gradient(180deg,#e12634,#a90f1a);
+  box-shadow:0 0 18px rgba(225,38,52,.28);
+}
+.membership-preview{margin-top:1.2rem}
+
+
+/* v96.4.81 — member auth visibility + password reset */
+.member-auth-form[hidden],
+#memberForgotForm[hidden],
+#memberResetForm[hidden]{display:none!important}
+#memberForgotForm h2,#memberResetForm h2{margin:.2rem 0 .35rem;color:#fff}
+#memberForgotForm p,#memberResetForm p{color:#d8c1b8;line-height:1.5}
+.member-link-button{color:#fff;text-decoration:underline;text-underline-offset:4px}

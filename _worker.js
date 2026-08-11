@@ -199,6 +199,30 @@ async function loyaltySummary(env,email){
   return {total_stamps:total,progress,goal:9,free_class_milestones:completed,reward_ready:total>=9};
 }
 
+
+function repairMemberNavigationHtml(html){
+  const desired = `<details class="menu45-section">
+<summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
+<div class="menu45-submenu">
+<a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
+<a href="member-hub.html#membership-preview"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
+</div>
+</details>`;
+  return String(html||'').replace(
+    /<details class="menu45-section">\s*<summary><span class="menu45-summary-copy"><strong>My Boot Scootin’<\/strong><small>.*?<\/small><\/span><b aria-hidden="true"><\/b><\/summary>\s*<div class="menu45-submenu">.*?<\/div>\s*<\/details>/s,
+    desired
+  );
+}
+async function servePublicAssetWithRepairs(request,env){
+  const response = await env.ASSETS.fetch(request);
+  const type = response.headers.get('content-type') || '';
+  if(!type.includes('text/html')) return response;
+  const html = await response.text();
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control','no-store, no-cache, must-revalidate');
+  return new Response(repairMemberNavigationHtml(html),{status:response.status,statusText:response.statusText,headers});
+}
+
 async function ensureBookingSchema(env) {
   if (!env.BOOKINGS_DB) throw new Error('BOOKINGS_DB binding is missing.');
   const statements = [
@@ -1863,43 +1887,77 @@ async function systemHealth(request, env) {
 
 
 async function memberRegister(request,env){
-  await ensureBookingSchema(env);
-  if(!sameOriginWrite(request)) return json({error:'This request could not be verified.'},403);
-  const body=await request.json().catch(()=>null); if(!body) return json({error:'Please complete the registration form.'},400);
-  const first=clean(body.first_name,60), last=clean(body.last_name,80);
-  const name=clean(`${first} ${last}`.trim(),120), email=clean(body.email,160).toLowerCase(), phone=clean(body.phone,30);
-  const password=String(body.password||''), marketing=body.marketing_consent?1:0;
-  if(!first||!last||!emailOk(email)) return json({error:'Please enter your first name, surname and a valid email address.'},400);
-  if(!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
+  try{
+    await ensureBookingSchema(env);
+    if(!sameOriginWrite(request)) return json({error:'This request could not be verified. Please refresh the page and try again.'},403);
+    const body=await request.json().catch(()=>null);
+    if(!body) return json({error:'Please complete the registration form.'},400);
 
-  const existing=await env.BOOKINGS_DB.prepare(`SELECT id,verified_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
-  if(existing?.verified_at) return json({error:'An account already exists for this email. Please log in instead.'},409);
+    const first=clean(body.first_name,60), last=clean(body.last_name,80);
+    const name=clean(`${first} ${last}`.trim(),120);
+    const email=clean(body.email,160).toLowerCase();
+    const phone=clean(body.phone,30);
+    const password=String(body.password||'');
+    const marketing=body.marketing_consent?1:0;
 
-  let customer=await env.BOOKINGS_DB.prepare(`SELECT * FROM customers WHERE lower(email)=lower(?)`).bind(email).first();
-  if(!customer){
-    customer={id:crypto.randomUUID()};
-    await env.BOOKINGS_DB.prepare(`INSERT INTO customers(id,name,email,phone,marketing_consent) VALUES(?,?,?,?,?)`).bind(customer.id,name,email,phone,marketing).run();
-  }else{
-    await env.BOOKINGS_DB.prepare(`UPDATE customers SET name=?,phone=CASE WHEN ?<>'' THEN ? ELSE phone END,marketing_consent=MAX(marketing_consent,?),updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-      .bind(name,phone,phone,marketing,customer.id).run();
+    if(!first||!last||!emailOk(email)) return json({error:'Please enter your first name, surname and a valid email address.'},400);
+    if(!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
+
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT id,verified_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
+    if(existing?.verified_at) return json({error:'An account already exists for this email. Please log in instead, or use Forgotten your password.'},409);
+
+    let customer=await env.BOOKINGS_DB.prepare(`SELECT * FROM customers WHERE lower(email)=lower(?)`).bind(email).first();
+    if(!customer){
+      customer={id:crypto.randomUUID()};
+      await env.BOOKINGS_DB.prepare(`INSERT INTO customers(id,name,email,phone,marketing_consent) VALUES(?,?,?,?,?)`)
+        .bind(customer.id,name,email,phone,marketing).run();
+    }else{
+      await env.BOOKINGS_DB.prepare(`UPDATE customers SET name=?,phone=CASE WHEN ?<>'' THEN ? ELSE phone END,marketing_consent=MAX(marketing_consent,?),updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+        .bind(name,phone,phone,marketing,customer.id).run();
+    }
+
+    const salt=randomHex(16);
+    const hash=await passwordHash(password,salt);
+    const memberId=existing?.id||crypto.randomUUID();
+
+    if(existing){
+      await env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET customer_id=?,email=?,password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+        .bind(customer.id,email,hash,salt,memberId).run();
+    }else{
+      await env.BOOKINGS_DB.prepare(`INSERT INTO member_accounts(id,customer_id,email,password_hash,password_salt) VALUES(?,?,?,?,?)`)
+        .bind(memberId,customer.id,email,hash,salt).run();
+    }
+
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO member_profiles(id,customer_id,display_name) VALUES(?,?,?)`)
+      .bind(crypto.randomUUID(),customer.id,first).run();
+
+    // Loyalty is useful, but it must never stop a member account from being created.
+    await syncLoyaltyForEmail(env,email).catch(()=>null);
+
+    const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
+    const verifyUrl=`${new URL(request.url).origin}/member-hub.html?verify=${encodeURIComponent(token)}`;
+    const html=buildBrandedEmail({
+      greeting:`Hi ${first},`,
+      heading:'Verify your Boot Scootin’ account',
+      bodyHtml:`<p>Welcome to My Boot Scootin’. Verify your email to activate your secure member login.</p><p><a href="${verifyUrl}" style="display:inline-block;padding:12px 18px;background:#d61f2c;color:#fff;text-decoration:none;border-radius:8px;font-weight:800">Verify my email</a></p><p>This link expires in 24 hours.</p>`
+    });
+    const text=`Hi ${first},\n\nVerify your Boot Scootin’ account:\n${verifyUrl}\n\nThis link expires in 24 hours.`;
+    const emailResult=await sendTransactionalEmail(env,email,'Verify your Boot Scootin’ member account',html,text,'members').catch(()=>null);
+
+    return json({
+      ok:true,
+      message: emailResult
+        ? 'Account created. Check your email to verify it before logging in.'
+        : 'Account created. Your verification email could not be sent yet — please contact Boot Scootin’ if it does not arrive.'
+    },201);
+  }catch(error){
+    const detail=clean(error?.message||error,400);
+    return json({
+      error:'We could not create your member account yet. Please try again.',
+      detail,
+      code:'MEMBER_REGISTER_FAILED'
+    },500);
   }
-
-  const salt=randomHex(16), hash=await passwordHash(password,salt);
-  let memberId=existing?.id||crypto.randomUUID();
-  if(existing){
-    await env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET customer_id=?,password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(customer.id,hash,salt,memberId).run();
-  }else{
-    await env.BOOKINGS_DB.prepare(`INSERT INTO member_accounts(id,customer_id,email,password_hash,password_salt) VALUES(?,?,?,?,?)`).bind(memberId,customer.id,email,hash,salt).run();
-  }
-  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO member_profiles(id,customer_id,display_name) VALUES(?,?,?)`).bind(crypto.randomUUID(),customer.id,first).run();
-  await syncLoyaltyForEmail(env,email);
-
-  const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
-  const verifyUrl=`${new URL(request.url).origin}/member-hub.html?verify=${encodeURIComponent(token)}`;
-  const html=buildBrandedEmail({greeting:`Hi ${first},`,heading:'Verify your Boot Scootin’ account',bodyHtml:`<p>Welcome to My Boot Scootin’. Verify your email to activate your secure member login.</p><p><a href="${verifyUrl}" style="display:inline-block;padding:12px 18px;background:#d61f2c;color:#fff;text-decoration:none;border-radius:8px;font-weight:800">Verify my email</a></p><p>This link expires in 24 hours.</p>`});
-  const text=`Hi ${first},\n\nVerify your Boot Scootin’ account:\n${verifyUrl}\n\nThis link expires in 24 hours.`;
-  await sendTransactionalEmail(env,email,'Verify your Boot Scootin’ member account',html,text,'members').catch(()=>null);
-  return json({ok:true,message:'Account created. Check your email to verify it before logging in.'},201);
 }
 async function memberVerify(request,env){
   await ensureBookingSchema(env);
@@ -4010,6 +4068,10 @@ export default {
       if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);
       if (path === '/api/admin/cleanup-known-august-tests' && request.method === 'POST') return cleanupKnownAugustTestBookings(request, env);
       if (path === '/api/admin/bootstrap' && request.method === 'GET') return adminBootstrap(request, env);
+      if ((path === '/members' || path === '/members/' || path === '/member-login') && request.method === 'GET') {
+        const target = new URL('/member-hub.html', request.url);
+        return Response.redirect(target.toString(), 302);
+      }
       if (path === '/api/member/register' && request.method === 'POST') return memberRegister(request, env);
       if (path === '/api/member/verify' && request.method === 'POST') return memberVerify(request, env);
       if (path === '/api/member/login' && request.method === 'POST') return memberLogin(request, env);
@@ -4042,7 +4104,7 @@ export default {
       if (path === '/api/admin/media') return mediaCollection(request, env);
       if (path.startsWith('/media/')) return serveMedia(request, env, path);
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
-      return env.ASSETS.fetch(request);
+      return servePublicAssetWithRepairs(request, env);
     } catch (error) {
       if (path.startsWith('/api/') || incomingPath.startsWith('/ranch/api/')) return json({ error: 'Server error', detail: clean(error && error.message ? error.message : error, 500), code: 'UNHANDLED_API_ERROR' }, 500);
       return new Response('Boot Scootin’ is temporarily unavailable.', { status: 500 });
