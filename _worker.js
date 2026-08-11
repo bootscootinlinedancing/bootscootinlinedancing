@@ -1879,6 +1879,40 @@ async function publicPrivateQuote(request, env, url) {
 }
 
 
+
+async function sendPrivateEventPaymentEmails(env, inquiry, quote, payment, kind, actor='PRIVATE_PAYMENT') {
+  const customerEmail=clean(inquiry?.customer_email,254);
+  const adminEmail=clean(env.ADMIN_EMAIL||'',254);
+  const pounds=p=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(p)||0)/100);
+  const paidAmount=Number(payment?.amount_pence||0);
+  const total=Number(quote?.total_pence||0);
+  const paidSoFar=kind==='DEPOSIT'?paidAmount:total;
+  const remaining=Math.max(0,total-paidSoFar);
+  const label=kind==='DEPOSIT'?'deposit':kind==='BALANCE'?'remaining balance':'full payment';
+  const confirmed=kind==='DEPOSIT'?'Your date is now secured with the deposit.':'Your private event is now paid in full.';
+  const manageUrl=`https://bootscootinlinedancing.co.uk/private-quote.html?token=${encodeURIComponent(inquiry?.secure_token||'')}`;
+  let customerSent=false,adminSent=false;
+  if(emailOk(customerEmail)) {
+    try {
+      const subject=`Boot Scootin’ private event ${label} received — ${clean(inquiry.reference,80)}`;
+      const text=`Hi ${clean(inquiry.customer_name,120)||'there'},\n\nThank you — we’ve received your ${label} of ${pounds(paidAmount)} for your Boot Scootin’ private event.\n\nReference: ${clean(inquiry.reference,80)}\nEvent date: ${clean(quote?.agreed_date||inquiry?.preferred_date,40)||'To be agreed'}\nTotal: ${pounds(total)}\nPaid now: ${pounds(paidAmount)}\nRemaining balance: ${pounds(remaining)}\n\n${confirmed}\n\nManage your booking: ${manageUrl}\n\nNora\nBoot Scootin’ Line Dancing`;
+      const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>Payment received</h2><p>Hi ${clean(inquiry.customer_name,120)||'there'},</p><p>Thank you — we’ve received your <strong>${label}</strong> of <strong>${pounds(paidAmount)}</strong>.</p><p><strong>Reference:</strong> ${clean(inquiry.reference,80)}<br><strong>Event date:</strong> ${clean(quote?.agreed_date||inquiry?.preferred_date,40)||'To be agreed'}<br><strong>Total:</strong> ${pounds(total)}<br><strong>Paid now:</strong> ${pounds(paidAmount)}<br><strong>Remaining balance:</strong> ${pounds(remaining)}</p><p>${confirmed}</p><p><a href="${manageUrl}" style="display:inline-block;padding:14px 20px;background:#c81924;color:#fff;text-decoration:none;font-weight:700">MANAGE MY BOOKING</a></p><p>Nora<br><strong>Boot Scootin’ Line Dancing</strong></p></div>`;
+      const sent=await sendTransactionalEmail(env,customerEmail,subject,html,text,'events');
+      customerSent=!sent?.skipped;
+    } catch(_) {}
+  }
+  if(emailOk(adminEmail)) {
+    try {
+      const subject=`Private event payment received — ${clean(inquiry.reference,80)}`;
+      const text=`Private-event payment received.\n\nReference: ${clean(inquiry.reference,80)}\nCustomer: ${clean(inquiry.customer_name,120)}\nType: ${label}\nAmount: ${pounds(paidAmount)}\nRemaining: ${pounds(remaining)}\nStatus: ${kind==='DEPOSIT'?'CONFIRMED_DEPOSIT':'CONFIRMED_PAID'}`;
+      const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>Private event payment received</h2><p><strong>${clean(inquiry.reference,80)}</strong></p><p>${clean(inquiry.customer_name,120)} paid <strong>${pounds(paidAmount)}</strong> (${label}).<br>Remaining balance: <strong>${pounds(remaining)}</strong>.</p></div>`;
+      const sent=await sendTransactionalEmail(env,adminEmail,subject,html,text,'events');
+      adminSent=!sent?.skipped;
+    } catch(_) {}
+  }
+  await env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'SYSTEM',actor,'PAYMENT_EMAILS',JSON.stringify({kind,customer_sent:customerSent,admin_sent:adminSent,amount_pence:paidAmount,remaining_pence:remaining})).run().catch(()=>{});
+}
+
 async function syncPrivateEventPayment(env, payment, inquiry, quote, actor='PRIVATE_PAYMENT_SYNC') {
   if(!payment?.provider_reference || !sumUpConfigured(env)) return {payment,inquiry,quote};
   const checkout=await retrieveSumUpCheckout(env,payment.provider_reference).catch(()=>null);
@@ -1897,6 +1931,7 @@ async function syncPrivateEventPayment(env, payment, inquiry, quote, actor='PRIV
     payment={...payment,status:'PAID',paid_at:new Date().toISOString()};
     inquiry={...inquiry,status:nextInquiry};
     quote={...quote,status:'QUOTE_ACCEPTED'};
+    try{await sendPrivateEventPaymentEmails(env,inquiry,quote,payment,kind,actor);}catch(_){}
   }else if(['FAILED','EXPIRED'].includes(status) && payment.status==='PENDING'){
     await env.BOOKINGS_DB.prepare(`UPDATE private_event_payments SET status=? WHERE id=?`).bind(status,payment.id).run().catch(()=>{});
     payment={...payment,status};
@@ -3442,7 +3477,7 @@ async function adminMerchOrders(request,env){
 
 async function adminPrivateEvents(request, env) {
   const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
-  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,q.id quote_id,q.total_pence,q.deposit_pence,q.status quote_status,q.quote_expires_at FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) ORDER BY i.created_at DESC`).all();return json({items:results});}
+  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,q.id quote_id,q.total_pence,q.deposit_pence,q.balance_due_pence,q.status quote_status,q.quote_expires_at, COALESCE((SELECT SUM(p.amount_pence) FROM private_event_payments p WHERE p.inquiry_id=i.id AND p.status='PAID'),0) paid_pence, (SELECT p.payment_kind FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_kind, (SELECT p.status FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_status, (SELECT p.provider_reference FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_reference, (SELECT p.paid_at FROM private_event_payments p WHERE p.inquiry_id=i.id AND p.status='PAID' ORDER BY p.paid_at DESC LIMIT 1) latest_paid_at FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) ORDER BY i.created_at DESC`).all();return json({items:results});}
   const b=await request.json().catch(()=>null);if(!b)return json({error:'Invalid private event request.'},400);
   if(request.method==='PATCH'&&b.action==='STATUS'){const status=clean(b.status,40);if(!privateStatuses.has(status))return json({error:'Invalid status.'},400);await env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,clean(b.id,120)).run();return json({ok:true});}
   if(request.method==='DELETE'&&b.action==='DELETE'){

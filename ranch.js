@@ -1099,6 +1099,8 @@ Type REFUNDED to continue.`);
       <div class="private-detail-block"><span>Music requests</span><p>${esc(item.music_requests||'—')}</p></div>
       <div class="private-detail-block"><span>Accessibility / additional notes</span><p>${esc([item.accessibility_notes,item.additional_notes].filter(Boolean).join('\n\n')||'—')}</p></div>
 
+      ${item.quote_id?`<section class="private-payment-summary"><h3>Payment status</h3><div class="private-detail-grid">${privateField('Quote total',money(item.total_pence||0))}${privateField('Paid',money(item.paid_pence||0))}${privateField('Remaining',money(Math.max(0,Number(item.total_pence||0)-Number(item.paid_pence||0))))}${privateField('Latest payment',item.latest_payment_status?`${privateStatusLabel(item.latest_payment_kind)} · ${privateStatusLabel(item.latest_payment_status)}`:'No payment yet')}</div>${item.latest_payment_reference?`<p class="private-payment-ref">SumUp checkout: ${esc(item.latest_payment_reference)}</p>`:''}${item.latest_paid_at?`<p class="private-payment-ref">Last paid: ${esc(fmt(item.latest_paid_at))}</p>`:''}</section>`:''}
+
       <section class="private-workflow-box">
         <h3>Review decision</h3>
         <div class="private-status-actions">

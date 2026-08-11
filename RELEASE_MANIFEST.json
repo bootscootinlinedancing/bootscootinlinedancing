@@ -1,23 +1,17 @@
 {
-  "release": "96.4.65",
-  "version": "96.4.65",
-  "release_name": "PUBLIC BLACK/RED SWEEP + UNIFIED MENU + MERCH CHECKOUT FIX",
-  "description": "Removes remaining beige public surfaces, standardises the Explore menu, and replaces Safari fetch checkout with a robust same-origin form POST to SumUp.",
-  "built_from": "boot-scootin-platform-v96.4.38-MERCH-ORDERING-BLACK-RED-CLEANUP.zip",
-  "built_at": "2026-08-08T17:56:16.702420+00:00",
+  "release": "96.4.76",
+  "version": "96.4.76",
+  "release_name": "PRIVATE EVENT PAYMENT FLOW + STATUS + EMAILS",
+  "description": "Makes deposit, full-payment and balance payment use one reliable SumUp POST flow, records payment state in HQ and emails confirmations after successful payment.",
+  "built_from": "boot-scootin-platform-v96.4.75-PRIVATE-INQUIRY-EMAIL-DELETE-FIX.zip",
+  "built_at": "2026-08-11T00:24:32.058317+00:00",
   "changes": [
-    "Scanned and overridden remaining beige/cream public-facing cards, forms, filters and panels",
-    "Homepage Explore menu now uses the same text-only professional menu as inner pages",
-    "Merch checkout now submits as a normal form POST for iPhone Safari reliability",
-    "Worker accepts JSON and form-encoded merch orders and redirects securely to hosted SumUp checkout",
-    "Mobile and desktop layout fixes from v96.4.38 preserved",
-    "HQ paid revenue now combines paid class bookings and paid merchandise orders.",
-    "HQ overview shows class revenue, merchandise revenue and estimated merchandise profit separately.",
-    "Merch Orders shows estimated production cost and item profit using £12 unisex and £17 women’s premium production costs.",
-    "Class editor now includes reusable Edgbaston Community Centre and Low Places Bar templates with venue address, usual times, capacity and concise first-class guidance.",
-    "HQ cream/beige admin panels were converted to the black/red/cream brand palette.",
-    "Homepage opening headline now uses the Western Rye display type selectively.",
-    "HQ refresh reconciles pending SumUp merchandise checkouts so paid T-shirt sales appear in revenue even if the customer did not return to the website after payment."
+    "Deposit, pay-in-full and remaining-balance buttons now use the same POST payment route instead of direct GET navigation.",
+    "Successful private-event payments update inquiry and quote state through SumUp reconciliation/webhook handling.",
+    "Customer receives an automatic private-event payment confirmation email after a successful deposit, full payment or balance payment.",
+    "ADMIN_EMAIL receives a payment notification for successful private-event payments.",
+    "HQ Private Events now shows quote total, amount paid, remaining balance, latest payment state and SumUp checkout reference.",
+    "Existing v96.4.75 private-inquiry admin email and delete-test-inquiry controls are preserved."
   ],
   "checks": {
     "root_file_count": 98,
@@ -27,8 +21,8 @@
   },
   "files": {
     "_worker.js": {
-      "size": 200925,
-      "sha256": "5eca4ffc95e496c8c4b5ae3c2dd99c2ff37867f54dfe484a345ddb38cf3f2e10"
+      "size": 233014,
+      "sha256": "3a14dd43c606ed1b1302d931fcb3b9b7b7689c943ce8d98da75514eb3d0d677d"
     },
     "community.html": {
       "size": 44821,
@@ -45,6 +39,18 @@
     "service-worker.js": {
       "size": 545,
       "sha256": "a2c57bd4d03fe578d0aa7f04a85d8d34f4d64bf932386c5888855aabec7809f7"
+    },
+    "private-quote.js": {
+      "size": 5957,
+      "sha256": "4cb224df2fbc3a17b46d1da616585ff8f76d518dc4f054eb48b6ef86c1f47006"
+    },
+    "ranch.js": {
+      "size": 116530,
+      "sha256": "7f719379bcf6e73efa6fe7486e9f1ec627e19c883c4ef956a3137f8392baf2fc"
+    },
+    "ranch.css": {
+      "size": 520,
+      "sha256": "cded1d37fb930b08b8c64ab95f3bc0513d9d072ed36cb152cbbff48bbaffd84b"
     }
   },
   "homepage_refresh": true,
