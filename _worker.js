@@ -89,7 +89,7 @@ async function memberSha256Hex(value){
 }
 async function passwordHash(password,saltHex){
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(password||'')),{name:'PBKDF2'},false,['deriveBits']);
-  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:{name:'SHA-256'},salt:hexToBytes(String(saltHex||'')),iterations:160000},key,256);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:{name:'SHA-256'},salt:hexToBytes(String(saltHex||'')),iterations:100000},key,256);
   return bytesToHex(new Uint8Array(bits));
 }
 function randomHex(bytes=32){
