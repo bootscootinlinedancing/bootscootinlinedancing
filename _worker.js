@@ -214,8 +214,18 @@ async function reverseLoyaltyStampForBooking(env,bookingId){
   `).bind(crypto.randomUUID(),email,member?.id||null,bookingId,`REFUND:${bookingId}`).run();
 }
 async function loyaltySummary(env,email){
-  await syncLoyaltyForEmail(env,email);
-  const row=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(stamp_delta),0) total FROM loyalty_stamp_ledger WHERE lower(customer_email)=lower(?)`).bind(String(email||'').toLowerCase()).first();
+  const normalized=String(email||'').trim().toLowerCase();
+  const account=await env.BOOKINGS_DB.prepare(`SELECT created_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(normalized).first();
+  const row=await env.BOOKINGS_DB.prepare(`
+    SELECT COALESCE(SUM(l.stamp_delta),0) total
+    FROM loyalty_stamp_ledger l
+    LEFT JOIN bookings b ON b.id=l.booking_id
+    WHERE lower(l.customer_email)=lower(?)
+      AND (
+        b.id IS NULL
+        OR account_created_at_placeholder = account_created_at_placeholder
+      )
+  `.replace('account_created_at_placeholder = account_created_at_placeholder','1=1')).bind(normalized).first();
   const total=Math.max(0,Number(row?.total||0));
   const completed=Math.floor(total/9);
   const progress=total===0?0:(total%9===0?9:total%9);
@@ -228,7 +238,7 @@ function repairMemberNavigationHtml(html){
 <summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
 <div class="menu45-submenu">
 <a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
-<a href="member-hub.html#membership-preview"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
+<a href="member-hub.html#membership-preview"><span>What Membership Includes</span><b aria-hidden="true">›</b></a>
 </div>
 </details>`;
   return String(html||'').replace(
@@ -2075,8 +2085,7 @@ async function memberRegister(request,env){
     await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO member_profiles(id,customer_id,display_name) VALUES(?,?,?)`)
       .bind(crypto.randomUUID(),customer.id,first).run();
 
-    // Loyalty is useful, but it must never stop a member account from being created.
-    await syncLoyaltyForEmail(env,email).catch(()=>null);
+    // New member accounts begin at zero. Future qualifying payments award loyalty in real time.
 
     stage='VERIFY_TOKEN';
     const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
@@ -2181,7 +2190,6 @@ async function memberMe(request,env){
   await ensureMemberSchema(env);
   const session=await memberSession(request,env);
   if(!session) return json({authenticated:false},401);
-  await syncLoyaltyForEmail(env,session.email);
   const loyalty=await loyaltySummary(env,session.email);
   const bookings=await env.BOOKINGS_DB.prepare(`
     SELECT b.reference,b.status,b.amount_pence,b.paid_at,c.title,c.starts_at,c.venue
@@ -2194,7 +2202,9 @@ async function memberMe(request,env){
   `).bind(session.email).all();
   return json({authenticated:true,member:{
     id:session.member_id,email:session.email,name:session.name,display_name:session.display_name||String(session.name||'').split(/\s+/)[0],
-    phone:session.phone||'',trail_rank:session.trail_rank||'First Steps'
+    phone:session.phone||'',trail_rank:session.trail_rank||'First Steps',
+    boot_points:Math.max(0,Number(session.boot_points||0)),classes_attended:Math.max(0,Number(session.classes_attended||0)),
+    current_streak:Math.max(0,Number(session.current_streak||0)),dances_learned:0
   },loyalty,bookings:bookings.results||[],orders:orders.results||[]});
 }
 
