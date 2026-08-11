@@ -2081,10 +2081,14 @@ async function memberRegister(request,env){
     stage='VERIFY_TOKEN';
     const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
     const verifyUrl=`${new URL(request.url).origin}/member-hub.html?verify=${encodeURIComponent(token)}`;
-    const html=buildBrandedEmail({
+    const html=brandedEmailHtml({
       greeting:`Hi ${first},`,
       heading:'Verify your Boot Scootin’ account',
-      bodyHtml:`<p>Welcome to My Boot Scootin’. Verify your email to activate your secure member login.</p><p><a href="${verifyUrl}" style="display:inline-block;padding:12px 18px;background:#d61f2c;color:#fff;text-decoration:none;border-radius:8px;font-weight:800">Verify my email</a></p><p>This link expires in 24 hours.</p>`
+      paragraphs:[
+        'Welcome to My Boot Scootin’. Verify your email to activate your secure member login.',
+        'This verification link expires in 24 hours.'
+      ],
+      buttons:[{label:'Verify my email',href:verifyUrl}]
     });
     const text=`Hi ${first},\n\nVerify your Boot Scootin’ account:\n${verifyUrl}\n\nThis link expires in 24 hours.`;
     const emailResult=await sendTransactionalEmail(env,email,'Verify your Boot Scootin’ member account',html,text,'members').catch(()=>null);
@@ -2149,7 +2153,12 @@ async function memberForgot(request,env){
   const token=await createMemberEmailToken(env,account.id,'RESET',2);
   const resetUrl=`${new URL(request.url).origin}/member-hub.html?reset=${encodeURIComponent(token)}`;
   const first=String(account.name||'there').split(/\s+/)[0];
-  const html=buildBrandedEmail({greeting:`Hi ${first},`,heading:'Reset your Boot Scootin’ password',bodyHtml:`<p>Use the secure link below to choose a new password.</p><p><a href="${resetUrl}" style="display:inline-block;padding:12px 18px;background:#d61f2c;color:#fff;text-decoration:none;border-radius:8px;font-weight:800">Reset password</a></p><p>This link expires in 2 hours.</p>`});
+  const html=brandedEmailHtml({
+    greeting:`Hi ${first},`,
+    heading:'Reset your Boot Scootin’ password',
+    paragraphs:['Use the secure link below to choose a new password.','This link expires in 2 hours.'],
+    buttons:[{label:'Reset password',href:resetUrl}]
+  });
   await sendTransactionalEmail(env,email,'Reset your Boot Scootin’ password',html,`Reset your password:\n${resetUrl}\n\nThis link expires in 2 hours.`,'members').catch(()=>null);
   return generic;
 }
@@ -3802,7 +3811,11 @@ async function adminBookings(request, env, ctx) {
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='CLASS_CREDIT_ISSUED',admin_notes=? WHERE id=?`).bind(clean(body.admin_notes,600),id).run();
   }else if(action==='CHECK_IN'){
     await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO attendance(id,booking_id,checked_in_by) VALUES(?,?,?)`).bind(crypto.randomUUID(),id,check.state.email).run();
-    const checked=await bookingWithClass(env,id); if(checked){const count=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE lower(b.customer_email)=lower(?)`).bind(checked.customer_email).first(); if(Number(count?.n||0)>0&&Number(count.n)%9===0){const reward=await issuePersonalPromotion(env,{email:checked.customer_email,name:checked.customer_name,type:'LOYALTY',days:90}); if(reward)await sendTransactionalEmail(env,checked.customer_email,'You earned a free Boot Scootin’ class',buildBrandedEmail({greeting:`Hi ${checked.customer_name},`,heading:'Your free class reward is ready',bodyHtml:`<p>You have completed nine loyalty stamps, so your tenth class is free.</p><p><strong>Your personal code: ${reward.code}</strong></p><p>Use it within 90 days when booking your next class.</p>`}),'You earned a free class. Code: '+reward.code,'members');}}
+    const checked=await bookingWithClass(env,id); if(checked){const count=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE lower(b.customer_email)=lower(?)`).bind(checked.customer_email).first(); if(Number(count?.n||0)>0&&Number(count.n)%9===0){const reward=await issuePersonalPromotion(env,{email:checked.customer_email,name:checked.customer_name,type:'LOYALTY',days:90}); if(reward)await sendTransactionalEmail(env,checked.customer_email,'You earned a free Boot Scootin’ class',brandedEmailHtml({
+      greeting:`Hi ${checked.customer_name},`,
+      heading:'Your free class reward is ready',
+      paragraphs:['You have completed nine loyalty stamps, so your tenth class is free.',`Your personal code: ${reward.code}`,'Use it within 90 days when booking your next class.']
+    }),'You earned a free class. Code: '+reward.code,'members');}}
   }else if(action==='NO_SHOW'){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET admin_notes=? WHERE id=?`).bind(`NO SHOW — ${clean(body.admin_notes,500)}`,id).run();
   }else{
