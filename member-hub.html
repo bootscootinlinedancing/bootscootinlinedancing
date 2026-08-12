@@ -8,7 +8,7 @@
   <link rel="icon" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=96.4.92">
+  <link rel="stylesheet" href="styles.css?v=96.4.93">
   <meta name="theme-color" content="#080606">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="honky-authentic.css?v=96.4.39">
@@ -39,7 +39,7 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
 .member-action-link{display:inline-block;margin:12px 8px 0 0;padding:13px 16px;border:1px solid #d73742;background:#a8242d;color:#fff!important;text-decoration:none;text-transform:uppercase;font-weight:800}.member-action-link.secondary{background:transparent}
 .member-logout-button{margin-top:18px;padding:15px 22px;background:#a8242d;color:#fff;border:1px solid #e84550;font-weight:800;text-transform:uppercase}
 .member-stamp-row span{background:#211013!important;border-color:#6d2c33!important}.member-stamp-row span.earned{background:#a72a33!important}
-.member-profile-form{display:grid;gap:16px}.member-profile-form .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.member-profile-form label{display:grid;gap:7px;color:#fff;font:700 14px/1.2 Arial,sans-serif}.member-profile-form input{width:100%;box-sizing:border-box;padding:14px 15px;background:#080506;color:#fff;border:1px solid #743038;font:500 16px Arial,sans-serif}.member-profile-form input:focus{outline:2px solid #d52b38;outline-offset:1px}.member-profile-check{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:12px!important;font-weight:500!important;color:var(--member-muted)!important}.member-profile-check input{width:24px!important;height:24px!important;flex:0 0 auto}.member-profile-save{padding:15px 20px;border:1px solid #ef4650;background:#b42631;color:#fff;font:800 15px Arial;text-transform:uppercase;letter-spacing:.04em}.member-profile-status{min-height:1.2em;color:#f28b93;font-weight:700}
+.member-profile-form{display:grid;gap:16px}.member-profile-form .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.member-profile-form label{display:grid;gap:7px;color:#fff;font:700 14px/1.2 Arial,sans-serif}.member-profile-form input,.member-profile-form select{width:100%;box-sizing:border-box;padding:14px 15px;background:#080506;color:#fff;border:1px solid #743038;font:500 16px Arial,sans-serif}.member-profile-form input:focus{outline:2px solid #d52b38;outline-offset:1px}.member-profile-check{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:12px!important;font-weight:500!important;color:var(--member-muted)!important}.member-profile-check input{width:24px!important;height:24px!important;flex:0 0 auto}.member-profile-save{padding:15px 20px;border:1px solid #ef4650;background:#b42631;color:#fff;font:800 15px Arial;text-transform:uppercase;letter-spacing:.04em}.member-profile-status{min-height:1.2em;color:#f28b93;font-weight:700}
 .member-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px}.member-hub-topbar{background:#050303!important}
 .member-preview-pill{border-color:#743038!important;background:#19090b!important;color:#e7c6a9!important}
 .member-feature-intro{padding:1.1rem 1.2rem;margin:0 0 18px;border-left:4px solid #d52b38;background:#120809;color:var(--member-muted)}
@@ -92,6 +92,14 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
         </div>
         <label>Email address<input type="email" name="email" autocomplete="email" required></label>
         <label>Mobile number<input type="tel" name="phone" autocomplete="tel"></label>
+        <label>How would you like us to refer to you on the Trail?
+          <select name="trail_identity">
+            <option value="trail_rider" selected>Trail Rider (gender-neutral)</option>
+            <option value="cowgirl">Cowgirl</option>
+            <option value="cowboy">Cowboy</option>
+          </select>
+        </label>
+        <small>This only changes friendly wording inside your member area. You can change it later.</small>
         <label>Password<input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
         <small>Use at least 10 characters with letters and a number.</small>
         <label class="member-auth-check"><input type="checkbox" name="terms" required> I agree to the Terms and Privacy Policy.</label>
@@ -291,6 +299,13 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
             </div>
             <label>Email address<input type="email" name="email" autocomplete="email" required></label>
             <label>Mobile number<input type="tel" name="phone" autocomplete="tel"></label>
+            <label>Trail name
+              <select name="trail_identity">
+                <option value="trail_rider">Trail Rider (gender-neutral)</option>
+                <option value="cowgirl">Cowgirl</option>
+                <option value="cowboy">Cowboy</option>
+              </select>
+            </label>
             <label class="member-profile-check"><input type="checkbox" name="birthday_visible"> Share my birthday with the Boot Scootin’ community. My exact date stays private unless I choose this.</label>
             <label class="member-profile-check"><input type="checkbox" name="marketing_consent"> Send me Boot Scootin’ news and class updates.</label>
             <button class="member-profile-save" type="submit">Save my profile</button>
@@ -371,7 +386,7 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
       try {
         const result = await api('/api/member/register',{method:'POST',body:JSON.stringify({
           first_name:fd.get('first_name'),last_name:fd.get('last_name'),email:fd.get('email'),
-          phone:fd.get('phone'),password:fd.get('password'),marketing_consent:fd.get('marketing_consent')==='on'
+          phone:fd.get('phone'),trail_identity:fd.get('trail_identity'),password:fd.get('password'),marketing_consent:fd.get('marketing_consent')==='on'
         })});
         setStatus(result.message || 'Account created. Check your email.');
         loginForm.querySelector('[name="email"]').value = String(fd.get('email')||'');
@@ -458,7 +473,11 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
       const rank=m.trail_rank||'First Steps';
 
       document.getElementById('memberDisplayName').textContent=first;
+      const trailIdentity=m.trail_identity||'trail_rider';
+      const identityLabel=trailIdentity==='cowgirl'?'Cowgirl':trailIdentity==='cowboy'?'Cowboy':'Trail Rider';
       document.getElementById('memberTrailRank').textContent=rank;
+      const mini=document.querySelector('.member-mini-profile span');
+      if(mini) mini.textContent=`${rank} · ${identityLabel} · Secure member profile`;
       document.getElementById('memberRankCard').textContent='☆ '+rank;
       document.getElementById('memberPointsProgress').textContent=`${points} Boot Points`;
       document.getElementById('memberRankProgress').style.width=`${Math.min(100,points/10)}%`;
@@ -490,6 +509,7 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
         profileForm.elements.name.value=m.name||first||'';
         profileForm.elements.email.value=m.email||'';
         profileForm.elements.phone.value=m.phone||'';
+        profileForm.elements.trail_identity.value=m.trail_identity||'trail_rider';
         profileForm.elements.birthday.value=m.birthday||'';
         profileForm.elements.birthday_visible.checked=Boolean(m.birthday_visible);
         profileForm.elements.marketing_consent.checked=Boolean(m.marketing_consent);
@@ -528,7 +548,7 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
       const fd=new FormData(profileForm);
       try{
         const result=await api('/api/member/profile',{method:'POST',body:JSON.stringify({
-          name:fd.get('name'),email:fd.get('email'),phone:fd.get('phone'),birthday:fd.get('birthday'),
+          name:fd.get('name'),email:fd.get('email'),phone:fd.get('phone'),trail_identity:fd.get('trail_identity'),birthday:fd.get('birthday'),
           birthday_visible:fd.get('birthday_visible')==='on',marketing_consent:fd.get('marketing_consent')==='on'
         })});
         if(profileStatus) profileStatus.textContent=result.message||'Profile updated.';

@@ -127,13 +127,21 @@
 <link href="repair-v96.4.56.css?v=96.4.59" rel="stylesheet"/>
 
 <style>
-.member-feature-nav{position:sticky;top:0;z-index:40;display:flex;gap:8px;overflow-x:auto;padding:10px 12px;background:#080505;border-bottom:1px solid #6f2a30;-webkit-overflow-scrolling:touch}
+.member-feature-nav{position:static;z-index:auto;display:flex;flex-wrap:wrap;gap:8px;overflow:visible;padding:12px 18px;background:#080505;border-bottom:1px solid #6f2a30}
 .member-feature-nav a{flex:0 0 auto;padding:10px 12px;border:1px solid #853038;color:#fff;text-decoration:none;font:700 12px/1 Arial,sans-serif;text-transform:uppercase;letter-spacing:.04em;background:#170b0d}
 .member-feature-nav a:active{background:#9f242c}
 </style>
 
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<header class="header">
+<a aria-label="Boot Scootin' Line Dancing home" class="brand-lockup" href="index.html">
+<img alt="" class="brand-logo" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
+<span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
+</a>
+<button aria-expanded="false" class="menu" id="menuButton">Menu</button>
+</header>
 <div class="member-feature-nav" aria-label="Member feature navigation">
   <a href="member-hub.html#dashboard">Dashboard</a>
   <a href="rewards.html">Trail &amp; Rewards</a>
@@ -144,14 +152,6 @@
   <a href="member-hub.html#profile">Profile</a>
 </div>
 
-<a class="skip-link" href="#main-content">Skip to main content</a>
-<header class="header">
-<a aria-label="Boot Scootin' Line Dancing home" class="brand-lockup" href="index.html">
-<img alt="" class="brand-logo" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
-<span class="wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></span>
-</a>
-<button aria-expanded="false" class="menu" id="menuButton">Menu</button>
-</header>
 <nav aria-label="Main navigation" class="menu45-overlay" id="nav">
 <div class="menu45-panel" id="menu45">
 <div class="menu45-head">
@@ -255,14 +255,14 @@
 <div class="section-title centre reveal">
 <p class="kicker">Your personal dance space</p>
 <h1>My Boot Scootin’ Journey</h1>
-<p>A preview of the future member area for dances, confidence, support and milestones.</p>
+<p>Your live member journey. Only activity you actually complete is shown here.</p>
 </div>
 </section>
 <section class="section paper member-dashboard-section">
 <div class="journey-status reveal">
-<span class="status-chip">Interactive preview - secure accounts are not live yet</span>
+<span class="status-chip">My Boot Scootin’ Journey</span>
 <h2>Your own little Boot Scootin’ home.</h2>
-<p>Explore the planned member dashboard. Nothing on this preview is uploaded or shared with Nora.</p>
+<p>Your journey starts at zero and grows only from your real Boot Scootin’ activity.</p>
 </div>
 <div class="member-dashboard reveal">
 <div aria-label="Dashboard sections" class="dashboard-mobile-tabs">
@@ -273,12 +273,12 @@
 </div>
 <aside class="dashboard-sidebar">
 <div class="journey-photo-preview" id="journeyPhotoPreview"><span>NA</span></div>
-<h3>Welcome back, Cowgirl</h3>
+<h3 id="journeyGreeting">Welcome back, Trail Rider</h3>
 <p class="dashboard-level">Absolute Beginner</p>
 <label class="profile-upload-preview">
-            Preview a profile photo
+            Choose a profile photo
             <input accept="image/*" id="profilePhotoDemo" type="file"/>
-<small>Optional in the future member account.</small>
+<small>Optional. Profile-photo saving will be added separately.</small>
 </label>
 <nav aria-label="Dashboard preview sections" class="dashboard-mini-nav">
 <button class="active" data-dashboard-target="overview" type="button">Overview</button>
@@ -295,29 +295,29 @@
 <p class="kicker red">This week</p>
 <h2>Keep showing up. You’re doing brilliantly.</h2>
 </div>
-<span class="dashboard-streak">3 week streak</span>
+<span class="dashboard-streak" id="journeyStreak">0 week streak</span>
 </div>
 <div class="dashboard-stat-grid">
-<article><strong>18</strong><span>Dances learned</span></article>
-<article><strong>7</strong><span>Classes attended</span></article>
-<article><strong>4</strong><span>Favourites</span></article>
-<article><strong>6/9</strong><span>Reward stamps</span></article>
+<article><strong id="journeyDances">0</strong><span>Dances learned</span></article>
+<article><strong id="journeyClasses">0</strong><span>Classes attended</span></article>
+<article><strong id="journeyFavourites">0</strong><span>Favourites</span></article>
+<article><strong id="journeyStamps">0/9</strong><span>Reward stamps</span></article>
 </div>
 <div class="dashboard-columns">
 <article class="dashboard-card">
 <p class="kicker red">Currently learning</p>
-<h3>Choosin’ Texas</h3>
-<div aria-label="Confidence three out of five" class="confidence-meter">
-<span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span><span></span>
+<h3 id="journeyCurrentDance">Nothing selected yet</h3>
+<div aria-label="No confidence rating yet" class="confidence-meter">
+<span></span><span></span><span></span><span></span><span></span>
 </div>
-<p>“I remember the first half, but need more support after the restart.”</p>
-<a class="text-link" href="dance-library.html">Open dance card →</a>
+<p id="journeyCurrentNote">Choose a dance in your Dance Library when you are ready to start tracking your progress.</p>
+<a class="text-link" href="dance-library.html">Open Dance Library →</a>
 </article>
 <article class="dashboard-card next-class-card">
 <p class="kicker red">Next class</p>
-<h3>Friday Night Line Dancing</h3>
-<p><strong>Edgbaston Community Centre</strong><br/>7:30 pm-8:30 pm</p>
-<a class="button" href="bookings.html">View Calendar</a>
+<h3 id="journeyNextClass">Nothing booked yet</h3>
+<p id="journeyNextClassMeta">Your next booking will appear here.</p>
+<a class="button" href="bookings.html">View Classes</a>
 </article>
 </div>
 <article class="dashboard-card dashboard-support">
@@ -340,7 +340,7 @@
 <div class="journey-dance-list">
 <article><div><h3>Ziggy</h3><p>Absolute Beginner</p></div><select><option>I’ve got this</option><option selected="">Comfortable</option><option>Needs practice</option><option>I’d like support</option></select></article>
 <article><div><h3>Cowgirl</h3><p>Beginner</p></div><select><option>I’ve got this</option><option>Comfortable</option><option selected="">Needs practice</option><option>I’d like support</option></select></article>
-<article><div><h3>Choosin’ Texas</h3><p>Beginner</p></div><select><option>I’ve got this</option><option>Comfortable</option><option>Needs practice</option><option selected="">I’d like support</option></select></article>
+<article><div><h3>Choosin’ Texas</h3><p>Beginner</p></div><select><option>I’ve got this</option><option>Comfortable</option><option>Needs practice</option><option>I’d like support</option></select></article>
 </div>
 </section>
 <section class="dashboard-panel" data-dashboard-panel="achievements">
@@ -441,5 +441,35 @@
   </script>
 <a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#lock"></use></svg> Admin Login</a>
 <script src="honky-theme.js?v=96.0.0"></script>
+
+<script>
+(async()=>{
+  try{
+    const r=await fetch('/api/member/me',{credentials:'same-origin',cache:'no-store'});
+    if(!r.ok) return;
+    const data=await r.json();
+    const m=data.member||{}, loyalty=data.loyalty||{};
+    const classes=Math.max(0,Number(m.classes_attended||0));
+    const identity=m.trail_identity==='cowgirl'?'Cowgirl':m.trail_identity==='cowboy'?'Cowboy':'Trail Rider';
+    const displayName=(m.display_name||m.name||'').trim();
+    setTimeout(()=>{const g=document.getElementById('journeyGreeting'); if(g) g.textContent=`Welcome back${displayName?', '+displayName:''} · ${identity}`;},0);
+    const streak=Math.max(0,Number(m.current_streak||0));
+    const progress=Math.max(0,Math.min(9,Number(loyalty.progress||0)));
+    const set=(id,v)=>{const e=document.getElementById(id); if(e)e.textContent=v};
+    set('journeyDances',Math.max(0,Number(m.dances_learned||0)));
+    set('journeyClasses',classes);
+    set('journeyFavourites',0);
+    set('journeyStamps',`${progress}/9`);
+    set('journeyStreak',`${streak} week${streak===1?'':'s'} streak`);
+    const bookings=Array.isArray(data.bookings)?data.bookings:[];
+    const upcoming=bookings.filter(b=>b.starts_at && new Date(b.starts_at).getTime()>=Date.now() && !['CANCELLED','REFUNDED'].includes(String(b.status||'').toUpperCase())).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+    if(upcoming[0]){
+      set('journeyNextClass',upcoming[0].title||'Boot Scootin’ class');
+      const d=new Date(upcoming[0].starts_at);
+      set('journeyNextClassMeta',`${d.toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${upcoming[0].venue?' · '+upcoming[0].venue:''}`);
+    }
+  }catch(_){}
+})();
+</script>
 </body>
 </html>

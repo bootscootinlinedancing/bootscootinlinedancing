@@ -118,7 +118,7 @@ async function memberSession(request,env){
   const row=await env.BOOKINGS_DB.prepare(`
     SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,
            c.name,c.phone,c.marketing_consent,
-           mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak,mp.birthday_visible
+           mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak,mp.birthday_visible,mp.trail_identity
     FROM member_sessions s
     JOIN member_accounts a ON a.id=s.member_id
     JOIN customers c ON c.id=a.customer_id
@@ -650,12 +650,13 @@ async function ensureBookingSchema(env) {
 
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO achievements(id,title,description,icon,category,points_bonus) VALUES
     ('first-class','Hay Bale Hopper','Attend your first Boot Scootin’ class','🌾','attendance',0),
-    ('five-classes','Rookie Cowgirl','Attend five classes','🤠','attendance',0),
+    ('five-classes','Rookie Rider','Attend five classes','🤠','attendance',0),
     ('ten-classes','Trail Rider','Attend ten classes','🌵','attendance',0),
     ('fireball-survivor','Fireball Survivor','Complete Fireball without stopping','🔥','dance',0),
     ('festival-friend','Festival Friend','Join a Boot Scootin’ festival meetup','🎪','community',0),
     ('butterfly-season','Butterfly Season','Complete the Spring Steps challenge','🦋','seasonal',0)
   `).run();
+  try { await env.BOOKINGS_DB.prepare(`UPDATE achievements SET title='Rookie Rider' WHERE id='five-classes'`).run(); } catch (_) {}
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO reward_catalog(id,title,description,points_cost,reward_type) VALUES
     ('dance-vote','Dance Request Vote','Vote in a future class dance poll',50,'vote'),
     ('class-credit-5','£5 Class Credit','£5 credit towards a standard class',100,'credit'),
@@ -1989,6 +1990,7 @@ async function ensureMemberSchema(env){
     current_streak INTEGER NOT NULL DEFAULT 0,
     whos_going_opt_in INTEGER NOT NULL DEFAULT 0,
     profile_visibility TEXT NOT NULL DEFAULT 'private',
+    trail_identity TEXT NOT NULL DEFAULT 'trail_rider',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`).run();
@@ -2033,6 +2035,7 @@ async function ensureMemberSchema(env){
     `ALTER TABLE member_profiles ADD COLUMN classes_attended INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE member_profiles ADD COLUMN current_streak INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE member_profiles ADD COLUMN birthday_visible INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE member_profiles ADD COLUMN trail_identity TEXT NOT NULL DEFAULT 'trail_rider'`,
     `ALTER TABLE member_email_tokens ADD COLUMN purpose TEXT`,
     `ALTER TABLE member_email_tokens ADD COLUMN used_at TEXT`
   ];
@@ -2064,6 +2067,7 @@ async function memberRegister(request,env){
     const phone=clean(body.phone,30);
     const password=String(body.password||'');
     const marketing=body.marketing_consent?1:0;
+    const trailIdentity=['cowgirl','cowboy','trail_rider'].includes(clean(body.trail_identity,30)) ? clean(body.trail_identity,30) : 'trail_rider';
 
     if(!first||!last||!emailOk(email)) return json({error:'Please enter your first name, surname and a valid email address.'},400);
     if(!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
@@ -2104,8 +2108,10 @@ async function memberRegister(request,env){
     }
 
     stage='SAVE_PROFILE';
-    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO member_profiles(id,customer_id,display_name) VALUES(?,?,?)`)
-      .bind(crypto.randomUUID(),customer.id,first).run();
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO member_profiles(id,customer_id,display_name,trail_identity) VALUES(?,?,?,?)`)
+      .bind(crypto.randomUUID(),customer.id,first,trailIdentity).run();
+    await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,trail_identity=?,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`)
+      .bind(first,trailIdentity,customer.id).run();
 
     // New member accounts begin at zero. Future qualifying payments award loyalty in real time.
 
@@ -2212,6 +2218,7 @@ async function memberMe(request,env){
   await ensureMemberSchema(env);
   const session=await memberSession(request,env);
   if(!session) return json({authenticated:false},401);
+
   const loyalty=await loyaltySummary(env,session.email);
   const bookings=await env.BOOKINGS_DB.prepare(`
     SELECT b.reference,b.status,b.amount_pence,b.paid_at,c.title,c.starts_at,c.venue
@@ -2223,14 +2230,37 @@ async function memberMe(request,env){
     FROM merch_orders WHERE lower(customer_email)=lower(?) ORDER BY created_at DESC LIMIT 12
   `).bind(session.email).all();
   const crm=await env.BOOKINGS_DB.prepare(`SELECT birthday FROM customer_crm_profiles WHERE lower(customer_key)=lower(?)`).bind(session.email).first().catch(()=>null);
+
+  // Member totals are derived from genuine live activity, never preview/demo figures.
+  const attendance=await env.BOOKINGS_DB.prepare(`
+    SELECT COUNT(DISTINCT a.id) total
+    FROM attendance a
+    JOIN bookings b ON b.id=a.booking_id
+    WHERE lower(b.customer_email)=lower(?)
+  `).bind(session.email).first().catch(()=>({total:0}));
+  const classesAttended=Math.max(0,Number(attendance?.total||0));
+  const bootPoints=classesAttended*10;
+  const rank=classesAttended>=100?'Boot Scootin’ Legend':
+             classesAttended>=75?'Dance Floor Favourite':
+             classesAttended>=50?'Country Soul':
+             classesAttended>=25?'Honky Tonk Hero':
+             classesAttended>=10?'Trail Rider':
+             classesAttended>=5?'Rookie Rider':'First Steps';
+
+  // Keep the stored profile aligned with real activity so old preview/test values self-heal.
+  await env.BOOKINGS_DB.prepare(`
+    UPDATE member_profiles
+    SET trail_rank=?,boot_points=?,classes_attended=?,current_streak=0,updated_at=CURRENT_TIMESTAMP
+    WHERE customer_id=?
+  `).bind(rank,bootPoints,classesAttended,session.customer_id).run().catch(()=>{});
+
   return json({authenticated:true,member:{
     id:session.member_id,email:session.email,name:session.name,display_name:session.display_name||String(session.name||'').split(/\s+/)[0],
-    phone:session.phone||'',birthday:crm?.birthday||'',birthday_visible:Boolean(session.birthday_visible),marketing_consent:Boolean(session.marketing_consent),trail_rank:session.trail_rank||'First Steps',
-    boot_points:Math.max(0,Number(session.boot_points||0)),classes_attended:Math.max(0,Number(session.classes_attended||0)),
-    current_streak:Math.max(0,Number(session.current_streak||0)),dances_learned:0
+    phone:session.phone||'',birthday:crm?.birthday||'',birthday_visible:Boolean(session.birthday_visible),marketing_consent:Boolean(session.marketing_consent),
+    trail_identity:['cowgirl','cowboy','trail_rider'].includes(session.trail_identity)?session.trail_identity:'trail_rider',
+    trail_rank:rank,boot_points:bootPoints,classes_attended:classesAttended,current_streak:0,dances_learned:0
   },loyalty,bookings:bookings.results||[],orders:orders.results||[]});
 }
-
 async function memberProfileUpdate(request,env){
   await ensureMemberSchema(env);
   const session=await memberSession(request,env);
@@ -2238,6 +2268,7 @@ async function memberProfileUpdate(request,env){
   if(!sameOriginWrite(request)) return json({error:'This profile update could not be verified.'},403);
   const body=await request.json().catch(()=>null); if(!body) return json({error:'Profile details could not be read.'},400);
   const name=clean(body.name,120), email=clean(body.email,160).toLowerCase(), phone=clean(body.phone,30), birthday=clean(body.birthday,10);
+  const trailIdentity=['cowgirl','cowboy','trail_rider'].includes(clean(body.trail_identity,30)) ? clean(body.trail_identity,30) : 'trail_rider';
   const birthdayVisible=body.birthday_visible?1:0, marketing=body.marketing_consent?1:0;
   if(!name||!emailOk(email)) return json({error:'Enter your name and a valid email address.'},400);
   if(birthday && !dateOk(birthday)) return json({error:'Enter a valid birthday.'},400);
@@ -2249,7 +2280,7 @@ async function memberProfileUpdate(request,env){
   await env.BOOKINGS_DB.batch([
     env.BOOKINGS_DB.prepare(`UPDATE customers SET name=?,email=?,phone=?,marketing_consent=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(name,email,phone,marketing,session.customer_id),
     env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET email=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(email,session.member_id),
-    env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,birthday_visible=? WHERE customer_id=?`).bind(name.split(/\s+/)[0]||name,birthdayVisible,session.customer_id),
+    env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,birthday_visible=?,trail_identity=? WHERE customer_id=?`).bind(name.split(/\s+/)[0]||name,birthdayVisible,trailIdentity,session.customer_id),
     env.BOOKINGS_DB.prepare(`INSERT INTO customer_crm_profiles(customer_key,birthday) VALUES(?,?) ON CONFLICT(customer_key) DO UPDATE SET birthday=excluded.birthday,updated_at=CURRENT_TIMESTAMP`).bind(email,birthday||null),
     env.BOOKINGS_DB.prepare(`UPDATE bookings SET customer_name=?,customer_email=?,customer_phone=?,marketing_consent=? WHERE lower(customer_email)=lower(?)`).bind(name,email,phone,marketing,oldEmail),
     env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET customer_name=?,customer_email=? WHERE lower(customer_email)=lower(?)`).bind(name,email,oldEmail)
