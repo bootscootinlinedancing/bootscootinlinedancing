@@ -118,7 +118,7 @@ async function memberSession(request,env){
   const row=await env.BOOKINGS_DB.prepare(`
     SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,
            c.name,c.phone,c.marketing_consent,
-           mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak,mp.birthday_visible,mp.trail_identity
+           mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak,mp.birthday_visible,mp.trail_identity,COALESCE(mp.is_paused,0) is_paused
     FROM member_sessions s
     JOIN member_accounts a ON a.id=s.member_id
     JOIN customers c ON c.id=a.customer_id
@@ -238,7 +238,7 @@ function repairMemberNavigationHtml(html){
 <summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
 <div class="menu45-submenu">
 <a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
-<a href="member-hub.html#membership-preview"><span>What Membership Includes</span><b aria-hidden="true">›</b></a>
+<a href="member-zone-preview.html"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
 </div>
 </details>`;
   return String(html||'').replace(
@@ -2036,6 +2036,7 @@ async function ensureMemberSchema(env){
     `ALTER TABLE member_profiles ADD COLUMN current_streak INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE member_profiles ADD COLUMN birthday_visible INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE member_profiles ADD COLUMN trail_identity TEXT NOT NULL DEFAULT 'trail_rider'`,
+    `ALTER TABLE member_profiles ADD COLUMN is_paused INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE member_email_tokens ADD COLUMN purpose TEXT`,
     `ALTER TABLE member_email_tokens ADD COLUMN used_at TEXT`
   ];
@@ -2258,7 +2259,7 @@ async function memberMe(request,env){
     id:session.member_id,email:session.email,name:session.name,display_name:session.display_name||String(session.name||'').split(/\s+/)[0],
     phone:session.phone||'',birthday:crm?.birthday||'',birthday_visible:Boolean(session.birthday_visible),marketing_consent:Boolean(session.marketing_consent),
     trail_identity:['cowgirl','cowboy','trail_rider'].includes(session.trail_identity)?session.trail_identity:'trail_rider',
-    trail_rank:rank,boot_points:bootPoints,classes_attended:classesAttended,current_streak:0,dances_learned:0
+    trail_rank:rank,boot_points:bootPoints,classes_attended:classesAttended,current_streak:0,dances_learned:0,is_paused:Boolean(session.is_paused)
   },loyalty,bookings:bookings.results||[],orders:orders.results||[]});
 }
 async function memberProfileUpdate(request,env){
@@ -2290,6 +2291,31 @@ async function memberProfileUpdate(request,env){
     await env.BOOKINGS_DB.prepare(`UPDATE loyalty_stamp_ledger SET customer_email=? WHERE lower(customer_email)=lower(?)`).bind(email,oldEmail).run().catch(()=>{});
   }
   return json({ok:true,message:'Your member profile has been updated.'});
+}
+
+
+async function memberExport(request,env){
+  await ensureMemberSchema(env);
+  const session=await memberSession(request,env);
+  if(!session) return json({error:'Please log in again to download your data.'},401);
+  const meResponse=await memberMe(request,env);
+  const me=await meResponse.json().catch(()=>({}));
+  const payload={
+    exported_at:new Date().toISOString(),
+    account:{name:session.name,email:session.email,phone:session.phone||'',display_name:session.display_name||'',trail_identity:session.trail_identity||'trail_rider',is_paused:Boolean(session.is_paused)},
+    member:me.member||{},loyalty:me.loyalty||{},bookings:me.bookings||[],orders:me.orders||[]
+  };
+  return new Response(JSON.stringify(payload,null,2),{status:200,headers:{'content-type':'application/json; charset=utf-8','content-disposition':'attachment; filename="boot-scootin-member-data.json"','cache-control':'no-store'}});
+}
+async function memberPause(request,env){
+  await ensureMemberSchema(env);
+  const session=await memberSession(request,env);
+  if(!session) return json({error:'Please log in again to change your account status.'},401);
+  if(!sameOriginWrite(request)) return json({error:'This account change could not be verified.'},403);
+  const body=await request.json().catch(()=>({}));
+  const paused=body?.paused?1:0;
+  await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET is_paused=?,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`).bind(paused,session.customer_id).run();
+  return json({ok:true,paused:Boolean(paused),message:paused?'Your member profile is paused. Your progress is kept safely.':'Your member profile is active again.'});
 }
 
 async function customerPortalLink(request,env){
@@ -4332,6 +4358,8 @@ export default {
       if (path === '/api/member/reset' && request.method === 'POST') return memberReset(request, env);
       if (path === '/api/member/me' && request.method === 'GET') return memberMe(request, env);
       if (path === '/api/member/profile' && request.method === 'POST') return memberProfileUpdate(request, env);
+      if (path === '/api/member/export' && request.method === 'GET') return memberExport(request, env);
+      if (path === '/api/member/pause' && request.method === 'POST') return memberPause(request, env);
       if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
       if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);
       if (path === '/api/booking-calendar' && request.method === 'GET') return bookingCalendar(request, env, url);
