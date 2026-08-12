@@ -2953,8 +2953,8 @@ nav a{
 .confidence-meter span.filled{background:#a91b21}
 .dashboard-support{margin-top:1rem}
 .achievement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
-.achievement-grid article{padding:1.3rem;background:#f1e4d3;border:1px solid #d5bea0;opacity:.55}
-.achievement-grid article.unlocked{opacity:1;border-color:#a91b21}
+.achievement-grid article{padding:1.3rem;background:#14090b;border:1px solid #633038;opacity:1;color:#cbb9ad}.achievement-grid article h3{color:#e7d9cf}.achievement-grid article p{color:#b9a79d}.achievement-grid article .western-icon{opacity:.72}
+.achievement-grid article.unlocked{opacity:1;border-color:#df3a45;background:#1b0b0e;box-shadow:0 0 0 2px rgba(223,58,69,.08)}.achievement-grid article.unlocked h3{color:#fff8ed}.achievement-grid article.unlocked p{color:#dcc9bc}.achievement-grid article.unlocked .western-icon{opacity:1}
 .achievement-grid span{font-size:2.2rem}
 .privacy-settings-list{display:grid;gap:.8rem;margin-bottom:1.2rem}
 .privacy-settings-list label{

@@ -189,7 +189,7 @@
 <summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
 <div class="menu45-submenu">
 <a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
-<a href="member-hub.html#membership-preview"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
+<a href="membership-preview.html"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
 </div>
 </details>
 <details class="menu45-section">
@@ -346,12 +346,12 @@
 <section class="dashboard-panel" data-dashboard-panel="achievements">
 <div class="panel-heading"><div><p class="kicker red">Achievements</p><h2>Celebrate every little win.</h2></div></div>
 <div class="achievement-grid">
-<article class="unlocked"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#boot"></use></svg></span><h3>First Steps</h3><p>Completed your first class.</p></article>
-<article class="unlocked"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#hat"></use></svg></span><h3>Honky Tonk Regular</h3><p>Attended five classes.</p></article>
-<article class="unlocked"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#people"></use></svg></span><h3>Ten Dances Strong</h3><p>Marked ten dances as learned.</p></article>
-<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#cactus"></use></svg></span><h3>Country Legend</h3><p>Learn 50 dances to unlock.</p></article>
-<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#crown"></use></svg></span><h3>Boot Scootin’ Royalty</h3><p>Reach your one-year milestone.</p></article>
-<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#tent"></use></svg></span><h3>Festival Friend</h3><p>Join a Moonshine festival meet-up.</p></article>
+<article data-achievement="first-class"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#star"></use></svg></span><h3>First Steps</h3><p>Complete your first class to unlock.</p></article>
+<article data-achievement="five-classes"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#hat"></use></svg></span><h3>Honky Tonk Regular</h3><p>Attend five classes to unlock.</p></article>
+<article data-achievement="ten-dances"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#people"></use></svg></span><h3>Ten Dances Strong</h3><p>Learn ten dances to unlock.</p></article>
+<article data-achievement="fifty-dances"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#cactus"></use></svg></span><h3>Country Legend</h3><p>Learn 50 dances to unlock.</p></article>
+<article data-achievement="one-year"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#crown"></use></svg></span><h3>Boot Scootin’ Royalty</h3><p>Reach your one-year milestone.</p></article>
+<article data-achievement="festival"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#tent"></use></svg></span><h3>Festival Friend</h3><p>Join a Moonshine festival meet-up.</p></article>
 </div>
 </section>
 <section class="dashboard-panel" data-dashboard-panel="privacy">
@@ -454,13 +454,23 @@
     const displayName=(m.display_name||m.name||'').trim();
     setTimeout(()=>{const g=document.getElementById('journeyGreeting'); if(g) g.textContent=`Welcome back${displayName?', '+displayName:''} · ${identity}`;},0);
     const streak=Math.max(0,Number(m.current_streak||0));
+    const dances=Math.max(0,Number(m.dances_learned||0));
     const progress=Math.max(0,Math.min(9,Number(loyalty.progress||0)));
     const set=(id,v)=>{const e=document.getElementById(id); if(e)e.textContent=v};
-    set('journeyDances',Math.max(0,Number(m.dances_learned||0)));
+    set('journeyDances',dances);
     set('journeyClasses',classes);
     set('journeyFavourites',0);
     set('journeyStamps',`${progress}/9`);
     set('journeyStreak',`${streak} week${streak===1?'':'s'} streak`);
+    const achievementRules={
+      'first-class': classes>=1,
+      'five-classes': classes>=5,
+      'ten-dances': dances>=10,
+      'fifty-dances': dances>=50,
+      'one-year': false,
+      'festival': false
+    };
+    document.querySelectorAll('[data-achievement]').forEach(card=>card.classList.toggle('unlocked',Boolean(achievementRules[card.dataset.achievement])));
     const bookings=Array.isArray(data.bookings)?data.bookings:[];
     const upcoming=bookings.filter(b=>b.starts_at && new Date(b.starts_at).getTime()>=Date.now() && !['CANCELLED','REFUNDED'].includes(String(b.status||'').toUpperCase())).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
     if(upcoming[0]){
