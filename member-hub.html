@@ -8,7 +8,7 @@
   <link rel="icon" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=96.4.83">
+  <link rel="stylesheet" href="styles.css?v=96.4.92">
   <meta name="theme-color" content="#080606">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="honky-authentic.css?v=96.4.39">
@@ -16,29 +16,35 @@
   <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.56">
 
 <style>
-.member-app-simple{display:block!important;max-width:1180px;margin:0 auto;padding:28px 18px 70px}
-.member-app-simple[hidden]{display:none!important}
-.member-content-full{width:100%}
-.member-mini-profile-top{margin-bottom:18px}
-.member-simple-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 24px}
-.member-simple-nav button{min-height:58px;border:1px solid #8d343a;background:#160b0d;color:#fff;font:700 16px/1.1 Arial,sans-serif;text-transform:uppercase;letter-spacing:.06em}
-.member-simple-nav button.active{background:#a8242d;border-color:#e84550}
-.member-panel{display:none}
-.member-panel.active{display:block}
-.member-benefit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
-.member-empty-state{padding:16px 0;color:#cbb9ad}
-.member-booking-list{display:grid;gap:10px;margin:12px 0}
-.member-booking-row{border:1px solid #5d292d;padding:14px;display:grid;gap:5px}
-.member-booking-row span,.member-booking-row small{color:#cbb9ad}
-.member-action-link{display:inline-block;margin-top:12px;padding:13px 16px;border:1px solid #d73742;color:#fff;text-decoration:none;text-transform:uppercase;font-weight:700}
+:root{--member-bg:#070404;--member-panel:#14090b;--member-panel2:#1c0c0f;--member-red:#d52b38;--member-red2:#9f242c;--member-line:#733038;--member-text:#fff8ed;--member-muted:#cbb9ad;--member-gold:#c99b73}
+body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b0506 34%,#050303 78%);color:var(--member-text)}
+.member-app-simple{display:block!important;max-width:1180px;margin:0 auto;padding:28px 18px 80px}
+.member-app-simple[hidden]{display:none!important}.member-content-full{width:100%}
+.member-mini-profile-top{margin-bottom:18px;background:linear-gradient(135deg,#220d10,#120809)!important;border:1px solid var(--member-line)!important}
+.member-mini-profile strong{color:#fff}.member-mini-profile span{color:var(--member-muted)!important}
+.member-avatar{background:linear-gradient(145deg,#d62e3a,#852129)!important;box-shadow:0 0 22px rgba(220,40,53,.2)}
+.member-main-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 24px}
+.member-main-nav a,.member-main-nav button{min-height:64px;padding:12px 10px;border:1px solid #8d343a;background:#160b0d;color:#fff;text-decoration:none;font:800 14px/1.1 Arial,sans-serif;text-transform:uppercase;letter-spacing:.045em;display:grid;place-items:center;text-align:center}
+.member-main-nav a:hover,.member-main-nav button:hover,.member-main-nav a.active,.member-main-nav button.active{background:linear-gradient(135deg,#b42631,#7c1c24);border-color:#ef4650;box-shadow:0 0 20px rgba(220,40,53,.16)}
+.member-panel{display:none}.member-panel.active{display:block}
+.member-welcome{grid-template-columns:minmax(0,1.35fr) minmax(250px,.65fr)!important}
+.member-welcome>div:first-child,.member-card,.member-section-head,.member-profile-settings article{background:linear-gradient(145deg,#16090b,#0e0708)!important;border:1px solid var(--member-line)!important;color:#fff!important;box-shadow:none!important}
+.member-welcome h1,.member-card h2,.member-section-head h1,.member-profile-settings h2{color:#fff8ed!important;text-shadow:0 4px 0 rgba(87,0,8,.32)}
+.member-welcome p,.member-card p,.member-profile-settings p,.member-section-head p{color:var(--member-muted)!important}
+.member-rank-card{background:linear-gradient(145deg,#2a1115,#16090b)!important;border:1px solid #8f3740!important}.member-rank-card small{color:var(--member-gold)!important}.member-rank-card strong{color:#fff8ed!important}
+.member-progress{background:#2b1518!important}.member-progress i{background:linear-gradient(90deg,#9e202a,#ee4652)!important}
+.member-stat-grid article{background:#120809!important;border:1px solid #743038!important}.member-stat-grid strong{color:#ff3643!important}.member-stat-grid small{color:var(--member-muted)!important}
+.member-benefit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.member-empty-state{padding:16px 0;color:var(--member-muted)}
+.member-booking-list{display:grid;gap:10px;margin:12px 0}.member-booking-row{border:1px solid #5d292d;padding:14px;display:grid;gap:5px;background:#0e0708}.member-booking-row span,.member-booking-row small{color:var(--member-muted)}
+.member-action-link{display:inline-block;margin:12px 8px 0 0;padding:13px 16px;border:1px solid #d73742;background:#a8242d;color:#fff!important;text-decoration:none;text-transform:uppercase;font-weight:800}.member-action-link.secondary{background:transparent}
 .member-logout-button{margin-top:18px;padding:15px 22px;background:#a8242d;color:#fff;border:1px solid #e84550;font-weight:800;text-transform:uppercase}
-@media(max-width:760px){
-  .member-app-simple{padding-left:16px;padding-right:16px}
-  .member-simple-nav{grid-template-columns:1fr 1fr 1fr}
-  .member-simple-nav button{font-size:13px;padding:8px 4px}
-  .member-benefit-grid{grid-template-columns:1fr}
-  .member-stat-grid{grid-template-columns:repeat(2,1fr)}
-}
+.member-stamp-row span{background:#211013!important;border-color:#6d2c33!important}.member-stamp-row span.earned{background:#a72a33!important}
+.member-profile-form{display:grid;gap:16px}.member-profile-form .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.member-profile-form label{display:grid;gap:7px;color:#fff;font:700 14px/1.2 Arial,sans-serif}.member-profile-form input{width:100%;box-sizing:border-box;padding:14px 15px;background:#080506;color:#fff;border:1px solid #743038;font:500 16px Arial,sans-serif}.member-profile-form input:focus{outline:2px solid #d52b38;outline-offset:1px}.member-profile-check{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:12px!important;font-weight:500!important;color:var(--member-muted)!important}.member-profile-check input{width:24px!important;height:24px!important;flex:0 0 auto}.member-profile-save{padding:15px 20px;border:1px solid #ef4650;background:#b42631;color:#fff;font:800 15px Arial;text-transform:uppercase;letter-spacing:.04em}.member-profile-status{min-height:1.2em;color:#f28b93;font-weight:700}
+.member-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px}.member-hub-topbar{background:#050303!important}
+.member-preview-pill{border-color:#743038!important;background:#19090b!important;color:#e7c6a9!important}
+.member-feature-intro{padding:1.1rem 1.2rem;margin:0 0 18px;border-left:4px solid #d52b38;background:#120809;color:var(--member-muted)}
+@media(max-width:900px){.member-main-nav{grid-template-columns:repeat(2,1fr)}.member-welcome{grid-template-columns:1fr!important}}
+@media(max-width:760px){.member-app-simple{padding-left:16px;padding-right:16px}.member-benefit-grid{grid-template-columns:1fr}.member-stat-grid{grid-template-columns:repeat(2,1fr)}.member-profile-form .two{grid-template-columns:1fr}.member-main-nav{grid-template-columns:1fr 1fr}.member-main-nav a,.member-main-nav button{font-size:12px;min-height:58px;padding:10px 6px}}
 </style>
 
 </head>
@@ -139,10 +145,15 @@
       </div>
     </div>
 
-    <nav class="member-simple-nav" aria-label="Member area">
+    <nav class="member-main-nav" aria-label="My Boot Scootin’ member area">
       <button class="active" data-member-view="dashboard">Dashboard</button>
-      <button data-member-view="benefits">Benefits</button>
-      <button data-member-view="profile">Profile</button>
+      <a href="rewards.html">My Trail &amp; Rewards</a>
+      <a href="passport.html">My Passport</a>
+      <a href="journey.html">My Journey</a>
+      <a href="my-bookings.html">My Bookings</a>
+      <a href="dance-library.html">My Dance Library</a>
+      <button data-member-view="benefits">Member Benefits</button>
+      <button data-member-view="profile">My Profile</button>
     </nav>
 
     <section class="member-panel active" data-member-panel="dashboard">
@@ -207,7 +218,7 @@
         <div>
           <p class="kicker red">Membership benefits</p>
           <h1>Everything in one place.</h1>
-          <p>Instead of lots of separate member menu items, your benefits live together here.</p>
+          <p>Your member features are separated clearly so you can jump straight to the part of your Boot Scootin’ journey you want.</p>
         </div>
       </div>
 
@@ -216,21 +227,28 @@
           <p class="kicker red">My Trail</p>
           <h2>Loyalty, points &amp; milestones</h2>
           <p>Start at zero and build your real attendance, stamps, Boot Points and achievements over time.</p>
-          <p><strong id="benefitTrailSummary">0 stamps · 0 Boot Points</strong></p>
+          <p><strong id="benefitTrailSummary">0 stamps · 0 Boot Points</strong></p><a class="member-action-link" href="rewards.html">Open My Trail &amp; Rewards</a>
         </article>
 
         <article class="member-card">
           <p class="kicker red">My Passport</p>
           <h2>Your class journey</h2>
           <p>Your paid classes and milestones will build your personal Boot Scootin’ passport.</p>
-          <p id="benefitPassportSummary">No passport activity yet.</p>
+          <p id="benefitPassportSummary">No passport activity yet.</p><a class="member-action-link" href="passport.html">Open My Passport</a>
+        </article>
+
+        <article class="member-card">
+          <p class="kicker red">My Journey</p>
+          <h2>Your dancing story</h2>
+          <p>See your classes, progress and the milestones you build over time.</p>
+          <a class="member-action-link" href="journey.html">Open My Journey</a>
         </article>
 
         <article class="member-card">
           <p class="kicker red">My Bookings</p>
           <h2>Your bookings in one place</h2>
           <div id="memberBookingsList" class="member-empty-state">No bookings linked to this member account yet.</div>
-          <a class="member-action-link" href="bookings.html">Book a class</a>
+          <a class="member-action-link" href="my-bookings.html">Open My Bookings</a><a class="member-action-link secondary" href="bookings.html">Book a class</a>
         </article>
 
         <article class="member-card">
@@ -244,7 +262,7 @@
         <article class="member-card">
           <p class="kicker red">Trail Outfitters</p>
           <h2>Member rewards</h2>
-          <p>Rewards unlock from genuine activity. New members do not start with points, badges or redeemed rewards.</p>
+          <p>Rewards unlock from genuine activity. New members do not start with points, badges or redeemed rewards.</p><a class="member-action-link" href="rewards.html">Open Trail Rewards</a>
         </article>
 
         <article class="member-card">
@@ -258,24 +276,34 @@
     <section class="member-panel" data-member-panel="profile">
       <div class="member-section-head">
         <div>
-          <p class="kicker red">Profile</p>
-          <h1>Your account &amp; preferences.</h1>
+          <p class="kicker red">My Profile</p>
+          <h1>Your details &amp; privacy.</h1>
+          <p>Keep your member details up to date. Your birthday is private unless you choose to share it with the Boot Scootin’ community.</p>
         </div>
       </div>
       <div class="member-profile-settings">
         <article class="member-card">
-          <h2>Account details</h2>
-          <p><strong>Name:</strong> <span id="profileMemberName">—</span></p>
-          <p><strong>Email:</strong> <span id="profileMemberEmail">—</span></p>
-          <p><strong>Mobile:</strong> <span id="profileMemberPhone">—</span></p>
+          <h2>Edit account details</h2>
+          <form id="memberProfileForm" class="member-profile-form">
+            <div class="two">
+              <label>Full name<input type="text" name="name" autocomplete="name" required></label>
+              <label>Birthday<input type="date" name="birthday" autocomplete="bday"></label>
+            </div>
+            <label>Email address<input type="email" name="email" autocomplete="email" required></label>
+            <label>Mobile number<input type="tel" name="phone" autocomplete="tel"></label>
+            <label class="member-profile-check"><input type="checkbox" name="birthday_visible"> Share my birthday with the Boot Scootin’ community. My exact date stays private unless I choose this.</label>
+            <label class="member-profile-check"><input type="checkbox" name="marketing_consent"> Send me Boot Scootin’ news and class updates.</label>
+            <button class="member-profile-save" type="submit">Save my profile</button>
+            <p id="memberProfileStatus" class="member-profile-status" aria-live="polite"></p>
+          </form>
         </article>
         <article class="member-card">
           <h2>Privacy</h2>
-          <p>Your member activity and booking information are private to you and authorised Boot Scootin’ administration.</p>
+          <p>Your bookings, rewards and account activity are private to you and authorised Boot Scootin’ administration. Birthday sharing is optional and can be changed at any time.</p>
         </article>
         <article class="member-card">
           <h2>Password</h2>
-          <p>Forgotten your password? Log out and use the secure password-reset option on the member login page.</p>
+          <p>To change your password, log out and use the secure “Forgotten your password?” link on the member login screen.</p>
         </article>
       </div>
       <button type="button" class="member-logout-button" onclick="memberLogout()">Log out</button>
@@ -293,6 +321,11 @@
     const resetForm = document.getElementById('memberResetForm');
     const forgotForm = document.getElementById('memberForgotForm');
     const tabs = [...document.querySelectorAll('[data-auth-tab]')];
+    const entryHeading=document.querySelector('.member-entry-heading');
+    const membershipPreview=document.getElementById('membership-preview');
+    const previewPill=document.querySelector('.member-preview-pill');
+    const profileForm=document.getElementById('memberProfileForm');
+    const profileStatus=document.getElementById('memberProfileStatus');
 
     const setStatus = (message, isError=false) => {
       if (!status) return;
@@ -453,9 +486,14 @@
         ? `${attended} class${attended===1?'':'es'} recorded on your journey.`
         : 'No passport activity yet.';
 
-      document.getElementById('profileMemberName').textContent=m.name||first||'—';
-      document.getElementById('profileMemberEmail').textContent=m.email||'—';
-      document.getElementById('profileMemberPhone').textContent=m.phone||'—';
+      if(profileForm){
+        profileForm.elements.name.value=m.name||first||'';
+        profileForm.elements.email.value=m.email||'';
+        profileForm.elements.phone.value=m.phone||'';
+        profileForm.elements.birthday.value=m.birthday||'';
+        profileForm.elements.birthday_visible.checked=Boolean(m.birthday_visible);
+        profileForm.elements.marketing_consent.checked=Boolean(m.marketing_consent);
+      }
 
       const bookings=Array.isArray(data.bookings)?data.bookings:[];
       const future=bookings
@@ -484,13 +522,35 @@
       }
     }
 
+    profileForm?.addEventListener('submit', async e=>{
+      e.preventDefault();
+      if(profileStatus) profileStatus.textContent='Saving…';
+      const fd=new FormData(profileForm);
+      try{
+        const result=await api('/api/member/profile',{method:'POST',body:JSON.stringify({
+          name:fd.get('name'),email:fd.get('email'),phone:fd.get('phone'),birthday:fd.get('birthday'),
+          birthday_visible:fd.get('birthday_visible')==='on',marketing_consent:fd.get('marketing_consent')==='on'
+        })});
+        if(profileStatus) profileStatus.textContent=result.message||'Profile updated.';
+        await loadMember();
+        show('profile',false);
+      }catch(err){ if(profileStatus) profileStatus.textContent=err.message; }
+    });
+
     async function loadMember() {
       try {
         const data=await api('/api/member/me',{method:'GET',headers:{}});
-        authShell.hidden=true; app.hidden=false; renderMember(data);
+        authShell.hidden=true;
+        if(entryHeading) entryHeading.hidden=true;
+        if(membershipPreview) membershipPreview.hidden=true;
+        if(previewPill) previewPill.hidden=true;
+        app.hidden=false; renderMember(data);
         const initial = location.hash.replace('#', '') || 'dashboard'; show(initial,false);
       } catch {
         app.hidden=true; authShell.hidden=false;
+        if(entryHeading) entryHeading.hidden=false;
+        if(membershipPreview) membershipPreview.hidden=false;
+        if(previewPill) previewPill.hidden=false;
       }
     }
     window.memberLogout = async () => {

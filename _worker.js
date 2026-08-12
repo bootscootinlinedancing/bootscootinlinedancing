@@ -118,7 +118,7 @@ async function memberSession(request,env){
   const row=await env.BOOKINGS_DB.prepare(`
     SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,
            c.name,c.phone,c.marketing_consent,
-           mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak
+           mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak,mp.birthday_visible
     FROM member_sessions s
     JOIN member_accounts a ON a.id=s.member_id
     JOIN customers c ON c.id=a.customer_id
@@ -1342,6 +1342,26 @@ function notificationCopy(eventType, booking) {
   return { subject: 'Boot Scootin’ booking update', text: `Your booking ${booking.reference} has been updated.`, heading: 'Booking update', detail: booking.reference };
 }
 
+async function sendAdminClassBookingAlert(env,booking,eventType){
+  if(!booking?.id || eventType!=='BOOKING_PAID') return {skipped:true};
+  const adminEmail=clean(env.ADMIN_EMAIL || env.BOOKINGS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
+  if(!emailOk(adminEmail)) return {skipped:true};
+  const existing=await env.BOOKINGS_DB.prepare(`SELECT status FROM notification_log WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(booking.id).first().catch(()=>null);
+  if(existing?.status==='SENT') return {already_sent:true};
+  const id=crypto.randomUUID();
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO notification_log(id,booking_id,class_id,event_type,channel,recipient,status) VALUES(?,?,?,'ADMIN_BOOKING_PAID','ADMIN_EMAIL',?,'PENDING')`).bind(id,booking.id,booking.class_id,adminEmail).run().catch(()=>{});
+  const amount=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(booking.amount_pence)||0)/100);
+  const subject=`New class booking — ${clean(booking.class_title,100)} — ${clean(booking.customer_name,100)}`;
+  const text=`New paid Boot Scootin’ class booking.\n\nCustomer: ${clean(booking.customer_name,120)}\nEmail: ${clean(booking.customer_email,160)}\nPhone: ${clean(booking.customer_phone,40)||'Not supplied'}\nClass: ${clean(booking.class_title,160)}\nDate/time: ${clean(booking.starts_at,80)}\nVenue: ${clean(booking.venue,160)}\nPlaces: ${Number(booking.quantity||1)}\nPaid: ${amount}\nReference: ${clean(booking.reference,80)}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch.html`;
+  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>New paid class booking</h2><p><strong>${clean(booking.customer_name,120)}</strong> booked ${Number(booking.quantity||1)} place${Number(booking.quantity||1)===1?'':'s'}.</p><p><strong>Class:</strong> ${clean(booking.class_title,160)}<br><strong>Date/time:</strong> ${clean(booking.starts_at,80)}<br><strong>Venue:</strong> ${clean(booking.venue,160)}<br><strong>Paid:</strong> ${amount}<br><strong>Reference:</strong> ${clean(booking.reference,80)}</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html" style="display:inline-block;padding:14px 20px;background:#c81924;color:white;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
+  try{
+    const sent=await sendTransactionalEmail(env,adminEmail,subject,html,text,'bookings');
+    if(sent?.skipped){await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='SKIPPED',error_message=? WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(clean(sent.reason,240),booking.id).run().catch(()=>{});return sent;}
+    await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='SENT',provider_id=?,sent_at=CURRENT_TIMESTAMP,error_message=NULL WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(sent?.id||null,booking.id).run().catch(()=>{});
+    return {sent:true};
+  }catch(error){await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='FAILED',error_message=? WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(clean(error?.message||error,240),booking.id).run().catch(()=>{});return {failed:true};}
+}
+
 async function deliverBookingNotification(env, booking, eventType) {
   if (!env.BOOKINGS_DB || !booking?.id) return { email: 'skipped', sms: 'skipped' };
   const copy = notificationCopy(eventType, booking);
@@ -1388,6 +1408,7 @@ async function deliverBookingNotification(env, booking, eventType) {
       results[item.channel.toLowerCase()] = 'failed';
     }
   }
+  if(eventType==='BOOKING_PAID') await sendAdminClassBookingAlert(env,booking,eventType).catch(()=>{});
   return results;
 }
 
@@ -2011,6 +2032,7 @@ async function ensureMemberSchema(env){
     `ALTER TABLE member_profiles ADD COLUMN boot_points INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE member_profiles ADD COLUMN classes_attended INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE member_profiles ADD COLUMN current_streak INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE member_profiles ADD COLUMN birthday_visible INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE member_email_tokens ADD COLUMN purpose TEXT`,
     `ALTER TABLE member_email_tokens ADD COLUMN used_at TEXT`
   ];
@@ -2200,12 +2222,43 @@ async function memberMe(request,env){
     SELECT reference,design,fit,size,quantity,amount_pence,status,fulfilment_method,fulfilment_status,created_at
     FROM merch_orders WHERE lower(customer_email)=lower(?) ORDER BY created_at DESC LIMIT 12
   `).bind(session.email).all();
+  const crm=await env.BOOKINGS_DB.prepare(`SELECT birthday FROM customer_crm_profiles WHERE lower(customer_key)=lower(?)`).bind(session.email).first().catch(()=>null);
   return json({authenticated:true,member:{
     id:session.member_id,email:session.email,name:session.name,display_name:session.display_name||String(session.name||'').split(/\s+/)[0],
-    phone:session.phone||'',trail_rank:session.trail_rank||'First Steps',
+    phone:session.phone||'',birthday:crm?.birthday||'',birthday_visible:Boolean(session.birthday_visible),marketing_consent:Boolean(session.marketing_consent),trail_rank:session.trail_rank||'First Steps',
     boot_points:Math.max(0,Number(session.boot_points||0)),classes_attended:Math.max(0,Number(session.classes_attended||0)),
     current_streak:Math.max(0,Number(session.current_streak||0)),dances_learned:0
   },loyalty,bookings:bookings.results||[],orders:orders.results||[]});
+}
+
+async function memberProfileUpdate(request,env){
+  await ensureMemberSchema(env);
+  const session=await memberSession(request,env);
+  if(!session) return json({error:'Please log in again to update your profile.'},401);
+  if(!sameOriginWrite(request)) return json({error:'This profile update could not be verified.'},403);
+  const body=await request.json().catch(()=>null); if(!body) return json({error:'Profile details could not be read.'},400);
+  const name=clean(body.name,120), email=clean(body.email,160).toLowerCase(), phone=clean(body.phone,30), birthday=clean(body.birthday,10);
+  const birthdayVisible=body.birthday_visible?1:0, marketing=body.marketing_consent?1:0;
+  if(!name||!emailOk(email)) return json({error:'Enter your name and a valid email address.'},400);
+  if(birthday && !dateOk(birthday)) return json({error:'Enter a valid birthday.'},400);
+  if(email!==String(session.email||'').toLowerCase()){
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?) AND id<>?`).bind(email,session.member_id).first();
+    if(existing) return json({error:'That email address is already linked to another member account.'},409);
+  }
+  const oldEmail=String(session.email||'').toLowerCase();
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE customers SET name=?,email=?,phone=?,marketing_consent=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(name,email,phone,marketing,session.customer_id),
+    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET email=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(email,session.member_id),
+    env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,birthday_visible=? WHERE customer_id=?`).bind(name.split(/\s+/)[0]||name,birthdayVisible,session.customer_id),
+    env.BOOKINGS_DB.prepare(`INSERT INTO customer_crm_profiles(customer_key,birthday) VALUES(?,?) ON CONFLICT(customer_key) DO UPDATE SET birthday=excluded.birthday,updated_at=CURRENT_TIMESTAMP`).bind(email,birthday||null),
+    env.BOOKINGS_DB.prepare(`UPDATE bookings SET customer_name=?,customer_email=?,customer_phone=?,marketing_consent=? WHERE lower(customer_email)=lower(?)`).bind(name,email,phone,marketing,oldEmail),
+    env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET customer_name=?,customer_email=? WHERE lower(customer_email)=lower(?)`).bind(name,email,oldEmail)
+  ]);
+  if(oldEmail!==email){
+    await env.BOOKINGS_DB.prepare(`DELETE FROM customer_crm_profiles WHERE lower(customer_key)=lower(?) AND lower(customer_key)<>lower(?)`).bind(oldEmail,email).run().catch(()=>{});
+    await env.BOOKINGS_DB.prepare(`UPDATE loyalty_stamp_ledger SET customer_email=? WHERE lower(customer_email)=lower(?)`).bind(email,oldEmail).run().catch(()=>{});
+  }
+  return json({ok:true,message:'Your member profile has been updated.'});
 }
 
 async function customerPortalLink(request,env){
@@ -2355,7 +2408,7 @@ async function privateEventInquiry(request, env) {
   // non-blocking: the customer's inquiry remains safely stored even if email
   // delivery is temporarily unavailable.
   let adminEmailSent=false, adminEmailWarning='';
-  const adminEmail=clean(env.ADMIN_EMAIL || env.EVENTS_NOTIFY_EMAIL || '',254).toLowerCase();
+  const adminEmail=clean(env.ADMIN_EMAIL || env.EVENTS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
   if(emailOk(adminEmail)){
     try{
       const origin=new URL(request.url).origin;
@@ -4247,6 +4300,7 @@ export default {
       if (path === '/api/member/forgot' && request.method === 'POST') return memberForgot(request, env);
       if (path === '/api/member/reset' && request.method === 'POST') return memberReset(request, env);
       if (path === '/api/member/me' && request.method === 'GET') return memberMe(request, env);
+      if (path === '/api/member/profile' && request.method === 'POST') return memberProfileUpdate(request, env);
       if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
       if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);
       if (path === '/api/booking-calendar' && request.method === 'GET') return bookingCalendar(request, env, url);
