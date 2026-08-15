@@ -1581,3 +1581,16 @@ Type REFUNDED to continue.`);
     if(id) deletePrivateEvent(id);
   });
 })();
+// v96.4.96 — HQ inactivity protection. Cloudflare Access owns the HQ login,
+// so automatic logout ends the Access session rather than only hiding the page.
+(()=>{
+  const LIMIT=15*60*1000, WARNING_AT=13*60*1000;
+  let last=Date.now(), warning=null;
+  function close(){if(warning){warning.remove();warning=null;}}
+  function activity(){last=Date.now();close();}
+  function logout(){location.replace('/cdn-cgi/access/logout?returnTo='+encodeURIComponent(location.origin+'/admin-login.html?logged_out=inactive'));}
+  function warn(){if(warning)return;warning=document.createElement('div');warning.style.cssText='position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.8);display:grid;place-items:center;padding:24px';warning.innerHTML='<div style="max-width:460px;background:#150b0c;border:1px solid #a82c34;padding:28px;color:#fff;font-family:Arial,sans-serif"><h2 style="margin-top:0">HQ security check</h2><p>You’ve been inactive. HQ will log out after 15 minutes of inactivity.</p><div style="display:flex;gap:12px"><button data-stay style="padding:13px 18px;background:#b32630;color:#fff;border:1px solid #ef4a55;font-weight:800">STAY LOGGED IN</button><button data-out style="padding:13px 18px;background:#080606;color:#fff;border:1px solid #744;font-weight:800">LOG OUT</button></div></div>';document.body.appendChild(warning);warning.querySelector('[data-stay]').onclick=activity;warning.querySelector('[data-out]').onclick=logout;}
+  ['pointerdown','keydown','touchstart','scroll'].forEach(e=>addEventListener(e,activity,{passive:true}));
+  addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>=LIMIT)logout();});
+  setInterval(()=>{const idle=Date.now()-last;if(idle>=LIMIT)logout();else if(idle>=WARNING_AT)warn();},5000);
+})();
