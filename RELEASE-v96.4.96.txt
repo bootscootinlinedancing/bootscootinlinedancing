@@ -1,0 +1,22 @@
+BOOT SCOOTIN’ PLATFORM v96.4.96 — SECURITY, ZERO-START & ADMIN EMAIL SWEEP
+
+Changes in this release:
+- Member inactivity protection: warning at 13 minutes, automatic logout at 15 minutes.
+- HQ inactivity protection: warning at 8 minutes, Cloudflare Access logout at 10 minutes.
+- Inactivity resets on genuine interaction (tap/click, keyboard, touch, scroll).
+- Returning from a backgrounded tab after the limit triggers logout.
+- New member progress is explicitly reset to First Steps / 0 points / 0 classes / 0 streak.
+- Historical attendance before account creation no longer increases new-member progress.
+- Existing preview/test points and achievements attached to a genuinely new account profile are cleared.
+- Existing loyalty logic remains account-creation scoped; future qualifying activity builds progress.
+- Admin email sweep confirms alerts for paid class bookings and private-event inquiries.
+- Added HQ/admin email for new member registrations.
+- Added HQ/admin email for paid merchandise orders.
+- Customer confirmation emails remain in place.
+
+Important deployment configuration:
+Set ADMIN_EMAIL in Cloudflare to the address that should receive all HQ notifications.
+Optional category overrides remain supported (BOOKINGS_NOTIFY_EMAIL, EVENTS_NOTIFY_EMAIL,
+MEMBERS_NOTIFY_EMAIL, MERCH_NOTIFY_EMAIL). If no override is set, ADMIN_EMAIL is used.
+
+Stomp/entry page deliberately NOT changed in this release.

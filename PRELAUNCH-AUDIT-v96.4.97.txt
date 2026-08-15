@@ -1,0 +1,19 @@
+BOOT SCOOTIN' PRE-LAUNCH AUDIT — v96.4.97
+
+Completed in this build:
+- Member inactivity: warning at 13 minutes, automatic logout at 15 minutes.
+- HQ inactivity: warning at 13 minutes, automatic Cloudflare Access logout at 15 minutes.
+- New member zero-state confirmed in Worker: First Steps, 0 Boot Points, 0 classes, 0 streak; new-account ledgers/achievements cleared.
+- Member pages display zero defaults until real account data loads.
+- New member registration sends an HQ/admin notification email.
+- Private-event inquiry stores the inquiry first, then sends an HQ/admin notification email and logs delivery status.
+- Paid class booking admin-email notification path is present and logged.
+- Merchandise admin notification path is present.
+- Email centre exposes provider/configuration status in HQ.
+
+Deployment configuration still required for live email delivery:
+- ADMIN_EMAIL (the address that should receive HQ notifications)
+- RESEND_API_KEY
+- EMAIL_FROM or the category sender variables used by the site
+
+Important: code can verify notification paths and configuration handling, but actual delivery must be tested after deployment because Resend/Cloudflare are external services.
