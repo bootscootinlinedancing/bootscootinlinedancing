@@ -8531,3 +8531,120 @@ body.ranch-v91 .crm-health-inactive{color:#ffc0c4!important;background:#351013!i
 body.ranch-v91 .crm-box,body.ranch-v91 .crm-tag-list label,body.ranch-v91 .crm-metrics article{background:#120809!important;color:#fff7ee!important;border-color:#6f2d33!important}
 body.ranch-v91 .crm-box :is(h3,strong,label,p,span,small),body.ranch-v91 .crm-tag-list label{color:#f7e8dd!important}
 body.ranch-v91 .crm-tag-list input{background:#fff!important;accent-color:#d7252e!important}
+
+/* V96.4.100 — iPhone HQ drawer + CRM tab final layout correction */
+@media (max-width:999px){
+  /* HQ drawer uses a three-row grid: compact header / scrollable nav / compact footer. */
+  body.ranch-v91 .ranch91-drawer,
+  body.ranch-v91 .ranch91-drawer.open{
+    display:grid!important;
+    grid-template-rows:auto minmax(0,1fr) auto!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    position:fixed!important;
+    inset:0 auto 0 0!important;
+    width:min(94vw,390px)!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+    padding:max(.65rem,env(safe-area-inset-top)) .8rem max(.65rem,env(safe-area-inset-bottom))!important;
+    background:#14090a!important;
+    touch-action:auto!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head{
+    grid-row:1!important;
+    position:relative!important;
+    inset:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    min-height:58px!important;
+    max-height:72px!important;
+    overflow:hidden!important;
+    margin:0!important;
+    padding:0 3.5rem .6rem 0!important;
+    background:#14090a!important;
+    z-index:3!important;
+  }
+  body.ranch-v91 .ranch91-brand{display:flex!important;align-items:center!important;gap:.65rem!important;min-width:0!important;max-width:100%!important}
+  body.ranch-v91 .ranch91-brand img{width:50px!important;height:50px!important;flex:0 0 50px!important;margin:0!important;object-fit:cover!important}
+  body.ranch-v91 .ranch91-brand>div{min-width:0!important;overflow:hidden!important}
+  body.ranch-v91 .ranch91-brand strong{font-size:.92rem!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body.ranch-v91 .ranch91-brand span{font-size:.58rem!important;line-height:1.15!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body.ranch-v91 .ranch91-close{position:absolute!important;right:0!important;top:0!important;width:48px!important;height:48px!important;z-index:5!important}
+
+  body.ranch-v91 .ranch91-nav{
+    grid-row:2!important;
+    display:block!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-y:scroll!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    margin:0!important;
+    padding:.35rem 0 1.25rem!important;
+    scrollbar-gutter:stable!important;
+  }
+  body.ranch-v91 .ranch91-nav button{
+    display:block!important;
+    width:100%!important;
+    min-height:56px!important;
+    margin:0 0 .42rem!important;
+    padding:.85rem!important;
+  }
+  body.ranch-v91 .ranch91-drawer-foot{
+    grid-row:3!important;
+    display:none!important;
+  }
+  html.ranch91-menu-lock, body.ranch91-menu-lock, body.ranch91-drawer-open{
+    overflow:hidden!important;
+    height:100%!important;
+    max-height:100%!important;
+  }
+
+  /* CRM: tabs appear once in normal document flow. They do NOT follow the user while scrolling. */
+  body.ranch-v91 .crm-dialog-shell{
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding:calc(.75rem + env(safe-area-inset-top)) .75rem calc(4rem + env(safe-area-inset-bottom))!important;
+  }
+  body.ranch-v91 .crm-close{
+    position:absolute!important;
+    top:calc(.75rem + env(safe-area-inset-top))!important;
+    right:.75rem!important;
+    z-index:20!important;
+    float:none!important;
+  }
+  body.ranch-v91 .crm-profile-header{padding-right:4rem!important}
+  body.ranch-v91 .crm-tabs{
+    position:static!important;
+    top:auto!important;
+    z-index:auto!important;
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    gap:.4rem!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    background:#0b0506!important;
+    padding:.45rem 0 .65rem!important;
+    margin:.8rem 0 1rem!important;
+    border-bottom:1px solid #7b3439!important;
+  }
+  body.ranch-v91 .crm-tabs button{
+    display:block!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:116px!important;
+    min-height:44px!important;
+    margin:0!important;
+    padding:.6rem .75rem!important;
+    white-space:nowrap!important;
+  }
+}
