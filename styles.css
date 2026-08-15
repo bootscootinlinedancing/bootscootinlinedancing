@@ -8445,3 +8445,89 @@ body.ranch-v91 .launch-readiness p,body.ranch-v91 .launch-readiness li,body.ranc
   .crm-tabs button{width:100%!important;min-height:48px!important}
 }
 html.crm-dialog-open,body.crm-dialog-open{overflow:hidden!important;overscroll-behavior:none!important}
+\n\n/* V96.4.99 — definitive iPhone HQ/CRM navigation + CRM contrast */
+@media(max-width:999px){
+  /* HQ: header/footer stay put; ONLY the list of HQ sections scrolls. */
+  body.ranch-v91 .ranch91-drawer,
+  body.ranch-v91 .ranch91-drawer.open{
+    display:flex!important;
+    flex-direction:column!important;
+    position:fixed!important;
+    top:0!important;bottom:0!important;left:0!important;
+    width:min(94vw,390px)!important;
+    height:100dvh!important;max-height:100dvh!important;
+    overflow:hidden!important;
+    padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom))!important;
+    box-sizing:border-box!important;
+    contain:none!important;
+    touch-action:auto!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head{
+    display:flex!important;flex-direction:row!important;align-items:center!important;
+    flex:0 0 auto!important;position:relative!important;min-height:76px!important;
+    background:#14090a!important;z-index:5!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head .ranch91-brand{min-width:0!important;padding-right:3.6rem!important}
+  body.ranch-v91 .ranch91-brand img{width:72px!important;height:72px!important;flex:0 0 72px!important}
+  body.ranch-v91 .ranch91-brand>div{min-width:0!important}
+  body.ranch-v91 .ranch91-brand strong{font-size:1rem!important;line-height:1.05!important;overflow-wrap:normal!important;word-break:normal!important}
+  body.ranch-v91 .ranch91-brand span{font-size:.62rem!important;line-height:1.2!important;overflow-wrap:normal!important;word-break:normal!important}
+  body.ranch-v91 .ranch91-close{position:absolute!important;right:0!important;top:0!important;z-index:8!important}
+  body.ranch-v91 .ranch91-nav{
+    display:flex!important;flex-direction:column!important;
+    flex:1 1 0!important;min-height:0!important;height:0!important;
+    overflow-y:auto!important;overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;margin:.8rem 0!important;padding:0 0 1.25rem!important;
+  }
+  body.ranch-v91 .ranch91-nav button{flex:0 0 auto!important;min-height:58px!important}
+  body.ranch-v91 .ranch91-drawer-foot{
+    display:flex!important;flex-direction:column!important;flex:0 0 auto!important;
+    max-height:34dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;
+    margin:0!important;padding:.3rem 0 .7rem!important;background:#14090a!important;
+  }
+  html.ranch91-menu-lock,body.ranch91-menu-lock,body.ranch91-drawer-open{
+    overflow:hidden!important;height:100%!important;max-height:100%!important;touch-action:none!important;
+  }
+
+  /* CRM: compact horizontal tab bar remains visible; details scroll below it. */
+  body.ranch-v91 .crm-dialog{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;margin:0!important;padding:0!important}
+  body.ranch-v91 .crm-dialog-shell{
+    display:block!important;box-sizing:border-box!important;width:100%!important;height:100dvh!important;max-height:100dvh!important;
+    overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;
+    padding:calc(.75rem + env(safe-area-inset-top)) .75rem calc(4rem + env(safe-area-inset-bottom))!important;
+    background:#0b0506!important;
+  }
+  body.ranch-v91 .crm-close{
+    position:sticky!important;top:0!important;z-index:50!important;float:right!important;
+    width:52px!important;height:52px!important;background:#160a0b!important;color:#fff!important;border:2px solid #d13b44!important;
+  }
+  body.ranch-v91 .crm-tabs{
+    position:sticky!important;top:0!important;z-index:40!important;
+    display:flex!important;flex-direction:row!important;gap:.4rem!important;
+    width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;
+    background:#0b0506!important;padding:.55rem 0!important;margin:.65rem 0 1rem!important;border-bottom:1px solid #7b3439!important;
+  }
+  body.ranch-v91 .crm-tabs button{
+    flex:0 0 auto!important;width:auto!important;min-width:118px!important;min-height:46px!important;
+    padding:.65rem .8rem!important;white-space:nowrap!important;font-size:.82rem!important;
+  }
+}
+
+/* CRM/customer list: dark, high-contrast and identifiable by full name. */
+body.ranch-v91 .hq-customer-card,
+body.ranch-v91 .crm-customer-card{
+  background:#120809!important;color:#fff7ee!important;border:2px solid #7a3036!important;box-shadow:none!important;
+}
+body.ranch-v91 .hq-customer-card h3,
+body.ranch-v91 .crm-customer-card h3{display:block!important;color:#fff!important;font-size:1.35rem!important;line-height:1.15!important;margin:.15rem 0 .45rem!important}
+body.ranch-v91 .hq-customer-card p,
+body.ranch-v91 .crm-customer-card p{color:#e3cfc3!important;font-size:1rem!important}
+body.ranch-v91 .hq-customer-card dt{color:#c9aa9a!important}
+body.ranch-v91 .hq-customer-card dd{color:#fff!important}
+body.ranch-v91 .crm-health-active{color:#b9f0ce!important;background:#12301f!important;border-color:#44a66b!important}
+body.ranch-v91 .crm-health-at_risk{color:#ffe0a2!important;background:#33220a!important;border-color:#c38d34!important}
+body.ranch-v91 .crm-health-inactive{color:#ffc0c4!important;background:#351013!important;border-color:#b83c45!important}
+body.ranch-v91 .crm-box,body.ranch-v91 .crm-tag-list label,body.ranch-v91 .crm-metrics article{background:#120809!important;color:#fff7ee!important;border-color:#6f2d33!important}
+body.ranch-v91 .crm-box :is(h3,strong,label,p,span,small),body.ranch-v91 .crm-tag-list label{color:#f7e8dd!important}
+body.ranch-v91 .crm-tag-list input{background:#fff!important;accent-color:#d7252e!important}

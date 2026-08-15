@@ -3680,8 +3680,8 @@ async function adminCustomers(request, env) {
   if (request.method !== 'GET') return json({error:'Method not allowed.'},405);
 
   const baseQuery = `
-    SELECT lower(b.customer_email) customer_key, MAX(b.customer_name) customer_name, lower(b.customer_email) customer_email,
-      COALESCE(NULLIF(MAX(b.customer_phone),''),(SELECT MAX(cu.phone) FROM customers cu WHERE lower(cu.email)=lower(b.customer_email))) customer_phone, COUNT(*) total_bookings,
+    SELECT lower(b.customer_email) customer_key, COALESCE(NULLIF((SELECT MAX(cu.name) FROM customers cu WHERE lower(cu.email)=lower(b.customer_email)),''),MAX(b.customer_name)) customer_name, lower(b.customer_email) customer_email,
+      COALESCE(NULLIF((SELECT MAX(cu.phone) FROM customers cu WHERE lower(cu.email)=lower(b.customer_email)),''),NULLIF(MAX(b.customer_phone),'')) customer_phone, COUNT(*) total_bookings,
       SUM(CASE WHEN b.status='PAID' THEN 1 ELSE 0 END) paid_bookings,
       SUM(CASE WHEN b.status='CANCELLED' THEN 1 ELSE 0 END) cancelled_bookings,
       SUM(CASE WHEN b.status='REFUNDED' THEN 1 ELSE 0 END) refunded_bookings,
