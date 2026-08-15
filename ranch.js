@@ -225,14 +225,10 @@
     if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
     if(open){
       drawerPageScrollY=window.scrollY||document.documentElement.scrollTop||0;
-      document.documentElement.classList.add('ranch91-menu-lock');
-      document.body.classList.add('ranch91-menu-lock');
       drawer.scrollTop=0;
       requestAnimationFrame(()=>{ drawer.scrollTop=0; });
       if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);
     }else{
-      document.documentElement.classList.remove('ranch91-menu-lock');
-      document.body.classList.remove('ranch91-menu-lock');
       /* Recover from stale iOS body locks from older releases. */
       document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';
     }
