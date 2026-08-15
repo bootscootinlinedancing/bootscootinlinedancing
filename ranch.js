@@ -1278,13 +1278,47 @@ Type REFUNDED to continue.`);
     event.preventDefault();
     const form=event.currentTarget,file=form.elements.file.files?.[0],message=$('#mediaUploadMessage'),progress=$('#mediaUploadProgress'),button=form.querySelector('[type=submit]');
     if(!file){message.textContent='Please choose a file.';return;}
-    const body=new FormData(form);
-    button.disabled=true;button.textContent='Uploading…';message.textContent='Uploading to HQ…';if(progress)progress.hidden=false;
+    const maxSize=500*1024*1024;
+    if(file.size>maxSize){message.textContent='This file is over 500 MB. Please export a smaller MP4 before uploading.';toast(message.textContent,'error');return;}
+    const title=form.elements.title?.value||file.name;
+    const description=form.elements.description?.value||'';
+    const placement=form.elements.placement?.value||'library';
+    const published=form.elements.published?.checked?'1':'0';
+    button.disabled=true;button.textContent='Uploading…';if(progress)progress.hidden=false;
     try{
-      const result=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'POST',body},120000);
-      message.textContent=result.note||'Upload complete.';form.reset();await loadMedia();toast('Media uploaded to HQ.');
-    }catch(error){message.textContent=error.message;toast(error.message,'error');}
-    finally{button.disabled=false;button.textContent='Upload to HQ';if(progress)progress.hidden=true;}
+      // Larger videos use chunked R2 upload so iPhone/Safari never has to send one huge request.
+      if(file.size>20*1024*1024 || file.type.startsWith('video/')){
+        message.textContent='Preparing secure video upload…';
+        const start=await jsonFetch(`${ADMIN_API_PREFIX}/media-upload/start`,{method:'POST',body:JSON.stringify({name:file.name,type:file.type,size:file.size,title,description,placement,published})},30000);
+        const partSize=8*1024*1024;
+        const parts=[];
+        const total=Math.ceil(file.size/partSize);
+        for(let i=0;i<total;i++){
+          const startByte=i*partSize,endByte=Math.min(file.size,startByte+partSize);
+          message.textContent=`Uploading part ${i+1} of ${total}…`;
+          const response=await fetch(`${ADMIN_API_PREFIX}/media-upload/part`,{
+            method:'POST',
+            headers:{'X-Upload-Id':start.uploadId,'X-Upload-Key':start.key,'X-Part-Number':String(i+1),'Content-Type':'application/octet-stream'},
+            body:file.slice(startByte,endByte)
+          });
+          const text=await response.text();let data={};try{data=text?JSON.parse(text):{};}catch(_){data={error:text||'Upload part failed.'};}
+          if(!response.ok)throw new Error(data.error||`Upload part ${i+1} failed (${response.status}).`);
+          parts.push(data.part);
+        }
+        message.textContent='Finishing upload…';
+        const result=await jsonFetch(`${ADMIN_API_PREFIX}/media-upload/complete`,{method:'POST',body:JSON.stringify({uploadId:start.uploadId,key:start.key,parts,name:file.name,type:file.type,size:file.size,title,description,placement,published})},60000);
+        message.textContent=result.note||'Upload complete.';
+      }else{
+        const body=new FormData(form);
+        message.textContent='Uploading to HQ…';
+        const result=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'POST',body},120000);
+        message.textContent=result.note||'Upload complete.';
+      }
+      form.reset();await loadMedia();toast('Media uploaded to HQ.');
+    }catch(error){
+      const friendly=(error?.message==='Load failed'||error?.message==='Failed to fetch')?'The upload connection dropped. This update now uses chunked uploads for videos; please retry after the new deployment is live.':(error.message||'Upload failed.');
+      message.textContent=friendly;toast(friendly,'error');
+    }finally{button.disabled=false;button.textContent='Upload to HQ';if(progress)progress.hidden=true;}
   }
 
 

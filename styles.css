@@ -8648,3 +8648,68 @@ body.ranch-v91 .crm-tag-list input{background:#fff!important;accent-color:#d7252
     white-space:nowrap!important;
   }
 }
+
+/* V96.4.101 — iPhone HQ drawer: reliable whole-drawer scrolling + media dark cards */
+@media(max-width:999px){
+  body.ranch-v91 .ranch91-drawer,
+  body.ranch-v91 .ranch91-drawer.open{
+    display:block!important;
+    position:fixed!important;
+    inset:0 auto 0 0!important;
+    width:min(96vw,410px)!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    padding:calc(.85rem + env(safe-area-inset-top)) 1rem calc(5.5rem + env(safe-area-inset-bottom))!important;
+    box-sizing:border-box!important;
+    contain:none!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head{
+    position:relative!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    min-height:76px!important;
+    margin:0 0 1rem!important;
+    background:#14090a!important;
+  }
+  body.ranch-v91 .ranch91-nav{
+    display:flex!important;
+    flex-direction:column!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+    touch-action:pan-y!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  body.ranch-v91 .ranch91-nav button{flex:none!important;min-height:58px!important}
+  body.ranch-v91 .ranch91-drawer-foot{
+    display:flex!important;
+    flex-direction:column!important;
+    max-height:none!important;
+    overflow:visible!important;
+    margin:1rem 0 0!important;
+    padding:0!important;
+  }
+  html.ranch91-menu-lock,body.ranch91-menu-lock,body.ranch91-drawer-open{
+    overflow:hidden!important;
+    height:100%!important;
+    max-height:100%!important;
+    touch-action:auto!important;
+  }
+}
+body.ranch-v91 .ranch-media-item,
+body.ranch-v91 #ranchMedia .ranch91-empty,
+body.ranch-v91 #ranchMedia .ranch91-loading,
+body.ranch-v91 #ranchMedia .ranch91-notice{
+  background:#14090a!important;
+  color:#fff7ee!important;
+  border-color:#743239!important;
+}
+body.ranch-v91 .ranch-media-item strong{color:#fff7ee!important}
+body.ranch-v91 .ranch-media-item small{color:#cdb8aa!important}

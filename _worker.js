@@ -4263,6 +4263,85 @@ async function mediaStatus(request, env) {
   return json({ ready, authorised: admin.authorised, checks, error, version: 76 });
 }
 
+
+async function mediaMultipartStart(request, env) {
+  const check = requireAdmin(request, env);
+  if (check.response) return check.response;
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'Upload details could not be read.', code: 'UPLOAD_START_BODY' }, 400); }
+  const name = String(body.name || 'upload.bin').slice(0, 220);
+  const type = String(body.type || 'application/octet-stream');
+  const size = Number(body.size || 0);
+  if (!size || size > 500 * 1024 * 1024) return json({ error: 'Uploads must be between 1 byte and 500 MB.', code: 'FILE_TOO_LARGE' }, 413);
+  if (!allowedTypes.has(type)) return json({ error: `Unsupported file type (${type || 'unknown'}). Use JPG, PNG, WebP, MP4, WebM, MOV or PDF.`, code: 'UNSUPPORTED_TYPE' }, 415);
+  const id = crypto.randomUUID();
+  const key = `uploads/${id}.${extension(name, type)}`;
+  try {
+    const upload = await env.MEDIA_BUCKET.createMultipartUpload(key, {
+      httpMetadata: { contentType: type, cacheControl: 'public, max-age=3600' },
+      customMetadata: {
+        title: String(body.title || name).slice(0, 140),
+        placement: String(body.placement || 'library').slice(0, 80),
+        published: String(body.published === '1' || body.published === true)
+      }
+    });
+    return json({ ok: true, uploadId: upload.uploadId, key, id }, 201);
+  } catch (error) {
+    return json({ error: `Could not start the R2 upload: ${error.message}`, code: 'R2_MULTIPART_START_FAILED' }, 502);
+  }
+}
+
+async function mediaMultipartPart(request, env) {
+  const check = requireAdmin(request, env);
+  if (check.response) return check.response;
+  const uploadId = String(request.headers.get('X-Upload-Id') || '');
+  const key = String(request.headers.get('X-Upload-Key') || '');
+  const partNumber = Number(request.headers.get('X-Part-Number') || 0);
+  if (!uploadId || !key.startsWith('uploads/') || !partNumber) return json({ error: 'Upload part details are missing.', code: 'UPLOAD_PART_DETAILS' }, 400);
+  try {
+    const bytes = await request.arrayBuffer();
+    if (!bytes.byteLength || bytes.byteLength > 12 * 1024 * 1024) return json({ error: 'Upload part must be 12 MB or smaller.', code: 'UPLOAD_PART_SIZE' }, 413);
+    const multipart = env.MEDIA_BUCKET.resumeMultipartUpload(key, uploadId);
+    const part = await multipart.uploadPart(partNumber, bytes);
+    return json({ ok: true, part });
+  } catch (error) {
+    return json({ error: `Video upload part ${partNumber} failed: ${error.message}`, code: 'R2_MULTIPART_PART_FAILED' }, 502);
+  }
+}
+
+async function mediaMultipartComplete(request, env) {
+  const check = requireAdmin(request, env);
+  if (check.response) return check.response;
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'Final upload details could not be read.', code: 'UPLOAD_COMPLETE_BODY' }, 400); }
+  const uploadId = String(body.uploadId || '');
+  const key = String(body.key || '');
+  const parts = Array.isArray(body.parts) ? body.parts : [];
+  if (!uploadId || !key.startsWith('uploads/') || !parts.length) return json({ error: 'The multipart upload is incomplete.', code: 'UPLOAD_COMPLETE_DETAILS' }, 400);
+  try {
+    const multipart = env.MEDIA_BUCKET.resumeMultipartUpload(key, uploadId);
+    await multipart.complete(parts);
+    const items = await readIndex(env);
+    const createdAt = new Date().toISOString();
+    const type = String(body.type || 'application/octet-stream');
+    const name = String(body.name || key.split('/').pop() || 'upload');
+    const id = key.split('/').pop().split('.')[0];
+    items.unshift({
+      id, storage_key:key, original_name:name,
+      title:String(body.title || name).trim().slice(0,140),
+      description:String(body.description || '').trim().slice(0,500),
+      media_type:mediaType(type), mime_type:type, size_bytes:Number(body.size||0),
+      placement:String(body.placement || 'library').trim().slice(0,80),
+      published:(body.published === '1' || body.published === true) ? 1 : 0,
+      uploaded_by:check.state.email, created_at:createdAt
+    });
+    await writeIndex(env, items.slice(0,1000));
+    return json({ ok:true, id, key, url:`/media/${key}`, note:type==='video/quicktime'?'MOV uploaded successfully. MP4 is still recommended for the widest browser playback support.':'' }, 201);
+  } catch (error) {
+    return json({ error:`Could not finish the R2 upload: ${error.message}`, code:'R2_MULTIPART_COMPLETE_FAILED' }, 502);
+  }
+}
+
 async function mediaCollection(request, env) {
   const check = requireAdmin(request, env);
   if (check.response) return check.response;
@@ -4417,6 +4496,9 @@ export default {
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);
       if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);
       if (path === '/api/admin/media-status' && request.method === 'GET') return mediaStatus(request, env);
+      if (path === '/api/admin/media-upload/start' && request.method === 'POST') return mediaMultipartStart(request, env);
+      if (path === '/api/admin/media-upload/part' && request.method === 'POST') return mediaMultipartPart(request, env);
+      if (path === '/api/admin/media-upload/complete' && request.method === 'POST') return mediaMultipartComplete(request, env);
       if (path === '/api/admin/media') return mediaCollection(request, env);
       if (path.startsWith('/media/')) return serveMedia(request, env, path);
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
