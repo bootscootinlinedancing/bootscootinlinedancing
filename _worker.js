@@ -3681,7 +3681,7 @@ async function adminCustomers(request, env) {
 
   const baseQuery = `
     SELECT lower(b.customer_email) customer_key, MAX(b.customer_name) customer_name, lower(b.customer_email) customer_email,
-      MAX(b.customer_phone) customer_phone, COUNT(*) total_bookings,
+      COALESCE(NULLIF(MAX(b.customer_phone),''),(SELECT MAX(cu.phone) FROM customers cu WHERE lower(cu.email)=lower(b.customer_email))) customer_phone, COUNT(*) total_bookings,
       SUM(CASE WHEN b.status='PAID' THEN 1 ELSE 0 END) paid_bookings,
       SUM(CASE WHEN b.status='CANCELLED' THEN 1 ELSE 0 END) cancelled_bookings,
       SUM(CASE WHEN b.status='REFUNDED' THEN 1 ELSE 0 END) refunded_bookings,

@@ -8347,3 +8347,101 @@ body.ranch-v91 .launch-readiness p,body.ranch-v91 .launch-readiness li,body.ranc
 #memberForgotForm h2,#memberResetForm h2{margin:.2rem 0 .35rem;color:#fff}
 #memberForgotForm p,#memberResetForm p{color:#d8c1b8;line-height:1.5}
 .member-link-button{color:#fff;text-decoration:underline;text-underline-offset:4px}
+
+/* V96.4.98 — HQ mobile drawer + customer CRM scroll repair */
+@media(max-width:999px){
+  /* Use one simple scroll container for the entire HQ drawer on iOS/Safari. */
+  .ranch91-drawer,
+  .ranch91-drawer.open{
+    display:block!important;
+    position:fixed!important;
+    inset:0 auto 0 0!important;
+    width:min(92vw,390px)!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    padding:max(1rem,env(safe-area-inset-top)) 1rem calc(6rem + env(safe-area-inset-bottom))!important;
+  }
+  .ranch91-drawer-head{
+    position:sticky!important;
+    top:0!important;
+    z-index:6!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    background:#14090a!important;
+    padding:.15rem 0 .8rem!important;
+  }
+  .ranch91-drawer-head .ranch91-brand{padding-right:3.5rem!important}
+  .ranch91-close{position:absolute!important;right:0!important;top:.15rem!important}
+  .ranch91-nav{
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:visible!important;
+    height:auto!important;
+    max-height:none!important;
+    min-height:0!important;
+    margin:1rem 0!important;
+    padding:0!important;
+    touch-action:pan-y!important;
+  }
+  .ranch91-drawer-foot{
+    display:flex!important;
+    flex-direction:column!important;
+    margin:1rem 0 0!important;
+    padding:0!important;
+  }
+  html.ranch91-menu-lock,body.ranch91-menu-lock,
+  body.ranch91-drawer-open{
+    overflow:hidden!important;
+    height:100%!important;
+    touch-action:auto!important;
+  }
+
+  /* Customer profile: keep its controls visible while ONLY the profile panel scrolls. */
+  .crm-dialog{
+    width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .crm-dialog-shell{
+    box-sizing:border-box!important;
+    width:100%!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior:contain!important;
+    padding:calc(1rem + env(safe-area-inset-top)) 1rem calc(5rem + env(safe-area-inset-bottom))!important;
+  }
+  .crm-close{
+    position:sticky!important;
+    top:0!important;
+    z-index:20!important;
+    float:right!important;
+    background:#170c0d!important;
+    color:#fff!important;
+  }
+  .crm-tabs{
+    position:sticky!important;
+    top:0!important;
+    z-index:15!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:.45rem!important;
+    overflow:visible!important;
+    background:#090506!important;
+    padding:.55rem 0!important;
+    margin:.75rem 0 1rem!important;
+  }
+  .crm-tabs button{width:100%!important;min-height:48px!important}
+}
+html.crm-dialog-open,body.crm-dialog-open{overflow:hidden!important;overscroll-behavior:none!important}
