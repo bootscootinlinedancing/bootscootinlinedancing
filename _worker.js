@@ -116,7 +116,7 @@ async function memberSession(request,env){
   const token=memberCookie(request); if(!token) return null;
   const hash=await memberSha256Hex(token);
   const row=await env.BOOKINGS_DB.prepare(`
-    SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,
+    SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,a.created_at member_created_at,
            c.name,c.phone,c.marketing_consent,
            mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak,mp.birthday_visible,mp.trail_identity,COALESCE(mp.is_paused,0) is_paused
     FROM member_sessions s
@@ -2114,7 +2114,18 @@ async function memberRegister(request,env){
     await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,trail_identity=?,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`)
       .bind(first,trailIdentity,customer.id).run();
 
-    // New member accounts begin at zero. Future qualifying payments award loyalty in real time.
+    // A genuinely new account always starts at zero. Historical customer activity is not
+    // converted into member progress, points, streaks or achievements.
+    if(!existing){
+      const profile=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_profiles WHERE customer_id=?`).bind(customer.id).first();
+      await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET trail_rank='First Steps',boot_points=0,classes_attended=0,current_streak=0,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`).bind(customer.id).run().catch(()=>{});
+      if(profile?.id){
+        await env.BOOKINGS_DB.prepare(`DELETE FROM points_ledger WHERE member_id=?`).bind(profile.id).run().catch(()=>{});
+        await env.BOOKINGS_DB.prepare(`DELETE FROM member_achievements WHERE member_id=?`).bind(profile.id).run().catch(()=>{});
+      }
+    }
+
+    // Future qualifying payments/attendance build progress from the account creation point.
 
     stage='VERIFY_TOKEN';
     const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
@@ -2130,6 +2141,14 @@ async function memberRegister(request,env){
     });
     const text=`Hi ${first},\n\nVerify your Boot Scootin’ account:\n${verifyUrl}\n\nThis link expires in 24 hours.`;
     const emailResult=await sendTransactionalEmail(env,email,'Verify your Boot Scootin’ member account',html,text,'members').catch(()=>null);
+
+    // HQ copy: every new member registration is surfaced to Nora as well.
+    const adminEmail=clean(env.ADMIN_EMAIL || env.MEMBERS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
+    if(emailOk(adminEmail)){
+      const adminText=`New Boot Scootin’ member registration.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nTrail identity: ${trailIdentity}\n\nThe new account starts with 0 points, 0 classes, 0 dances, 0 streak and 0 rewards.`;
+      const adminHtml=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New member registration</h2><p><strong>${name}</strong><br>${email}<br>${phone||'No phone supplied'}</p><p>Starting member progress: <strong>zero</strong>.</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html">Open HQ</a></p></div>`;
+      await sendTransactionalEmail(env,adminEmail,`New member registration — ${name}`,adminHtml,adminText,'members').catch(()=>null);
+    }
 
     return json({
       ok:true,
@@ -2238,7 +2257,8 @@ async function memberMe(request,env){
     FROM attendance a
     JOIN bookings b ON b.id=a.booking_id
     WHERE lower(b.customer_email)=lower(?)
-  `).bind(session.email).first().catch(()=>({total:0}));
+      AND datetime(a.created_at) >= datetime(?)
+  `).bind(session.email,session.member_created_at||'1970-01-01T00:00:00Z').first().catch(()=>({total:0}));
   const classesAttended=Math.max(0,Number(attendance?.total||0));
   const bootPoints=classesAttended*10;
   const rank=classesAttended>=100?'Boot Scootin’ Legend':
@@ -3964,6 +3984,20 @@ function merchOrderText(order,heading){
   if(order.fulfilment_method==='delivery'&&order.delivery_address) lines.push(`Delivery address: ${order.delivery_address}`);
   return lines.join('\n');
 }
+async function sendAdminMerchAlert(env,order){
+  if(!order?.id)return;
+  const adminEmail=clean(env.ADMIN_EMAIL || env.MERCH_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
+  if(!emailOk(adminEmail))return;
+  const marker=`ADMIN_MERCH_EMAIL:${order.id}`;
+  const already=await env.BOOKINGS_DB.prepare(`SELECT id FROM audit_log WHERE action=? LIMIT 1`).bind(marker).first().catch(()=>null);
+  if(already)return;
+  const money=`£${(Number(order.amount_pence||0)/100).toFixed(2)}`;
+  const text=`New paid Boot Scootin’ merchandise order.\n\nOrder: ${order.reference}\nCustomer: ${order.customer_name}\nEmail: ${order.customer_email}\nPhone: ${order.customer_phone||'Not supplied'}\nItem: ${order.design}\nFit/size: ${order.fit} / ${order.size}\nQuantity: ${order.quantity}\nFulfilment: ${merchDeliveryLabel(order)}\nTotal: ${money}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch.html`;
+  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New paid merch order</h2><p><strong>${order.reference}</strong><br>${order.customer_name}<br>${order.customer_email}</p><p>${order.design} · ${order.fit} · ${order.size} · Qty ${order.quantity}<br>${merchDeliveryLabel(order)} · <strong>${money}</strong></p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html">Open HQ</a></p></div>`;
+  const sent=await sendTransactionalEmail(env,adminEmail,`New merch order — ${order.reference}`,html,text,'general').catch(()=>null);
+  if(sent&&!sent.skipped)await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind('SYSTEM',marker,'merch_order',order.id,JSON.stringify({recipient:adminEmail})).run().catch(()=>{});
+}
+
 async function sendMerchConfirmation(env,order){
   if(order.confirmation_email_sent_at)return;
   const money=p=>`£${(Number(p||0)/100).toFixed(2)}`;
@@ -4073,6 +4107,7 @@ async function merchOrderStatus(request,env,url){
         order.status='PAID';
         order.provider_transaction_id=tid;
         try{await sendMerchConfirmation(env,{...order,status:'PAID'});}catch(_){}
+        try{await sendAdminMerchAlert(env,{...order,status:'PAID'});}catch(_){}
       } else if(['FAILED','EXPIRED'].includes(cs)) {
         await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run(); order.status=cs;
       }
