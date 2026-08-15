@@ -216,21 +216,36 @@
   // Drawer
   const drawer=$('#ranch91Drawer'),backdrop=$('#ranch91Backdrop'),menuButton=$('#ranch91Menu'),closeButton=$('#ranch91Close');
   let drawerPageScrollY=0;
+  function clearLegacyScrollLocks(){
+    const body=document.body, html=document.documentElement;
+    body.classList.remove('ranch91-drawer-open','ranch-menu-open','menu-open');
+    html.classList.remove('ranch91-drawer-open','ranch-menu-open','menu-open');
+    for(const el of [body,html]){
+      el.style.position='';
+      el.style.top='';
+      el.style.left='';
+      el.style.right='';
+      el.style.width='';
+      el.style.height='';
+      el.style.overflow='';
+      el.style.overflowY='';
+      el.style.touchAction='';
+    }
+  }
   function setDrawer(open){
     if(!drawer||!menuButton)return;
+    /* iPhone Safari: never disable body touch scrolling. A touch-action:none
+       ancestor prevents the fixed drawer itself from receiving pan gestures. */
+    clearLegacyScrollLocks();
     drawer.classList.toggle('open',open);
     drawer.setAttribute('aria-hidden',String(!open));
     menuButton.setAttribute('aria-expanded',String(open));
-    document.body.classList.toggle('ranch91-drawer-open',open);
     if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
     if(open){
       drawerPageScrollY=window.scrollY||document.documentElement.scrollTop||0;
       drawer.scrollTop=0;
       requestAnimationFrame(()=>{ drawer.scrollTop=0; });
       if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);
-    }else{
-      /* Recover from stale iOS body locks from older releases. */
-      document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';
     }
   }
   menuButton?.addEventListener('click',event=>{
@@ -241,7 +256,9 @@
   closeButton?.addEventListener('click',()=>setDrawer(false));
   backdrop?.addEventListener('click',()=>setDrawer(false));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
-  window.addEventListener('pageshow',()=>setDrawer(false));
+  window.addEventListener('pageshow',()=>{clearLegacyScrollLocks();setDrawer(false);});
+  window.addEventListener('pagehide',clearLegacyScrollLocks);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!drawer?.classList.contains('open'))clearLegacyScrollLocks();});
 
   const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
