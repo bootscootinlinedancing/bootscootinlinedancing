@@ -218,8 +218,8 @@
   let drawerPageScrollY=0;
   function clearLegacyScrollLocks(){
     const body=document.body, html=document.documentElement;
-    body.classList.remove('ranch91-drawer-open','ranch-menu-open','menu-open');
-    html.classList.remove('ranch91-drawer-open','ranch-menu-open','menu-open');
+    body.classList.remove('ranch91-drawer-open','ranch91-menu-lock','ranch-menu-open','menu-open');
+    html.classList.remove('ranch91-drawer-open','ranch91-menu-lock','ranch-menu-open','menu-open');
     for(const el of [body,html]){
       el.style.position='';
       el.style.top='';
@@ -248,8 +248,19 @@
       if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);
     }
   }
+  // ranch.html has an inline onclick for resilience. Replace its legacy lock-based
+  // handler with this same non-locking implementation so both routes behave identically.
+  window.BootScootinHQSetMenu=(open)=>{setDrawer(Boolean(open));return false;};
+  window.BootScootinHQMenuToggle=(event)=>{
+    event?.preventDefault();
+    event?.stopPropagation();
+    setDrawer(!drawer?.classList.contains('open'));
+    return false;
+  };
   menuButton?.addEventListener('click',event=>{
-    if(typeof window.BootScootinHQMenuToggle==='function')return;
+    // Inline onclick already handles normal taps; this is a fallback for browsers
+    // that do not execute the inline handler.
+    if(event.defaultPrevented)return;
     event.preventDefault();
     setDrawer(!drawer.classList.contains('open'));
   });

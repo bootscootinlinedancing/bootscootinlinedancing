@@ -8768,3 +8768,59 @@ body.menu-open{
   display:none!important;
   pointer-events:none!important;
 }
+
+
+/* V96.4.104 — HQ iOS hard scroll reset.
+   IMPORTANT: no class used by the HQ menu may lock html/body. The drawer is an
+   independent fixed scroller; the normal HQ document remains a normal scroller. */
+html.ranch91-menu-lock,
+body.ranch91-menu-lock,
+body.ranch91-drawer-open,
+body.ranch-menu-open,
+body.menu-open,
+html,
+body.ranch-v91{
+  position:static!important;
+  top:auto!important;
+  left:auto!important;
+  right:auto!important;
+  width:auto!important;
+  height:auto!important;
+  min-height:100%!important;
+  max-height:none!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:auto!important;
+  touch-action:auto!important;
+}
+@media(max-width:999px){
+  body.ranch-v91 .ranch91-drawer,
+  body.ranch-v91 .ranch91-drawer.open{
+    position:fixed!important;
+    inset:0 auto 0 0!important;
+    width:min(96vw,410px)!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    box-sizing:border-box!important;
+    padding:calc(.75rem + env(safe-area-inset-top)) 1rem calc(7rem + env(safe-area-inset-bottom))!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head,
+  body.ranch-v91 .ranch91-nav,
+  body.ranch-v91 .ranch91-drawer-foot{
+    position:static!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    transform:none!important;
+    touch-action:pan-y!important;
+  }
+  body.ranch-v91 .ranch91-nav{display:flex!important;flex-direction:column!important;}
+  body.ranch-v91 .ranch91-nav button{flex:0 0 auto!important;min-height:58px!important;}
+}
