@@ -1,5 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
-  <symbol id="boot" viewBox="0 0 64 64"><path d="M18 6h19v25c0 7 6 12 13 12h8v9H28c-11 0-20-9-20-20V12h10z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><path d="M18 18h19M18 28h19M28 43c4 5 8 7 14 9" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
+  <symbol id="boot" viewBox="0 0 64 64">
+    <path d="M21 5h20v28c0 4 2 7 6 9 3 2 7 3 12 3v8c-8 4-18 6-30 6H12c-5 0-8-3-8-8 0-4 3-7 8-8l8-2c3-1 5-3 5-6V19h-4z" fill="currentColor"/>
+    <path d="M21 5h20v7H21zM25 19h16M25 26h16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    <path d="M12 43c8 1 14 4 18 9M42 45c5 2 10 3 17 3" fill="none" stroke="#080606" stroke-width="2.5" stroke-linecap="round"/>
+  </symbol>
   <symbol id="hat" viewBox="0 0 64 64"><path d="M18 33c3-14 8-23 14-23s11 9 14 23c-7 3-21 3-28 0z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M5 38c8 5 20 7 27 7s19-2 27-7c-2 10-14 16-27 16S7 48 5 38z" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
   <symbol id="guitar" viewBox="0 0 64 64"><path d="M39 9l16-5 5 5-8 13-8 1-9 9" fill="none" stroke="currentColor" stroke-width="3"/><path d="M34 29c7 7 8 18 1 25s-18 6-25-1-8-18-1-25c4-4 10-6 15-4l5-5 10 10-5 5z" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="24" cy="40" r="5" fill="none" stroke="currentColor" stroke-width="3"/></symbol>
   <symbol id="horseshoe" viewBox="0 0 64 64"><path d="M15 9v20c0 14 7 24 17 24s17-10 17-24V9h-9v20c0 8-3 14-8 14s-8-6-8-14V9z" fill="none" stroke="currentColor" stroke-width="3"/><path d="M12 14h15M37 14h15M14 27h12M38 27h12" stroke="currentColor" stroke-width="3"/></symbol>
