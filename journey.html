@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Rye&amp;family=Oswald:wght@400;500;600;700&amp;family=Caveat:wght@600;700&amp;display=swap" rel="stylesheet"/>
-<link href="styles.css?v=96.4.83" rel="stylesheet"/>
+<link href="styles.css?v=96.4.39" rel="stylesheet"/>
 <link href="favicon.png" rel="icon" type="image/png"/>
 <link href="apple-touch-icon.png" rel="apple-touch-icon"/>
 <link href="manifest.webmanifest" rel="manifest"/>
@@ -125,13 +125,6 @@
 <link href="honky-theme.css?v=96.4.53" rel="stylesheet"/>
 <link href="desktop-final-fix.css?v=96.4.39" rel="stylesheet"/>
 <link href="repair-v96.4.56.css?v=96.4.59" rel="stylesheet"/>
-
-<style>
-.member-feature-nav{position:static;z-index:auto;display:flex;flex-wrap:wrap;gap:8px;overflow:visible;padding:12px 18px;background:#080505;border-bottom:1px solid #6f2a30}
-.member-feature-nav a{flex:0 0 auto;padding:10px 12px;border:1px solid #853038;color:#fff;text-decoration:none;font:700 12px/1 Arial,sans-serif;text-transform:uppercase;letter-spacing:.04em;background:#170b0d}
-.member-feature-nav a:active{background:#9f242c}
-</style>
-
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -142,16 +135,6 @@
 </a>
 <button aria-expanded="false" class="menu" id="menuButton">Menu</button>
 </header>
-<div class="member-feature-nav" aria-label="Member feature navigation">
-  <a href="member-hub.html#dashboard">Dashboard</a>
-  <a href="rewards.html">Trail &amp; Rewards</a>
-  <a href="passport.html">Passport</a>
-  <a href="journey.html">Journey</a>
-  <a href="my-bookings.html">Bookings</a>
-  <a href="dance-library.html">Dance Library</a>
-  <a href="member-hub.html#profile">Profile</a>
-</div>
-
 <nav aria-label="Main navigation" class="menu45-overlay" id="nav">
 <div class="menu45-panel" id="menu45">
 <div class="menu45-head">
@@ -186,10 +169,13 @@
 </div>
 </details>
 <details class="menu45-section">
-<summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
+<summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Member experience preview</small></span><b aria-hidden="true"></b></summary>
 <div class="menu45-submenu">
-<a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
-<a href="membership-preview.html"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
+<a href="member-hub.html"><span>Member Hub Preview</span><b aria-hidden="true">›</b></a>
+<a href="passport.html"><span>My Trail</span><b aria-hidden="true">›</b></a>
+<a href="passport.html#trail-preview"><span>My Passport</span><b aria-hidden="true">›</b></a>
+<a href="journey.html"><span>My Journey</span><b aria-hidden="true">›</b></a>
+<a href="rewards.html"><span>Trail Outfitters &amp; Rewards</span><b aria-hidden="true">›</b></a>
 </div>
 </details>
 <details class="menu45-section">
@@ -255,14 +241,14 @@
 <div class="section-title centre reveal">
 <p class="kicker">Your personal dance space</p>
 <h1>My Boot Scootin’ Journey</h1>
-<p>Your live member journey. Only activity you actually complete is shown here.</p>
+<p>A preview of the future member area for dances, confidence, support and milestones.</p>
 </div>
 </section>
 <section class="section paper member-dashboard-section">
 <div class="journey-status reveal">
-<span class="status-chip">My Boot Scootin’ Journey</span>
+<span class="status-chip">Interactive preview - secure accounts are not live yet</span>
 <h2>Your own little Boot Scootin’ home.</h2>
-<p>Your journey starts at zero and grows only from your real Boot Scootin’ activity.</p>
+<p>Explore the planned member dashboard. Nothing on this preview is uploaded or shared with Nora.</p>
 </div>
 <div class="member-dashboard reveal">
 <div aria-label="Dashboard sections" class="dashboard-mobile-tabs">
@@ -273,12 +259,12 @@
 </div>
 <aside class="dashboard-sidebar">
 <div class="journey-photo-preview" id="journeyPhotoPreview"><span>NA</span></div>
-<h3 id="journeyGreeting">Welcome back, Trail Rider</h3>
+<h3>Welcome back, Cowgirl</h3>
 <p class="dashboard-level">Absolute Beginner</p>
 <label class="profile-upload-preview">
-            Choose a profile photo
+            Preview a profile photo
             <input accept="image/*" id="profilePhotoDemo" type="file"/>
-<small>Optional. Profile-photo saving will be added separately.</small>
+<small>Optional in the future member account.</small>
 </label>
 <nav aria-label="Dashboard preview sections" class="dashboard-mini-nav">
 <button class="active" data-dashboard-target="overview" type="button">Overview</button>
@@ -295,29 +281,29 @@
 <p class="kicker red">This week</p>
 <h2>Keep showing up. You’re doing brilliantly.</h2>
 </div>
-<span class="dashboard-streak" id="journeyStreak">0 week streak</span>
+<span class="dashboard-streak">3 week streak</span>
 </div>
 <div class="dashboard-stat-grid">
-<article><strong id="journeyDances">0</strong><span>Dances learned</span></article>
-<article><strong id="journeyClasses">0</strong><span>Classes attended</span></article>
-<article><strong id="journeyFavourites">0</strong><span>Favourites</span></article>
-<article><strong id="journeyStamps">0/9</strong><span>Reward stamps</span></article>
+<article><strong>18</strong><span>Dances learned</span></article>
+<article><strong>7</strong><span>Classes attended</span></article>
+<article><strong>4</strong><span>Favourites</span></article>
+<article><strong>6/9</strong><span>Reward stamps</span></article>
 </div>
 <div class="dashboard-columns">
 <article class="dashboard-card">
 <p class="kicker red">Currently learning</p>
-<h3 id="journeyCurrentDance">Nothing selected yet</h3>
-<div aria-label="No confidence rating yet" class="confidence-meter">
-<span></span><span></span><span></span><span></span><span></span>
+<h3>Choosin’ Texas</h3>
+<div aria-label="Confidence three out of five" class="confidence-meter">
+<span class="filled"></span><span class="filled"></span><span class="filled"></span><span></span><span></span>
 </div>
-<p id="journeyCurrentNote">Choose a dance in your Dance Library when you are ready to start tracking your progress.</p>
-<a class="text-link" href="dance-library.html">Open Dance Library →</a>
+<p>“I remember the first half, but need more support after the restart.”</p>
+<a class="text-link" href="dance-library.html">Open dance card →</a>
 </article>
 <article class="dashboard-card next-class-card">
 <p class="kicker red">Next class</p>
-<h3 id="journeyNextClass">Nothing booked yet</h3>
-<p id="journeyNextClassMeta">Your next booking will appear here.</p>
-<a class="button" href="bookings.html">View Classes</a>
+<h3>Friday Night Line Dancing</h3>
+<p><strong>Edgbaston Community Centre</strong><br/>7:30 pm-8:30 pm</p>
+<a class="button" href="bookings.html">View Calendar</a>
 </article>
 </div>
 <article class="dashboard-card dashboard-support">
@@ -340,18 +326,18 @@
 <div class="journey-dance-list">
 <article><div><h3>Ziggy</h3><p>Absolute Beginner</p></div><select><option>I’ve got this</option><option selected="">Comfortable</option><option>Needs practice</option><option>I’d like support</option></select></article>
 <article><div><h3>Cowgirl</h3><p>Beginner</p></div><select><option>I’ve got this</option><option>Comfortable</option><option selected="">Needs practice</option><option>I’d like support</option></select></article>
-<article><div><h3>Choosin’ Texas</h3><p>Beginner</p></div><select><option>I’ve got this</option><option>Comfortable</option><option>Needs practice</option><option>I’d like support</option></select></article>
+<article><div><h3>Choosin’ Texas</h3><p>Beginner</p></div><select><option>I’ve got this</option><option>Comfortable</option><option>Needs practice</option><option selected="">I’d like support</option></select></article>
 </div>
 </section>
 <section class="dashboard-panel" data-dashboard-panel="achievements">
 <div class="panel-heading"><div><p class="kicker red">Achievements</p><h2>Celebrate every little win.</h2></div></div>
 <div class="achievement-grid">
-<article data-achievement="first-class"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#star"></use></svg></span><h3>First Steps</h3><p>Complete your first class to unlock.</p></article>
-<article data-achievement="five-classes"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#hat"></use></svg></span><h3>Honky Tonk Regular</h3><p>Attend five classes to unlock.</p></article>
-<article data-achievement="ten-dances"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#people"></use></svg></span><h3>Ten Dances Strong</h3><p>Learn ten dances to unlock.</p></article>
-<article data-achievement="fifty-dances"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#cactus"></use></svg></span><h3>Country Legend</h3><p>Learn 50 dances to unlock.</p></article>
-<article data-achievement="one-year"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#crown"></use></svg></span><h3>Boot Scootin’ Royalty</h3><p>Reach your one-year milestone.</p></article>
-<article data-achievement="festival"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#tent"></use></svg></span><h3>Festival Friend</h3><p>Join a Moonshine festival meet-up.</p></article>
+<article class="unlocked"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#boot"></use></svg></span><h3>First Steps</h3><p>Completed your first class.</p></article>
+<article class="unlocked"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#hat"></use></svg></span><h3>Honky Tonk Regular</h3><p>Attended five classes.</p></article>
+<article class="unlocked"><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#people"></use></svg></span><h3>Ten Dances Strong</h3><p>Marked ten dances as learned.</p></article>
+<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#cactus"></use></svg></span><h3>Country Legend</h3><p>Learn 50 dances to unlock.</p></article>
+<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#crown"></use></svg></span><h3>Boot Scootin’ Royalty</h3><p>Reach your one-year milestone.</p></article>
+<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#tent"></use></svg></span><h3>Festival Friend</h3><p>Join a Moonshine festival meet-up.</p></article>
 </div>
 </section>
 <section class="dashboard-panel" data-dashboard-panel="privacy">
@@ -362,8 +348,8 @@
 <label><span><strong>Birthday Boots</strong><small>Choose private, Nora only, month only or exact day and month.</small></span><select><option>Keep private</option><option>Share with Nora only</option><option>Birthday month only</option><option>Exact day and month</option></select></label>
 </div>
 <div class="account-action-grid">
-<article><h3>Download my data</h3><p>Export dances, notes and achievements.</p><button class="button" id="downloadMemberData" type="button">Download My Data</button></article>
-<article><h3>Pause my account</h3><p>Hide the profile without losing progress.</p><button class="button" id="pauseMemberAccount" type="button">Pause My Account</button><p class="form-message" id="pauseMemberMessage" aria-live="polite"></p></article>
+<article><h3>Download my data</h3><p>Export dances, notes and achievements.</p><button class="button muted-button" disabled="">Coming with Accounts</button></article>
+<article><h3>Pause my account</h3><p>Hide the profile without losing progress.</p><button class="button muted-button" disabled="">Coming with Accounts</button></article>
 <article class="danger-card"><h3>Delete my account</h3><p>Permanently remove the account after secure confirmation.</p><button class="button danger-button" id="deletePreviewButton" type="button">Preview Steps</button></article>
 </div>
 <div class="deletion-preview" hidden="" id="deletionPreviewPanel">
@@ -382,10 +368,10 @@
 </section>
 <section class="section dark privacy-design-section">
 <div class="privacy-design-grid reveal">
-<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#lock"></use></svg></span><h3>Private by default</h3><p>Progress remains private unless a member actively shares it.</p></article>
-<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#shield"></use></svg>️</span><h3>Secure login</h3><p>Real accounts will use trusted authentication and protected database permissions.</p></article>
-<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#eye"></use></svg>️</span><h3>Limited instructor view</h3><p>Nora sees only the information a member has chosen to share.</p></article>
-<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#trash"></use></svg>️</span><h3>Delete anytime</h3><p>Members will be able to close their account and remove their data.</p></article>
+<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#lock"></use></svg></span><h3>Private by default</h3><p>Progress remains private unless a member actively shares it.</p></article>
+<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#shield"></use></svg>️</span><h3>Secure login</h3><p>Real accounts will use trusted authentication and protected database permissions.</p></article>
+<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#eye"></use></svg>️</span><h3>Limited instructor view</h3><p>Nora sees only the information a member has chosen to share.</p></article>
+<article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#trash"></use></svg>️</span><h3>Delete anytime</h3><p>Members will be able to close their account and remove their data.</p></article>
 </div>
 </section>
 </main>
@@ -394,7 +380,7 @@
 <img alt="Boot Scootin’ Line Dancing logo" class="brand-logo footer-logo" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
 <div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div>
 </div>
-<p class="script">Your progress. Your privacy. Your journey. <svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#heart"></use></svg></p>
+<p class="script">Your progress. Your privacy. Your journey. <svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#heart"></use></svg></p>
 <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
 <div class="site-ip-notice">
 <p><strong>© 2026 Boot Scootin’ Line Dancing. All rights reserved.</strong></p>
@@ -439,59 +425,7 @@
       panel.hidden = !panel.hidden;
     });
   </script>
-<a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#lock"></use></svg> Admin Login</a>
+<a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#lock"></use></svg> Admin Login</a>
 <script src="honky-theme.js?v=96.0.0"></script>
-
-<script>
-(async()=>{
-  try{
-    const r=await fetch('/api/member/me',{credentials:'same-origin',cache:'no-store'});
-    if(!r.ok) return;
-    const data=await r.json();
-    const m=data.member||{}, loyalty=data.loyalty||{};
-    const downloadButton=document.getElementById('downloadMemberData');
-    downloadButton?.addEventListener('click',()=>{window.location.href='/api/member/export';});
-    const pauseButton=document.getElementById('pauseMemberAccount');
-    const pauseMessage=document.getElementById('pauseMemberMessage');
-    let paused=Boolean(m.is_paused);
-    const paintPause=()=>{if(pauseButton)pauseButton.textContent=paused?'Resume My Account':'Pause My Account';};
-    paintPause();
-    pauseButton?.addEventListener('click',async()=>{
-      pauseButton.disabled=true; if(pauseMessage)pauseMessage.textContent=paused?'Restoring your profile…':'Pausing your profile…';
-      try{const rr=await fetch('/api/member/pause',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({paused:!paused})});const out=await rr.json();if(!rr.ok)throw new Error(out.error||'Account status could not be changed.');paused=Boolean(out.paused);paintPause();if(pauseMessage)pauseMessage.textContent=out.message||'Account status updated.';}catch(e){if(pauseMessage)pauseMessage.textContent=e.message||'Account status could not be changed.';}finally{pauseButton.disabled=false;}
-    });
-    const classes=Math.max(0,Number(m.classes_attended||0));
-    const identity=m.trail_identity==='cowgirl'?'Cowgirl':m.trail_identity==='cowboy'?'Cowboy':'Trail Rider';
-    const displayName=(m.display_name||m.name||'').trim();
-    setTimeout(()=>{const g=document.getElementById('journeyGreeting'); if(g) g.textContent=`Welcome back${displayName?', '+displayName:''} · ${identity}`;},0);
-    const streak=Math.max(0,Number(m.current_streak||0));
-    const dances=Math.max(0,Number(m.dances_learned||0));
-    const progress=Math.max(0,Math.min(9,Number(loyalty.progress||0)));
-    const set=(id,v)=>{const e=document.getElementById(id); if(e)e.textContent=v};
-    set('journeyDances',dances);
-    set('journeyClasses',classes);
-    set('journeyFavourites',0);
-    set('journeyStamps',`${progress}/9`);
-    set('journeyStreak',`${streak} week${streak===1?'':'s'} streak`);
-    const achievementRules={
-      'first-class': classes>=1,
-      'five-classes': classes>=5,
-      'ten-dances': dances>=10,
-      'fifty-dances': dances>=50,
-      'one-year': false,
-      'festival': false
-    };
-    document.querySelectorAll('[data-achievement]').forEach(card=>card.classList.toggle('unlocked',Boolean(achievementRules[card.dataset.achievement])));
-    const bookings=Array.isArray(data.bookings)?data.bookings:[];
-    const upcoming=bookings.filter(b=>b.starts_at && new Date(b.starts_at).getTime()>=Date.now() && !['CANCELLED','REFUNDED'].includes(String(b.status||'').toUpperCase())).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
-    if(upcoming[0]){
-      set('journeyNextClass',upcoming[0].title||'Boot Scootin’ class');
-      const d=new Date(upcoming[0].starts_at);
-      set('journeyNextClassMeta',`${d.toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${upcoming[0].venue?' · '+upcoming[0].venue:''}`);
-    }
-  }catch(_){}
-})();
-</script>
-<script src="member-inactivity.js?v=96.4.96"></script>
 </body>
 </html>

@@ -44,9 +44,6 @@ const nav = document.getElementById('nav');
 
 function finishIntro(){
   if (!intro) return;
-  window.scrollTo({top:0,left:0,behavior:'instant'});
-  document.documentElement.scrollTop=0;
-  document.body.scrollTop=0;
   intro.classList.add('hide');
   document.body.classList.remove('intro-open');
   try {
@@ -70,8 +67,7 @@ function enterWebsite(event){
   }
 
   // Let the stomp register, but do not make visitors wait or tap twice.
-  window.scrollTo({top:0,left:0,behavior:'instant'});
-  window.setTimeout(() => { finishIntro(); requestAnimationFrame(() => window.scrollTo(0,0)); }, 900);
+  window.setTimeout(finishIntro, 900);
 }
 
 // The intro only exists on the homepage.

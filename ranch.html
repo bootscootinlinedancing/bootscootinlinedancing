@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=96.4.104">
+  <link rel="stylesheet" href="styles.css?v=96.4.68">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
   <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.68">
@@ -15,22 +15,17 @@
 
   <script>
     (function () {
-      function clearHQScrollLocks(){
-        var html=document.documentElement, body=document.body;
-        [html,body].forEach(function(el){
-          if(!el) return;
-          el.classList.remove('ranch91-menu-lock','ranch91-drawer-open','ranch-menu-open','menu-open');
-          el.style.position='';
-          el.style.top='';
-          el.style.left='';
-          el.style.right='';
-          el.style.width='';
-          el.style.height='';
-          el.style.maxHeight='';
-          el.style.overflow='';
-          el.style.overflowY='';
-          el.style.touchAction='';
-        });
+      function setHQBodyLock(open){
+        document.documentElement.classList.toggle('ranch91-menu-lock', Boolean(open));
+        document.body.classList.toggle('ranch91-menu-lock', Boolean(open));
+        if(!open){
+          /* Clear stale inline locks left by older HQ builds on iPhone. */
+          document.body.style.position='';
+          document.body.style.top='';
+          document.body.style.left='';
+          document.body.style.right='';
+          document.body.style.width='';
+        }
       }
       function getHQMenuParts() {
         return {
@@ -43,38 +38,53 @@
       window.BootScootinHQSetMenu = function (open) {
         var parts = getHQMenuParts();
         if (!parts.drawer || !parts.button) return false;
-        clearHQScrollLocks();
+
         open = Boolean(open);
         parts.drawer.classList.toggle('open', open);
         parts.drawer.setAttribute('aria-hidden', String(!open));
         parts.button.setAttribute('aria-expanded', String(open));
+        document.body.classList.toggle('ranch91-drawer-open', open);
+        setHQBodyLock(open);
+
         if (parts.backdrop) {
           parts.backdrop.hidden = !open;
           parts.backdrop.classList.toggle('open', open);
         }
-        if(open){
-          parts.drawer.scrollTop=0;
-          requestAnimationFrame(function(){parts.drawer.scrollTop=0;});
-        }
+
         return false;
       };
 
       window.BootScootinHQMenuToggle = function (event) {
-        if (event) { event.preventDefault(); event.stopPropagation(); }
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
         var parts = getHQMenuParts();
         if (!parts.drawer) return false;
-        return window.BootScootinHQSetMenu(!parts.drawer.classList.contains('open'));
+
+        return window.BootScootinHQSetMenu(
+          !parts.drawer.classList.contains('open')
+        );
       };
 
       document.addEventListener('DOMContentLoaded', function () {
-        clearHQScrollLocks();
-        window.BootScootinHQSetMenu(false);
         var closeButton = document.getElementById('ranch91Close');
         var backdrop = document.getElementById('ranch91Backdrop');
-        if (closeButton) closeButton.addEventListener('click', function (event) { event.preventDefault(); window.BootScootinHQSetMenu(false); });
-        if (backdrop) backdrop.addEventListener('click', function () { window.BootScootinHQSetMenu(false); });
+
+        if (closeButton) {
+          closeButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            window.BootScootinHQSetMenu(false);
+          });
+        }
+
+        if (backdrop) {
+          backdrop.addEventListener('click', function () {
+            window.BootScootinHQSetMenu(false);
+          });
+        }
       });
-      window.addEventListener('pageshow', clearHQScrollLocks);
     }());
   </script>
 
@@ -94,6 +104,11 @@
       <button id="ranch91Close" class="ranch91-close" type="button" aria-label="Close HQ menu">×</button>
     </div>
 
+    <div class="ranch91-drawer-user ranch91-drawer-user-top">
+      <strong id="ranch91DrawerWelcome">Welcome, Nora</strong>
+      <span>Authorised HQ administrator</span>
+    </div>
+
     <nav class="ranch91-nav" aria-label="HQ sections">
       <button type="button" data-view="overview" class="active">Overview</button>
       <button type="button" data-view="classes">Classes</button>
@@ -111,10 +126,6 @@
     </nav>
 
     <div class="ranch91-drawer-foot">
-      <div class="ranch91-drawer-user">
-        <strong id="ranch91DrawerWelcome">Welcome, Nora</strong>
-        <span>Authorised HQ administrator</span>
-      </div>
       <a class="ranch91-logout ranch91-logout-menu" href="/cdn-cgi/access/logout" data-hq-logout>Log Out Securely</a>
       <a href="index.html">Back to Website</a>
       <div class="ranch91-public-note" id="ranch91AccessNote">
@@ -139,7 +150,7 @@
         <span class="ranch91-welcome" id="ranch91Welcome">Welcome, Nora</span>
         <a class="ranch91-logout ranch91-logout-quick" href="/cdn-cgi/access/logout" data-hq-logout>Log Out</a>
       </div>
-      <div class="ranch91-release">V96.4.71</div>
+      <div class="ranch91-release">V96.4.72</div>
     </header>
 
     <main id="ranchMain" class="ranch91-main">
@@ -541,7 +552,7 @@
             <form id="mediaUploadForm" class="ranch-media-form">
               <label>Choose file<input id="mediaFile" name="file" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov,application/pdf" required></label>
               <label>Display name<input name="title" type="text" required placeholder="Summer Stomp video"></label>
-              <label>Use on the website<select name="placement"><option value="library">Media library only</option><option value="summer-stomp-story">Summer Stomp story video</option><option value="country-guide">Country Guide</option><option value="homepage">Homepage</option><option value="dance-library">Dance Library</option></select></label>
+              <fieldset class="media-placement-field"><legend>Use on the website <small>(choose as many as you like)</small></legend><div class="media-placement-options"><label><input type="checkbox" name="placements" value="library" checked> Media library</label><label><input type="checkbox" name="placements" value="gallery"> Gallery</label><label><input type="checkbox" name="placements" value="homepage"> Homepage</label><label><input type="checkbox" name="placements" value="summer-stomp-story"> Summer Stomp story</label><label><input type="checkbox" name="placements" value="country-guide"> Country Guide</label><label><input type="checkbox" name="placements" value="dance-library"> Dance Library</label></div></fieldset>
               <label>Alternative text / description<textarea name="description" rows="3" placeholder="Describe the image or video for accessibility."></textarea></label>
               <label class="community-rules-check"><input name="published" type="checkbox" value="1" checked><span>Publish this file for use on the website</span></label>
               <div class="ranch-upload-progress" id="mediaUploadProgress" hidden><span></span></div>
@@ -695,7 +706,7 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=96.4.104"></script>
+  <script src="ranch.js?v=96.4.71"></script>
 
 
   <script src="honky-theme.js?v=96.0.0"></script>

@@ -4,49 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="Preview the future Boot Scootin' member area: Trail, Passport, Journey, bookings, dances and rewards in one place.">
-  <title>My Boot Scootin’ | Member Login & Registration</title>
+  <title>My Boot Scootin’ | Member Hub Preview</title>
   <link rel="icon" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=96.4.94">
+  <link rel="stylesheet" href="styles.css?v=96.4.39">
   <meta name="theme-color" content="#080606">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="honky-authentic.css?v=96.4.39">
   <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
   <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.56">
-
-<style>
-:root{--member-bg:#070404;--member-panel:#14090b;--member-panel2:#1c0c0f;--member-red:#d52b38;--member-red2:#9f242c;--member-line:#733038;--member-text:#fff8ed;--member-muted:#cbb9ad;--member-gold:#c99b73}
-body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b0506 34%,#050303 78%);color:var(--member-text)}
-.member-app-simple{display:block!important;max-width:1180px;margin:0 auto;padding:28px 18px 80px}
-.member-app-simple[hidden]{display:none!important}.member-content-full{width:100%}
-.member-mini-profile-top{margin-bottom:18px;background:linear-gradient(135deg,#220d10,#120809)!important;border:1px solid var(--member-line)!important}
-.member-mini-profile strong{color:#fff}.member-mini-profile span{color:var(--member-muted)!important}
-.member-avatar{background:linear-gradient(145deg,#d62e3a,#852129)!important;box-shadow:0 0 22px rgba(220,40,53,.2)}
-.member-main-nav{display:grid!important;position:static!important;inset:auto!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;width:auto!important;max-width:none!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 24px!important;padding:0!important;background:transparent!important;overflow:visible!important;transform:none!important;flex-direction:initial!important}
-.member-main-nav a,.member-main-nav button{min-height:64px;padding:12px 10px;border:1px solid #8d343a;background:#160b0d;color:#fff;text-decoration:none;font:800 14px/1.1 Arial,sans-serif;text-transform:uppercase;letter-spacing:.045em;display:grid;place-items:center;text-align:center}
-.member-main-nav a:hover,.member-main-nav button:hover,.member-main-nav a.active,.member-main-nav button.active{background:linear-gradient(135deg,#b42631,#7c1c24);border-color:#ef4650;box-shadow:0 0 20px rgba(220,40,53,.16)}
-.member-panel{display:none}.member-panel.active{display:block}
-.member-welcome{grid-template-columns:minmax(0,1.35fr) minmax(250px,.65fr)!important}
-.member-welcome>div:first-child,.member-card,.member-section-head,.member-profile-settings article{background:linear-gradient(145deg,#16090b,#0e0708)!important;border:1px solid var(--member-line)!important;color:#fff!important;box-shadow:none!important}
-.member-welcome h1,.member-card h2,.member-section-head h1,.member-profile-settings h2{color:#fff8ed!important;text-shadow:0 4px 0 rgba(87,0,8,.32)}
-.member-welcome p,.member-card p,.member-profile-settings p,.member-section-head p{color:var(--member-muted)!important}
-.member-rank-card{background:linear-gradient(145deg,#2a1115,#16090b)!important;border:1px solid #8f3740!important}.member-rank-card small{color:var(--member-gold)!important}.member-rank-card strong{color:#fff8ed!important}
-.member-progress{background:#2b1518!important}.member-progress i{background:linear-gradient(90deg,#9e202a,#ee4652)!important}
-.member-stat-grid article{background:#120809!important;border:1px solid #743038!important}.member-stat-grid strong{color:#ff3643!important}.member-stat-grid small{color:var(--member-muted)!important}
-.member-benefit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.member-empty-state{padding:16px 0;color:var(--member-muted)}
-.member-booking-list{display:grid;gap:10px;margin:12px 0}.member-booking-row{border:1px solid #5d292d;padding:14px;display:grid;gap:5px;background:#0e0708}.member-booking-row span,.member-booking-row small{color:var(--member-muted)}
-.member-action-link{display:inline-block;margin:12px 8px 0 0;padding:13px 16px;border:1px solid #d73742;background:#a8242d;color:#fff!important;text-decoration:none;text-transform:uppercase;font-weight:800}.member-action-link.secondary{background:transparent}
-.member-logout-button{margin-top:18px;padding:15px 22px;background:#a8242d;color:#fff;border:1px solid #e84550;font-weight:800;text-transform:uppercase}
-.member-stamp-row span{background:#211013!important;border-color:#6d2c33!important}.member-stamp-row span.earned{background:#a72a33!important}
-.member-profile-form{display:grid;gap:16px}.member-profile-form .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}.member-profile-form label{display:grid;gap:7px;color:#fff;font:700 14px/1.2 Arial,sans-serif}.member-profile-form input,.member-profile-form select{width:100%;box-sizing:border-box;padding:14px 15px;background:#080506;color:#fff;border:1px solid #743038;font:500 16px Arial,sans-serif}.member-profile-form input:focus{outline:2px solid #d52b38;outline-offset:1px}.member-profile-check{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:12px!important;font-weight:500!important;color:var(--member-muted)!important}.member-profile-check input{width:24px!important;height:24px!important;flex:0 0 auto}.member-profile-save{padding:15px 20px;border:1px solid #ef4650;background:#b42631;color:#fff;font:800 15px Arial;text-transform:uppercase;letter-spacing:.04em}.member-profile-status{min-height:1.2em;color:#f28b93;font-weight:700}
-.member-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px}.member-hub-topbar{position:static!important;top:auto!important;background:#050303!important}
-.member-preview-pill{border-color:#743038!important;background:#19090b!important;color:#e7c6a9!important}
-.member-feature-intro{padding:1.1rem 1.2rem;margin:0 0 18px;border-left:4px solid #d52b38;background:#120809;color:var(--member-muted)}
-@media(max-width:900px){.member-main-nav{grid-template-columns:repeat(2,1fr)}.member-welcome{grid-template-columns:1fr!important}}
-@media(max-width:760px){.member-app-simple{padding-left:16px;padding-right:16px}.member-benefit-grid{grid-template-columns:1fr}.member-stat-grid{grid-template-columns:repeat(2,1fr)}.member-profile-form .two{grid-template-columns:1fr}.member-main-nav{grid-template-columns:1fr 1fr}.member-main-nav a,.member-main-nav button{font-size:12px;min-height:58px;padding:10px 6px}}
-</style>
-
 </head>
 <body class="member-hub-body">
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -55,539 +22,337 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
       <img src="brand-logo-transparent.png" alt="Boot Scootin' Line Dancing">
       <span>My Boot Scootin’</span>
     </a>
-    <div class="member-preview-pill">MEMBER LOGIN & REGISTRATION</div>
-    <div class="member-top-actions"><button class="member-logout" type="button" onclick="memberLogout()">Log out</button><a class="member-exit" href="index.html">Back to website</a></div>
+    <div class="member-preview-pill">Preview mode · Login coming later</div>
+    <a class="member-exit" href="index.html">Back to website</a>
   </header>
 
-  <section class="member-entry-heading">
-    <p class="kicker red">MY BOOT SCOOTIN’</p>
-    <h1>Member Login &amp; Registration</h1>
-    <p>Already registered? Log in below. New to My Boot Scootin’? Create your account and profile here.</p>
-  </section>
-
-
-
-  <section class="member-auth-shell" id="memberAuthShell">
-    <div class="member-auth-card">
-      <p class="kicker red">My Boot Scootin’</p>
-      <h1>Your dancing. Your journey. Your rewards.</h1>
-      <p id="memberAuthIntro">Log in if you already have an account, or register to create your Boot Scootin’ profile and unlock your member area.</p>
-
-      <div class="member-auth-tabs" id="memberAuthTabs">
-        <button type="button" class="active" data-auth-tab="login">Log in</button>
-        <button type="button" data-auth-tab="register">Create account</button>
-      </div>
-
-      <form id="memberLoginForm" class="member-auth-form">
-        <label>Email address<input type="email" name="email" autocomplete="email" required></label>
-        <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
-        <button class="button" type="submit">Log in to My Boot Scootin’</button>
-        <button class="member-link-button" type="button" id="memberForgotButton">Forgotten your password? Click here to reset it.</button>
-      </form>
-
-      <form id="memberRegisterForm" class="member-auth-form" hidden>
-        <div class="member-auth-two">
-          <label>First name<input type="text" name="first_name" autocomplete="given-name" required></label>
-          <label>Surname<input type="text" name="last_name" autocomplete="family-name" required></label>
-        </div>
-        <label>Email address<input type="email" name="email" autocomplete="email" required></label>
-        <label>Mobile number<input type="tel" name="phone" autocomplete="tel"></label>
-        <label>How would you like us to refer to you on the Trail?
-          <select name="trail_identity">
-            <option value="trail_rider" selected>Trail Rider (gender-neutral)</option>
-            <option value="cowgirl">Cowgirl</option>
-            <option value="cowboy">Cowboy</option>
-          </select>
-        </label>
-        <small>This only changes friendly wording inside your member area. You can change it later.</small>
-        <label>Password<input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
-        <small>Use at least 10 characters with letters and a number.</small>
-        <label class="member-auth-check"><input type="checkbox" name="terms" required> I agree to the Terms and Privacy Policy.</label>
-        <label class="member-auth-check"><input type="checkbox" name="marketing_consent"> Send me occasional Boot Scootin’ news and class updates.</label>
-        <button class="button" type="submit">Create my account</button>
-      </form>
-
-
-      <form id="memberForgotForm" class="member-auth-form" hidden>
-        <h2>Reset your password</h2>
-        <p>Enter the email address registered to your Boot Scootin’ account. We’ll email you a secure reset link.</p>
-        <label>Email address<input type="email" name="email" autocomplete="email" required></label>
-        <button class="button" type="submit">Email me a reset link</button>
-        <button class="member-link-button" type="button" id="memberBackToLogin">Back to login</button>
-      </form>
-
-      <form id="memberResetForm" class="member-auth-form" hidden>
-        <h2>Choose a new password</h2>
-        <p>Your secure reset link has been accepted. Choose your new password below.</p>
-        <label>New password<input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
-        <button class="button" type="submit">Save new password</button>
-      </form>
-
-      <p class="member-auth-status" id="memberAuthStatus" aria-live="polite"></p>
-    </div>
-  </section>
-
-
-  <section class="membership-preview" id="membership-preview">
-    <p class="kicker red">My Boot Scootin’ Membership</p>
-    <h1>What your membership includes.</h1>
-    <p class="membership-preview-lead">One login gives you access to all of these member features:</p>
-    <div class="membership-preview-grid">
-      <article><strong>My Trail</strong><span>Automatic loyalty stamps, milestones and rewards.</span></article>
-      <article><strong>My Passport</strong><span>Your Boot Scootin’ achievements and memories.</span></article>
-      <article><strong>My Journey</strong><span>Classes, progress and your dancing story.</span></article>
-      <article><strong>My Bookings</strong><span>Your class booking history in one place.</span></article>
-      <article><strong>Dance Library</strong><span>Your dances, tutorials and practice links.</span></article>
-      <article><strong>Profile</strong><span>Your own secure Boot Scootin’ member profile.</span></article>
-    </div>
-    <p class="membership-preview-note">Already a member? Log in below. New here? Register and create your profile.</p>
-  </section>
-
-  <main id="main-content" class="member-app-shell member-app-simple" hidden>
-  <section class="member-content member-content-full">
-    <div class="member-mini-profile member-mini-profile-top">
-      <div class="member-avatar" id="memberAvatar">BS</div>
-      <div>
-        <strong>Howdy, <span id="memberDisplayName">Dancer</span></strong>
-        <span><span id="memberTrailRank">First Steps</span> · Secure member profile</span>
-      </div>
-    </div>
-
-    <nav class="member-main-nav" aria-label="My Boot Scootin’ member area">
-      <button class="active" data-member-view="dashboard">Dashboard</button>
-      <a href="rewards.html">My Trail &amp; Rewards</a>
-      <a href="passport.html">My Passport</a>
-      <a href="journey.html">My Journey</a>
-      <a href="my-bookings.html">My Bookings</a>
-      <a href="dance-library.html">My Dance Library</a>
-      <button data-member-view="benefits">Member Benefits</button>
-      <button data-member-view="profile">My Profile</button>
-    </nav>
-
-    <section class="member-panel active" data-member-panel="dashboard">
-      <div class="member-welcome">
+  <main id="main-content" class="member-app-shell">
+    <aside class="member-sidebar" aria-label="Member area navigation">
+      <div class="member-mini-profile">
+        <div class="member-avatar">NA</div>
         <div>
-          <p class="kicker red">Welcome home</p>
-          <h1 id="memberGreeting">Your Boot Scootin’ journey starts here.</h1>
-          <p>Your dashboard only shows activity you have actually earned or completed. New accounts begin at zero.</p>
-        </div>
-        <div class="member-rank-card">
-          <small>TRAIL RANK</small>
-          <strong id="memberRankCard">☆ First Steps</strong>
-          <div class="member-progress"><i id="memberRankProgress" style="width:0%"></i></div>
-          <span id="memberPointsProgress">0 Boot Points</span>
+          <strong>Howdy, Cowgirl <svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#hat"></use></svg></strong>
+          <span>Trail Rider · Preview profile</span>
         </div>
       </div>
 
-      <div class="member-stat-grid">
-        <article><span>☆</span><strong id="memberBootPoints">0</strong><small>Boot Points</small></article>
-        <article><span>♬</span><strong id="memberClassesAttended">0</strong><small>Classes attended</small></article>
-        <article><span>♡</span><strong id="memberDancesLearned">0</strong><small>Dances learned</small></article>
-        <article><span>✦</span><strong id="memberCurrentStreak">0</strong><small>Week streak</small></article>
+      <nav class="member-nav">
+        <button class="active" data-member-view="dashboard"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#home"></use></svg></span> Dashboard</button>
+        <button data-member-view="trail"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#cactus"></use></svg></span> My Trail</button>
+        <button data-member-view="passport"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#ticket"></use></svg></span> My Passport</button>
+        <button data-member-view="journey"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#heart"></use></svg>️</span> My Journey</button>
+        <button data-member-view="bookings"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#calendar"></use></svg></span> My Bookings</button>
+        <button data-member-view="library"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#music"></use></svg></span> Dance Library</button>
+        <button data-member-view="outfitters"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#gift"></use></svg></span> Trail Outfitters</button>
+        <button data-member-view="lounge"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#moon"></use></svg></span> Apply for Moonshine</button>
+        <button data-member-view="profile"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#user"></use></svg></span> My Profile</button>
+      </nav>
+
+      <div class="member-sidebar-note">
+        <strong>Future secure access</strong>
+        <p>Email verification, password reset and member privacy controls will be connected before real accounts launch.</p>
+      </div>
+    </aside>
+
+    <section class="member-content">
+      <div class="member-mobile-tabs">
+        <label for="memberViewSelect">Open section</label>
+        <select id="memberViewSelect">
+          <option value="dashboard">Dashboard</option>
+          <option value="trail">My Trail</option>
+          <option value="passport">My Passport</option>
+          <option value="journey">My Journey</option>
+          <option value="bookings">My Bookings</option>
+          <option value="library">Dance Library</option>
+          <option value="outfitters">Trail Outfitters</option>
+          <option value="lounge">Apply for Moonshine</option>
+          <option value="profile">My Profile</option>
+        </select>
       </div>
 
-      <article class="member-card member-live-loyalty">
-        <div>
-          <p class="kicker red">Boot Scootin’ Loyalty</p>
-          <h2><span id="memberStampProgress">0</span> / 9 stamps</h2>
-          <p id="memberStampMessage">Your loyalty trail starts at zero. Qualifying paid class bookings add a stamp; a confirmed full refund removes it again.</p>
-        </div>
-        <div class="member-stamp-row" id="memberStampRow" aria-label="Loyalty stamps"></div>
-      </article>
-
-      <div class="member-dashboard-grid">
-        <article class="member-card" id="memberNextBookingCard">
-          <p class="kicker red">Next class</p>
-          <h2 id="memberNextBookingTitle">Nothing booked yet</h2>
-          <p id="memberNextBookingMeta">When you book a class, it will appear here.</p>
-          <div class="member-card-actions">
-            <a href="bookings.html">Book a class</a>
+      <section class="member-panel active" data-member-panel="dashboard">
+        <div class="member-welcome">
+          <div>
+            <p class="kicker red">Welcome home</p>
+            <h1 id="memberGreeting">The dance floor missed you.</h1>
+            <p>This preview shows how Trail, Passport, Journey, bookings and dances will come together after secure member login launches.</p>
           </div>
-        </article>
-
-        <article class="member-card">
-          <p class="kicker red">Achievements</p>
-          <h2 id="memberAchievementTitle">Your first achievement is waiting</h2>
-          <p id="memberAchievementText">Achievements will appear only after you genuinely complete them.</p>
-          <button data-jump="benefits">See membership benefits</button>
-        </article>
-
-        <article class="member-card">
-          <p class="kicker red">Your rewards</p>
-          <h2>Start your trail</h2>
-          <p>Your rewards and milestones will build from your real Boot Scootin’ activity.</p>
-          <button data-jump="benefits">See how rewards work</button>
-        </article>
-      </div>
-    </section>
-
-    <section class="member-panel" data-member-panel="benefits">
-      <div class="member-section-head">
-        <div>
-          <p class="kicker red">Membership benefits</p>
-          <h1>Everything in one place.</h1>
-          <p>Your member features are separated clearly so you can jump straight to the part of your Boot Scootin’ journey you want.</p>
+          <div class="member-rank-card">
+            <small>TRAIL RANK</small>
+            <strong><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg> Trail Rider</strong>
+            <div class="member-progress"><i style="width:68%"></i></div>
+            <span>680 / 1,000 Boot Points</span>
+          </div>
         </div>
-      </div>
 
-      <div class="member-benefit-grid">
-        <article class="member-card">
-          <p class="kicker red">My Trail</p>
-          <h2>Loyalty, points &amp; milestones</h2>
-          <p>Start at zero and build your real attendance, stamps, Boot Points and achievements over time.</p>
-          <p><strong id="benefitTrailSummary">0 stamps · 0 Boot Points</strong></p><a class="member-action-link" href="rewards.html">Open My Trail &amp; Rewards</a>
-        </article>
-
-        <article class="member-card">
-          <p class="kicker red">My Passport</p>
-          <h2>Your class journey</h2>
-          <p>Your paid classes and milestones will build your personal Boot Scootin’ passport.</p>
-          <p id="benefitPassportSummary">No passport activity yet.</p><a class="member-action-link" href="passport.html">Open My Passport</a>
-        </article>
-
-        <article class="member-card">
-          <p class="kicker red">My Journey</p>
-          <h2>Your dancing story</h2>
-          <p>See your classes, progress and the milestones you build over time.</p>
-          <a class="member-action-link" href="journey.html">Open My Journey</a>
-        </article>
-
-        <article class="member-card">
-          <p class="kicker red">My Bookings</p>
-          <h2>Your bookings in one place</h2>
-          <div id="memberBookingsList" class="member-empty-state">No bookings linked to this member account yet.</div>
-          <a class="member-action-link" href="my-bookings.html">Open My Bookings</a><a class="member-action-link secondary" href="bookings.html">Book a class</a>
-        </article>
-
-        <article class="member-card">
-          <p class="kicker red">Dance Library</p>
-          <h2>Learn, practise &amp; save favourites</h2>
-          <p>Your learned dances and favourites will be personal to your account. Nothing is pre-selected.</p>
-          <p><strong>0 learned · 0 favourites</strong></p>
-          <a class="member-action-link" href="dance-library.html">Open Dance Library</a>
-        </article>
-
-        <article class="member-card">
-          <p class="kicker red">Trail Outfitters</p>
-          <h2>Member rewards</h2>
-          <p>Rewards unlock from genuine activity. New members do not start with points, badges or redeemed rewards.</p><a class="member-action-link" href="rewards.html">Open Trail Rewards</a>
-        </article>
-
-        <article class="member-card">
-          <p class="kicker red">Private community</p>
-          <h2>Moonshine &amp; Good Times Gang</h2>
-          <p>Moonshine remains optional and personally approved. Creating a Boot Scootin’ website account does not automatically add you to the group.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="member-panel" data-member-panel="profile">
-      <div class="member-section-head">
-        <div>
-          <p class="kicker red">My Profile</p>
-          <h1>Your details &amp; privacy.</h1>
-          <p>Keep your member details up to date. Your birthday is private unless you choose to share it with the Boot Scootin’ community.</p>
+        <div class="member-stat-grid">
+          <article><span>⭐</span><strong>680</strong><small>Boot Points</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#people"></use></svg></span><strong>18</strong><small>Classes attended</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#music"></use></svg></span><strong>12</strong><small>Dances learned</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#flame"></use></svg></span><strong>6</strong><small>Week streak</small></article>
         </div>
-      </div>
-      <div class="member-profile-settings">
-        <article class="member-card">
-          <h2>Edit account details</h2>
-          <form id="memberProfileForm" class="member-profile-form">
-            <div class="two">
-              <label>Full name<input type="text" name="name" autocomplete="name" required></label>
-              <label>Birthday<input type="date" name="birthday" autocomplete="bday"></label>
+
+        <div class="member-dashboard-grid">
+          <article class="member-card member-next-booking">
+            <p class="kicker red">Next class</p>
+            <h2>Edgbaston Community Centre</h2>
+            <p><strong>Friday 7 August · 7:30–8:30pm</strong></p>
+            <div class="member-card-actions">
+              <button data-jump="bookings">View my booking</button>
+              <a href="bookings.html">Book another class</a>
             </div>
-            <label>Email address<input type="email" name="email" autocomplete="email" required></label>
-            <label>Mobile number<input type="tel" name="phone" autocomplete="tel"></label>
-            <label>Trail name
-              <select name="trail_identity">
-                <option value="trail_rider">Trail Rider (gender-neutral)</option>
-                <option value="cowgirl">Cowgirl</option>
-                <option value="cowboy">Cowboy</option>
-              </select>
-            </label>
-            <label class="member-profile-check"><input type="checkbox" name="birthday_visible"> Share my birthday with the Boot Scootin’ community. My exact date stays private unless I choose this.</label>
-            <label class="member-profile-check"><input type="checkbox" name="marketing_consent"> Send me Boot Scootin’ news and class updates.</label>
-            <button class="member-profile-save" type="submit">Save my profile</button>
-            <p id="memberProfileStatus" class="member-profile-status" aria-live="polite"></p>
-          </form>
-        </article>
-        <article class="member-card">
-          <h2>Privacy</h2>
-          <p>Your bookings, rewards and account activity are private to you and authorised Boot Scootin’ administration. Birthday sharing is optional and can be changed at any time.</p>
-        </article>
-        <article class="member-card">
-          <h2>Password</h2>
-          <p>To change your password, log out and use the secure “Forgotten your password?” link on the member login screen.</p>
-        </article>
-      </div>
-      <button type="button" class="member-logout-button" onclick="memberLogout()">Log out</button>
+          </article>
+
+          <article class="member-card">
+            <p class="kicker red">Latest achievement</p>
+            <div class="member-achievement-feature">
+              <span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#flame"></use></svg></span>
+              <div><h2>Fireball Survivor</h2><p>Completed Fireball without stopping.</p></div>
+            </div>
+            <button data-jump="trail">View achievements</button>
+          </article>
+
+          <article class="member-card">
+            <p class="kicker red">Your next reward</p>
+            <h2>Free Standard Class</h2>
+            <p>You are <strong>40 points away</strong> from this reward.</p>
+            <div class="member-progress"><i style="width:67%"></i></div>
+            <button data-jump="outfitters">Visit Trail Outfitters</button>
+          </article>
+
+          <article class="member-card">
+            <p class="kicker red">Private community</p>
+            <h2>Moonshine &amp; Good Times</h2>
+            <p>Membership is optional and personally approved by Nora. It is not included automatically with a website account.</p>
+            <button data-jump="lounge">See how to apply</button>
+          </article>
+        </div>
+
+        <div class="member-quick-links">
+          <button data-jump="trail"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#cactus"></use></svg></span><strong>My Trail</strong><small>Points, ranks and challenges</small></button>
+          <button data-jump="passport"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#ticket"></use></svg></span><strong>My Passport</strong><small>Stamps and milestones</small></button>
+          <button data-jump="journey"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#heart"></use></svg>️</span><strong>My Journey</strong><small>Memories and timeline</small></button>
+          <button data-jump="library"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#music"></use></svg></span><strong>Dance Library</strong><small>Learned and favourite dances</small></button>
+        </div>
+      </section>
+
+      <section class="member-panel" data-member-panel="trail">
+        <div class="member-section-head">
+          <div><p class="kicker red">My Trail</p><h1>Every step moves your story forward.</h1></div>
+          <a href="passport.html#trail-rewards">View public Trail preview</a>
+        </div>
+        <div class="member-trail-layout">
+          <article class="member-card member-rank-large">
+            <small>CURRENT RANK</small>
+            <span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg></span>
+            <h2>Trail Rider</h2>
+            <p>Next: <svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#music"></use></svg> Honky Tonk Hero at 20 lifetime classes.</p>
+            <div class="member-progress"><i style="width:90%"></i></div>
+            <b>18 / 20 classes</b>
+          </article>
+          <article class="member-card">
+            <h2>Recent points</h2>
+            <ul class="member-ledger">
+              <li><span>Class attendance</span><strong>+10</strong></li>
+              <li><span>Feedback completed</span><strong>+5</strong></li>
+              <li><span>Brought a new friend</span><strong>+20</strong></li>
+              <li><span>Summer social</span><strong>+15</strong></li>
+            </ul>
+          </article>
+        </div>
+        <h2 class="member-subheading">Achievements</h2>
+        <div class="member-badge-grid">
+          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg></span><strong>Hay Bale Hopper</strong><small>First class</small></article>
+          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#flame"></use></svg></span><strong>Fireball Survivor</strong><small>Dance challenge</small></article>
+          <article class="earned"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#moon"></use></svg></span><strong>Moonshine Family</strong><small>Community milestone</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#butterfly"></use></svg></span><strong>Butterfly Season</strong><small>Spring challenge</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#tent"></use></svg></span><strong>Festival Friend</strong><small>Festival meetup</small></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#cactus"></use></svg></span><strong>Wanderer</strong><small>Three venues</small></article>
+        </div>
+      </section>
+
+      <section class="member-panel" data-member-panel="passport">
+        <div class="member-section-head">
+          <div><p class="kicker red">My Passport</p><h1>Collect stamps from your country adventures.</h1></div>
+          <span class="member-passport-number">Passport #0047</span>
+        </div>
+        <div class="passport-book">
+          <div class="passport-identity">
+            <div class="member-avatar large">NA</div>
+            <div><small>MEMBER SINCE</small><strong>Summer 2026</strong></div>
+            <div><small>HOME VENUE</small><strong>Birmingham</strong></div>
+            <div><small>TRAIL RANK</small><strong>Trail Rider</strong></div>
+          </div>
+          <div class="passport-stamps">
+            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#boot"></use></svg></span><strong>First Class</strong><small>ECC · 2026</small></article>
+            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#moon"></use></svg></span><strong>Moonshine Family</strong><small>Community</small></article>
+            <article class="stamped"><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#tent"></use></svg></span><strong>Summer Social</strong><small>Special event</small></article>
+            <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#tent"></use></svg>️</span><strong>Long Road</strong><small>Not collected</small></article>
+            <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#cactus"></use></svg></span><strong>Christmas Party</strong><small>Not collected</small></article>
+            <article><span>⭐</span><strong>Anniversary</strong><small>Not collected</small></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="member-panel" data-member-panel="journey">
+        <div class="member-section-head">
+          <div><p class="kicker red">My Journey</p><h1>Your memories, dances and milestones.</h1></div>
+          <span>18 classes · 12 dances · countless memories</span>
+        </div>
+        <div class="journey-timeline">
+          <article><time>7 AUG 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#people"></use></svg></span><h2>First Boot Scootin’ class</h2><p>Edgbaston Community Centre · Ziggy and Wagon Wheel.</p></div></article>
+          <article><time>21 AUG 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#trophy"></use></svg></span><h2>Hay Bale Hopper unlocked</h2><p>Your first Trail achievement became part of your story.</p></div></article>
+          <article><time>SEPT 2026</time><div><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#tent"></use></svg></span><h2>First community meetup</h2><p>A future Journey entry with photos, dances and memories.</p></div></article>
+        </div>
+        <div class="member-memory-note"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#heart"></use></svg>️ Made countless memories.</div>
+      </section>
+
+      <section class="member-panel" data-member-panel="bookings">
+        <div class="member-section-head">
+          <div><p class="kicker red">My Bookings</p><h1>Classes, waiting lists and private events.</h1></div>
+          <a href="bookings.html">Book a class</a>
+        </div>
+        <div class="member-booking-tabs">
+          <article class="member-card">
+            <span class="booking-status confirmed">Confirmed</span>
+            <h2>Edgbaston Community Centre</h2>
+            <p>Friday 7 August · 7:30–8:30pm</p>
+            <p>1 place · Payment connection coming later</p>
+            <div class="member-card-actions"><button disabled>View Dance Pass</button><a href="calendar.html">Calendar</a></div>
+          </article>
+          <article class="member-card subdued">
+            <span class="booking-status preview">Preview</span>
+            <h2>Private events</h2>
+            <p>Once secure login launches, accepted quotes, deposits, balances and agreed event details will appear here.</p>
+            <a href="private-events.html">Send an inquiry</a>
+          </article>
+        </div>
+      </section>
+
+      <section class="member-panel" data-member-panel="library">
+        <div class="member-section-head">
+          <div><p class="kicker red">My Dance Library</p><h1>Everything you have learned in one place.</h1></div>
+          <a href="dance-library.html">Open full public library</a>
+        </div>
+        <div class="member-library-grid">
+          <article><span class="learned-tag">Learned</span><h2>Ziggy</h2><p>I Wanna Dance With Somebody</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#heart"></use></svg> Favourite</button></article>
+          <article><span class="learned-tag">Learned</span><h2>Wagon Wheel</h2><p>Rockin’ the Wagon Wheel</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#heart"></use></svg> Favourite</button></article>
+          <article><span class="learned-tag">Learned</span><h2>Fireball</h2><p>Challenge dance</p><button><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#heart"></use></svg> Favourite</button></article>
+          <article><span class="learned-tag original">Nora’s Original</span><h2>My Future (Feels Like Mine)</h2><p>Emily Ann Roberts</p><a href="dance-library.html#dance-my-future-feels-like-mine">Practice</a></article>
+        </div>
+      </section>
+
+      <section class="member-panel" data-member-panel="outfitters">
+        <div class="member-section-head">
+          <div><p class="kicker red">Trail Outfitters</p><h1>Exchange Boot Points for special rewards.</h1></div>
+          <span>Balance: 680 points</span>
+        </div>
+        <div class="member-shop-grid">
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#music"></use></svg></span><h2>Dance Request Vote</h2><strong>50 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#ticket"></use></svg>️</span><h2>£5 Class Credit</h2><strong>100 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#people"></use></svg></span><h2>Free Standard Class</h2><strong>120 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#gift"></use></svg></span><h2>Mystery Trail Reward</h2><strong>150 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#people"></use></svg></span><h2>Bring a Friend</h2><strong>400 points</strong><button disabled>Redeem after launch</button></article>
+          <article><span><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#trophy"></use></svg></span><h2>Legend Reward</h2><strong>1,000 points</strong><button disabled>Keep following the Trail</button></article>
+        </div>
+      </section>
+
+      <section class="member-panel" data-member-panel="lounge">
+        <div class="member-section-head">
+          <div>
+            <p class="kicker red">Approval-only community</p>
+            <h1>Moonshine &amp; Good Times Gang</h1>
+          </div>
+          <span class="moonshine-locked-label"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#lock"></use></svg> Not automatically included</span>
+        </div>
+
+        <div class="moonshine-application-layout">
+          <article class="member-card moonshine-application-card">
+            <span class="member-feature-icon"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#moon"></use></svg></span>
+            <h2>Would you like to apply?</h2>
+            <p>Moonshine &amp; Good Times is a private community. Creating a Boot Scootin’ website account will not automatically provide access.</p>
+            <p>Members will need to choose to apply, agree to the community rules and wait for Nora to personally approve the application.</p>
+
+            <div class="moonshine-steps">
+              <div><b>1</b><span>Choose to apply</span></div>
+              <div><b>2</b><span>Tell Nora why you would like to join</span></div>
+              <div><b>3</b><span>Agree to the community rules</span></div>
+              <div><b>4</b><span>Wait for approval</span></div>
+            </div>
+
+            <button type="button" disabled>Applications open after member login launches</button>
+          </article>
+
+          <aside class="member-card moonshine-access-card">
+            <p class="kicker red">After approval</p>
+            <h2>Your Lounge access unlocks</h2>
+            <ul>
+              <li>Community announcements</li>
+              <li>Meetups and country-event plans</li>
+              <li>Festival information</li>
+              <li>Approved members-only updates</li>
+              <li>A private invitation to the relevant community space</li>
+            </ul>
+            <p class="member-privacy-note">Approval can be refused or withdrawn to protect the safety, privacy and atmosphere of the community.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section class="member-panel" data-member-panel="profile">
+        <div class="member-section-head">
+          <div><p class="kicker red">My Profile</p><h1>Your account, privacy and preferences.</h1></div>
+          <span>Secure booking access is now available</span>
+        </div>
+        <div class="member-profile-settings">
+          <article><h2>Account details</h2><p>Your current booking account is accessed through the secure link created with your booking. Open My Bookings to view your classes, booking history, cancellations and loyalty progress.</p></article>
+          <article><h2>Privacy</h2><p>Booking details remain private to you and authorised Boot Scootin’ administration. Wider member-profile visibility controls will be introduced only when full member login is launched.</p></article>
+          <article><h2>Who’s Going?</h2><p>Off by default. Members must actively opt in, and only a chosen display name is shown.</p></article>
+          <article><h2>Notifications</h2><p>Choose booking confirmations, class reminders, reward updates and community announcements.</p></article>
+        </div>
+      </section>
     </section>
-  </section>
-</main>
+  </main>
 
   <script>
   (() => {
-    const authShell = document.getElementById('memberAuthShell');
-    const app = document.querySelector('.member-app-shell');
-    const status = document.getElementById('memberAuthStatus');
-    const loginForm = document.getElementById('memberLoginForm');
-    const registerForm = document.getElementById('memberRegisterForm');
-    const resetForm = document.getElementById('memberResetForm');
-    const forgotForm = document.getElementById('memberForgotForm');
-    const tabs = [...document.querySelectorAll('[data-auth-tab]')];
-    const entryHeading=document.querySelector('.member-entry-heading');
-    const membershipPreview=document.getElementById('membership-preview');
-    const previewPill=document.querySelector('.member-preview-pill');
-    const profileForm=document.getElementById('memberProfileForm');
-    const profileStatus=document.getElementById('memberProfileStatus');
-
-    const setStatus = (message, isError=false) => {
-      if (!status) return;
-      status.textContent = message || '';
-      status.classList.toggle('error', Boolean(isError));
-    };
-    async function api(path, options={}) {
-      const response = await fetch(path, {
-        credentials:'same-origin',
-        cache:'no-store',
-        headers:{'content-type':'application/json', ...(options.headers||{})},
-        ...options
-      });
-      const data = await response.json().catch(()=>({}));
-      if (!response.ok) {
-        const suffix = data.code ? ` (${data.code})` : '';
-        throw new Error((data.error || 'Something went wrong. Please try again.') + suffix);
-      }
-      return data;
-    }
-    function showAuth(tab) {
-      const register = tab === 'register';
-      loginForm.hidden = register;
-      registerForm.hidden = !register;
-      resetForm.hidden = true;
-      if (forgotForm) forgotForm.hidden = true;
-      tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.authTab === tab));
-      setStatus('');
-    }
-    tabs.forEach(btn => btn.addEventListener('click', () => showAuth(btn.dataset.authTab)));
-
-    loginForm?.addEventListener('submit', async e => {
-      e.preventDefault(); setStatus('Logging in…');
-      const fd = new FormData(loginForm);
-      try {
-        await api('/api/member/login',{method:'POST',body:JSON.stringify({email:fd.get('email'),password:fd.get('password')})});
-        await loadMember();
-      } catch(err) { setStatus(err.message,true); }
-    });
-    registerForm?.addEventListener('submit', async e => {
-      e.preventDefault(); setStatus('Creating your account…');
-      const fd = new FormData(registerForm);
-      try {
-        const result = await api('/api/member/register',{method:'POST',body:JSON.stringify({
-          first_name:fd.get('first_name'),last_name:fd.get('last_name'),email:fd.get('email'),
-          phone:fd.get('phone'),trail_identity:fd.get('trail_identity'),password:fd.get('password'),marketing_consent:fd.get('marketing_consent')==='on'
-        })});
-        setStatus(result.message || 'Account created. Check your email.');
-        loginForm.querySelector('[name="email"]').value = String(fd.get('email')||'');
-        showAuth('login');
-        setStatus(result.message || 'Account created. Check your email.');
-      } catch(err) { setStatus(err.message,true); }
-    });
-    document.getElementById('memberForgotButton')?.addEventListener('click', () => {
-      const currentEmail = loginForm.querySelector('[name="email"]')?.value?.trim() || '';
-      loginForm.hidden = true;
-      registerForm.hidden = true;
-      resetForm.hidden = true;
-      forgotForm.hidden = false;
-      tabs.forEach(btn=>btn.classList.remove('active'));
-      if (currentEmail && forgotForm.querySelector('[name="email"]')) forgotForm.querySelector('[name="email"]').value = currentEmail;
-      setStatus('');
-    });
-    document.getElementById('memberBackToLogin')?.addEventListener('click', () => showAuth('login'));
-    forgotForm?.addEventListener('submit', async e => {
-      e.preventDefault();
-      const email = forgotForm.querySelector('[name="email"]')?.value?.trim() || '';
-      setStatus('Sending your secure reset link…');
-      try {
-        const result=await api('/api/member/forgot',{method:'POST',body:JSON.stringify({email})});
-        setStatus(result.message || 'If an account exists for that email, a reset link has been sent.');
-      } catch(err){ setStatus(err.message,true); }
-    });
-
-    async function handleLinkTokens() {
-      const params = new URLSearchParams(location.search);
-      const verify = params.get('verify');
-      const reset = params.get('reset');
-      if (verify) {
-        setStatus('Verifying your email…');
-        try {
-          const result=await api('/api/member/verify',{method:'POST',body:JSON.stringify({token:verify})});
-          history.replaceState(null,'',location.pathname);
-          showAuth('login'); setStatus(result.message);
-        } catch(err){ setStatus(err.message,true); }
-      }
-      if (reset) {
-        loginForm.hidden = true; registerForm.hidden = true; if (forgotForm) forgotForm.hidden = true; resetForm.hidden = false;
-        tabs.forEach(btn=>btn.classList.remove('active'));
-        resetForm.addEventListener('submit', async e => {
-          e.preventDefault(); const fd=new FormData(resetForm); setStatus('Saving new password…');
-          try {
-            const result=await api('/api/member/reset',{method:'POST',body:JSON.stringify({token:reset,password:fd.get('password')})});
-            history.replaceState(null,'',location.pathname); showAuth('login'); setStatus(result.message);
-          } catch(err){ setStatus(err.message,true); }
-        },{once:true});
-      }
-    }
-
     const panels = [...document.querySelectorAll('[data-member-panel]')];
     const buttons = [...document.querySelectorAll('[data-member-view]')];
+    const select = document.getElementById('memberViewSelect');
 
     function show(view, updateHash = true) {
-      const valid = ['dashboard','benefits','profile'].includes(view) ? view : 'dashboard';
+      const valid = panels.some(panel => panel.dataset.memberPanel === view) ? view : 'dashboard';
       panels.forEach(panel => panel.classList.toggle('active', panel.dataset.memberPanel === valid));
       buttons.forEach(button => button.classList.toggle('active', button.dataset.memberView === valid));
+      if (select) select.value = valid;
       if (updateHash) history.replaceState(null, '', '#' + valid);
       window.scrollTo({top: 0, behavior: 'smooth'});
     }
+
     buttons.forEach(button => button.addEventListener('click', () => show(button.dataset.memberView)));
     document.querySelectorAll('[data-jump]').forEach(button => button.addEventListener('click', () => show(button.dataset.jump)));
+    if (select) select.addEventListener('change', () => show(select.value));
 
-    function formatMemberDate(value) {
-      if (!value) return '';
-      try {
-        return new Intl.DateTimeFormat('en-GB', {
-          weekday:'short', day:'numeric', month:'short', year:'numeric',
-          hour:'2-digit', minute:'2-digit'
-        }).format(new Date(value));
-      } catch { return String(value); }
-    }
+    const initial = location.hash.replace('#', '') || 'dashboard';
+    show(initial, false);
 
-    function renderMember(data) {
-      const m=data.member||{}, loyalty=data.loyalty||{};
-      const first=(m.display_name||m.name||'Dancer').trim();
-      const points=Math.max(0,Number(m.boot_points||0));
-      const attended=Math.max(0,Number(m.classes_attended||0));
-      const streak=Math.max(0,Number(m.current_streak||0));
-      const learned=Math.max(0,Number(m.dances_learned||0));
-      const rank=m.trail_rank||'First Steps';
-
-      document.getElementById('memberDisplayName').textContent=first;
-      const trailIdentity=m.trail_identity||'trail_rider';
-      const identityLabel=trailIdentity==='cowgirl'?'Cowgirl':trailIdentity==='cowboy'?'Cowboy':'Trail Rider';
-      document.getElementById('memberTrailRank').textContent=rank;
-      const mini=document.querySelector('.member-mini-profile span');
-      if(mini) mini.textContent=`${rank} · ${identityLabel} · Secure member profile`;
-      document.getElementById('memberRankCard').textContent='☆ '+rank;
-      document.getElementById('memberPointsProgress').textContent=`${points} Boot Points`;
-      document.getElementById('memberRankProgress').style.width=`${Math.min(100,points/10)}%`;
-      document.getElementById('memberBootPoints').textContent=String(points);
-      document.getElementById('memberClassesAttended').textContent=String(attended);
-      document.getElementById('memberDancesLearned').textContent=String(learned);
-      document.getElementById('memberCurrentStreak').textContent=String(streak);
-
-      const avatar=document.getElementById('memberAvatar');
-      if(avatar) avatar.textContent=(m.name||first).split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||'BS';
-
-      const progress=Math.max(0,Math.min(9,Number(loyalty.progress||0)));
-      document.getElementById('memberStampProgress').textContent=String(progress);
-      const row=document.getElementById('memberStampRow');
-      if(row) row.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<progress?'earned':''}" aria-hidden="true">👢</span>`).join('');
-      const msg=document.getElementById('memberStampMessage');
-      if(msg) msg.textContent=progress===0
-        ? 'Your loyalty trail starts at zero. Qualifying paid class bookings add a stamp; a confirmed full refund removes it again.'
-        : loyalty.reward_ready
-          ? 'You have reached a 9-stamp milestone. Your free-class reward is ready.'
-          : `${9-progress} more qualifying paid class ${9-progress===1?'booking':'bookings'} until your next free-class milestone.`;
-
-      document.getElementById('benefitTrailSummary').textContent=`${Number(loyalty.total_stamps||0)} stamps · ${points} Boot Points`;
-      document.getElementById('benefitPassportSummary').textContent=attended
-        ? `${attended} class${attended===1?'':'es'} recorded on your journey.`
-        : 'No passport activity yet.';
-
-      if(profileForm){
-        profileForm.elements.name.value=m.name||first||'';
-        profileForm.elements.email.value=m.email||'';
-        profileForm.elements.phone.value=m.phone||'';
-        profileForm.elements.trail_identity.value=m.trail_identity||'trail_rider';
-        profileForm.elements.birthday.value=m.birthday||'';
-        profileForm.elements.birthday_visible.checked=Boolean(m.birthday_visible);
-        profileForm.elements.marketing_consent.checked=Boolean(m.marketing_consent);
-      }
-
-      const bookings=Array.isArray(data.bookings)?data.bookings:[];
-      const future=bookings
-        .filter(b=>b.starts_at && new Date(b.starts_at).getTime()>=Date.now() && !['CANCELLED','REFUNDED'].includes(String(b.status||'').toUpperCase()))
-        .sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
-      const next=future[0];
-      document.getElementById('memberNextBookingTitle').textContent=next?.title||'Nothing booked yet';
-      document.getElementById('memberNextBookingMeta').textContent=next
-        ? `${formatMemberDate(next.starts_at)}${next.venue?' · '+next.venue:''}`
-        : 'When you book a class, it will appear here.';
-
-      const list=document.getElementById('memberBookingsList');
-      if(list){
-        if(!bookings.length){
-          list.className='member-empty-state';
-          list.textContent='No bookings linked to this member account yet.';
-        }else{
-          list.className='member-booking-list';
-          list.innerHTML=bookings.slice(0,6).map(b=>`
-            <div class="member-booking-row">
-              <strong>${String(b.title||'Boot Scootin’ class')}</strong>
-              <span>${formatMemberDate(b.starts_at)}${b.venue?' · '+String(b.venue):''}</span>
-              <small>${String(b.status||'').replaceAll('_',' ')}</small>
-            </div>`).join('');
-        }
-      }
-    }
-
-    profileForm?.addEventListener('submit', async e=>{
-      e.preventDefault();
-      if(profileStatus) profileStatus.textContent='Saving…';
-      const fd=new FormData(profileForm);
-      try{
-        const result=await api('/api/member/profile',{method:'POST',body:JSON.stringify({
-          name:fd.get('name'),email:fd.get('email'),phone:fd.get('phone'),trail_identity:fd.get('trail_identity'),birthday:fd.get('birthday'),
-          birthday_visible:fd.get('birthday_visible')==='on',marketing_consent:fd.get('marketing_consent')==='on'
-        })});
-        if(profileStatus) profileStatus.textContent=result.message||'Profile updated.';
-        await loadMember();
-        show('profile',false);
-      }catch(err){ if(profileStatus) profileStatus.textContent=err.message; }
-    });
-
-    async function loadMember() {
-      try {
-        const data=await api('/api/member/me',{method:'GET',headers:{}});
-        authShell.hidden=true;
-        if(entryHeading) entryHeading.hidden=true;
-        if(membershipPreview) membershipPreview.hidden=true;
-        if(previewPill) previewPill.hidden=true;
-        app.hidden=false; renderMember(data);
-        const initial = location.hash.replace('#', '') || 'dashboard'; show(initial,false);
-      } catch {
-        app.hidden=true; authShell.hidden=false;
-        if(entryHeading) entryHeading.hidden=false;
-        if(membershipPreview) membershipPreview.hidden=false;
-        if(previewPill) previewPill.hidden=false;
-      }
-    }
-    window.memberLogout = async () => {
-      await api('/api/member/logout',{method:'POST',body:'{}'}).catch(()=>{});
-      location.reload();
-    };
-
-    handleLinkTokens().then(loadMember);
+    const greetings = [
+      'The dance floor missed you.',
+      'Ready to make another memory?',
+      'Your Trail is waiting…',
+      'Welcome home, Cowgirl.',
+      'Let’s add another stamp to your Passport.',
+      'Another adventure starts here.'
+    ];
+    const greeting = document.getElementById('memberGreeting');
+    if (greeting) greeting.textContent = greetings[Math.floor(Math.random() * greetings.length)];
   })();
   </script>
-  <script src="honky-theme.js?v=96.4.90"></script>
+  <script src="honky-theme.js?v=96.0.0"></script>
 
 <section class="global-ip-notice" aria-label="Copyright and trade mark notice">
   <p><strong>© 2026 Boot Scootin’ Line Dancing. All rights reserved.</strong></p>
   <p>Boot Scootin’ Line Dancing™ and its original website text, graphics, code, branded designs and distinctive named features are the intellectual property of Boot Scootin’ Line Dancing or their respective creators. Unauthorised copying, republication or commercial reproduction is prohibited.</p>
   <p class="ip-small">™ indicates an unregistered trade mark claim. It does not mean the mark is registered with the UK Intellectual Property Office.</p>
 </section>
-<script src="member-inactivity.js?v=96.4.96"></script>
 </body>
 </html>

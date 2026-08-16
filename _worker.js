@@ -73,189 +73,6 @@ function requireAdmin(request, env) {
 }
 
 
-
-const MEMBER_COOKIE = 'bs_member_session';
-
-function bytesToHex(bytes){
-  return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-function hexToBytes(hex){
-  const out=new Uint8Array(Math.floor(String(hex||'').length/2));
-  for(let i=0;i<out.length;i++) out[i]=parseInt(hex.slice(i*2,i*2+2),16);
-  return out;
-}
-async function memberSha256Hex(value){
-  return bytesToHex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(value||''))));
-}
-async function passwordHash(password,saltHex){
-  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(String(password||'')),{name:'PBKDF2'},false,['deriveBits']);
-  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:{name:'SHA-256'},salt:hexToBytes(String(saltHex||'')),iterations:100000},key,256);
-  return bytesToHex(new Uint8Array(bits));
-}
-function randomHex(bytes=32){
-  const arr=new Uint8Array(bytes); crypto.getRandomValues(arr); return bytesToHex(arr);
-}
-function memberCookie(request){
-  const raw=request.headers.get('Cookie')||'';
-  const match=raw.match(/(?:^|;\s*)bs_member_session=([^;]+)/);
-  return match?decodeURIComponent(match[1]):'';
-}
-function memberCookieHeader(token,maxAge=60*60*24*30){
-  return `${MEMBER_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
-}
-function sameOriginWrite(request){
-  const origin=request.headers.get('Origin');
-  if(!origin) return true;
-  try{return new URL(origin).origin===new URL(request.url).origin;}catch{return false;}
-}
-function passwordValid(password){
-  const p=String(password||'');
-  return p.length>=10 && /[A-Za-z]/.test(p) && /\d/.test(p);
-}
-async function memberSession(request,env){
-  const token=memberCookie(request); if(!token) return null;
-  const hash=await memberSha256Hex(token);
-  const row=await env.BOOKINGS_DB.prepare(`
-    SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,a.created_at member_created_at,
-           c.name,c.phone,c.marketing_consent,
-           mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak,mp.birthday_visible,mp.trail_identity,COALESCE(mp.is_paused,0) is_paused
-    FROM member_sessions s
-    JOIN member_accounts a ON a.id=s.member_id
-    JOIN customers c ON c.id=a.customer_id
-    LEFT JOIN member_profiles mp ON mp.customer_id=c.id
-    WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP
-    LIMIT 1
-  `).bind(hash).first();
-  return row||null;
-}
-async function createMemberSession(env,memberId){
-  const token=randomHex(32), hash=await memberSha256Hex(token);
-  const expires=new Date(Date.now()+30*86400000).toISOString();
-  await env.BOOKINGS_DB.prepare(`INSERT INTO member_sessions(id,member_id,token_hash,expires_at) VALUES(?,?,?,?)`)
-    .bind(crypto.randomUUID(),memberId,hash,expires).run();
-  return token;
-}
-async function createMemberEmailToken(env,memberId,purpose,hours){
-  const token=randomHex(32);
-  let hash;
-  try{ hash=await memberSha256Hex(token); }
-  catch(e){ throw new Error('EMAIL_TOKEN_HASH'); }
-
-  // Self-heal older production D1 databases that pre-date member email tokens.
-  try{
-    await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_email_tokens (
-      id TEXT PRIMARY KEY,
-      member_id TEXT NOT NULL,
-      token_hash TEXT NOT NULL,
-      purpose TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      used_at TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )`).run();
-    await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_member_email_tokens_hash ON member_email_tokens(token_hash)`).run();
-    await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_member_email_tokens_member ON member_email_tokens(member_id,purpose)`).run();
-  }catch(e){ throw new Error('EMAIL_TOKEN_SCHEMA'); }
-
-  const expires=new Date(Date.now()+hours*3600000).toISOString();
-  try{
-    await env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND purpose=? AND used_at IS NULL`).bind(memberId,purpose).run();
-  }catch(e){ throw new Error('EMAIL_TOKEN_DELETE'); }
-  try{
-    await env.BOOKINGS_DB.prepare(`INSERT INTO member_email_tokens(id,member_id,token_hash,purpose,expires_at) VALUES(?,?,?,?,?)`)
-      .bind(crypto.randomUUID(),memberId,hash,purpose,expires).run();
-  }catch(e){ throw new Error('EMAIL_TOKEN_INSERT'); }
-  return token;
-}
-async function syncLoyaltyForEmail(env,email){
-  const normalized=String(email||'').trim().toLowerCase(); if(!emailOk(normalized)) return;
-  const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(normalized).first();
-  const paid=await env.BOOKINGS_DB.prepare(`
-    SELECT id,status,amount_pence,refund_status,refund_amount_pence
-    FROM bookings WHERE lower(customer_email)=lower(?) AND amount_pence>0
-  `).bind(normalized).all();
-  for(const b of (paid.results||[])){
-    if(b.status==='PAID' && b.refund_status!=='REFUNDED'){
-      await env.BOOKINGS_DB.prepare(`
-        INSERT OR IGNORE INTO loyalty_stamp_ledger(id,customer_email,member_id,booking_id,event_key,stamp_delta,reason)
-        VALUES(?,?,?,?,?,1,'QUALIFYING_CLASS_PAYMENT')
-      `).bind(crypto.randomUUID(),normalized,member?.id||null,b.id,`PAYMENT:${b.id}`).run();
-    }
-    if(b.status==='REFUNDED' || (b.refund_status==='REFUNDED' && Number(b.refund_amount_pence||0)>=Number(b.amount_pence||0))){
-      await env.BOOKINGS_DB.prepare(`
-        INSERT OR IGNORE INTO loyalty_stamp_ledger(id,customer_email,member_id,booking_id,event_key,stamp_delta,reason)
-        VALUES(?,?,?,?,?,-1,'FULL_REFUND_REVERSAL')
-      `).bind(crypto.randomUUID(),normalized,member?.id||null,b.id,`REFUND:${b.id}`).run();
-    }
-  }
-  if(member?.id){
-    await env.BOOKINGS_DB.prepare(`UPDATE loyalty_stamp_ledger SET member_id=? WHERE lower(customer_email)=lower(?) AND member_id IS NULL`).bind(member.id,normalized).run().catch(()=>{});
-  }
-}
-async function awardLoyaltyStampForBooking(env,bookingId){
-  const b=await env.BOOKINGS_DB.prepare(`SELECT id,customer_email,amount_pence,status,refund_status FROM bookings WHERE id=?`).bind(bookingId).first();
-  if(!b || b.status!=='PAID' || Number(b.amount_pence||0)<=0 || b.refund_status==='REFUNDED') return;
-  const email=String(b.customer_email||'').toLowerCase();
-  const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
-  await env.BOOKINGS_DB.prepare(`
-    INSERT OR IGNORE INTO loyalty_stamp_ledger(id,customer_email,member_id,booking_id,event_key,stamp_delta,reason)
-    VALUES(?,?,?,?,?,1,'QUALIFYING_CLASS_PAYMENT')
-  `).bind(crypto.randomUUID(),email,member?.id||null,b.id,`PAYMENT:${b.id}`).run();
-}
-async function reverseLoyaltyStampForBooking(env,bookingId){
-  const b=await env.BOOKINGS_DB.prepare(`SELECT id,customer_email FROM bookings WHERE id=?`).bind(bookingId).first();
-  if(!b) return;
-  const email=String(b.customer_email||'').toLowerCase();
-  const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
-  const earned=await env.BOOKINGS_DB.prepare(`SELECT id FROM loyalty_stamp_ledger WHERE event_key=?`).bind(`PAYMENT:${bookingId}`).first();
-  if(!earned) return;
-  await env.BOOKINGS_DB.prepare(`
-    INSERT OR IGNORE INTO loyalty_stamp_ledger(id,customer_email,member_id,booking_id,event_key,stamp_delta,reason)
-    VALUES(?,?,?,?,?,-1,'FULL_REFUND_REVERSAL')
-  `).bind(crypto.randomUUID(),email,member?.id||null,bookingId,`REFUND:${bookingId}`).run();
-}
-async function loyaltySummary(env,email){
-  const normalized=String(email||'').trim().toLowerCase();
-  const account=await env.BOOKINGS_DB.prepare(`SELECT created_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(normalized).first();
-  const row=await env.BOOKINGS_DB.prepare(`
-    SELECT COALESCE(SUM(l.stamp_delta),0) total
-    FROM loyalty_stamp_ledger l
-    LEFT JOIN bookings b ON b.id=l.booking_id
-    WHERE lower(l.customer_email)=lower(?)
-      AND (
-        b.id IS NULL
-        OR account_created_at_placeholder = account_created_at_placeholder
-      )
-  `.replace('account_created_at_placeholder = account_created_at_placeholder','1=1')).bind(normalized).first();
-  const total=Math.max(0,Number(row?.total||0));
-  const completed=Math.floor(total/9);
-  const progress=total===0?0:(total%9===0?9:total%9);
-  return {total_stamps:total,progress,goal:9,free_class_milestones:completed,reward_ready:total>=9};
-}
-
-
-function repairMemberNavigationHtml(html){
-  const desired = `<details class="menu45-section">
-<summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
-<div class="menu45-submenu">
-<a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
-<a href="member-zone-preview.html"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
-</div>
-</details>`;
-  return String(html||'').replace(
-    /<details class="menu45-section">\s*<summary><span class="menu45-summary-copy"><strong>My Boot Scootin’<\/strong><small>.*?<\/small><\/span><b aria-hidden="true"><\/b><\/summary>\s*<div class="menu45-submenu">.*?<\/div>\s*<\/details>/s,
-    desired
-  );
-}
-async function servePublicAssetWithRepairs(request,env){
-  const response = await env.ASSETS.fetch(request);
-  const type = response.headers.get('content-type') || '';
-  if(!type.includes('text/html')) return response;
-  const html = await response.text();
-  const headers = new Headers(response.headers);
-  headers.set('Cache-Control','no-store, no-cache, must-revalidate');
-  return new Response(repairMemberNavigationHtml(html),{status:response.status,statusText:response.statusText,headers});
-}
-
 async function ensureBookingSchema(env) {
   if (!env.BOOKINGS_DB) throw new Error('BOOKINGS_DB binding is missing.');
   const statements = [
@@ -528,51 +345,6 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_private_event_status ON private_event_inquiries(status,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_private_event_token ON private_event_inquiries(secure_token)`,
     `CREATE INDEX IF NOT EXISTS idx_private_quote_inquiry ON private_event_quotes(inquiry_id,version)`,
-    `CREATE TABLE IF NOT EXISTS member_accounts (
-      id TEXT PRIMARY KEY,
-      customer_id TEXT NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      password_salt TEXT NOT NULL,
-      verified_at TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS member_sessions (
-      id TEXT PRIMARY KEY,
-      member_id TEXT NOT NULL REFERENCES member_accounts(id) ON DELETE CASCADE,
-      token_hash TEXT NOT NULL UNIQUE,
-      expires_at TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS member_email_tokens (
-      id TEXT PRIMARY KEY,
-      member_id TEXT NOT NULL REFERENCES member_accounts(id) ON DELETE CASCADE,
-      token_hash TEXT NOT NULL UNIQUE,
-      purpose TEXT NOT NULL CHECK(purpose IN ('VERIFY','RESET')),
-      expires_at TEXT NOT NULL,
-      used_at TEXT,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE TABLE IF NOT EXISTS member_login_attempts (
-      key TEXT PRIMARY KEY,
-      attempts INTEGER NOT NULL DEFAULT 0,
-      window_started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      blocked_until TEXT
-    )`,
-    `CREATE TABLE IF NOT EXISTS loyalty_stamp_ledger (
-      id TEXT PRIMARY KEY,
-      customer_email TEXT NOT NULL,
-      member_id TEXT REFERENCES member_accounts(id) ON DELETE SET NULL,
-      booking_id TEXT REFERENCES bookings(id) ON DELETE CASCADE,
-      event_key TEXT NOT NULL UNIQUE,
-      stamp_delta INTEGER NOT NULL CHECK(stamp_delta IN (-1,1)),
-      reason TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )`,
-    `CREATE INDEX IF NOT EXISTS idx_member_sessions_token ON member_sessions(token_hash)`,
-    `CREATE INDEX IF NOT EXISTS idx_member_tokens_token ON member_email_tokens(token_hash)`,
-    `CREATE INDEX IF NOT EXISTS idx_loyalty_email ON loyalty_stamp_ledger(customer_email,created_at)`,
     `CREATE TABLE IF NOT EXISTS customer_crm_profiles (
       customer_key TEXT PRIMARY KEY,
       birthday TEXT,
@@ -606,10 +378,6 @@ async function ensureBookingSchema(env) {
   // V86 booking self-service and cancellation fields. D1 does not support
   // ADD COLUMN IF NOT EXISTS, so each migration is attempted safely.
   const migrations = [
-    // Member-account compatibility migrations for older live D1 schemas.
-    `ALTER TABLE customers ADD COLUMN marketing_consent INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE customers ADD COLUMN updated_at TEXT`,
-    `ALTER TABLE customers ADD COLUMN phone TEXT`,
     `ALTER TABLE bookings ADD COLUMN secure_token TEXT`,
     `ALTER TABLE bookings ADD COLUMN customer_token TEXT`,
     `ALTER TABLE bookings ADD COLUMN terms_accepted_at TEXT`,
@@ -650,13 +418,12 @@ async function ensureBookingSchema(env) {
 
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO achievements(id,title,description,icon,category,points_bonus) VALUES
     ('first-class','Hay Bale Hopper','Attend your first Boot Scootin’ class','🌾','attendance',0),
-    ('five-classes','Rookie Rider','Attend five classes','🤠','attendance',0),
+    ('five-classes','Rookie Cowgirl','Attend five classes','🤠','attendance',0),
     ('ten-classes','Trail Rider','Attend ten classes','🌵','attendance',0),
     ('fireball-survivor','Fireball Survivor','Complete Fireball without stopping','🔥','dance',0),
     ('festival-friend','Festival Friend','Join a Boot Scootin’ festival meetup','🎪','community',0),
     ('butterfly-season','Butterfly Season','Complete the Spring Steps challenge','🦋','seasonal',0)
   `).run();
-  try { await env.BOOKINGS_DB.prepare(`UPDATE achievements SET title='Rookie Rider' WHERE id='five-classes'`).run(); } catch (_) {}
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO reward_catalog(id,title,description,points_cost,reward_type) VALUES
     ('dance-vote','Dance Request Vote','Vote in a future class dance poll',50,'vote'),
     ('class-credit-5','£5 Class Credit','£5 credit towards a standard class',100,'credit'),
@@ -1343,26 +1110,6 @@ function notificationCopy(eventType, booking) {
   return { subject: 'Boot Scootin’ booking update', text: `Your booking ${booking.reference} has been updated.`, heading: 'Booking update', detail: booking.reference };
 }
 
-async function sendAdminClassBookingAlert(env,booking,eventType){
-  if(!booking?.id || eventType!=='BOOKING_PAID') return {skipped:true};
-  const adminEmail=clean(env.ADMIN_EMAIL || env.BOOKINGS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
-  if(!emailOk(adminEmail)) return {skipped:true};
-  const existing=await env.BOOKINGS_DB.prepare(`SELECT status FROM notification_log WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(booking.id).first().catch(()=>null);
-  if(existing?.status==='SENT') return {already_sent:true};
-  const id=crypto.randomUUID();
-  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO notification_log(id,booking_id,class_id,event_type,channel,recipient,status) VALUES(?,?,?,'ADMIN_BOOKING_PAID','ADMIN_EMAIL',?,'PENDING')`).bind(id,booking.id,booking.class_id,adminEmail).run().catch(()=>{});
-  const amount=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(booking.amount_pence)||0)/100);
-  const subject=`New class booking — ${clean(booking.class_title,100)} — ${clean(booking.customer_name,100)}`;
-  const text=`New paid Boot Scootin’ class booking.\n\nCustomer: ${clean(booking.customer_name,120)}\nEmail: ${clean(booking.customer_email,160)}\nPhone: ${clean(booking.customer_phone,40)||'Not supplied'}\nClass: ${clean(booking.class_title,160)}\nDate/time: ${clean(booking.starts_at,80)}\nVenue: ${clean(booking.venue,160)}\nPlaces: ${Number(booking.quantity||1)}\nPaid: ${amount}\nReference: ${clean(booking.reference,80)}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch.html`;
-  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>New paid class booking</h2><p><strong>${clean(booking.customer_name,120)}</strong> booked ${Number(booking.quantity||1)} place${Number(booking.quantity||1)===1?'':'s'}.</p><p><strong>Class:</strong> ${clean(booking.class_title,160)}<br><strong>Date/time:</strong> ${clean(booking.starts_at,80)}<br><strong>Venue:</strong> ${clean(booking.venue,160)}<br><strong>Paid:</strong> ${amount}<br><strong>Reference:</strong> ${clean(booking.reference,80)}</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html" style="display:inline-block;padding:14px 20px;background:#c81924;color:white;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
-  try{
-    const sent=await sendTransactionalEmail(env,adminEmail,subject,html,text,'bookings');
-    if(sent?.skipped){await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='SKIPPED',error_message=? WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(clean(sent.reason,240),booking.id).run().catch(()=>{});return sent;}
-    await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='SENT',provider_id=?,sent_at=CURRENT_TIMESTAMP,error_message=NULL WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(sent?.id||null,booking.id).run().catch(()=>{});
-    return {sent:true};
-  }catch(error){await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='FAILED',error_message=? WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(clean(error?.message||error,240),booking.id).run().catch(()=>{});return {failed:true};}
-}
-
 async function deliverBookingNotification(env, booking, eventType) {
   if (!env.BOOKINGS_DB || !booking?.id) return { email: 'skipped', sms: 'skipped' };
   const copy = notificationCopy(eventType, booking);
@@ -1409,7 +1156,6 @@ async function deliverBookingNotification(env, booking, eventType) {
       results[item.channel.toLowerCase()] = 'failed';
     }
   }
-  if(eventType==='BOOKING_PAID') await sendAdminClassBookingAlert(env,booking,eventType).catch(()=>{});
   return results;
 }
 
@@ -1731,7 +1477,6 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
       ]);
       const confirmedBooking = await bookingWithClass(env, booking.id);
       if (confirmedBooking) await deliverBookingNotification(env, confirmedBooking, 'BOOKING_CONFIRMED');
-      await awardLoyaltyStampForBooking(env, booking.id);
     }
     booking.status = 'PAID';
     if(booking.promo_code){const pc=await env.BOOKINGS_DB.prepare(`SELECT id FROM promotion_codes WHERE code=?`).bind(booking.promo_code).first();if(pc)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotion_redemptions(id,promotion_code_id,booking_id,customer_email,discount_pence) VALUES(?,?,?,?,?)`).bind(crypto.randomUUID(),pc.id,booking.id,booking.customer_email,Number(booking.discount_pence||0)).run();}
@@ -1816,13 +1561,6 @@ async function sumUpWebhook(request, env) {
       await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_transaction_id=? WHERE id=?`).bind(tid,order.id).run();
       try{await sendMerchConfirmation(env,{...order,status:'PAID',provider_transaction_id:tid});}catch(_){}
     } else if(['FAILED','EXPIRED'].includes(cs)) await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run();
-    return new Response(null, { status: 204 });
-  }
-  const privatePayment=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first();
-  if(privatePayment&&checkout){
-    const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE id=?`).bind(privatePayment.inquiry_id).first();
-    const quote=privatePayment.quote_id?await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE id=?`).bind(privatePayment.quote_id).first():null;
-    if(inquiry&&quote) await syncPrivateEventPayment(env,privatePayment,inquiry,quote,'SUMUP_WEBHOOK');
   }
   return new Response(null, { status: 204 });
 }
@@ -1942,400 +1680,6 @@ async function systemHealth(request, env) {
   };
 
   return json(result);
-}
-
-
-
-async function ensureMemberSchema(env){
-  if(!env.BOOKINGS_DB) throw new Error('BOOKINGS_DB binding is missing.');
-
-  // Core customer table. CREATE IF NOT EXISTS is harmless on the existing live DB.
-  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS customers (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    phone TEXT,
-    marketing_consent INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`).run();
-
-  // The live customer table predates some member fields on older deployments.
-  for(const sql of [
-    `ALTER TABLE customers ADD COLUMN phone TEXT`,
-    `ALTER TABLE customers ADD COLUMN marketing_consent INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE customers ADD COLUMN updated_at TEXT`
-  ]){
-    try{ await env.BOOKINGS_DB.prepare(sql).run(); }catch(_){}
-  }
-
-  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_accounts (
-    id TEXT PRIMARY KEY,
-    customer_id TEXT NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    password_salt TEXT NOT NULL,
-    verified_at TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`).run();
-
-  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_profiles (
-    id TEXT PRIMARY KEY,
-    customer_id TEXT UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
-    display_name TEXT,
-    trail_rank TEXT NOT NULL DEFAULT 'First Steps',
-    boot_points INTEGER NOT NULL DEFAULT 0,
-    classes_attended INTEGER NOT NULL DEFAULT 0,
-    current_streak INTEGER NOT NULL DEFAULT 0,
-    whos_going_opt_in INTEGER NOT NULL DEFAULT 0,
-    profile_visibility TEXT NOT NULL DEFAULT 'private',
-    trail_identity TEXT NOT NULL DEFAULT 'trail_rider',
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`).run();
-
-  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_sessions (
-    id TEXT PRIMARY KEY,
-    member_id TEXT NOT NULL REFERENCES member_accounts(id) ON DELETE CASCADE,
-    token_hash TEXT NOT NULL UNIQUE,
-    expires_at TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`).run();
-
-  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_email_tokens (
-    id TEXT PRIMARY KEY,
-    member_id TEXT NOT NULL REFERENCES member_accounts(id) ON DELETE CASCADE,
-    token_hash TEXT NOT NULL UNIQUE,
-    purpose TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    used_at TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`).run();
-
-  await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_login_attempts (
-    key TEXT PRIMARY KEY,
-    attempts INTEGER NOT NULL DEFAULT 0,
-    window_started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    blocked_until TEXT
-  )`).run();
-
-  // Compatibility migrations if an earlier preview created partial member tables.
-  const migrations = [
-    `ALTER TABLE member_accounts ADD COLUMN customer_id TEXT`,
-    `ALTER TABLE member_accounts ADD COLUMN email TEXT`,
-    `ALTER TABLE member_accounts ADD COLUMN password_hash TEXT`,
-    `ALTER TABLE member_accounts ADD COLUMN password_salt TEXT`,
-    `ALTER TABLE member_accounts ADD COLUMN verified_at TEXT`,
-    `ALTER TABLE member_accounts ADD COLUMN updated_at TEXT`,
-    `ALTER TABLE member_profiles ADD COLUMN customer_id TEXT`,
-    `ALTER TABLE member_profiles ADD COLUMN display_name TEXT`,
-    `ALTER TABLE member_profiles ADD COLUMN trail_rank TEXT NOT NULL DEFAULT 'First Steps'`,
-    `ALTER TABLE member_profiles ADD COLUMN boot_points INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE member_profiles ADD COLUMN classes_attended INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE member_profiles ADD COLUMN current_streak INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE member_profiles ADD COLUMN birthday_visible INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE member_profiles ADD COLUMN trail_identity TEXT NOT NULL DEFAULT 'trail_rider'`,
-    `ALTER TABLE member_profiles ADD COLUMN is_paused INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE member_email_tokens ADD COLUMN purpose TEXT`,
-    `ALTER TABLE member_email_tokens ADD COLUMN used_at TEXT`
-  ];
-  for(const sql of migrations){
-    try{ await env.BOOKINGS_DB.prepare(sql).run(); }catch(_){}
-  }
-
-  for(const sql of [
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_member_accounts_email ON member_accounts(email)`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_member_sessions_token ON member_sessions(token_hash)`,
-    `CREATE INDEX IF NOT EXISTS idx_member_tokens_token ON member_email_tokens(token_hash)`
-  ]){
-    try{ await env.BOOKINGS_DB.prepare(sql).run(); }catch(_){}
-  }
-}
-
-async function memberRegister(request,env){
-  let stage='START';
-  try{
-    stage='SCHEMA';
-    await ensureMemberSchema(env);
-    if(!sameOriginWrite(request)) return json({error:'This request could not be verified. Please refresh the page and try again.'},403);
-    const body=await request.json().catch(()=>null);
-    if(!body) return json({error:'Please complete the registration form.'},400);
-
-    const first=clean(body.first_name,60), last=clean(body.last_name,80);
-    const name=clean(`${first} ${last}`.trim(),120);
-    const email=clean(body.email,160).toLowerCase();
-    const phone=clean(body.phone,30);
-    const password=String(body.password||'');
-    const marketing=body.marketing_consent?1:0;
-    const trailIdentity=['cowgirl','cowboy','trail_rider'].includes(clean(body.trail_identity,30)) ? clean(body.trail_identity,30) : 'trail_rider';
-
-    if(!first||!last||!emailOk(email)) return json({error:'Please enter your first name, surname and a valid email address.'},400);
-    if(!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
-
-    stage='LOOKUP_ACCOUNT';
-    const existing=await env.BOOKINGS_DB.prepare(`SELECT id,verified_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
-    if(existing?.verified_at) return json({error:'An account already exists for this email. Please log in instead, or use Forgotten your password.'},409);
-
-    stage='LOOKUP_CUSTOMER';
-    let customer=await env.BOOKINGS_DB.prepare(`SELECT * FROM customers WHERE lower(email)=lower(?)`).bind(email).first();
-    if(!customer){
-      customer={id:crypto.randomUUID()};
-      await env.BOOKINGS_DB.prepare(`INSERT INTO customers(id,name,email,phone,marketing_consent) VALUES(?,?,?,?,?)`)
-        .bind(customer.id,name,email,phone,marketing).run();
-    }else{
-      await env.BOOKINGS_DB.prepare(`UPDATE customers
-        SET name=?,
-            phone=CASE WHEN ?<>'' THEN ? ELSE phone END,
-            marketing_consent=CASE WHEN marketing_consent=1 OR ?=1 THEN 1 ELSE 0 END,
-            updated_at=CURRENT_TIMESTAMP
-        WHERE id=?`)
-        .bind(name,phone,phone,marketing,customer.id).run();
-    }
-
-    stage='PASSWORD_SALT';
-    const salt=randomHex(16);
-    stage='PASSWORD_HASH';
-    const hash=await passwordHash(password,salt);
-    const memberId=existing?.id||crypto.randomUUID();
-
-    stage='SAVE_ACCOUNT';
-    if(existing){
-      await env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET customer_id=?,email=?,password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-        .bind(customer.id,email,hash,salt,memberId).run();
-    }else{
-      await env.BOOKINGS_DB.prepare(`INSERT INTO member_accounts(id,customer_id,email,password_hash,password_salt) VALUES(?,?,?,?,?)`)
-        .bind(memberId,customer.id,email,hash,salt).run();
-    }
-
-    stage='SAVE_PROFILE';
-    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO member_profiles(id,customer_id,display_name,trail_identity) VALUES(?,?,?,?)`)
-      .bind(crypto.randomUUID(),customer.id,first,trailIdentity).run();
-    await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,trail_identity=?,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`)
-      .bind(first,trailIdentity,customer.id).run();
-
-    // A genuinely new account always starts at zero. Historical customer activity is not
-    // converted into member progress, points, streaks or achievements.
-    if(!existing){
-      const profile=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_profiles WHERE customer_id=?`).bind(customer.id).first();
-      await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET trail_rank='First Steps',boot_points=0,classes_attended=0,current_streak=0,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`).bind(customer.id).run().catch(()=>{});
-      if(profile?.id){
-        await env.BOOKINGS_DB.prepare(`DELETE FROM points_ledger WHERE member_id=?`).bind(profile.id).run().catch(()=>{});
-        await env.BOOKINGS_DB.prepare(`DELETE FROM member_achievements WHERE member_id=?`).bind(profile.id).run().catch(()=>{});
-      }
-    }
-
-    // Future qualifying payments/attendance build progress from the account creation point.
-
-    stage='VERIFY_TOKEN';
-    const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
-    const verifyUrl=`${new URL(request.url).origin}/member-hub.html?verify=${encodeURIComponent(token)}`;
-    const html=brandedEmailHtml({
-      greeting:`Hi ${first},`,
-      heading:'Verify your Boot Scootin’ account',
-      paragraphs:[
-        'Welcome to My Boot Scootin’. Verify your email to activate your secure member login.',
-        'This verification link expires in 24 hours.'
-      ],
-      buttons:[{label:'Verify my email',href:verifyUrl}]
-    });
-    const text=`Hi ${first},\n\nVerify your Boot Scootin’ account:\n${verifyUrl}\n\nThis link expires in 24 hours.`;
-    const emailResult=await sendTransactionalEmail(env,email,'Verify your Boot Scootin’ member account',html,text,'members').catch(()=>null);
-
-    // HQ copy: every new member registration is surfaced to Nora as well.
-    const adminEmail=clean(env.ADMIN_EMAIL || env.MEMBERS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
-    if(emailOk(adminEmail)){
-      const adminText=`New Boot Scootin’ member registration.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nTrail identity: ${trailIdentity}\n\nThe new account starts with 0 points, 0 classes, 0 dances, 0 streak and 0 rewards.`;
-      const adminHtml=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New member registration</h2><p><strong>${name}</strong><br>${email}<br>${phone||'No phone supplied'}</p><p>Starting member progress: <strong>zero</strong>.</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html">Open HQ</a></p></div>`;
-      await sendTransactionalEmail(env,adminEmail,`New member registration — ${name}`,adminHtml,adminText,'members').catch(()=>null);
-    }
-
-    return json({
-      ok:true,
-      message: emailResult
-        ? 'Account created. Check your email to verify it before logging in.'
-        : 'Account created. Your verification email could not be sent yet — please contact Boot Scootin’ if it does not arrive.'
-    },201);
-  }catch(error){
-    const detail=clean(error?.message||error,400);
-    return json({
-      error:'We could not create your member account yet. Please try again.',
-      detail,
-      code:`MEMBER_REGISTER_${stage}${error?.message?.startsWith?.('EMAIL_TOKEN_')?'_'+error.message:''}`
-    },500);
-  }
-}
-async function memberVerify(request,env){
-  await ensureMemberSchema(env);
-  const body=await request.json().catch(()=>null); const token=String(body?.token||'');
-  if(!token) return json({error:'The verification link is incomplete.'},400);
-  const hash=await memberSha256Hex(token);
-  const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_email_tokens WHERE token_hash=? AND purpose='VERIFY' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP`).bind(hash).first();
-  if(!row) return json({error:'This verification link has expired or has already been used.'},400);
-  await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`UPDATE member_email_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.id),
-    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET verified_at=COALESCE(verified_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.member_id)
-  ]);
-  return json({ok:true,message:'Email verified. You can now log in.'});
-}
-async function memberLogin(request,env){
-  await ensureMemberSchema(env);
-  if(!sameOriginWrite(request)) return json({error:'This request could not be verified.'},403);
-  const body=await request.json().catch(()=>null); const email=clean(body?.email,160).toLowerCase(), password=String(body?.password||'');
-  if(!emailOk(email)||!password) return json({error:'Enter your email and password.'},400);
-  const account=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
-  if(!account) return json({error:'Email or password is incorrect.'},401);
-  const hash=await passwordHash(password,account.password_salt);
-  if(hash!==account.password_hash) return json({error:'Email or password is incorrect.'},401);
-  if(!account.verified_at) return json({error:'Please verify your email before logging in.'},403);
-  await env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE member_id=? OR expires_at<=CURRENT_TIMESTAMP`).bind(account.id).run().catch(()=>{});
-  const token=await createMemberSession(env,account.id);
-  const response=json({ok:true,message:'Welcome back.'});
-  response.headers.set('Set-Cookie',memberCookieHeader(token));
-  return response;
-}
-async function memberLogout(request,env){
-  await ensureMemberSchema(env);
-  const token=memberCookie(request);
-  if(token){const hash=await memberSha256Hex(token); await env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE token_hash=?`).bind(hash).run().catch(()=>{});}
-  const response=json({ok:true}); response.headers.set('Set-Cookie',memberCookieHeader('',0)); return response;
-}
-async function memberForgot(request,env){
-  await ensureMemberSchema(env);
-  const body=await request.json().catch(()=>null); const email=clean(body?.email,160).toLowerCase();
-  const generic=json({ok:true,message:'If an account exists for that email, a reset link has been sent.'});
-  if(!emailOk(email)) return generic;
-  const account=await env.BOOKINGS_DB.prepare(`SELECT a.id,c.name FROM member_accounts a JOIN customers c ON c.id=a.customer_id WHERE lower(a.email)=lower(?) AND a.verified_at IS NOT NULL`).bind(email).first();
-  if(!account) return generic;
-  const token=await createMemberEmailToken(env,account.id,'RESET',2);
-  const resetUrl=`${new URL(request.url).origin}/member-hub.html?reset=${encodeURIComponent(token)}`;
-  const first=String(account.name||'there').split(/\s+/)[0];
-  const html=brandedEmailHtml({
-    greeting:`Hi ${first},`,
-    heading:'Reset your Boot Scootin’ password',
-    paragraphs:['Use the secure link below to choose a new password.','This link expires in 2 hours.'],
-    buttons:[{label:'Reset password',href:resetUrl}]
-  });
-  await sendTransactionalEmail(env,email,'Reset your Boot Scootin’ password',html,`Reset your password:\n${resetUrl}\n\nThis link expires in 2 hours.`,'members').catch(()=>null);
-  return generic;
-}
-async function memberReset(request,env){
-  await ensureMemberSchema(env);
-  const body=await request.json().catch(()=>null); const token=String(body?.token||''), password=String(body?.password||'');
-  if(!token||!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
-  const hash=await memberSha256Hex(token);
-  const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_email_tokens WHERE token_hash=? AND purpose='RESET' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP`).bind(hash).first();
-  if(!row) return json({error:'This reset link has expired or has already been used.'},400);
-  const salt=randomHex(16), passHash=await passwordHash(password,salt);
-  await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(passHash,salt,row.member_id),
-    env.BOOKINGS_DB.prepare(`UPDATE member_email_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.id),
-    env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE member_id=?`).bind(row.member_id)
-  ]);
-  return json({ok:true,message:'Password updated. You can now log in.'});
-}
-async function memberMe(request,env){
-  await ensureMemberSchema(env);
-  const session=await memberSession(request,env);
-  if(!session) return json({authenticated:false},401);
-
-  const loyalty=await loyaltySummary(env,session.email);
-  const bookings=await env.BOOKINGS_DB.prepare(`
-    SELECT b.reference,b.status,b.amount_pence,b.paid_at,c.title,c.starts_at,c.venue
-    FROM bookings b LEFT JOIN classes c ON c.id=b.class_id
-    WHERE lower(b.customer_email)=lower(?) ORDER BY b.created_at DESC LIMIT 12
-  `).bind(session.email).all();
-  const orders=await env.BOOKINGS_DB.prepare(`
-    SELECT reference,design,fit,size,quantity,amount_pence,status,fulfilment_method,fulfilment_status,created_at
-    FROM merch_orders WHERE lower(customer_email)=lower(?) ORDER BY created_at DESC LIMIT 12
-  `).bind(session.email).all();
-  const crm=await env.BOOKINGS_DB.prepare(`SELECT birthday FROM customer_crm_profiles WHERE lower(customer_key)=lower(?)`).bind(session.email).first().catch(()=>null);
-
-  // Member totals are derived from genuine live activity, never preview/demo figures.
-  const attendance=await env.BOOKINGS_DB.prepare(`
-    SELECT COUNT(DISTINCT a.id) total
-    FROM attendance a
-    JOIN bookings b ON b.id=a.booking_id
-    WHERE lower(b.customer_email)=lower(?)
-      AND datetime(a.created_at) >= datetime(?)
-  `).bind(session.email,session.member_created_at||'1970-01-01T00:00:00Z').first().catch(()=>({total:0}));
-  const classesAttended=Math.max(0,Number(attendance?.total||0));
-  const bootPoints=classesAttended*10;
-  const rank=classesAttended>=100?'Boot Scootin’ Legend':
-             classesAttended>=75?'Dance Floor Favourite':
-             classesAttended>=50?'Country Soul':
-             classesAttended>=25?'Honky Tonk Hero':
-             classesAttended>=10?'Trail Rider':
-             classesAttended>=5?'Rookie Rider':'First Steps';
-
-  // Keep the stored profile aligned with real activity so old preview/test values self-heal.
-  await env.BOOKINGS_DB.prepare(`
-    UPDATE member_profiles
-    SET trail_rank=?,boot_points=?,classes_attended=?,current_streak=0,updated_at=CURRENT_TIMESTAMP
-    WHERE customer_id=?
-  `).bind(rank,bootPoints,classesAttended,session.customer_id).run().catch(()=>{});
-
-  return json({authenticated:true,member:{
-    id:session.member_id,email:session.email,name:session.name,display_name:session.display_name||String(session.name||'').split(/\s+/)[0],
-    phone:session.phone||'',birthday:crm?.birthday||'',birthday_visible:Boolean(session.birthday_visible),marketing_consent:Boolean(session.marketing_consent),
-    trail_identity:['cowgirl','cowboy','trail_rider'].includes(session.trail_identity)?session.trail_identity:'trail_rider',
-    trail_rank:rank,boot_points:bootPoints,classes_attended:classesAttended,current_streak:0,dances_learned:0,is_paused:Boolean(session.is_paused)
-  },loyalty,bookings:bookings.results||[],orders:orders.results||[]});
-}
-async function memberProfileUpdate(request,env){
-  await ensureMemberSchema(env);
-  const session=await memberSession(request,env);
-  if(!session) return json({error:'Please log in again to update your profile.'},401);
-  if(!sameOriginWrite(request)) return json({error:'This profile update could not be verified.'},403);
-  const body=await request.json().catch(()=>null); if(!body) return json({error:'Profile details could not be read.'},400);
-  const name=clean(body.name,120), email=clean(body.email,160).toLowerCase(), phone=clean(body.phone,30), birthday=clean(body.birthday,10);
-  const trailIdentity=['cowgirl','cowboy','trail_rider'].includes(clean(body.trail_identity,30)) ? clean(body.trail_identity,30) : 'trail_rider';
-  const birthdayVisible=body.birthday_visible?1:0, marketing=body.marketing_consent?1:0;
-  if(!name||!emailOk(email)) return json({error:'Enter your name and a valid email address.'},400);
-  if(birthday && !dateOk(birthday)) return json({error:'Enter a valid birthday.'},400);
-  if(email!==String(session.email||'').toLowerCase()){
-    const existing=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?) AND id<>?`).bind(email,session.member_id).first();
-    if(existing) return json({error:'That email address is already linked to another member account.'},409);
-  }
-  const oldEmail=String(session.email||'').toLowerCase();
-  await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`UPDATE customers SET name=?,email=?,phone=?,marketing_consent=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(name,email,phone,marketing,session.customer_id),
-    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET email=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(email,session.member_id),
-    env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,birthday_visible=?,trail_identity=? WHERE customer_id=?`).bind(name.split(/\s+/)[0]||name,birthdayVisible,trailIdentity,session.customer_id),
-    env.BOOKINGS_DB.prepare(`INSERT INTO customer_crm_profiles(customer_key,birthday) VALUES(?,?) ON CONFLICT(customer_key) DO UPDATE SET birthday=excluded.birthday,updated_at=CURRENT_TIMESTAMP`).bind(email,birthday||null),
-    env.BOOKINGS_DB.prepare(`UPDATE bookings SET customer_name=?,customer_email=?,customer_phone=?,marketing_consent=? WHERE lower(customer_email)=lower(?)`).bind(name,email,phone,marketing,oldEmail),
-    env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET customer_name=?,customer_email=? WHERE lower(customer_email)=lower(?)`).bind(name,email,oldEmail)
-  ]);
-  if(oldEmail!==email){
-    await env.BOOKINGS_DB.prepare(`DELETE FROM customer_crm_profiles WHERE lower(customer_key)=lower(?) AND lower(customer_key)<>lower(?)`).bind(oldEmail,email).run().catch(()=>{});
-    await env.BOOKINGS_DB.prepare(`UPDATE loyalty_stamp_ledger SET customer_email=? WHERE lower(customer_email)=lower(?)`).bind(email,oldEmail).run().catch(()=>{});
-  }
-  return json({ok:true,message:'Your member profile has been updated.'});
-}
-
-
-async function memberExport(request,env){
-  await ensureMemberSchema(env);
-  const session=await memberSession(request,env);
-  if(!session) return json({error:'Please log in again to download your data.'},401);
-  const meResponse=await memberMe(request,env);
-  const me=await meResponse.json().catch(()=>({}));
-  const payload={
-    exported_at:new Date().toISOString(),
-    account:{name:session.name,email:session.email,phone:session.phone||'',display_name:session.display_name||'',trail_identity:session.trail_identity||'trail_rider',is_paused:Boolean(session.is_paused)},
-    member:me.member||{},loyalty:me.loyalty||{},bookings:me.bookings||[],orders:me.orders||[]
-  };
-  return new Response(JSON.stringify(payload,null,2),{status:200,headers:{'content-type':'application/json; charset=utf-8','content-disposition':'attachment; filename="boot-scootin-member-data.json"','cache-control':'no-store'}});
-}
-async function memberPause(request,env){
-  await ensureMemberSchema(env);
-  const session=await memberSession(request,env);
-  if(!session) return json({error:'Please log in again to change your account status.'},401);
-  if(!sameOriginWrite(request)) return json({error:'This account change could not be verified.'},403);
-  const body=await request.json().catch(()=>({}));
-  const paused=body?.paused?1:0;
-  await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET is_paused=?,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`).bind(paused,session.customer_id).run();
-  return json({ok:true,paused:Boolean(paused),message:paused?'Your member profile is paused. Your progress is kept safely.':'Your member profile is active again.'});
 }
 
 async function customerPortalLink(request,env){
@@ -2480,30 +1824,7 @@ async function privateEventInquiry(request, env) {
     env.BOOKINGS_DB.prepare(`INSERT INTO private_event_inquiries(id,reference,secure_token,customer_name,customer_email,customer_phone,event_type,event_type_other,preferred_date,alternative_date,start_time,end_time,venue_name,venue_address,venue_postcode,guest_count,age_range,experience_level,session_length,format_requested,music_requests,sound_system_provided,microphone_provided,dance_floor_confirmed,power_available,parking_loading_available,equipment_notes,accessibility_notes,additional_notes) VALUES(${Array(29).fill('?').join(',')})`).bind(...values),
     env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'CUSTOMER',email,'INQUIRY_SUBMITTED',JSON.stringify({preferred_date:preferred,postcode}))
   ]);
-
-  // Notify Nora/HQ about every new private-event inquiry. This is deliberately
-  // non-blocking: the customer's inquiry remains safely stored even if email
-  // delivery is temporarily unavailable.
-  let adminEmailSent=false, adminEmailWarning='';
-  const adminEmail=clean(env.ADMIN_EMAIL || env.EVENTS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
-  if(emailOk(adminEmail)){
-    try{
-      const origin=new URL(request.url).origin;
-      const hqUrl=`${origin}/ranch.html`;
-      const subject=`New private event inquiry — ${reference}`;
-      const timeLabel=[clean(b.start_time,8),clean(b.end_time,8)].filter(Boolean).join('–') || 'Not supplied';
-      const textBody=`New private-event inquiry received.\n\nReference: ${reference}\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nEvent: ${type}\nPreferred date: ${preferred}\nTime: ${timeLabel}\nGuests: ${guests}\nVenue: ${clean(b.venue_name,160)||'Not supplied'}\nAddress: ${address}, ${postcode}\n\nOpen Boot Scootin’ HQ to review and quote:\n${hqUrl}`;
-      const htmlBody=`<div style="font-family:Arial,sans-serif;line-height:1.55;color:#1a1111"><h2>New private event inquiry</h2><p><strong>${reference}</strong></p><p><strong>Customer:</strong> ${name}<br><strong>Email:</strong> ${email}<br><strong>Phone:</strong> ${phone||'Not supplied'}<br><strong>Event:</strong> ${type}<br><strong>Preferred date:</strong> ${preferred}<br><strong>Time:</strong> ${timeLabel}<br><strong>Guests:</strong> ${guests}<br><strong>Venue:</strong> ${clean(b.venue_name,160)||'Not supplied'}<br><strong>Address:</strong> ${address}, ${postcode}</p><p><a href="${hqUrl}" style="display:inline-block;padding:14px 20px;background:#c81924;color:#fff;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
-      const sent=await sendTransactionalEmail(env,adminEmail,subject,htmlBody,textBody,'events');
-      adminEmailSent=!sent?.skipped;
-      if(sent?.skipped) adminEmailWarning=sent.reason||'Email provider is not configured.';
-    }catch(error){adminEmailWarning=clean(error?.message||error,300);}
-  }else{
-    adminEmailWarning='ADMIN_EMAIL is not configured with a valid notification address.';
-  }
-  await env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'SYSTEM','email','ADMIN_INQUIRY_EMAIL',JSON.stringify({sent:adminEmailSent,warning:adminEmailWarning,recipient:adminEmail||null})).run().catch(()=>{});
-
-  return json({ok:true,reference,status_url:`/private-quote.html?token=${encodeURIComponent(token)}`,message:'Your inquiry has been sent. This is not a confirmed booking.',admin_email_sent:adminEmailSent},201);
+  return json({ok:true,reference,status_url:`/private-quote.html?token=${encodeURIComponent(token)}`,message:'Your inquiry has been sent. This is not a confirmed booking.'},201);
 }
 
 async function publicPrivateQuote(request, env, url) {
@@ -2512,150 +1833,9 @@ async function publicPrivateQuote(request, env, url) {
   const token=clean(url.searchParams.get('token'),120);
   const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE secure_token=?`).bind(token).first();
   if(!inquiry) return json({error:'This private booking link is invalid or has expired.'},404);
-  let quote=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE inquiry_id=? ORDER BY version DESC LIMIT 1`).bind(inquiry.id).first();
-  let currentInquiry=inquiry;
-  let latestPayment=null;
-  if(quote){
-    latestPayment=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE inquiry_id=? AND quote_id=? ORDER BY created_at DESC LIMIT 1`).bind(inquiry.id,quote.id).first();
-    if(latestPayment){
-      const synced=await syncPrivateEventPayment(env,latestPayment,currentInquiry,quote,'PRIVATE_QUOTE_VIEW');
-      latestPayment=synced.payment; currentInquiry=synced.inquiry; quote=synced.quote;
-    }
-  }
-  const safeInquiry={reference:currentInquiry.reference,event_type:currentInquiry.event_type,preferred_date:currentInquiry.preferred_date,start_time:currentInquiry.start_time,end_time:currentInquiry.end_time,venue_name:currentInquiry.venue_name,venue_address:currentInquiry.venue_address,guest_count:currentInquiry.guest_count,status:currentInquiry.status};
-  const safePayment=latestPayment?{payment_kind:latestPayment.payment_kind,amount_pence:latestPayment.amount_pence,status:latestPayment.status,paid_at:latestPayment.paid_at}:null;
-  return json({inquiry:safeInquiry,quote,payment:safePayment,payments_enabled:sumUpConfigured(env)});
-}
-
-
-
-async function sendPrivateEventPaymentEmails(env, inquiry, quote, payment, kind, actor='PRIVATE_PAYMENT') {
-  const customerEmail=clean(inquiry?.customer_email,254);
-  const adminEmail=clean(env.ADMIN_EMAIL||'',254);
-  const pounds=p=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(p)||0)/100);
-  const paidAmount=Number(payment?.amount_pence||0);
-  const total=Number(quote?.total_pence||0);
-  const paidSoFar=kind==='DEPOSIT'?paidAmount:total;
-  const remaining=Math.max(0,total-paidSoFar);
-  const label=kind==='DEPOSIT'?'deposit':kind==='BALANCE'?'remaining balance':'full payment';
-  const confirmed=kind==='DEPOSIT'?'Your date is now secured with the deposit.':'Your private event is now paid in full.';
-  const manageUrl=`https://bootscootinlinedancing.co.uk/private-quote.html?token=${encodeURIComponent(inquiry?.secure_token||'')}`;
-  let customerSent=false,adminSent=false;
-  if(emailOk(customerEmail)) {
-    try {
-      const subject=`Boot Scootin’ private event ${label} received — ${clean(inquiry.reference,80)}`;
-      const text=`Hi ${clean(inquiry.customer_name,120)||'there'},\n\nThank you — we’ve received your ${label} of ${pounds(paidAmount)} for your Boot Scootin’ private event.\n\nReference: ${clean(inquiry.reference,80)}\nEvent date: ${clean(quote?.agreed_date||inquiry?.preferred_date,40)||'To be agreed'}\nTotal: ${pounds(total)}\nPaid now: ${pounds(paidAmount)}\nRemaining balance: ${pounds(remaining)}\n\n${confirmed}\n\nManage your booking: ${manageUrl}\n\nNora\nBoot Scootin’ Line Dancing`;
-      const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>Payment received</h2><p>Hi ${clean(inquiry.customer_name,120)||'there'},</p><p>Thank you — we’ve received your <strong>${label}</strong> of <strong>${pounds(paidAmount)}</strong>.</p><p><strong>Reference:</strong> ${clean(inquiry.reference,80)}<br><strong>Event date:</strong> ${clean(quote?.agreed_date||inquiry?.preferred_date,40)||'To be agreed'}<br><strong>Total:</strong> ${pounds(total)}<br><strong>Paid now:</strong> ${pounds(paidAmount)}<br><strong>Remaining balance:</strong> ${pounds(remaining)}</p><p>${confirmed}</p><p><a href="${manageUrl}" style="display:inline-block;padding:14px 20px;background:#c81924;color:#fff;text-decoration:none;font-weight:700">MANAGE MY BOOKING</a></p><p>Nora<br><strong>Boot Scootin’ Line Dancing</strong></p></div>`;
-      const sent=await sendTransactionalEmail(env,customerEmail,subject,html,text,'events');
-      customerSent=!sent?.skipped;
-    } catch(_) {}
-  }
-  if(emailOk(adminEmail)) {
-    try {
-      const subject=`Private event payment received — ${clean(inquiry.reference,80)}`;
-      const text=`Private-event payment received.\n\nReference: ${clean(inquiry.reference,80)}\nCustomer: ${clean(inquiry.customer_name,120)}\nType: ${label}\nAmount: ${pounds(paidAmount)}\nRemaining: ${pounds(remaining)}\nStatus: ${kind==='DEPOSIT'?'CONFIRMED_DEPOSIT':'CONFIRMED_PAID'}`;
-      const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>Private event payment received</h2><p><strong>${clean(inquiry.reference,80)}</strong></p><p>${clean(inquiry.customer_name,120)} paid <strong>${pounds(paidAmount)}</strong> (${label}).<br>Remaining balance: <strong>${pounds(remaining)}</strong>.</p></div>`;
-      const sent=await sendTransactionalEmail(env,adminEmail,subject,html,text,'events');
-      adminSent=!sent?.skipped;
-    } catch(_) {}
-  }
-  await env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'SYSTEM',actor,'PAYMENT_EMAILS',JSON.stringify({kind,customer_sent:customerSent,admin_sent:adminSent,amount_pence:paidAmount,remaining_pence:remaining})).run().catch(()=>{});
-}
-
-async function syncPrivateEventPayment(env, payment, inquiry, quote, actor='PRIVATE_PAYMENT_SYNC') {
-  if(!payment?.provider_reference || !sumUpConfigured(env)) return {payment,inquiry,quote};
-  const checkout=await retrieveSumUpCheckout(env,payment.provider_reference).catch(()=>null);
-  if(!checkout) return {payment,inquiry,quote};
-  const status=String(checkout.status||'').toUpperCase();
-  if(status==='PAID' && payment.status!=='PAID'){
-    const tx=clean(checkoutTransactionId(checkout),180)||null;
-    const kind=String(payment.payment_kind||'').toUpperCase();
-    const nextInquiry=kind==='DEPOSIT'?'CONFIRMED_DEPOSIT':'CONFIRMED_PAID';
-    await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`UPDATE private_event_payments SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_reference=? WHERE id=?`).bind(payment.provider_reference,payment.id),
-      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(nextInquiry,inquiry.id),
-      env.BOOKINGS_DB.prepare(`UPDATE private_event_quotes SET status='QUOTE_ACCEPTED',updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(quote.id),
-      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'SYSTEM',actor,kind==='DEPOSIT'?'DEPOSIT_PAID':'FULL_PAYMENT_PAID',JSON.stringify({payment_id:payment.id,checkout_id:payment.provider_reference,transaction_id:tx,amount_pence:payment.amount_pence}))
-    ]);
-    payment={...payment,status:'PAID',paid_at:new Date().toISOString()};
-    inquiry={...inquiry,status:nextInquiry};
-    quote={...quote,status:'QUOTE_ACCEPTED'};
-    try{await sendPrivateEventPaymentEmails(env,inquiry,quote,payment,kind,actor);}catch(_){}
-  }else if(['FAILED','EXPIRED'].includes(status) && payment.status==='PENDING'){
-    await env.BOOKINGS_DB.prepare(`UPDATE private_event_payments SET status=? WHERE id=?`).bind(status,payment.id).run().catch(()=>{});
-    payment={...payment,status};
-  }
-  return {payment,inquiry,quote};
-}
-
-async function privateEventPay(request, env) {
-  if(!env.BOOKINGS_DB) return json({error:'The private booking service is unavailable.'},503);
-  await ensureBookingSchema(env);
-  if(!sumUpConfigured(env)) return json({error:'Secure SumUp payment is not available right now. No payment has been taken.'},503);
-  const isGet=request.method==='GET';
-  const url=new URL(request.url);
-  const b=isGet ? {token:url.searchParams.get('token'),kind:url.searchParams.get('kind')} : await request.json().catch(()=>null);
-  if(!b) return isGet ? Response.redirect(`${url.origin}/private-quote.html?payment=error`,303) : json({error:'The payment request could not be read.'},400);
-  const token=clean(b.token,120), requested=clean(b.kind,20).toUpperCase();
-  if(!['DEPOSIT','FULL','BALANCE'].includes(requested)) return json({error:'Please choose deposit or full payment.'},400);
-  let inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE secure_token=?`).bind(token).first();
-  if(!inquiry) return json({error:'This private booking link is invalid.'},404);
-  let quote=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE inquiry_id=? ORDER BY version DESC LIMIT 1`).bind(inquiry.id).first();
-  if(!quote) return json({error:'A quote has not been issued for this booking yet.'},409);
-
-  // Reconcile the latest payment first so a second tap cannot accidentally create another charge after payment.
-  let latest=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE inquiry_id=? AND quote_id=? ORDER BY created_at DESC LIMIT 1`).bind(inquiry.id,quote.id).first();
-  if(latest){
-    const synced=await syncPrivateEventPayment(env,latest,inquiry,quote,'PRIVATE_PAYMENT_PRECHECK');
-    latest=synced.payment; inquiry=synced.inquiry; quote=synced.quote;
-  }
-  if(inquiry.status==='CONFIRMED_PAID') return json({error:'This event has already been paid in full.'},409);
-  if(requested==='DEPOSIT' && ['CONFIRMED_DEPOSIT','BALANCE_DUE'].includes(inquiry.status)) return json({error:'The deposit has already been paid.'},409);
-
-  const kind=requested==='BALANCE'?'FULL':requested;
-  const amount= requested==='DEPOSIT'
-    ? Math.max(0,Number(quote.deposit_pence)||0)
-    : requested==='BALANCE'
-      ? Math.max(0,Number(quote.balance_due_pence)||0)
-      : Math.max(0,Number(quote.total_pence)||0);
-  if(amount<=0) return json({error:'There is no payment amount due for this option.'},409);
-
-  const id=crypto.randomUUID();
-  const suffix=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
-  const reference=`PE-${clean(inquiry.reference,40)}-${requested}-${suffix}`.slice(0,90);
-  const origin=new URL(request.url).origin;
-  const description=requested==='DEPOSIT'
-    ? `Boot Scootin’ private event deposit — ${clean(inquiry.reference,60)}`
-    : requested==='BALANCE'
-      ? `Boot Scootin’ private event balance — ${clean(inquiry.reference,60)}`
-      : `Boot Scootin’ private event — ${clean(inquiry.reference,60)}`;
-  const payload={
-    checkout_reference:reference,
-    amount:Number((amount/100).toFixed(2)),currency:'GBP',merchant_code:String(env.SUMUP_MERCHANT_CODE),
-    description,
-    redirect_url:`${origin}/private-quote.html?token=${encodeURIComponent(token)}&payment=return`,
-    return_url:`${origin}/api/sumup-webhook`,
-    hosted_checkout:{enabled:true}
-  };
-  try{
-    const r=await sumUpFetch(env,'/v0.1/checkouts',{method:'POST',body:JSON.stringify(payload)});
-    const checkout=await r.json().catch(()=>({}));
-    const raw=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||''; let checkoutUrl='';
-    try{const u=new URL(raw);if(u.protocol==='https:')checkoutUrl=u.toString();}catch(_){}
-    if(!r.ok||!checkout.id||!checkoutUrl){
-      const providerMessage=clean(checkout?.message||checkout?.error_message||checkout?.error||'',180);
-      return json({error:'SumUp could not open the secure payment page. No payment has been taken.',detail:providerMessage},502);
-    }
-    await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_payments(id,inquiry_id,quote_id,payment_kind,amount_pence,provider,provider_reference,status) VALUES(?,?,?,?,?,'SUMUP',?,'PENDING')`).bind(id,inquiry.id,quote.id,requested,amount,checkout.id),
-      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(requested==='DEPOSIT'?'AWAITING_DEPOSIT':'QUOTE_ACCEPTED',inquiry.id),
-      env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'CUSTOMER','secure link','PAYMENT_STARTED',JSON.stringify({payment_id:id,kind:requested,amount_pence:amount,checkout_id:checkout.id}))
-    ]);
-    if(isGet) return Response.redirect(checkoutUrl,303);
-    return json({ok:true,checkout_url:checkoutUrl,payment_id:id,kind:requested,amount_pence:amount});
-  }catch(error){
-    return json({error:'The secure payment service is temporarily unavailable. No payment has been taken. Please try again.'},502);
-  }
+  const quote=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE inquiry_id=? ORDER BY version DESC LIMIT 1`).bind(inquiry.id).first();
+  const safeInquiry={reference:inquiry.reference,event_type:inquiry.event_type,preferred_date:inquiry.preferred_date,start_time:inquiry.start_time,end_time:inquiry.end_time,venue_name:inquiry.venue_name,venue_address:inquiry.venue_address,guest_count:inquiry.guest_count,status:inquiry.status};
+  return json({inquiry:safeInquiry,quote,payments_enabled:Boolean(env.SUMUP_API_KEY&&env.SUMUP_MERCHANT_CODE)});
 }
 
 async function privateEventRespond(request, env) {
@@ -3680,8 +2860,8 @@ async function adminCustomers(request, env) {
   if (request.method !== 'GET') return json({error:'Method not allowed.'},405);
 
   const baseQuery = `
-    SELECT lower(b.customer_email) customer_key, COALESCE(NULLIF((SELECT MAX(cu.name) FROM customers cu WHERE lower(cu.email)=lower(b.customer_email)),''),MAX(b.customer_name)) customer_name, lower(b.customer_email) customer_email,
-      COALESCE(NULLIF((SELECT MAX(cu.phone) FROM customers cu WHERE lower(cu.email)=lower(b.customer_email)),''),NULLIF(MAX(b.customer_phone),'')) customer_phone, COUNT(*) total_bookings,
+    SELECT lower(b.customer_email) customer_key, MAX(b.customer_name) customer_name, lower(b.customer_email) customer_email,
+      MAX(b.customer_phone) customer_phone, COUNT(*) total_bookings,
       SUM(CASE WHEN b.status='PAID' THEN 1 ELSE 0 END) paid_bookings,
       SUM(CASE WHEN b.status='CANCELLED' THEN 1 ELSE 0 END) cancelled_bookings,
       SUM(CASE WHEN b.status='REFUNDED' THEN 1 ELSE 0 END) refunded_bookings,
@@ -3878,7 +3058,6 @@ async function adminBookings(request, env, ctx) {
     if(booking.status!=='PAID'){
       await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
       const confirmed=await bookingWithClass(env,id);if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED');
-      await awardLoyaltyStampForBooking(env,id);
     }
   }else if(action==='CANCEL'){
     if(['PENDING','PAID'].includes(booking.status)){
@@ -3918,7 +3097,6 @@ async function adminBookings(request, env, ctx) {
         await refundSumUpTransaction(env,transactionId,isFull?null:requested);
         await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,provider_transaction_id=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
           .bind(isFull?'REFUNDED':'CANCELLED',requested,transactionId,clean(`Refund confirmed by SumUp. Trace ${refundTraceId}. ${body.admin_notes||''}`,600),id).run();
-        if(isFull) await reverseLoyaltyStampForBooking(env,id);
         await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
           .bind(check.state.email,'REFUND_SUMUP','booking',id,JSON.stringify({trace_id:refundTraceId,requested_amount_pence:requested,transaction_id:transactionId,full_refund:isFull})).run().catch(()=>{});
         try {
@@ -3945,17 +3123,12 @@ async function adminBookings(request, env, ctx) {
     const refundAmount=Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence);
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)
       .bind(refundAmount,clean(body.admin_notes,600),id).run();
-    await reverseLoyaltyStampForBooking(env,id); // MANUAL_LOYALTY_REFUND_REVERSAL
     const refunded=await bookingWithClass(env,id);if(refunded)await deliverBookingNotification(env,{...refunded,refund_amount_pence:refundAmount},'REFUND_CONFIRMED');
   }else if(action==='ISSUE_CREDIT'){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='CLASS_CREDIT_ISSUED',admin_notes=? WHERE id=?`).bind(clean(body.admin_notes,600),id).run();
   }else if(action==='CHECK_IN'){
     await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO attendance(id,booking_id,checked_in_by) VALUES(?,?,?)`).bind(crypto.randomUUID(),id,check.state.email).run();
-    const checked=await bookingWithClass(env,id); if(checked){const count=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE lower(b.customer_email)=lower(?)`).bind(checked.customer_email).first(); if(Number(count?.n||0)>0&&Number(count.n)%9===0){const reward=await issuePersonalPromotion(env,{email:checked.customer_email,name:checked.customer_name,type:'LOYALTY',days:90}); if(reward)await sendTransactionalEmail(env,checked.customer_email,'You earned a free Boot Scootin’ class',brandedEmailHtml({
-      greeting:`Hi ${checked.customer_name},`,
-      heading:'Your free class reward is ready',
-      paragraphs:['You have completed nine loyalty stamps, so your tenth class is free.',`Your personal code: ${reward.code}`,'Use it within 90 days when booking your next class.']
-    }),'You earned a free class. Code: '+reward.code,'members');}}
+    const checked=await bookingWithClass(env,id); if(checked){const count=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE lower(b.customer_email)=lower(?)`).bind(checked.customer_email).first(); if(Number(count?.n||0)>0&&Number(count.n)%9===0){const reward=await issuePersonalPromotion(env,{email:checked.customer_email,name:checked.customer_name,type:'LOYALTY',days:90}); if(reward)await sendTransactionalEmail(env,checked.customer_email,'You earned a free Boot Scootin’ class',buildBrandedEmail({greeting:`Hi ${checked.customer_name},`,heading:'Your free class reward is ready',bodyHtml:`<p>You have completed nine loyalty stamps, so your tenth class is free.</p><p><strong>Your personal code: ${reward.code}</strong></p><p>Use it within 90 days when booking your next class.</p>`}),'You earned a free class. Code: '+reward.code,'members');}}
   }else if(action==='NO_SHOW'){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET admin_notes=? WHERE id=?`).bind(`NO SHOW — ${clean(body.admin_notes,500)}`,id).run();
   }else{
@@ -3984,20 +3157,6 @@ function merchOrderText(order,heading){
   if(order.fulfilment_method==='delivery'&&order.delivery_address) lines.push(`Delivery address: ${order.delivery_address}`);
   return lines.join('\n');
 }
-async function sendAdminMerchAlert(env,order){
-  if(!order?.id)return;
-  const adminEmail=clean(env.ADMIN_EMAIL || env.MERCH_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
-  if(!emailOk(adminEmail))return;
-  const marker=`ADMIN_MERCH_EMAIL:${order.id}`;
-  const already=await env.BOOKINGS_DB.prepare(`SELECT id FROM audit_log WHERE action=? LIMIT 1`).bind(marker).first().catch(()=>null);
-  if(already)return;
-  const money=`£${(Number(order.amount_pence||0)/100).toFixed(2)}`;
-  const text=`New paid Boot Scootin’ merchandise order.\n\nOrder: ${order.reference}\nCustomer: ${order.customer_name}\nEmail: ${order.customer_email}\nPhone: ${order.customer_phone||'Not supplied'}\nItem: ${order.design}\nFit/size: ${order.fit} / ${order.size}\nQuantity: ${order.quantity}\nFulfilment: ${merchDeliveryLabel(order)}\nTotal: ${money}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch.html`;
-  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New paid merch order</h2><p><strong>${order.reference}</strong><br>${order.customer_name}<br>${order.customer_email}</p><p>${order.design} · ${order.fit} · ${order.size} · Qty ${order.quantity}<br>${merchDeliveryLabel(order)} · <strong>${money}</strong></p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html">Open HQ</a></p></div>`;
-  const sent=await sendTransactionalEmail(env,adminEmail,`New merch order — ${order.reference}`,html,text,'general').catch(()=>null);
-  if(sent&&!sent.skipped)await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind('SYSTEM',marker,'merch_order',order.id,JSON.stringify({recipient:adminEmail})).run().catch(()=>{});
-}
-
 async function sendMerchConfirmation(env,order){
   if(order.confirmation_email_sent_at)return;
   const money=p=>`£${(Number(p||0)/100).toFixed(2)}`;
@@ -4107,7 +3266,6 @@ async function merchOrderStatus(request,env,url){
         order.status='PAID';
         order.provider_transaction_id=tid;
         try{await sendMerchConfirmation(env,{...order,status:'PAID'});}catch(_){}
-        try{await sendAdminMerchAlert(env,{...order,status:'PAID'});}catch(_){}
       } else if(['FAILED','EXPIRED'].includes(cs)) {
         await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run(); order.status=cs;
       }
@@ -4128,6 +3286,21 @@ async function adminMerchOrders(request,env){
     return json({items:rows.results||[]});
   }
   const body=await request.json().catch(()=>null); if(!body)return json({error:'Invalid merchandise order request.'},400);
+  if(request.method==='POST'&&body.action==='CREATE_MANUAL'){
+    const name=clean(body.name,100),email=clean(body.email,160).toLowerCase(),phone=clean(body.phone,40),design=clean(body.design,100),fit=clean(body.fit,20),size=clean(body.size,30),quantity=Math.max(1,Math.min(4,Number(body.quantity)||1));
+    const fulfilment=clean(body.fulfilment_method,20)==='delivery'?'delivery':'collection',deliveryAddress=clean(body.delivery_address,500),paymentMethod=clean(body.payment_method,40)||'unpaid';
+    if(!name||!emailOk(email))return json({error:'Add the customer name and a valid email address.'},400);
+    if(!['Just One More Dance','No Mistakes, Just Variations'].includes(design))return json({error:'Choose a valid T-shirt design.'},400);
+    if(!['unisex','womens'].includes(fit))return json({error:'Choose a valid fit.'},400);
+    const allowed=fit==='womens'?new Set(['S (UK 10)','M (UK 12)','L (UK 14)','XL (UK 16)','2XL (UK 18)','3XL (UK 20)','4XL (UK 22)']):new Set(['S','M','L','XL','2XL','3XL','4XL','5XL']);
+    if(!allowed.has(size))return json({error:'Choose a size available for that fit.'},400);
+    if(fulfilment==='delivery'&&!deliveryAddress)return json({error:'Add the delivery address.'},400);
+    const unit=fit==='womens'?2200:2000,deliveryPence=fulfilment==='delivery'?395:0,amount=unit*quantity+deliveryPence,id=crypto.randomUUID(),reference=merchOrderReference(),paid=paymentMethod!=='unpaid';
+    await env.BOOKINGS_DB.prepare(`INSERT INTO merch_orders(id,reference,customer_name,customer_email,customer_phone,design,fit,size,quantity,unit_price_pence,amount_pence,status,fulfilment_method,delivery_address,delivery_pence,fulfilment_status,paid_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'NEW',${paid?'CURRENT_TIMESTAMP':'NULL'})`).bind(id,reference,name,email,phone,design,fit,size,quantity,unit,amount,paid?'PAID':'PENDING',fulfilment,deliveryAddress||null,deliveryPence).run();
+    await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email,'MERCH_MANUAL_ORDER_CREATED','merch_order',id,JSON.stringify({reference,payment_method:paymentMethod,amount_pence:amount})).run().catch(()=>{});
+    if(paid)try{await sendMerchConfirmation(env,{id,reference,customer_name:name,customer_email:email,customer_phone:phone,design,fit,size,quantity,amount_pence:amount,status:'PAID',fulfilment_method:fulfilment,delivery_address:deliveryAddress,delivery_pence:deliveryPence});}catch(_){}
+    return json({ok:true,id,reference,status:paid?'PAID':'PENDING',amount_pence:amount},201);
+  }
   const id=clean(body.id,120),action=clean(body.action,40);
   const order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE id=?`).bind(id).first();
   if(!order)return json({error:'Merchandise order not found.'},404);
@@ -4148,18 +3321,9 @@ async function adminMerchOrders(request,env){
 
 async function adminPrivateEvents(request, env) {
   const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
-  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,q.id quote_id,q.total_pence,q.deposit_pence,q.balance_due_pence,q.status quote_status,q.quote_expires_at, COALESCE((SELECT SUM(p.amount_pence) FROM private_event_payments p WHERE p.inquiry_id=i.id AND p.status='PAID'),0) paid_pence, (SELECT p.payment_kind FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_kind, (SELECT p.status FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_status, (SELECT p.provider_reference FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_reference, (SELECT p.paid_at FROM private_event_payments p WHERE p.inquiry_id=i.id AND p.status='PAID' ORDER BY p.paid_at DESC LIMIT 1) latest_paid_at FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) ORDER BY i.created_at DESC`).all();return json({items:results});}
+  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,q.id quote_id,q.total_pence,q.deposit_pence,q.status quote_status,q.quote_expires_at FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) ORDER BY i.created_at DESC`).all();return json({items:results});}
   const b=await request.json().catch(()=>null);if(!b)return json({error:'Invalid private event request.'},400);
   if(request.method==='PATCH'&&b.action==='STATUS'){const status=clean(b.status,40);if(!privateStatuses.has(status))return json({error:'Invalid status.'},400);await env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,clean(b.id,120)).run();return json({ok:true});}
-  if(request.method==='DELETE'&&b.action==='DELETE'){
-    const inquiryId=clean(b.id,120);
-    const inquiry=await env.BOOKINGS_DB.prepare(`SELECT id,reference,customer_name,status FROM private_event_inquiries WHERE id=?`).bind(inquiryId).first();
-    if(!inquiry)return json({error:'Private-event inquiry not found.'},404);
-    // D1 foreign keys are ON DELETE CASCADE, so removing the inquiry also removes
-    // its quote versions, payment rows and timeline entries.
-    await env.BOOKINGS_DB.prepare(`DELETE FROM private_event_inquiries WHERE id=?`).bind(inquiryId).run();
-    return json({ok:true,deleted_reference:inquiry.reference});
-  }
   if(request.method==='POST'&&b.action==='QUOTE'){
     const inquiryId=clean(b.inquiry_id,120);
     const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE id=?`).bind(inquiryId).first();
@@ -4261,85 +3425,6 @@ async function mediaStatus(request, env) {
         ? 'Cloudflare Access is active, but this email is not authorised.'
         : '';
   return json({ ready, authorised: admin.authorised, checks, error, version: 76 });
-}
-
-
-async function mediaMultipartStart(request, env) {
-  const check = requireAdmin(request, env);
-  if (check.response) return check.response;
-  let body;
-  try { body = await request.json(); } catch { return json({ error: 'Upload details could not be read.', code: 'UPLOAD_START_BODY' }, 400); }
-  const name = String(body.name || 'upload.bin').slice(0, 220);
-  const type = String(body.type || 'application/octet-stream');
-  const size = Number(body.size || 0);
-  if (!size || size > 500 * 1024 * 1024) return json({ error: 'Uploads must be between 1 byte and 500 MB.', code: 'FILE_TOO_LARGE' }, 413);
-  if (!allowedTypes.has(type)) return json({ error: `Unsupported file type (${type || 'unknown'}). Use JPG, PNG, WebP, MP4, WebM, MOV or PDF.`, code: 'UNSUPPORTED_TYPE' }, 415);
-  const id = crypto.randomUUID();
-  const key = `uploads/${id}.${extension(name, type)}`;
-  try {
-    const upload = await env.MEDIA_BUCKET.createMultipartUpload(key, {
-      httpMetadata: { contentType: type, cacheControl: 'public, max-age=3600' },
-      customMetadata: {
-        title: String(body.title || name).slice(0, 140),
-        placement: String(body.placement || 'library').slice(0, 80),
-        published: String(body.published === '1' || body.published === true)
-      }
-    });
-    return json({ ok: true, uploadId: upload.uploadId, key, id }, 201);
-  } catch (error) {
-    return json({ error: `Could not start the R2 upload: ${error.message}`, code: 'R2_MULTIPART_START_FAILED' }, 502);
-  }
-}
-
-async function mediaMultipartPart(request, env) {
-  const check = requireAdmin(request, env);
-  if (check.response) return check.response;
-  const uploadId = String(request.headers.get('X-Upload-Id') || '');
-  const key = String(request.headers.get('X-Upload-Key') || '');
-  const partNumber = Number(request.headers.get('X-Part-Number') || 0);
-  if (!uploadId || !key.startsWith('uploads/') || !partNumber) return json({ error: 'Upload part details are missing.', code: 'UPLOAD_PART_DETAILS' }, 400);
-  try {
-    const bytes = await request.arrayBuffer();
-    if (!bytes.byteLength || bytes.byteLength > 12 * 1024 * 1024) return json({ error: 'Upload part must be 12 MB or smaller.', code: 'UPLOAD_PART_SIZE' }, 413);
-    const multipart = env.MEDIA_BUCKET.resumeMultipartUpload(key, uploadId);
-    const part = await multipart.uploadPart(partNumber, bytes);
-    return json({ ok: true, part });
-  } catch (error) {
-    return json({ error: `Video upload part ${partNumber} failed: ${error.message}`, code: 'R2_MULTIPART_PART_FAILED' }, 502);
-  }
-}
-
-async function mediaMultipartComplete(request, env) {
-  const check = requireAdmin(request, env);
-  if (check.response) return check.response;
-  let body;
-  try { body = await request.json(); } catch { return json({ error: 'Final upload details could not be read.', code: 'UPLOAD_COMPLETE_BODY' }, 400); }
-  const uploadId = String(body.uploadId || '');
-  const key = String(body.key || '');
-  const parts = Array.isArray(body.parts) ? body.parts : [];
-  if (!uploadId || !key.startsWith('uploads/') || !parts.length) return json({ error: 'The multipart upload is incomplete.', code: 'UPLOAD_COMPLETE_DETAILS' }, 400);
-  try {
-    const multipart = env.MEDIA_BUCKET.resumeMultipartUpload(key, uploadId);
-    await multipart.complete(parts);
-    const items = await readIndex(env);
-    const createdAt = new Date().toISOString();
-    const type = String(body.type || 'application/octet-stream');
-    const name = String(body.name || key.split('/').pop() || 'upload');
-    const id = key.split('/').pop().split('.')[0];
-    items.unshift({
-      id, storage_key:key, original_name:name,
-      title:String(body.title || name).trim().slice(0,140),
-      description:String(body.description || '').trim().slice(0,500),
-      media_type:mediaType(type), mime_type:type, size_bytes:Number(body.size||0),
-      placement:String(body.placement || 'library').trim().slice(0,80),
-      published:(body.published === '1' || body.published === true) ? 1 : 0,
-      uploaded_by:check.state.email, created_at:createdAt
-    });
-    await writeIndex(env, items.slice(0,1000));
-    return json({ ok:true, id, key, url:`/media/${key}`, note:type==='video/quicktime'?'MOV uploaded successfully. MP4 is still recommended for the widest browser playback support.':'' }, 201);
-  } catch (error) {
-    return json({ error:`Could not finish the R2 upload: ${error.message}`, code:'R2_MULTIPART_COMPLETE_FAILED' }, 502);
-  }
 }
 
 async function mediaCollection(request, env) {
@@ -4460,29 +3545,12 @@ export default {
       if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);
       if (path === '/api/admin/cleanup-known-august-tests' && request.method === 'POST') return cleanupKnownAugustTestBookings(request, env);
       if (path === '/api/admin/bootstrap' && request.method === 'GET') return adminBootstrap(request, env);
-      if ((path === '/members' || path === '/members/' || path === '/member-login') && request.method === 'GET') {
-        const target = new URL('/member-hub.html', request.url);
-        return Response.redirect(target.toString(), 302);
-      }
-      if (path === '/api/member/register' && request.method === 'POST') return memberRegister(request, env);
-      if (path === '/api/member/verify' && request.method === 'POST') return memberVerify(request, env);
-      if (path === '/api/member/login' && request.method === 'POST') return memberLogin(request, env);
-      if (path === '/api/member/logout' && request.method === 'POST') return memberLogout(request, env);
-      if (path === '/api/member/forgot' && request.method === 'POST') return memberForgot(request, env);
-      if (path === '/api/member/reset' && request.method === 'POST') return memberReset(request, env);
-      if (path === '/api/member/me' && request.method === 'GET') return memberMe(request, env);
-      if (path === '/api/member/profile' && request.method === 'POST') return memberProfileUpdate(request, env);
-      if (path === '/api/member/export' && request.method === 'GET') return memberExport(request, env);
-      if (path === '/api/member/pause' && request.method === 'POST') return memberPause(request, env);
       if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
       if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);
       if (path === '/api/booking-calendar' && request.method === 'GET') return bookingCalendar(request, env, url);
       if (path === '/api/private-events/inquiries' && request.method === 'POST') return privateEventInquiry(request, env);
       if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);
-      // Private-event payment compatibility route. Safari/Pages may preserve a trailing slash
-      // or an older payment alias from a cached proposal page, so accept all known variants.
-      if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
@@ -4496,13 +3564,10 @@ export default {
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);
       if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);
       if (path === '/api/admin/media-status' && request.method === 'GET') return mediaStatus(request, env);
-      if (path === '/api/admin/media-upload/start' && request.method === 'POST') return mediaMultipartStart(request, env);
-      if (path === '/api/admin/media-upload/part' && request.method === 'POST') return mediaMultipartPart(request, env);
-      if (path === '/api/admin/media-upload/complete' && request.method === 'POST') return mediaMultipartComplete(request, env);
       if (path === '/api/admin/media') return mediaCollection(request, env);
       if (path.startsWith('/media/')) return serveMedia(request, env, path);
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
-      return servePublicAssetWithRepairs(request, env);
+      return env.ASSETS.fetch(request);
     } catch (error) {
       if (path.startsWith('/api/') || incomingPath.startsWith('/ranch/api/')) return json({ error: 'Server error', detail: clean(error && error.message ? error.message : error, 500), code: 'UNHANDLED_API_ERROR' }, 500);
       return new Response('Boot Scootin’ is temporarily unavailable.', { status: 500 });
