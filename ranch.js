@@ -316,7 +316,7 @@
     event.preventDefault(); const form=event.currentTarget,msg=$('#adminMerchOrderMessage'),button=form.querySelector('[type=submit]');
     const body=Object.fromEntries(new FormData(form).entries()); body.quantity=Number(body.quantity||1); body.action='CREATE';
     button.disabled=true; if(msg)msg.textContent='Creating order…';
-    try{const result=await jsonFetch('/api/admin/merch-orders',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});let extra='';if(result.payment_url){extra=' SumUp payment link created — opening it now so you can copy/share it.';window.open(result.payment_url,'_blank','noopener');}else if(result.sumup_app_url){extra=' Opening SumUp for card / Tap to Pay. After the payment, use “Mark paid — SumUp” on the order.';window.location.href=result.sumup_app_url;}else if(result.payment_method==='SUMUP_CARD'){extra=' Order created. Open the SumUp app to take the card/Tap to Pay payment, then mark it paid in HQ.';}if(msg)msg.textContent=`Order ${result.reference} created.${extra}`;form.reset();await loadMerchOrders();toast('Merchandise order created.','success');}
+    try{const result=await jsonFetch('/api/admin/merch-orders',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});let extra='';if(result.payment_url){extra=' SumUp payment link created. Use Open payment link or Copy payment link on the order below.';}else if(result.sumup_app_url){extra=' Card order created. Tap “Open SumUp / Tap to Pay” on the order below to hand the amount to the SumUp app.';}else if(result.payment_method==='SUMUP_CARD'){extra=' Card order created. This website cannot securely prefill Tap to Pay until a SumUp Affiliate Key is configured; open SumUp and then mark the order paid in HQ.';}if(msg)msg.textContent=`Order ${result.reference} created.${extra}`;form.reset();await loadMerchOrders();const created=[...document.querySelectorAll('.merch-admin-card')].find(card=>card.textContent.includes(result.reference));created?.scrollIntoView({behavior:'smooth',block:'center'});toast('Merchandise order created.','success');}
     catch(e){if(msg)msg.textContent=e.message||'Could not create order.';toast(e.message||'Could not create order.','error');await loadMerchOrders();}
     finally{button.disabled=false;}
   });
@@ -1264,9 +1264,30 @@ Type REFUNDED to continue.`);
       const data=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{cache:'no-store'});
       state.media=data.items||data.files||[];
       const count=$('#ranchMediaCount');if(count)count.textContent=state.media.length;
-      box.innerHTML=state.media.length?state.media.map(m=>`<article class="ranch-media-item"><div><strong>${esc(m.title||m.original_name)}</strong><small>${esc(m.original_name||m.storage_key)}</small></div></article>`).join(''):emptyPanel('No media uploaded yet.');
+      box.innerHTML=state.media.length?state.media.map(m=>{const places=String(m.placement||'library').split(',').map(x=>x.trim()).filter(Boolean);const hasDance=places.includes('dance-library'),hasGallery=places.includes('gallery');return `<article class="ranch-media-item" data-media-id="${esc(m.id)}"><div class="ranch-media-copy"><strong>${esc(m.title||m.original_name)}</strong><small title="${esc(m.original_name||m.storage_key)}">${esc(m.original_name||m.storage_key)}</small><div class="media-current-placements">${places.map(x=>`<span>${esc(x.replaceAll('-',' '))}</span>`).join('')} ${Number(m.published||0)===1?'<span>published</span>':'<span>hidden</span>'}</div></div><div class="ranch91-row-actions media-quick-actions"><button class="button secondary compact" type="button" data-media-copy="/media/${esc(m.storage_key)}">Copy link</button>${hasDance?'':`<button class="button secondary compact" type="button" data-media-add-place="dance-library" data-id="${esc(m.id)}">Add to Dance Library</button>`}${hasGallery?'':`<button class="button secondary compact" type="button" data-media-add-place="gallery" data-id="${esc(m.id)}">Add to Gallery</button>`}</div></article>`}).join(''):emptyPanel('No media uploaded yet.');
     }catch(error){box.innerHTML=lockedPanel('Media unavailable',error.message);}
   }
+
+
+  $('#ranchMedia')?.addEventListener('click',async event=>{
+    const copy=event.target.closest('[data-media-copy]');
+    if(copy){
+      const absolute=new URL(copy.dataset.mediaCopy,window.location.origin).toString();
+      try{await navigator.clipboard.writeText(absolute);toast('Media link copied.');}catch(_){window.prompt('Copy this media link:',absolute);}
+      return;
+    }
+    const add=event.target.closest('[data-media-add-place]');
+    if(!add)return;
+    const item=state.media.find(m=>m.id===add.dataset.id);if(!item)return;
+    const places=String(item.placement||'library').split(',').map(x=>x.trim()).filter(Boolean);
+    if(!places.includes(add.dataset.mediaAddPlace))places.push(add.dataset.mediaAddPlace);
+    add.disabled=true;add.textContent='Saving…';
+    try{
+      await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id:item.id,placement:places.join(','),published:true})});
+      toast(add.dataset.mediaAddPlace==='dance-library'?'Added to the public Dance Library.':'Added to the public Gallery.','success');
+      await loadMedia();
+    }catch(error){toast(error.message||'Media placement could not be updated.','error');add.disabled=false;}
+  });
 
   function csvCell(value){
     const text=String(value??'');

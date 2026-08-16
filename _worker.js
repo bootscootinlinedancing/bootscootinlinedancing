@@ -4433,6 +4433,20 @@ async function mediaCollection(request, env) {
     }
     return json({ ok: true, id, key, url: `/media/${key}`, placement, published, note: file.type === 'video/quicktime' ? 'MOV uploaded. MP4 is recommended for playback on every browser.' : '' }, 201);
   }
+  if (request.method === 'PATCH') {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'Invalid media update request.' }, 400); }
+    const items = await readIndex(env);
+    const index = items.findIndex(entry => entry.id === body.id);
+    if (index < 0) return json({ error: 'Media file not found.' }, 404);
+    const item = items[index];
+    if (typeof body.title === 'string' && body.title.trim()) item.title = body.title.trim().slice(0, 140);
+    if (typeof body.placement === 'string') item.placement = body.placement.trim().slice(0, 80) || 'library';
+    if (body.published === true || body.published === false || body.published === 1 || body.published === 0) item.published = (body.published === true || body.published === 1) ? 1 : 0;
+    items[index] = item;
+    await writeIndex(env, items);
+    return json({ ok: true, item });
+  }
   if (request.method === 'DELETE') {
     let body;
     try { body = await request.json(); } catch { return json({ error: 'Invalid delete request.' }, 400); }
@@ -4444,6 +4458,33 @@ async function mediaCollection(request, env) {
     return json({ ok: true });
   }
   return json({ error: 'Method not allowed.' }, 405);
+}
+
+
+async function publicMedia(request, env, url) {
+  if (request.method !== 'GET') return json({ error: 'Method not allowed.' }, 405);
+  if (!env.MEDIA_BUCKET) return json({ items: [] });
+  try {
+    const placement = String(url.searchParams.get('placement') || '').trim().toLowerCase();
+    const items = await readIndex(env);
+    const filtered = items.filter(item => {
+      if (Number(item.published || 0) !== 1) return false;
+      if (!placement) return true;
+      const placements = String(item.placement || '').toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
+      return placements.includes(placement);
+    }).sort((a,b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    return json({ items: filtered.map(item => ({
+      id: item.id,
+      title: item.title || 'Boot Scootin’ media',
+      description: item.description || '',
+      media_type: item.media_type || mediaType(item.mime_type || ''),
+      mime_type: item.mime_type || '',
+      url: `/media/${item.storage_key}`,
+      created_at: item.created_at || ''
+    })) });
+  } catch (error) {
+    return json({ items: [], error: 'Published media could not be loaded.' }, 200);
+  }
 }
 
 
@@ -4548,6 +4589,7 @@ export default {
       if (path === '/api/admin/media-upload/part' && request.method === 'POST') return mediaMultipartPart(request, env);
       if (path === '/api/admin/media-upload/complete' && request.method === 'POST') return mediaMultipartComplete(request, env);
       if (path === '/api/admin/media') return mediaCollection(request, env);
+      if (path === '/api/public/media' && request.method === 'GET') return publicMedia(request, env, url);
       if (path.startsWith('/media/')) return serveMedia(request, env, path);
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
       return servePublicAssetWithRepairs(request, env);

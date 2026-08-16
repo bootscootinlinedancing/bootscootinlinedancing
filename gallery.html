@@ -248,7 +248,7 @@
     <h1>Real classes. Real good times.</h1>
     <p>A little look at the people, classes and country nights that make Boot Scootin’ what it is. No perfect poses needed — just dancing, laughter and good times.</p>
   </div>
-  <div class="gallery-grid-full">
+  <div class="gallery-grid-full" id="galleryGrid">
     <figure><img src="class1.webp" alt="Boot Scootin’ line dancing class"><figcaption>Boot Scootin’ class</figcaption></figure>
     <figure><img src="hall2.webp" alt="Beginner line dancing class"><figcaption>Beginner line dancing</figcaption></figure>
     <figure><img src="class2.webp" alt="Boot Scootin’ class in Birmingham"><figcaption>Learning together</figcaption></figure>
@@ -261,6 +261,12 @@
   </div>
 </section>
 </main>
+<div class="gallery-lightbox" id="galleryLightbox" hidden role="dialog" aria-modal="true" aria-label="Gallery viewer">
+  <button class="gallery-lightbox-close" id="galleryLightboxClose" type="button" aria-label="Close gallery viewer">×</button>
+  <div class="gallery-lightbox-stage" id="galleryLightboxStage"></div>
+  <p class="gallery-lightbox-caption" id="galleryLightboxCaption"></p>
+</div>
+
 <footer>
 <div class="footer-lockup">
 <img alt="Boot Scootin’ Line Dancing logo" class="brand-logo footer-logo" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
@@ -298,6 +304,74 @@
 </div>
 </div>
 <a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#lock"></use></svg> Admin Login</a>
+
+<script id="gallery-v108-script">
+(() => {
+  const grid = document.getElementById('galleryGrid');
+  const modal = document.getElementById('galleryLightbox');
+  const stage = document.getElementById('galleryLightboxStage');
+  const caption = document.getElementById('galleryLightboxCaption');
+  const close = document.getElementById('galleryLightboxClose');
+  if (!grid || !modal || !stage || !caption || !close) return;
+
+  const esc = value => String(value || '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+
+  function openViewer(url, title, type) {
+    stage.innerHTML = type === 'video'
+      ? `<video src="${esc(url)}" controls autoplay playsinline></video>`
+      : `<img src="${esc(url)}" alt="${esc(title)}">`;
+    caption.textContent = title || '';
+    modal.hidden = false;
+    document.body.classList.add('gallery-modal-open');
+    close.focus();
+  }
+  function closeViewer() {
+    const video = stage.querySelector('video');
+    if (video) video.pause();
+    modal.hidden = true;
+    stage.innerHTML = '';
+    document.body.classList.remove('gallery-modal-open');
+  }
+
+  grid.addEventListener('click', event => {
+    const media = event.target.closest('img,video');
+    if (!media || !grid.contains(media)) return;
+    event.preventDefault();
+    const figure = media.closest('figure');
+    openViewer(media.currentSrc || media.src, figure?.querySelector('figcaption')?.textContent?.trim() || media.alt || 'Boot Scootin’ gallery', media.tagName === 'VIDEO' ? 'video' : 'image');
+  });
+  grid.addEventListener('keydown', event => {
+    if (!['Enter',' '].includes(event.key)) return;
+    const figure = event.target.closest('figure');
+    if (!figure) return;
+    const media = figure.querySelector('img,video');
+    if (!media) return;
+    event.preventDefault();
+    openViewer(media.currentSrc || media.src, figure.querySelector('figcaption')?.textContent?.trim() || 'Boot Scootin’ gallery', media.tagName === 'VIDEO' ? 'video' : 'image');
+  });
+  [...grid.querySelectorAll('figure')].forEach(figure => { figure.tabIndex = 0; figure.setAttribute('role','button'); figure.setAttribute('aria-label',`Open ${figure.querySelector('figcaption')?.textContent || 'gallery image'}`); });
+  close.addEventListener('click', closeViewer);
+  modal.addEventListener('click', event => { if (event.target === modal) closeViewer(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !modal.hidden) closeViewer(); });
+
+  fetch('/api/public/media?placement=gallery', {cache:'no-store'})
+    .then(r => r.ok ? r.json() : {items:[]})
+    .then(data => {
+      (data.items || []).forEach(item => {
+        const figure = document.createElement('figure');
+        figure.tabIndex = 0;
+        figure.setAttribute('role','button');
+        figure.setAttribute('aria-label',`Open ${item.title || 'uploaded gallery media'}`);
+        const media = item.media_type === 'video'
+          ? `<video src="${esc(item.url)}" muted playsinline preload="metadata"></video>`
+          : `<img src="${esc(item.url)}" alt="${esc(item.description || item.title || 'Boot Scootin’ gallery upload')}" loading="lazy">`;
+        figure.innerHTML = `${media}<figcaption>${esc(item.title || 'Boot Scootin’ upload')}</figcaption>`;
+        grid.prepend(figure);
+      });
+    }).catch(() => {});
+})();
+</script>
+
 <script src="honky-theme.js?v=96.0.0"></script>
 </body>
 </html>
