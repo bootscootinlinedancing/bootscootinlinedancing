@@ -2182,6 +2182,10 @@ nav a{
 .business-love-visual span{font-family:Rye,serif;font-size:clamp(2rem,5vw,4rem)}
 .business-love-visual small{letter-spacing:.2em;margin-top:.6rem}
 .threefives-visual{background:linear-gradient(145deg,#1a100e,#6f171b)}
+.wetkiss-visual{background:linear-gradient(145deg,#16090d,#6d2a3f)}
+.wetkiss-visual b{display:block;margin-top:.75rem;padding:.35rem .55rem;border:1px solid currentColor;font:700 .63rem Oswald,sans-serif;letter-spacing:.08em}
+.affiliate-code{font-family:Oswald,sans-serif;letter-spacing:.06em;color:#ef5358}
+.copy-code-status{min-height:1.5em;margin:.75rem 0 0;font-weight:700}
 .home-sunday-visual{background:linear-gradient(145deg,#382518,#9b7348)}
 .business-love-copy{padding:clamp(1.5rem,4vw,3rem);display:flex;flex-direction:column;justify-content:center}
 .business-love-copy h2{font-size:clamp(2.2rem,5vw,4rem)}

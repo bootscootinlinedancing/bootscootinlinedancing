@@ -245,7 +245,7 @@
 <div class="section-title centre reveal">
 <p class="kicker red">Official relationship</p>
 <h2>Official Boot Scootin’ Merchandise</h2>
-<p>At present, ThreeFives is the only business with an official working relationship with Boot Scootin’.</p>
+<p>ThreeFives is the official merchandise maker for Boot Scootin’. Nora also has a separate, clearly disclosed affiliate relationship with Wetkiss Western Boots.</p>
 </div>
 <article class="business-love-card official-business-card reveal" id="threefives">
 <div aria-label="ThreeFives Country Apparel" class="business-love-visual threefives-visual brand-panel">
@@ -261,6 +261,32 @@
 <a class="button" href="https://www.threefives.co.uk" rel="noopener" target="_blank">Visit Website</a>
 <a class="button ghost dark-ghost" href="https://www.instagram.com/threefives_countryapparel?igsh=MWE2a3FhZWlhbjhlZQ==" rel="noopener" target="_blank">Instagram</a>
 </div>
+</div>
+</article>
+</section>
+<section class="section dark affiliate-relationship-section" id="affiliate-partners">
+<div class="section-title centre reveal">
+<p class="kicker red">Affiliate partnership</p>
+<h2>Wetkiss Western Boots</h2>
+<p>Nora is a Wetkiss affiliate. If you shop through the referral link below, Nora may earn a commission at no extra cost to you. The discount code shown is supplied through her Wetkiss affiliate account.</p>
+</div>
+<article class="business-love-card reveal" id="wetkiss">
+<div aria-label="Wetkiss Western Boots" class="business-love-visual wetkiss-visual brand-panel">
+<span>WETKISS</span>
+<small>WESTERN BOOTS</small>
+<b>AFFILIATE PARTNER</b>
+</div>
+<div class="business-love-copy">
+<p class="kicker red">Nora’s Affiliate Partner</p>
+<h2>Wetkiss Western Boots</h2>
+<p>Western boots with statement embroidered, rhinestone, fringe, festival and occasion styles.</p>
+<p><strong>Your code:</strong> <span class="affiliate-code">MissEndowed</span> — $15 off.</p>
+<p class="business-disclaimer"><strong>Affiliate disclosure:</strong> Nora may receive an 8% commission on qualifying purchases made through her referral link. This does not increase the price you pay.</p>
+<div class="actions">
+<a class="button" href="https://wetkiss.com/?ref=xvoihtnb" rel="sponsored noopener" target="_blank">Shop Wetkiss</a>
+<button class="button ghost dark-ghost copy-affiliate-code" data-copy="MissEndowed" type="button">Copy code: MissEndowed</button>
+</div>
+<p class="copy-code-status" aria-live="polite"></p>
 </div>
 </article>
 </section>
@@ -348,5 +374,8 @@
 <script src="script.js?v=96.4.59"></script>
 <a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#lock"></use></svg> Admin Login</a>
 <script src="honky-theme.js?v=96.0.0"></script>
+<script>
+document.addEventListener('click',function(e){var b=e.target.closest('.copy-affiliate-code');if(!b)return;var value=b.getAttribute('data-copy')||'';var status=b.closest('.business-love-copy')?.querySelector('.copy-code-status');if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(value).then(function(){if(status)status.textContent='Discount code copied.';}).catch(function(){if(status)status.textContent='Code: '+value;});}else{if(status)status.textContent='Code: '+value;}});
+</script>
 </body>
 </html>
