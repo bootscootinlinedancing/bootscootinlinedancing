@@ -8904,3 +8904,181 @@ body.ranch-v91 .ranch-media-item small{display:block!important;max-width:100%!im
 .country-guide-subpage .guide-editorial-item p{color:#d8c7bb!important}
 .country-guide-subpage .guide-item-number{color:#d8c7bb!important}
 .country-guide-subpage .text-link{color:#ef3c46!important}
+
+/* VERSION 96.4.116 — ENTRY STOMP ONLY
+   Cosmetic-only replacement for the old boot artwork. The existing intro
+   container, enter button ID, session logic and stomp timing are untouched. */
+.boot-entry.boot-entry{
+  background:
+    radial-gradient(circle at 50% 43%,rgba(225,27,39,.20),transparent 25%),
+    radial-gradient(circle at 50% 54%,rgba(102,10,16,.22),transparent 44%),
+    linear-gradient(180deg,#020202 0%,#090404 58%,#020101 100%)!important;
+}
+.boot-entry .boot-entry-shell{
+  width:min(100vw,640px)!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  max-height:100dvh!important;
+  border-left:1px solid rgba(135,32,38,.24)!important;
+  border-right:1px solid rgba(135,32,38,.24)!important;
+  background:
+    linear-gradient(rgba(255,255,255,.012),rgba(255,255,255,.012)),
+    repeating-linear-gradient(0deg,transparent 0 63px,rgba(120,35,39,.08) 64px 65px),
+    #050303!important;
+}
+.boot-entry .boot-entry-shell:before{
+  display:block!important;
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  pointer-events:none!important;
+  background:
+    linear-gradient(90deg,rgba(0,0,0,.46),transparent 24% 76%,rgba(0,0,0,.46)),
+    radial-gradient(circle at 50% 42%,transparent 0 28%,rgba(0,0,0,.24) 58%,rgba(0,0,0,.64) 100%)!important;
+}
+.boot-entry .boot-entry-kicker{
+  top:8.5%!important;
+  color:#d6bdb1!important;
+  font:600 10px/1.2 Oswald,sans-serif!important;
+  letter-spacing:.32em!important;
+  white-space:normal!important;
+}
+.boot-entry .entry-boot.entry-brand-stamp{
+  display:grid!important;
+  place-items:center!important;
+  top:17%!important;
+  left:50%!important;
+  width:min(58vw,285px)!important;
+  height:min(58vw,285px)!important;
+  min-height:0!important;
+  max-width:285px!important;
+  max-height:285px!important;
+  background:none!important;
+  background-image:none!important;
+  transform:translateX(-50%)!important;
+  filter:none!important;
+  overflow:visible!important;
+  border:0!important;
+}
+.boot-entry .entry-brand-stamp:before{
+  display:block!important;
+  content:""!important;
+  position:absolute!important;
+  inset:7%!important;
+  border-radius:50%!important;
+  border:1px solid rgba(235,42,52,.36)!important;
+  box-shadow:0 0 22px rgba(225,27,39,.28),inset 0 0 28px rgba(225,27,39,.10)!important;
+  animation:entryNeonBreath 2.4s ease-in-out infinite!important;
+}
+.boot-entry .entry-brand-stamp:after{display:none!important;content:none!important}
+.boot-entry .entry-brand-stamp .entry-boot-photo{
+  display:block!important;
+  position:relative!important;
+  z-index:2!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  opacity:1!important;
+  visibility:visible!important;
+  transform:none!important;
+  clip-path:none!important;
+  filter:drop-shadow(0 0 18px rgba(224,28,39,.28)) drop-shadow(0 18px 26px rgba(0,0,0,.9))!important;
+}
+.boot-entry .boot-entry-brand.boot-entry-title-lockup{
+  top:49%!important;
+  width:92%!important;
+  display:block!important;
+  text-align:center!important;
+  transform:translateX(-50%)!important;
+}
+.boot-entry .boot-entry-title-lockup div{display:grid!important;justify-items:center!important;gap:5px!important}
+.boot-entry .boot-entry-title-lockup strong{
+  color:#f5ede6!important;
+  font:400 clamp(34px,10vw,54px)/.95 Rye,serif!important;
+  letter-spacing:.035em!important;
+  text-shadow:0 4px 0 #21090b,0 0 18px rgba(225,27,39,.18)!important;
+  white-space:nowrap!important;
+}
+.boot-entry .boot-entry-title-lockup span{
+  color:#ed2732!important;
+  font:700 clamp(15px,4.2vw,20px)/1.15 Oswald,sans-serif!important;
+  letter-spacing:.34em!important;
+  padding-left:.34em!important;
+}
+.boot-entry .boot-entry-title-lockup small{
+  color:#bb9788!important;
+  font:600 9px/1.2 Oswald,sans-serif!important;
+  letter-spacing:.28em!important;
+  padding-left:.28em!important;
+}
+.boot-entry .boot-entry-neon{
+  top:62.5%!important;
+  font:400 clamp(34px,10vw,48px)/1 Yellowtail,cursive!important;
+  color:#f7ebe2!important;
+  text-shadow:0 0 5px rgba(255,255,255,.12),0 0 18px rgba(226,27,38,.38)!important;
+}
+.boot-entry .boot-entry-button{
+  top:auto!important;
+  bottom:12.2%!important;
+  width:min(80vw,390px)!important;
+  min-height:62px!important;
+  border:1px solid #ef2a35!important;
+  background:linear-gradient(180deg,#dd202a,#b8121b)!important;
+  box-shadow:0 0 20px rgba(230,31,42,.30),0 14px 34px rgba(0,0,0,.48)!important;
+}
+.boot-entry .boot-entry-button:hover{background:linear-gradient(180deg,#ec2732,#c31620)!important}
+.boot-entry .boot-entry-tagline{bottom:5.5%!important;color:#e9d8cd!important;font-size:clamp(16px,4.7vw,21px)!important}
+.boot-entry .impact-dust{
+  left:18%!important;
+  width:64%!important;
+  height:11%!important;
+  top:auto!important;
+  bottom:25%!important;
+  background:radial-gradient(ellipse at 50% 50%,rgba(224,30,40,.38),rgba(122,15,22,.16) 44%,transparent 72%)!important;
+  filter:blur(10px)!important;
+}
+.poster-intro.stomping .entry-brand-stamp{
+  animation:brandStampStomp .86s cubic-bezier(.18,.82,.22,1) both!important;
+}
+.poster-intro.stomping .entry-brand-stamp:before{
+  animation:brandStampRing .86s ease both!important;
+}
+@keyframes entryNeonBreath{
+  0%,100%{opacity:.45;transform:scale(.98)}
+  50%{opacity:1;transform:scale(1.025)}
+}
+@keyframes brandStampStomp{
+  0%{transform:translateX(-50%) translateY(0) scale(1)}
+  32%{transform:translateX(-50%) translateY(-18px) scale(1.025)}
+  58%{transform:translateX(-50%) translateY(10px) scale(.975)}
+  76%{transform:translateX(-50%) translateY(-3px) scale(1.006)}
+  100%{transform:translateX(-50%) translateY(0) scale(1)}
+}
+@keyframes brandStampRing{
+  0%,28%{opacity:.45;transform:scale(.96)}
+  58%{opacity:1;transform:scale(1.10)}
+  100%{opacity:0;transform:scale(1.32)}
+}
+@media(max-width:430px){
+  .boot-entry .boot-entry-kicker{top:7.3%!important;font-size:8px!important;letter-spacing:.28em!important}
+  .boot-entry .entry-boot.entry-brand-stamp{top:15.5%!important;width:min(56vw,235px)!important;height:min(56vw,235px)!important}
+  .boot-entry .boot-entry-brand.boot-entry-title-lockup{top:46.5%!important}
+  .boot-entry .boot-entry-title-lockup strong{font-size:clamp(31px,9vw,42px)!important}
+  .boot-entry .boot-entry-title-lockup span{font-size:13px!important}
+  .boot-entry .boot-entry-neon{top:59.5%!important;font-size:38px!important}
+  .boot-entry .boot-entry-button{bottom:12.5%!important;width:82vw!important}
+  .boot-entry .boot-entry-tagline{bottom:5.3%!important;font-size:16px!important}
+}
+@media(max-height:740px){
+  .boot-entry .boot-entry-kicker{top:5.5%!important}
+  .boot-entry .entry-boot.entry-brand-stamp{top:12.5%!important;width:min(45vw,205px)!important;height:min(45vw,205px)!important}
+  .boot-entry .boot-entry-brand.boot-entry-title-lockup{top:43%!important}
+  .boot-entry .boot-entry-neon{top:56%!important;font-size:34px!important}
+  .boot-entry .boot-entry-button{bottom:11.4%!important;min-height:54px!important}
+  .boot-entry .boot-entry-tagline{bottom:3.8%!important;font-size:15px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .boot-entry .entry-brand-stamp:before{animation:none!important}
+  .poster-intro.stomping .entry-brand-stamp{animation:none!important}
+}
