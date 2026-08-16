@@ -385,9 +385,9 @@
 <span><b>4</b> Walls</span>
 </div>
 <p class="choreographer">Choreographer: <a href="https://www.copperknob.co.uk/stepsheets/7VDKHS2/rockin-the-wagon-wheel" rel="noopener" target="_blank">Jamie Marshall</a></p>
-<p class="library-meta">Dance Diary: 19 June · 17 July</p>
+<p class="library-meta">Dance Diary: 19 June · 17 July · Boot Scootin’ modified version uses grapevines in place of the step-lock sections.</p>
 <div class="library-actions library-actions-three">
-<a class="button" href="https://youtu.be/C2H63XKN5ps?is=fM-31vS6Q5-59UMg" rel="noopener" target="_blank">Watch Demo</a>
+<a class="button" href="https://youtu.be/Zh6Wx0Da_jo?is=XwqX7EZw8KyNHETt" rel="noopener" target="_blank">Watch Boot Scootin’ Demo</a>
 <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/7VDKHS2/rockin-the-wagon-wheel" rel="noopener" target="_blank">View stepsheet &amp; choreographer</a>
 <a class="text-link bootstepper-link" href="https://bootstepper.com/dances/D36J5G7568HGNC3" rel="noopener" target="_blank">BootStepper Stepsheet →</a></div>
 </article>
@@ -520,7 +520,7 @@
 <p class="choreographer">Choreographer: <a href="https://www.copperknob.co.uk/stepsheets/QGCF4T9/boot-scootin-boogie" rel="noopener" target="_blank">Bill Bader</a></p>
 <p class="library-meta">Dance Diary: 31 July · 14 August (Low Places)</p>
 <div class="library-actions library-actions-three">
-<a class="button" href="https://youtu.be/sOa1cFM5VTE?is=9bN34qbot6naC3C7" rel="noopener" target="_blank">Watch Demo</a>
+<a class="button" href="https://youtu.be/ye4Mm3tw_sE?is=s0ujDJgizMQNC2WD" rel="noopener" target="_blank">Watch Boot Scootin’ Demo</a>
 <a class="text-link" href="https://www.copperknob.co.uk/stepsheets/QGCF4T9/boot-scootin-boogie" rel="noopener" target="_blank">View stepsheet &amp; choreographer</a>
 <a class="text-link bootstepper-link" href="https://bootstepper.com/dances?search=Boot%20Scootin%E2%80%99%20Boogie" rel="noopener" target="_blank">BootStepper Stepsheet →</a></div>
 </article>
@@ -620,6 +620,8 @@
 </div>
 </div>
 
+<div class="library-quick-return" style="text-align:center;margin:2rem auto 4rem;padding-bottom:5rem"><a class="button secondary" href="#danceSearch" onclick="setTimeout(()=>document.getElementById('danceSearch')?.focus(),150)">Back to search dances ↑</a></div>
+
 <script id="dance-uploaded-media-v108">
 (() => {
   const section = document.getElementById('danceUploadedMediaSection');
@@ -641,7 +643,15 @@
           : item.media_type === 'image'
             ? `<img src="${esc(item.url)}" alt="${esc(item.description || item.title || 'Dance Library upload')}" loading="lazy">`
             : `<a class="button secondary" href="${esc(item.url)}" target="_blank" rel="noopener">Open file</a>`;
-        return `<article class="dance-uploaded-card">${media}<div><h3>${esc(item.title || 'Boot Scootin’ upload')}</h3>${item.description ? `<p>${esc(item.description)}</p>` : ''}</div></article>`;
+        const title = item.title || 'Boot Scootin’ upload';
+        const key = title.toLowerCase();
+        let danceHref = '';
+        if (key.includes('shotgun')) danceHref = '#dance-shotgun-jenny';
+        else if (key.includes('two step')) danceHref = '#dance-two-step-low-places';
+        else if (key.includes('wagon')) danceHref = '#dance-rockin-the-wagon-wheel';
+        else if (key.includes('boot scootin')) danceHref = '#dance-boot-scootin-boogie';
+        else if (key.includes('cowgirl')) danceHref = '#dance-cowgirl';
+        return `<article class="dance-uploaded-card">${media}<div><h3>${esc(title)}</h3>${item.description ? `<p>${esc(item.description)}</p>` : ''}${danceHref ? `<a class="text-link" href="${danceHref}">View dance details →</a>` : ''}</div></article>`;
       }).join('');
       section.hidden = false;
     }).catch(() => {});
