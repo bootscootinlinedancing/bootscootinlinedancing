@@ -2953,8 +2953,8 @@ nav a{
 .confidence-meter span.filled{background:#a91b21}
 .dashboard-support{margin-top:1rem}
 .achievement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
-.achievement-grid article{padding:1.3rem;background:#f1e4d3;border:1px solid #d5bea0;opacity:.55}
-.achievement-grid article.unlocked{opacity:1;border-color:#a91b21}
+.achievement-grid article{padding:1.3rem;background:#14090b;border:1px solid #633038;opacity:1;color:#cbb9ad}.achievement-grid article h3{color:#e7d9cf}.achievement-grid article p{color:#b9a79d}.achievement-grid article .western-icon{opacity:.72}
+.achievement-grid article.unlocked{opacity:1;border-color:#df3a45;background:#1b0b0e;box-shadow:0 0 0 2px rgba(223,58,69,.08)}.achievement-grid article.unlocked h3{color:#fff8ed}.achievement-grid article.unlocked p{color:#dcc9bc}.achievement-grid article.unlocked .western-icon{opacity:1}
 .achievement-grid span{font-size:2.2rem}
 .privacy-settings-list{display:grid;gap:.8rem;margin-bottom:1.2rem}
 .privacy-settings-list label{
@@ -8258,9 +8258,594 @@ body.ranch-v91 .launch-readiness p,body.ranch-v91 .launch-readiness li,body.ranc
 .private-quote-submit-status.success{border-color:#36a667;background:#0c1912;color:#c9f4d9}
 .private-quote-submit-status.error{border-color:#e33b48;background:#24090c;color:#ffd5d8}
 .private-quote-admin-form button[disabled]{opacity:.65;cursor:wait}
-/* V96.4.72 — HQ usability, merch entry and media destinations */
-.ranch91-drawer-user-top{margin:.75rem 0 1rem!important;flex:0 0 auto!important}
-.manual-merch-form{margin:0 0 1.25rem;padding:1.25rem;border:1px solid #74363b;background:#160b0c}
-.manual-merch-form h3{margin-top:0;color:#fff4ea}.manual-merch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.manual-merch-grid label{display:grid;gap:6px;color:#ead8ca}.manual-merch-grid input,.manual-merch-grid select,.manual-merch-grid textarea{width:100%;box-sizing:border-box}.manual-merch-address{grid-column:span 2}.media-placement-field{border:1px solid #74363b;padding:14px}.media-placement-field legend{font-weight:700}.media-placement-field legend small{font-weight:400}.media-placement-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:6px}.media-placement-options label{display:flex!important;align-items:center;gap:8px}.media-placement-options input{width:auto!important}
-.home-shop-products a{min-height:0!important;aspect-ratio:4/3}.home-shop-products img{width:100%!important;height:100%!important;min-height:0!important;object-fit:contain!important;object-position:center!important;background:#120b0b;padding:5px;box-sizing:border-box;filter:brightness(.92)!important}
-@media(max-width:700px){.manual-merch-grid{grid-template-columns:1fr}.manual-merch-address{grid-column:auto}.media-placement-options{grid-template-columns:1fr}.home-shop-products a{aspect-ratio:1/1}}
+\n/* v96.4.73 private event payment reliability + high contrast */
+.quote-card{background:#120909!important;border:1px solid #7d3034!important;color:#f8eee6!important}
+.quote-card h1,.quote-card strong,.quote-card p{color:#f8eee6!important}
+.quote-details article{background:#0a0606!important;border-color:#7d3034!important}
+.quote-details span,.quote-details small{color:#d7bfb2!important}
+.quote-money{background:#090606!important;border:1px solid #7d3034!important;padding:1.15rem!important}
+.quote-money span{color:#e7d2c7!important;font-weight:600!important}
+.quote-money strong{color:#fff!important;font-size:1.08em!important}
+.quote-money .total{border-top-color:#e11d2e!important}
+.quote-actions .payment-link{display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;text-decoration:none!important;min-height:64px!important}
+.quote-actions .disabled-link{display:flex!important;align-items:center!important;justify-content:center!important;opacity:.45!important;cursor:not-allowed!important}
+
+
+/* v96.4.77 — secure member accounts + live Trail Rewards foundation */
+.member-auth-shell{min-height:72vh;display:grid;place-items:center;padding:3rem 1rem;background:#080606}
+.member-auth-shell[hidden],.member-app-shell[hidden]{display:none!important}
+.member-auth-card{width:min(620px,100%);background:linear-gradient(180deg,#171010,#090707);border:1px solid rgba(220,38,48,.6);border-radius:22px;padding:clamp(1.25rem,4vw,2.4rem);box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.member-auth-card h1{margin:.25rem 0 .65rem;color:#fff}
+.member-auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:1.3rem 0}
+.member-auth-tabs button,.member-link-button,.member-logout{border:1px solid rgba(220,38,48,.55);background:#100909;color:#f7e6df;border-radius:10px;padding:.8rem 1rem;font-weight:800}
+.member-auth-tabs button.active{background:#b91522;color:#fff}
+.member-auth-form{display:grid;gap:1rem}
+.member-auth-form label{display:grid;gap:.35rem;color:#f4ded6;font-weight:700}
+.member-auth-form input{width:100%;border:1px solid rgba(220,38,48,.55);background:#050404;color:#fff;border-radius:10px;padding:.85rem .9rem}
+.member-auth-two{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.member-auth-check{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:.65rem!important;font-weight:500!important}
+.member-auth-check input{width:auto;margin-top:.2rem}
+.member-auth-status{min-height:1.4em;margin:.9rem 0 0;color:#f5ded6;font-weight:700}
+.member-auth-status.error{color:#ff7b83}
+.member-top-actions{display:flex;align-items:center;gap:.6rem}
+.member-live-loyalty{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1.2rem;align-items:center;margin:1rem 0 1.35rem}
+.member-stamp-row{display:grid;grid-template-columns:repeat(9,1fr);gap:.35rem;min-width:min(360px,42vw)}
+.member-stamp-row span{display:grid;place-items:center;aspect-ratio:1;border-radius:50%;background:#120a0a;border:1px solid rgba(220,38,48,.35);filter:grayscale(1);opacity:.45}
+.member-stamp-row span.earned{filter:none;opacity:1;background:#2a0d10;border-color:#e12a37;box-shadow:0 0 14px rgba(225,42,55,.25)}
+@media(max-width:720px){
+  .member-auth-two{grid-template-columns:1fr}
+  .member-live-loyalty{grid-template-columns:1fr}
+  .member-stamp-row{min-width:0;width:100%;gap:.22rem}
+  .member-top-actions{flex-direction:column;align-items:flex-end;gap:.35rem}
+  .member-logout{padding:.55rem .75rem}
+}
+
+/* v96.4.78 — consolidated member menu */
+.membership-preview{width:min(1120px,calc(100% - 2rem));margin:2rem auto 0;padding:clamp(1.3rem,4vw,2.5rem);background:linear-gradient(180deg,#120b0b,#080606);border:1px solid rgba(220,38,48,.55);border-radius:20px}
+.membership-preview h1{margin:.2rem 0 .6rem;color:#fff}.membership-preview-lead,.membership-preview-note{color:#d8c1b8}
+.membership-preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin:1.2rem 0}
+.membership-preview-grid article{display:grid;gap:.3rem;padding:1rem;background:#090606;border:1px solid rgba(220,38,48,.32);border-radius:12px}
+.membership-preview-grid strong{color:#fff;font-size:1.05rem}.membership-preview-grid span{color:#cdb5ad;line-height:1.45}
+@media(max-width:760px){.membership-preview-grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.membership-preview-grid{grid-template-columns:1fr}}
+
+
+/* v96.4.80 — member entry visibility + consolidated member navigation */
+.member-entry-heading{
+  width:min(760px,calc(100% - 2rem));
+  margin:2.25rem auto .75rem;
+  text-align:center;
+}
+.member-entry-heading h1{
+  margin:.15rem 0 .55rem;
+  color:#fff;
+  font-size:clamp(2rem,7vw,4.2rem);
+  line-height:.95;
+}
+.member-entry-heading p:last-child{color:#d7c0b7;font-size:1.05rem}
+#memberAuthShell{padding-top:.75rem!important}
+#memberAuthShell .member-auth-card{
+  border:2px solid #d61f2c;
+  box-shadow:0 0 0 1px rgba(255,255,255,.04),0 0 32px rgba(214,31,44,.18);
+}
+#memberAuthTabs button{
+  min-height:54px;
+  font-size:1rem;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+#memberAuthTabs button.active{
+  background:linear-gradient(180deg,#e12634,#a90f1a);
+  box-shadow:0 0 18px rgba(225,38,52,.28);
+}
+.membership-preview{margin-top:1.2rem}
+
+
+/* v96.4.81 — member auth visibility + password reset */
+.member-auth-form[hidden],
+#memberForgotForm[hidden],
+#memberResetForm[hidden]{display:none!important}
+#memberForgotForm h2,#memberResetForm h2{margin:.2rem 0 .35rem;color:#fff}
+#memberForgotForm p,#memberResetForm p{color:#d8c1b8;line-height:1.5}
+.member-link-button{color:#fff;text-decoration:underline;text-underline-offset:4px}
+
+/* V96.4.98 — HQ mobile drawer + customer CRM scroll repair */
+@media(max-width:999px){
+  /* Use one simple scroll container for the entire HQ drawer on iOS/Safari. */
+  .ranch91-drawer,
+  .ranch91-drawer.open{
+    display:block!important;
+    position:fixed!important;
+    inset:0 auto 0 0!important;
+    width:min(92vw,390px)!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    padding:max(1rem,env(safe-area-inset-top)) 1rem calc(6rem + env(safe-area-inset-bottom))!important;
+  }
+  .ranch91-drawer-head{
+    position:sticky!important;
+    top:0!important;
+    z-index:6!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    background:#14090a!important;
+    padding:.15rem 0 .8rem!important;
+  }
+  .ranch91-drawer-head .ranch91-brand{padding-right:3.5rem!important}
+  .ranch91-close{position:absolute!important;right:0!important;top:.15rem!important}
+  .ranch91-nav{
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:visible!important;
+    height:auto!important;
+    max-height:none!important;
+    min-height:0!important;
+    margin:1rem 0!important;
+    padding:0!important;
+    touch-action:pan-y!important;
+  }
+  .ranch91-drawer-foot{
+    display:flex!important;
+    flex-direction:column!important;
+    margin:1rem 0 0!important;
+    padding:0!important;
+  }
+  html.ranch91-menu-lock,body.ranch91-menu-lock,
+  body.ranch91-drawer-open{
+    overflow:hidden!important;
+    height:100%!important;
+    touch-action:auto!important;
+  }
+
+  /* Customer profile: keep its controls visible while ONLY the profile panel scrolls. */
+  .crm-dialog{
+    width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .crm-dialog-shell{
+    box-sizing:border-box!important;
+    width:100%!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior:contain!important;
+    padding:calc(1rem + env(safe-area-inset-top)) 1rem calc(5rem + env(safe-area-inset-bottom))!important;
+  }
+  .crm-close{
+    position:sticky!important;
+    top:0!important;
+    z-index:20!important;
+    float:right!important;
+    background:#170c0d!important;
+    color:#fff!important;
+  }
+  .crm-tabs{
+    position:sticky!important;
+    top:0!important;
+    z-index:15!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:.45rem!important;
+    overflow:visible!important;
+    background:#090506!important;
+    padding:.55rem 0!important;
+    margin:.75rem 0 1rem!important;
+  }
+  .crm-tabs button{width:100%!important;min-height:48px!important}
+}
+html.crm-dialog-open,body.crm-dialog-open{overflow:hidden!important;overscroll-behavior:none!important}
+\n\n/* V96.4.99 — definitive iPhone HQ/CRM navigation + CRM contrast */
+@media(max-width:999px){
+  /* HQ: header/footer stay put; ONLY the list of HQ sections scrolls. */
+  body.ranch-v91 .ranch91-drawer,
+  body.ranch-v91 .ranch91-drawer.open{
+    display:flex!important;
+    flex-direction:column!important;
+    position:fixed!important;
+    top:0!important;bottom:0!important;left:0!important;
+    width:min(94vw,390px)!important;
+    height:100dvh!important;max-height:100dvh!important;
+    overflow:hidden!important;
+    padding:max(1rem,env(safe-area-inset-top)) 1rem max(1rem,env(safe-area-inset-bottom))!important;
+    box-sizing:border-box!important;
+    contain:none!important;
+    touch-action:auto!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head{
+    display:flex!important;flex-direction:row!important;align-items:center!important;
+    flex:0 0 auto!important;position:relative!important;min-height:76px!important;
+    background:#14090a!important;z-index:5!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head .ranch91-brand{min-width:0!important;padding-right:3.6rem!important}
+  body.ranch-v91 .ranch91-brand img{width:72px!important;height:72px!important;flex:0 0 72px!important}
+  body.ranch-v91 .ranch91-brand>div{min-width:0!important}
+  body.ranch-v91 .ranch91-brand strong{font-size:1rem!important;line-height:1.05!important;overflow-wrap:normal!important;word-break:normal!important}
+  body.ranch-v91 .ranch91-brand span{font-size:.62rem!important;line-height:1.2!important;overflow-wrap:normal!important;word-break:normal!important}
+  body.ranch-v91 .ranch91-close{position:absolute!important;right:0!important;top:0!important;z-index:8!important}
+  body.ranch-v91 .ranch91-nav{
+    display:flex!important;flex-direction:column!important;
+    flex:1 1 0!important;min-height:0!important;height:0!important;
+    overflow-y:auto!important;overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;margin:.8rem 0!important;padding:0 0 1.25rem!important;
+  }
+  body.ranch-v91 .ranch91-nav button{flex:0 0 auto!important;min-height:58px!important}
+  body.ranch-v91 .ranch91-drawer-foot{
+    display:flex!important;flex-direction:column!important;flex:0 0 auto!important;
+    max-height:34dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;
+    margin:0!important;padding:.3rem 0 .7rem!important;background:#14090a!important;
+  }
+  html.ranch91-menu-lock,body.ranch91-menu-lock,body.ranch91-drawer-open{
+    overflow:hidden!important;height:100%!important;max-height:100%!important;touch-action:none!important;
+  }
+
+  /* CRM: compact horizontal tab bar remains visible; details scroll below it. */
+  body.ranch-v91 .crm-dialog{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;margin:0!important;padding:0!important}
+  body.ranch-v91 .crm-dialog-shell{
+    display:block!important;box-sizing:border-box!important;width:100%!important;height:100dvh!important;max-height:100dvh!important;
+    overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch!important;overscroll-behavior:contain!important;
+    padding:calc(.75rem + env(safe-area-inset-top)) .75rem calc(4rem + env(safe-area-inset-bottom))!important;
+    background:#0b0506!important;
+  }
+  body.ranch-v91 .crm-close{
+    position:sticky!important;top:0!important;z-index:50!important;float:right!important;
+    width:52px!important;height:52px!important;background:#160a0b!important;color:#fff!important;border:2px solid #d13b44!important;
+  }
+  body.ranch-v91 .crm-tabs{
+    position:sticky!important;top:0!important;z-index:40!important;
+    display:flex!important;flex-direction:row!important;gap:.4rem!important;
+    width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch!important;
+    background:#0b0506!important;padding:.55rem 0!important;margin:.65rem 0 1rem!important;border-bottom:1px solid #7b3439!important;
+  }
+  body.ranch-v91 .crm-tabs button{
+    flex:0 0 auto!important;width:auto!important;min-width:118px!important;min-height:46px!important;
+    padding:.65rem .8rem!important;white-space:nowrap!important;font-size:.82rem!important;
+  }
+}
+
+/* CRM/customer list: dark, high-contrast and identifiable by full name. */
+body.ranch-v91 .hq-customer-card,
+body.ranch-v91 .crm-customer-card{
+  background:#120809!important;color:#fff7ee!important;border:2px solid #7a3036!important;box-shadow:none!important;
+}
+body.ranch-v91 .hq-customer-card h3,
+body.ranch-v91 .crm-customer-card h3{display:block!important;color:#fff!important;font-size:1.35rem!important;line-height:1.15!important;margin:.15rem 0 .45rem!important}
+body.ranch-v91 .hq-customer-card p,
+body.ranch-v91 .crm-customer-card p{color:#e3cfc3!important;font-size:1rem!important}
+body.ranch-v91 .hq-customer-card dt{color:#c9aa9a!important}
+body.ranch-v91 .hq-customer-card dd{color:#fff!important}
+body.ranch-v91 .crm-health-active{color:#b9f0ce!important;background:#12301f!important;border-color:#44a66b!important}
+body.ranch-v91 .crm-health-at_risk{color:#ffe0a2!important;background:#33220a!important;border-color:#c38d34!important}
+body.ranch-v91 .crm-health-inactive{color:#ffc0c4!important;background:#351013!important;border-color:#b83c45!important}
+body.ranch-v91 .crm-box,body.ranch-v91 .crm-tag-list label,body.ranch-v91 .crm-metrics article{background:#120809!important;color:#fff7ee!important;border-color:#6f2d33!important}
+body.ranch-v91 .crm-box :is(h3,strong,label,p,span,small),body.ranch-v91 .crm-tag-list label{color:#f7e8dd!important}
+body.ranch-v91 .crm-tag-list input{background:#fff!important;accent-color:#d7252e!important}
+
+/* V96.4.100 — iPhone HQ drawer + CRM tab final layout correction */
+@media (max-width:999px){
+  /* HQ drawer uses a three-row grid: compact header / scrollable nav / compact footer. */
+  body.ranch-v91 .ranch91-drawer,
+  body.ranch-v91 .ranch91-drawer.open{
+    display:grid!important;
+    grid-template-rows:auto minmax(0,1fr) auto!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    position:fixed!important;
+    inset:0 auto 0 0!important;
+    width:min(94vw,390px)!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+    padding:max(.65rem,env(safe-area-inset-top)) .8rem max(.65rem,env(safe-area-inset-bottom))!important;
+    background:#14090a!important;
+    touch-action:auto!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head{
+    grid-row:1!important;
+    position:relative!important;
+    inset:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    min-height:58px!important;
+    max-height:72px!important;
+    overflow:hidden!important;
+    margin:0!important;
+    padding:0 3.5rem .6rem 0!important;
+    background:#14090a!important;
+    z-index:3!important;
+  }
+  body.ranch-v91 .ranch91-brand{display:flex!important;align-items:center!important;gap:.65rem!important;min-width:0!important;max-width:100%!important}
+  body.ranch-v91 .ranch91-brand img{width:50px!important;height:50px!important;flex:0 0 50px!important;margin:0!important;object-fit:cover!important}
+  body.ranch-v91 .ranch91-brand>div{min-width:0!important;overflow:hidden!important}
+  body.ranch-v91 .ranch91-brand strong{font-size:.92rem!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body.ranch-v91 .ranch91-brand span{font-size:.58rem!important;line-height:1.15!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+  body.ranch-v91 .ranch91-close{position:absolute!important;right:0!important;top:0!important;width:48px!important;height:48px!important;z-index:5!important}
+
+  body.ranch-v91 .ranch91-nav{
+    grid-row:2!important;
+    display:block!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-y:scroll!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    margin:0!important;
+    padding:.35rem 0 1.25rem!important;
+    scrollbar-gutter:stable!important;
+  }
+  body.ranch-v91 .ranch91-nav button{
+    display:block!important;
+    width:100%!important;
+    min-height:56px!important;
+    margin:0 0 .42rem!important;
+    padding:.85rem!important;
+  }
+  body.ranch-v91 .ranch91-drawer-foot{
+    grid-row:3!important;
+    display:none!important;
+  }
+  html.ranch91-menu-lock, body.ranch91-menu-lock, body.ranch91-drawer-open{
+    overflow:hidden!important;
+    height:100%!important;
+    max-height:100%!important;
+  }
+
+  /* CRM: tabs appear once in normal document flow. They do NOT follow the user while scrolling. */
+  body.ranch-v91 .crm-dialog-shell{
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    padding:calc(.75rem + env(safe-area-inset-top)) .75rem calc(4rem + env(safe-area-inset-bottom))!important;
+  }
+  body.ranch-v91 .crm-close{
+    position:absolute!important;
+    top:calc(.75rem + env(safe-area-inset-top))!important;
+    right:.75rem!important;
+    z-index:20!important;
+    float:none!important;
+  }
+  body.ranch-v91 .crm-profile-header{padding-right:4rem!important}
+  body.ranch-v91 .crm-tabs{
+    position:static!important;
+    top:auto!important;
+    z-index:auto!important;
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    gap:.4rem!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    background:#0b0506!important;
+    padding:.45rem 0 .65rem!important;
+    margin:.8rem 0 1rem!important;
+    border-bottom:1px solid #7b3439!important;
+  }
+  body.ranch-v91 .crm-tabs button{
+    display:block!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:116px!important;
+    min-height:44px!important;
+    margin:0!important;
+    padding:.6rem .75rem!important;
+    white-space:nowrap!important;
+  }
+}
+
+/* V96.4.101 — iPhone HQ drawer: reliable whole-drawer scrolling + media dark cards */
+@media(max-width:999px){
+  body.ranch-v91 .ranch91-drawer,
+  body.ranch-v91 .ranch91-drawer.open{
+    display:block!important;
+    position:fixed!important;
+    inset:0 auto 0 0!important;
+    width:min(96vw,410px)!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    padding:calc(.85rem + env(safe-area-inset-top)) 1rem calc(5.5rem + env(safe-area-inset-bottom))!important;
+    box-sizing:border-box!important;
+    contain:none!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head{
+    position:relative!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    min-height:76px!important;
+    margin:0 0 1rem!important;
+    background:#14090a!important;
+  }
+  body.ranch-v91 .ranch91-nav{
+    display:flex!important;
+    flex-direction:column!important;
+    height:auto!important;
+    min-height:0!important;
+    overflow:visible!important;
+    touch-action:pan-y!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  body.ranch-v91 .ranch91-nav button{flex:none!important;min-height:58px!important}
+  body.ranch-v91 .ranch91-drawer-foot{
+    display:flex!important;
+    flex-direction:column!important;
+    max-height:none!important;
+    overflow:visible!important;
+    margin:1rem 0 0!important;
+    padding:0!important;
+  }
+  html.ranch91-menu-lock,body.ranch91-menu-lock,body.ranch91-drawer-open{
+    overflow:hidden!important;
+    height:100%!important;
+    max-height:100%!important;
+    touch-action:auto!important;
+  }
+}
+body.ranch-v91 .ranch-media-item,
+body.ranch-v91 #ranchMedia .ranch91-empty,
+body.ranch-v91 #ranchMedia .ranch91-loading,
+body.ranch-v91 #ranchMedia .ranch91-notice{
+  background:#14090a!important;
+  color:#fff7ee!important;
+  border-color:#743239!important;
+}
+body.ranch-v91 .ranch-media-item strong{color:#fff7ee!important}
+body.ranch-v91 .ranch-media-item small{color:#cdb8aa!important}
+\n\n/* V96.4.102 — iPhone HQ drawer: remove Safari page-lock deadlock.\n   The fixed drawer is the scroll container; the document is deliberately not\n   height/overflow locked because iOS Safari can freeze scrolling when a fixed\n   overflow scroller lives inside a locked html/body. */\n@media(max-width:999px){\n  html.ranch91-menu-lock,\n  body.ranch91-menu-lock,\n  body.ranch91-drawer-open{\n    overflow:visible!important;\n    height:auto!important;\n    max-height:none!important;\n    position:static!important;\n    touch-action:auto!important;\n  }\n  body.ranch-v91 .ranch91-drawer,\n  body.ranch-v91 .ranch91-drawer.open{\n    position:fixed!important;\n    top:0!important;\n    bottom:0!important;\n    left:0!important;\n    right:auto!important;\n    width:min(96vw,410px)!important;\n    height:100svh!important;\n    max-height:100svh!important;\n    overflow-y:scroll!important;\n    overflow-x:hidden!important;\n    -webkit-overflow-scrolling:touch!important;\n    overscroll-behavior:contain!important;\n    touch-action:pan-y!important;\n    z-index:2147483000!important;\n    padding:calc(.85rem + env(safe-area-inset-top)) 1rem calc(8rem + env(safe-area-inset-bottom))!important;\n    box-sizing:border-box!important;\n  }\n  body.ranch-v91 .ranch91-drawer-head,\n  body.ranch-v91 .ranch91-nav,\n  body.ranch-v91 .ranch91-drawer-foot{\n    position:static!important;\n    transform:none!important;\n  }\n  body.ranch-v91 .ranch91-nav{\n    overflow:visible!important;\n    height:auto!important;\n    max-height:none!important;\n    min-height:max-content!important;\n  }\n  body.ranch-v91 .ranch91-nav button{\n    min-height:58px!important;\n    flex:0 0 auto!important;\n  }\n}\n
+/* V96.4.103 — iOS HQ SCROLL RECOVERY
+   Never put touch-action:none / overflow:hidden on BODY while the HQ drawer is open.
+   Safari evaluates touch-action on ancestors, which was blocking both the drawer and,
+   after a stale lock, the whole HQ page. */
+html, body{
+  touch-action:auto!important;
+}
+body.ranch91-drawer-open,
+body.ranch-menu-open,
+body.menu-open{
+  position:static!important;
+  top:auto!important;
+  left:auto!important;
+  right:auto!important;
+  width:auto!important;
+  height:auto!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  touch-action:auto!important;
+}
+.ranch91-drawer{
+  position:fixed!important;
+  top:0!important;
+  bottom:0!important;
+  left:0!important;
+  height:100svh!important;
+  max-height:100dvh!important;
+  overflow-x:hidden!important;
+  overflow-y:scroll!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-y:contain!important;
+  touch-action:pan-y!important;
+  padding-bottom:calc(7rem + env(safe-area-inset-bottom))!important;
+}
+.ranch91-drawer.open{
+  pointer-events:auto!important;
+}
+.ranch91-nav{
+  flex:none!important;
+  overflow:visible!important;
+  padding-bottom:2rem!important;
+}
+.ranch91-nav button{
+  touch-action:manipulation!important;
+}
+.ranch91-drawer-foot{
+  margin-top:1rem!important;
+  padding-bottom:1rem!important;
+}
+/* Make sure no stale overlay can keep the underlying HQ frozen after close. */
+.ranch91-backdrop[hidden]{
+  display:none!important;
+  pointer-events:none!important;
+}
+
+
+/* V96.4.104 — HQ iOS hard scroll reset.
+   IMPORTANT: no class used by the HQ menu may lock html/body. The drawer is an
+   independent fixed scroller; the normal HQ document remains a normal scroller. */
+html.ranch91-menu-lock,
+body.ranch91-menu-lock,
+body.ranch91-drawer-open,
+body.ranch-menu-open,
+body.menu-open,
+html,
+body.ranch-v91{
+  position:static!important;
+  top:auto!important;
+  left:auto!important;
+  right:auto!important;
+  width:auto!important;
+  height:auto!important;
+  min-height:100%!important;
+  max-height:none!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:auto!important;
+  touch-action:auto!important;
+}
+@media(max-width:999px){
+  body.ranch-v91 .ranch91-drawer,
+  body.ranch-v91 .ranch91-drawer.open{
+    position:fixed!important;
+    inset:0 auto 0 0!important;
+    width:min(96vw,410px)!important;
+    height:100dvh!important;
+    min-height:0!important;
+    max-height:100dvh!important;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    overscroll-behavior-y:contain!important;
+    touch-action:pan-y!important;
+    box-sizing:border-box!important;
+    padding:calc(.75rem + env(safe-area-inset-top)) 1rem calc(7rem + env(safe-area-inset-bottom))!important;
+  }
+  body.ranch-v91 .ranch91-drawer-head,
+  body.ranch-v91 .ranch91-nav,
+  body.ranch-v91 .ranch91-drawer-foot{
+    position:static!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    transform:none!important;
+    touch-action:pan-y!important;
+  }
+  body.ranch-v91 .ranch91-nav{display:flex!important;flex-direction:column!important;}
+  body.ranch-v91 .ranch91-nav button{flex:0 0 auto!important;min-height:58px!important;}
+}
+
+
+/* V96.4.105 — HQ media destinations + drawer polish */
+.ranch91-drawer-user-top{
+  margin:1rem 0 .25rem;padding:.8rem .9rem;border:1px solid #4d292c;border-left:4px solid #d6454b;background:#211011;flex:0 0 auto;
+}
+.ranch91-drawer-user-top strong,.ranch91-drawer-user-top span{display:block}
+.ranch91-drawer-user-top strong{font:700 .85rem Oswald,sans-serif;color:#fff}
+.ranch91-drawer-user-top span{margin-top:.18rem;color:#d8c3b7;font-size:.72rem}
+.media-placement-field{margin:0;border:1px solid #74363b;padding:12px;background:#120909}
+.media-placement-field legend{padding:0 .35rem;color:#f4e8df;font:700 .9rem Oswald,sans-serif}
+.media-placement-field legend small{margin-left:.35rem;color:#cbb5a7;font:400 .68rem system-ui,sans-serif}
+.media-placement-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:5px}
+.media-placement-options label{display:flex!important;align-items:center;gap:8px;min-height:48px;margin:0!important;padding:9px 10px;border:1px solid #5f3034;background:#1c0d0e;color:#f5e8df!important;cursor:pointer;border-radius:2px}
+.media-placement-options label:has(input:checked){border-color:#df4149;background:#351315;box-shadow:inset 3px 0 0 #df4149}
+.media-placement-options input{width:20px!important;height:20px!important;min-height:20px!important;flex:0 0 20px;margin:0!important;accent-color:#d92e36}
+.media-placement-options span{font:700 .72rem Oswald,sans-serif;line-height:1.2}
+.media-placement-help{margin:.65rem 0 0;color:#baa69a;font-size:.72rem;line-height:1.45}
+@media(max-width:700px){.media-placement-options{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Keep the CRM identity block readable and visible above its tabs. */
+.crm-profile-header{position:static!important;display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:1rem!important;margin-bottom:1rem!important;padding:1rem!important;border:1px solid #6c3337!important;background:#170b0c!important}
+.crm-profile-header h2{margin:.15rem 0 .35rem!important;color:#fff4ea!important;overflow-wrap:anywhere}
+.crm-profile-header p{margin:0!important;color:#decabd!important;overflow-wrap:anywhere}
+.crm-tabs{position:static!important;top:auto!important;z-index:auto!important}

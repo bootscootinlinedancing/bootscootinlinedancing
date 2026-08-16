@@ -8,11 +8,20 @@
 <title>My Bookings | Boot Scootin' Line Dancing</title>
 <meta content="View and manage your Boot Scootin' class bookings, cancellations, calendar links and loyalty progress." name="description"/>
 <link href="favicon.png" rel="icon"/>
-<link href="styles.css?v=96.4.39" rel="stylesheet"/>
+<link href="styles.css?v=96.4.83" rel="stylesheet"/>
 <link href="honky-theme.css?v=96.4.53" rel="stylesheet"/>
 <link href="honky-authentic.css?v=96.4.39" rel="stylesheet"/>
 <link href="desktop-final-fix.css?v=96.4.39" rel="stylesheet"/>
 <link href="repair-v96.4.56.css?v=96.4.59" rel="stylesheet"/>
+
+<style>
+.member-feature-nav{position:static;z-index:auto;display:flex;flex-wrap:wrap;gap:8px;overflow:visible;padding:12px 18px;background:#080505;border-bottom:1px solid #6f2a30}
+.member-feature-nav a{flex:0 0 auto;padding:10px 12px;border:1px solid #853038;color:#fff;text-decoration:none;font:700 12px/1 Arial,sans-serif;text-transform:uppercase;letter-spacing:.04em;background:#170b0d}
+.member-feature-nav a:active{background:#9f242c}
+
+.member-class-browser{max-width:1120px;margin:0 auto;padding:1.2rem 1rem 0}.member-class-browser-head{display:flex;justify-content:space-between;align-items:end;gap:1rem;margin-bottom:1rem}.member-class-browser-head h2{margin:.15rem 0;color:#f8efe8}.member-class-browser-head p{margin:0;color:#c9b7ad}.member-class-browser-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.member-bookable-class{display:grid;grid-template-columns:auto 1fr;gap:1rem;padding:1.1rem;background:#100809;border:1px solid #692a2f}.member-bookable-date{width:70px;min-height:82px;border:1px solid #9a3037;display:grid;place-items:center;align-content:center}.member-bookable-date span{font:700 .72rem/1 Arial,sans-serif;letter-spacing:.12em;color:#e8cdbd}.member-bookable-date strong{font:700 2rem/1 Oswald,sans-serif;color:#fff}.member-bookable-class h3{margin:.15rem 0 .35rem;color:#fff}.member-bookable-class p{margin:.2rem 0;color:#cdbab0}.member-bookable-actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.8rem}.member-bookable-actions a{display:inline-flex;align-items:center;justify-content:center;padding:.72rem .9rem;border:1px solid #cf343d;color:#fff;text-decoration:none;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.member-bookable-actions a.primary{background:#b72a32}.member-class-empty{padding:1rem;border:1px solid #692a2f;color:#cdbab0}.member-booking-divider{max-width:1120px;margin:1.5rem auto 0;border-top:1px solid #5f292d}@media(max-width:720px){.member-class-browser-grid{grid-template-columns:1fr}.member-class-browser-head{display:block}.member-class-browser-head .button{margin-top:.8rem}}
+</style>
+
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -23,13 +32,23 @@
 </a>
 <button aria-controls="nav" aria-expanded="false" class="menu" id="menuButton">Menu</button>
 </header>
+<div class="member-feature-nav" aria-label="Member feature navigation">
+  <a href="member-hub.html#dashboard">Dashboard</a>
+  <a href="rewards.html">Trail &amp; Rewards</a>
+  <a href="passport.html">Passport</a>
+  <a href="journey.html">Journey</a>
+  <a href="my-bookings.html">Bookings</a>
+  <a href="dance-library.html">Dance Library</a>
+  <a href="member-hub.html#profile">Profile</a>
+</div>
+
 <nav aria-hidden="true" class="menu45-overlay" id="nav">
 <div class="menu45-panel" id="menu45">
 <button aria-label="Close menu" class="nav-close" id="navClose" type="button">×</button>
 <a class="menu45-first" href="index.html">Home</a>
 <a class="menu45-first" href="bookings.html">Book a Class</a>
 <a class="menu45-first" href="my-bookings.html">My Bookings</a>
-<a class="menu45-first" href="member-hub.html">Member Hub Preview</a>
+<a class="menu45-first" href="member-hub.html">Member Login &amp; Registration</a>
 <a class="menu45-first" href="contact.html">Contact</a>
 </div>
 </nav>
@@ -41,6 +60,14 @@
 <p>Your bookings, loyalty progress, rewards and achievements — all together in one secure place.</p>
 </div>
 </section>
+<section class="member-class-browser" aria-labelledby="memberBrowseClassesTitle">
+  <div class="member-class-browser-head">
+    <div><p class="kicker red">Book from your member zone</p><h2 id="memberBrowseClassesTitle">Upcoming Boot Scootin’ classes</h2><p>Browse live classes here, then open the exact event to view details and book your place.</p></div>
+    <a class="button secondary compact" href="bookings.html">View all classes</a>
+  </div>
+  <div class="member-class-browser-grid" id="memberClassBrowserGrid"><p class="member-class-empty">Loading upcoming classes…</p></div>
+</section>
+<div class="member-booking-divider"></div>
 <section class="section paper customer-portal-shell">
 <div class="customer-portal-gate" id="customerPortalGate">
 <p class="kicker red">Secure access</p>
@@ -118,6 +145,19 @@
 <p class="ip-small">™ indicates an unregistered trade mark claim.</p>
 </div>
 <div class="legal-footer-links"><a href="legal.html#terms">Terms &amp; Conditions</a><a href="legal.html#privacy">Privacy</a><a href="legal.html#cancellations">Cancellation &amp; Refunds</a><a href="legal.html#cookies">Cookies</a><a href="legal.html#accessibility">Accessibility</a></div></footer>
+<script>
+(async()=>{
+  const grid=document.getElementById('memberClassBrowserGrid'); if(!grid)return;
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(n)||0);
+  const fmt=s=>new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(s));
+  try{
+    const r=await fetch('/api/classes',{headers:{Accept:'application/json'},cache:'no-store'}); const data=await r.json(); if(!r.ok)throw new Error();
+    const rows=(Array.isArray(data)?data:[]).filter(c=>new Date(c.starts_at).getTime()>=Date.now()-3600000).slice(0,6);
+    grid.innerHTML=rows.length?rows.map(c=>{const d=new Date(c.starts_at),full=Number(c.spaces_remaining)<1;return `<article class="member-bookable-class"><div class="member-bookable-date"><span>${d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase()}</span><strong>${d.getDate()}</strong></div><div><p class="kicker red">${esc(c.venue)}</p><h3>${esc(c.title)}</h3><p>${esc(fmt(c.starts_at))} · ${esc(c.location)}</p><p><strong>${money(c.price)}</strong> · ${full?'Class full':`${esc(c.spaces_remaining)} places left`}</p><div class="member-bookable-actions"><a href="bookings.html?event=${encodeURIComponent(c.id)}">View details</a><a class="primary" href="bookings.html?event=${encodeURIComponent(c.id)}">${full?'Join waiting list':'Book now'}</a></div></div></article>`}).join(''):'<p class="member-class-empty">There are no upcoming published classes at the moment.</p>';
+  }catch(_){grid.innerHTML='<p class="member-class-empty">Classes could not be loaded right now. <a href="bookings.html">Open the main booking page</a>.</p>';}
+})();
+</script>
 <script src="script.js?v=96.4.59"></script>
 <script>
 (()=>{
@@ -176,7 +216,7 @@
     achievements.innerHTML=(data.achievements||[]).map(a=>`<article class="customer-achievement ${a.earned?'earned':'locked'}"><span aria-hidden="true">${a.icon}</span><div><h4>${esc(a.title)}</h4><p>${esc(a.description)}</p></div><strong>${a.earned?'Unlocked':'Locked'}</strong></article>`).join('');
 
     const stamps=document.getElementById('customerLoyaltyStamps');
-    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg#star"></use></svg>'}</span>`).join('');
+    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.83#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.83#star"></use></svg>'}</span>`).join('');
 
     document.getElementById('customerUpcomingBookings').innerHTML=data.upcoming.length
       ?data.upcoming.map(b=>bookingCard(b,true)).join('')
@@ -229,5 +269,6 @@
 })();
 </script>
 <script src="honky-theme.js?v=96.0.0"></script>
+<script src="member-inactivity.js?v=96.4.96"></script>
 </body>
 </html>

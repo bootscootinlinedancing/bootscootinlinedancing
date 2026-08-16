@@ -216,36 +216,60 @@
   // Drawer
   const drawer=$('#ranch91Drawer'),backdrop=$('#ranch91Backdrop'),menuButton=$('#ranch91Menu'),closeButton=$('#ranch91Close');
   let drawerPageScrollY=0;
+  function clearLegacyScrollLocks(){
+    const body=document.body, html=document.documentElement;
+    body.classList.remove('ranch91-drawer-open','ranch91-menu-lock','ranch-menu-open','menu-open');
+    html.classList.remove('ranch91-drawer-open','ranch91-menu-lock','ranch-menu-open','menu-open');
+    for(const el of [body,html]){
+      el.style.position='';
+      el.style.top='';
+      el.style.left='';
+      el.style.right='';
+      el.style.width='';
+      el.style.height='';
+      el.style.overflow='';
+      el.style.overflowY='';
+      el.style.touchAction='';
+    }
+  }
   function setDrawer(open){
     if(!drawer||!menuButton)return;
+    /* iPhone Safari: never disable body touch scrolling. A touch-action:none
+       ancestor prevents the fixed drawer itself from receiving pan gestures. */
+    clearLegacyScrollLocks();
     drawer.classList.toggle('open',open);
     drawer.setAttribute('aria-hidden',String(!open));
     menuButton.setAttribute('aria-expanded',String(open));
-    document.body.classList.toggle('ranch91-drawer-open',open);
     if(backdrop){backdrop.hidden=!open;backdrop.classList.toggle('open',open);}
     if(open){
       drawerPageScrollY=window.scrollY||document.documentElement.scrollTop||0;
-      document.documentElement.classList.add('ranch91-menu-lock');
-      document.body.classList.add('ranch91-menu-lock');
       drawer.scrollTop=0;
       requestAnimationFrame(()=>{ drawer.scrollTop=0; });
       if(closeButton)setTimeout(()=>closeButton.focus({preventScroll:true}),0);
-    }else{
-      document.documentElement.classList.remove('ranch91-menu-lock');
-      document.body.classList.remove('ranch91-menu-lock');
-      /* Recover from stale iOS body locks from older releases. */
-      document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';document.body.style.width='';
     }
   }
+  // ranch.html has an inline onclick for resilience. Replace its legacy lock-based
+  // handler with this same non-locking implementation so both routes behave identically.
+  window.BootScootinHQSetMenu=(open)=>{setDrawer(Boolean(open));return false;};
+  window.BootScootinHQMenuToggle=(event)=>{
+    event?.preventDefault();
+    event?.stopPropagation();
+    setDrawer(!drawer?.classList.contains('open'));
+    return false;
+  };
   menuButton?.addEventListener('click',event=>{
-    if(typeof window.BootScootinHQMenuToggle==='function')return;
+    // Inline onclick already handles normal taps; this is a fallback for browsers
+    // that do not execute the inline handler.
+    if(event.defaultPrevented)return;
     event.preventDefault();
     setDrawer(!drawer.classList.contains('open'));
   });
   closeButton?.addEventListener('click',()=>setDrawer(false));
   backdrop?.addEventListener('click',()=>setDrawer(false));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
-  window.addEventListener('pageshow',()=>setDrawer(false));
+  window.addEventListener('pageshow',()=>{clearLegacyScrollLocks();setDrawer(false);});
+  window.addEventListener('pagehide',clearLegacyScrollLocks);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!drawer?.classList.contains('open'))clearLegacyScrollLocks();});
 
   const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
@@ -286,9 +310,6 @@
     }catch(e){box.innerHTML=`<div class="ranch91-error">${esc(e.message||'Could not load merchandise orders.')}</div>`;}
   }
   $('#refreshMerchOrders')?.addEventListener('click',loadMerchOrders);
-  $('#createMerchOrder')?.addEventListener('click',()=>{$('#manualMerchOrderForm').hidden=false;$('#createMerchOrder').disabled=true;});
-  $('#cancelManualMerchOrder')?.addEventListener('click',()=>{$('#manualMerchOrderForm').hidden=true;$('#createMerchOrder').disabled=false;});
-  $('#manualMerchOrderForm')?.addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget,msg=$('#manualMerchMessage'),button=form.querySelector('[type=submit]');button.disabled=true;msg.textContent='Saving order…';try{const payload=Object.fromEntries(new FormData(form).entries());payload.action='CREATE_MANUAL';const result=await jsonFetch('/api/admin/merch-orders',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});msg.textContent=`Order ${result.reference} saved${result.status==='PAID'?' as paid':''}.`;toast('Customer merchandise order created.','success');form.reset();setTimeout(()=>{form.hidden=true;$('#createMerchOrder').disabled=false;msg.textContent='';},900);await loadMerchOrders();}catch(e){msg.textContent=e.message;toast(e.message,'error');}finally{button.disabled=false;}});
 
   function displayNameFromEmail(email){
     if(!email)return 'Nora';
@@ -1038,7 +1059,7 @@ Type REFUNDED to continue.`);
       <section class="crm-tab-panel" data-crm-panel="private"><div class="crm-two-col"><article class="crm-box"><h3>Emergency contact</h3><label>Name<input id="crmEmergencyName" value="${esc(p.emergency_contact_name||'')}"></label><label>Phone<input id="crmEmergencyPhone" value="${esc(p.emergency_contact_phone||'')}"></label><label>Relationship<input id="crmEmergencyRelationship" value="${esc(p.emergency_contact_relationship||'')}"></label></article><article class="crm-box"><h3>Optional private information</h3><label>Birthday<input id="crmBirthday" type="date" value="${esc(p.birthday||'')}"></label><label>Loyalty adjustment<input id="crmLoyaltyAdjustment" type="number" min="-100" max="100" value="${esc(p.loyalty_adjustment||0)}"></label><label>Medical or accessibility notes<textarea id="crmMedicalNotes" rows="5" placeholder="Only record information the customer has chosen to share and that instructors genuinely need.">${esc(p.medical_notes||'')}</textarea></label></article></div><div class="crm-privacy-note">Private details are available only inside Cloudflare-protected HQ. Record only what is necessary and keep it accurate.</div><button class="button" type="button" id="saveCrmPrivate">Save private details</button></section>
     </div>`;
   }
-  async function openCustomerCrm(email){const dialog=$('#customerCrmDialog'),box=$('#customerCrmProfile');if(!dialog||!box)return;box.innerHTML='<div class="ranch91-loading">Loading customer profile…</div>';dialog.showModal();try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/customers?email=${encodeURIComponent(email)}`,{cache:'no-store'});state.customerProfile=data;box.innerHTML=renderCrmProfile(data);}catch(error){box.innerHTML=lockedPanel('Customer profile unavailable',error.message);}}
+  async function openCustomerCrm(email){const dialog=$('#customerCrmDialog'),box=$('#customerCrmProfile');if(!dialog||!box)return;box.innerHTML='<div class="ranch91-loading">Loading customer profile…</div>';document.documentElement.classList.add('crm-dialog-open');document.body.classList.add('crm-dialog-open');dialog.showModal();try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/customers?email=${encodeURIComponent(email)}`,{cache:'no-store'});state.customerProfile=data;box.innerHTML=renderCrmProfile(data);}catch(error){box.innerHTML=lockedPanel('Customer profile unavailable',error.message);}}
   async function saveCrmProfile(privateOnly=false){const key=$('.crm-profile')?.dataset.customerKey;if(!key)return;const p=state.customerProfile?.profile||{};const payload={action:'SAVE_PROFILE',customer_key:key,birthday:$('#crmBirthday')?.value||p.birthday||'',emergency_contact_name:$('#crmEmergencyName')?.value||p.emergency_contact_name||'',emergency_contact_phone:$('#crmEmergencyPhone')?.value||p.emergency_contact_phone||'',emergency_contact_relationship:$('#crmEmergencyRelationship')?.value||p.emergency_contact_relationship||'',medical_notes:$('#crmMedicalNotes')?.value||p.medical_notes||'',instructor_notes_summary:$('#crmInstructorSummary')?.value||p.instructor_notes_summary||'',loyalty_adjustment:Number($('#crmLoyaltyAdjustment')?.value??p.loyalty_adjustment??0),tags:$$('[data-crm-tag]:checked').map(n=>n.value)};try{await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Customer profile saved.','success');await openCustomerCrm(key);loadCustomers();}catch(error){toast(error.message,'error');}}
   async function addCrmNote(){const key=$('.crm-profile')?.dataset.customerKey,note=$('#crmNewNote')?.value.trim();if(!note)return toast('Write a note first.','error');try{await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'ADD_NOTE',customer_key:key,note_text:note})});toast('Note added.','success');await openCustomerCrm(key);}catch(error){toast(error.message,'error');}}
   // Operations safe summary
@@ -1102,12 +1123,15 @@ Type REFUNDED to continue.`);
       <div class="private-detail-block"><span>Music requests</span><p>${esc(item.music_requests||'—')}</p></div>
       <div class="private-detail-block"><span>Accessibility / additional notes</span><p>${esc([item.accessibility_notes,item.additional_notes].filter(Boolean).join('\n\n')||'—')}</p></div>
 
+      ${item.quote_id?`<section class="private-payment-summary"><h3>Payment status</h3><div class="private-detail-grid">${privateField('Quote total',money(item.total_pence||0))}${privateField('Paid',money(item.paid_pence||0))}${privateField('Remaining',money(Math.max(0,Number(item.total_pence||0)-Number(item.paid_pence||0))))}${privateField('Latest payment',item.latest_payment_status?`${privateStatusLabel(item.latest_payment_kind)} · ${privateStatusLabel(item.latest_payment_status)}`:'No payment yet')}</div>${item.latest_payment_reference?`<p class="private-payment-ref">SumUp checkout: ${esc(item.latest_payment_reference)}</p>`:''}${item.latest_paid_at?`<p class="private-payment-ref">Last paid: ${esc(fmt(item.latest_paid_at))}</p>`:''}</section>`:''}
+
       <section class="private-workflow-box">
         <h3>Review decision</h3>
         <div class="private-status-actions">
           <button type="button" class="button secondary" data-private-status="REVIEWING">Mark reviewing</button>
           <button type="button" class="button" data-private-status="AWAITING_CUSTOMER">Approve for quote</button>
           <button type="button" class="button danger" data-private-status="DECLINED">Decline inquiry</button>
+          <button type="button" class="button danger private-delete-inquiry" data-private-delete="1">Delete test / unwanted inquiry</button>
         </div>
       </section>
 
@@ -1146,6 +1170,18 @@ Type REFUNDED to continue.`);
   async function setPrivateEventStatus(id,status){
     try{await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'STATUS',id,status})});toast(`Inquiry marked ${privateStatusLabel(status).toLowerCase()}.`,'success');$('#privateEventDialog')?.close();await loadPrivateEvents();}
     catch(error){toast(error.message,'error');}
+  }
+  async function deletePrivateEvent(id){
+    const item=state.privateEvents.find(row=>String(row.id)===String(id));
+    if(!item)return;
+    const ok=window.confirm(`Delete ${item.reference}?\n\nThis permanently removes this private-event inquiry and its test quote/payment history from HQ.`);
+    if(!ok)return;
+    try{
+      const result=await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'DELETE',headers:{'content-type':'application/json'},body:JSON.stringify({action:'DELETE',id})});
+      toast(`${result.deleted_reference||item.reference} deleted.`,'success');
+      $('#privateEventDialog')?.close();
+      await loadPrivateEvents();
+    }catch(error){toast(error.message,'error');}
   }
   async function submitPrivateQuote(event){
     event.preventDefault();
@@ -1266,15 +1302,50 @@ Type REFUNDED to continue.`);
     event.preventDefault();
     const form=event.currentTarget,file=form.elements.file.files?.[0],message=$('#mediaUploadMessage'),progress=$('#mediaUploadProgress'),button=form.querySelector('[type=submit]');
     if(!file){message.textContent='Please choose a file.';return;}
-    const body=new FormData(form);
+    const maxSize=500*1024*1024;
+    if(file.size>maxSize){message.textContent='This file is over 500 MB. Please export a smaller MP4 before uploading.';toast(message.textContent,'error');return;}
+    const title=form.elements.title?.value||file.name;
+    const description=form.elements.description?.value||'';
     const placements=[...form.querySelectorAll('input[name="placements"]:checked')].map(el=>el.value);
-    body.delete('placements');body.set('placement',placements.length?placements.join(','):'library');
-    button.disabled=true;button.textContent='Uploading…';message.textContent=file.size>8*1024*1024?'Uploading one video securely… Large files are transferred in smaller network chunks by your browser, but are saved as ONE media file.':'Uploading one file to HQ…';if(progress)progress.hidden=false;
+    const placement=placements.length?placements.join(','):'library';
+    const published=form.elements.published?.checked?'1':'0';
+    button.disabled=true;button.textContent='Uploading…';if(progress)progress.hidden=false;
     try{
-      const result=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'POST',body},120000);
-      message.textContent=result.note||'Upload complete.';form.reset();await loadMedia();toast('Media uploaded to HQ.');
-    }catch(error){message.textContent=error.message;toast(error.message,'error');}
-    finally{button.disabled=false;button.textContent='Upload to HQ';if(progress)progress.hidden=true;}
+      // Larger videos use chunked R2 upload so iPhone/Safari never has to send one huge request.
+      if(file.size>20*1024*1024 || file.type.startsWith('video/')){
+        message.textContent='Preparing secure video upload…';
+        const start=await jsonFetch(`${ADMIN_API_PREFIX}/media-upload/start`,{method:'POST',body:JSON.stringify({name:file.name,type:file.type,size:file.size,title,description,placement,published})},30000);
+        const partSize=8*1024*1024;
+        const parts=[];
+        const total=Math.ceil(file.size/partSize);
+        for(let i=0;i<total;i++){
+          const startByte=i*partSize,endByte=Math.min(file.size,startByte+partSize);
+          message.textContent=`Uploading this one video… part ${i+1} of ${total}. It will be saved as one file.`;
+          const response=await fetch(`${ADMIN_API_PREFIX}/media-upload/part`,{
+            method:'POST',
+            headers:{'X-Upload-Id':start.uploadId,'X-Upload-Key':start.key,'X-Part-Number':String(i+1),'Content-Type':'application/octet-stream'},
+            body:file.slice(startByte,endByte)
+          });
+          const text=await response.text();let data={};try{data=text?JSON.parse(text):{};}catch(_){data={error:text||'Upload part failed.'};}
+          if(!response.ok)throw new Error(data.error||`Upload part ${i+1} failed (${response.status}).`);
+          parts.push(data.part);
+        }
+        message.textContent='Finishing upload…';
+        const result=await jsonFetch(`${ADMIN_API_PREFIX}/media-upload/complete`,{method:'POST',body:JSON.stringify({uploadId:start.uploadId,key:start.key,parts,name:file.name,type:file.type,size:file.size,title,description,placement,published})},60000);
+        message.textContent=result.note||'Upload complete.';
+      }else{
+        const body=new FormData(form);
+        body.delete('placements');
+        body.set('placement',placement);
+        message.textContent='Uploading one file to HQ…';
+        const result=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'POST',body},120000);
+        message.textContent=result.note||'Upload complete.';
+      }
+      form.reset();await loadMedia();toast('Media uploaded to HQ.');
+    }catch(error){
+      const friendly=(error?.message==='Load failed'||error?.message==='Failed to fetch')?'The upload connection dropped. This update now uses chunked uploads for videos; please retry after the new deployment is live.':(error.message||'Upload failed.');
+      message.textContent=friendly;toast(friendly,'error');
+    }finally{button.disabled=false;button.textContent='Upload to HQ';if(progress)progress.hidden=true;}
   }
 
 
@@ -1393,7 +1464,8 @@ Type REFUNDED to continue.`);
   $('#privateEventDialog')?.addEventListener('click',event=>{if(event.target.id==='privateEventDialog')event.currentTarget.close();});
   $('#privateEventDetail')?.addEventListener('input',event=>{if(event.target.closest('#privateQuoteForm'))updatePrivateQuoteTotal();});
   $('#privateEventDetail')?.addEventListener('submit',event=>{if(event.target.id==='privateQuoteForm')submitPrivateQuote(event);});
-  $('#closeCustomerCrm')?.addEventListener('click',()=>$('#customerCrmDialog')?.close());
+  $('#closeCustomerCrm')?.addEventListener('click',()=>{const dialog=$('#customerCrmDialog');dialog?.close();document.documentElement.classList.remove('crm-dialog-open');document.body.classList.remove('crm-dialog-open');});
+  $('#customerCrmDialog')?.addEventListener('close',()=>{document.documentElement.classList.remove('crm-dialog-open');document.body.classList.remove('crm-dialog-open');});
   $('#customerCrmDialog')?.addEventListener('click',event=>{if(event.target.id==='customerCrmDialog')event.currentTarget.close();});
   $('#processDueEmails')?.addEventListener('click',async()=>{try{const r=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'PROCESS_DUE'})},60000);toast(`Processed ${r.results?.length||0} due campaign(s).`,'success');loadEmailCentre();}catch(error){toast(error.message,'error');}});
   $('#customerAdminSearch')?.addEventListener('input',loadCustomers);
@@ -1563,4 +1635,24 @@ Type REFUNDED to continue.`);
     }
   },7000);
 
+
+  document.addEventListener('click',event=>{
+    const del=event.target.closest('[data-private-delete]');
+    if(!del)return;
+    const id=del.closest('.private-detail')?.dataset.privateId;
+    if(id) deletePrivateEvent(id);
+  });
+})();
+// v96.4.96 — HQ inactivity protection. Cloudflare Access owns the HQ login,
+// so automatic logout ends the Access session rather than only hiding the page.
+(()=>{
+  const LIMIT=15*60*1000, WARNING_AT=13*60*1000;
+  let last=Date.now(), warning=null;
+  function close(){if(warning){warning.remove();warning=null;}}
+  function activity(){last=Date.now();close();}
+  function logout(){location.replace('/cdn-cgi/access/logout?returnTo='+encodeURIComponent(location.origin+'/admin-login.html?logged_out=inactive'));}
+  function warn(){if(warning)return;warning=document.createElement('div');warning.style.cssText='position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.8);display:grid;place-items:center;padding:24px';warning.innerHTML='<div style="max-width:460px;background:#150b0c;border:1px solid #a82c34;padding:28px;color:#fff;font-family:Arial,sans-serif"><h2 style="margin-top:0">HQ security check</h2><p>You’ve been inactive. HQ will log out after 15 minutes of inactivity.</p><div style="display:flex;gap:12px"><button data-stay style="padding:13px 18px;background:#b32630;color:#fff;border:1px solid #ef4a55;font-weight:800">STAY LOGGED IN</button><button data-out style="padding:13px 18px;background:#080606;color:#fff;border:1px solid #744;font-weight:800">LOG OUT</button></div></div>';document.body.appendChild(warning);warning.querySelector('[data-stay]').onclick=activity;warning.querySelector('[data-out]').onclick=logout;}
+  ['pointerdown','keydown','touchstart','scroll'].forEach(e=>addEventListener(e,activity,{passive:true}));
+  addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>=LIMIT)logout();});
+  setInterval(()=>{const idle=Date.now()-last;if(idle>=LIMIT)logout();else if(idle>=WARNING_AT)warn();},5000);
 })();

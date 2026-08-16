@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Rye&amp;family=Oswald:wght@400;500;600;700&amp;family=Caveat:wght@600;700&amp;display=swap" rel="stylesheet"/>
-<link href="styles.css?v=96.4.39" rel="stylesheet"/>
+<link href="styles.css?v=96.4.83" rel="stylesheet"/>
 <link href="favicon.png" rel="icon" type="image/png"/>
 <link href="apple-touch-icon.png" rel="apple-touch-icon"/>
 <link href="manifest.webmanifest" rel="manifest"/>
@@ -129,6 +129,13 @@
 <link href="honky-theme.css?v=96.4.53" rel="stylesheet"/>
 <link href="desktop-final-fix.css?v=96.4.39" rel="stylesheet"/>
 <link href="repair-v96.4.56.css?v=96.4.59" rel="stylesheet"/>
+
+<style>
+.member-feature-nav{position:static;z-index:auto;display:flex;flex-wrap:wrap;gap:8px;overflow:visible;padding:12px 18px;background:#080505;border-bottom:1px solid #6f2a30}
+.member-feature-nav a{flex:0 0 auto;padding:10px 12px;border:1px solid #853038;color:#fff;text-decoration:none;font:700 12px/1 Arial,sans-serif;text-transform:uppercase;letter-spacing:.04em;background:#170b0d}
+.member-feature-nav a:active{background:#9f242c}
+</style>
+
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -140,6 +147,16 @@
 <button aria-expanded="false" class="menu" id="menuButton">Menu</button>
 <a class="button compact" href="bookings.html">Reserve My Boots</a>
 </header>
+<div class="member-feature-nav" aria-label="Member feature navigation">
+  <a href="member-hub.html#dashboard">Dashboard</a>
+  <a href="rewards.html">Trail &amp; Rewards</a>
+  <a href="passport.html">Passport</a>
+  <a href="journey.html">Journey</a>
+  <a href="my-bookings.html">Bookings</a>
+  <a href="dance-library.html">Dance Library</a>
+  <a href="member-hub.html#profile">Profile</a>
+</div>
+
 <nav aria-label="Main navigation" class="menu45-overlay" id="nav">
 <div class="menu45-panel" id="menu45">
 <div class="menu45-head">
@@ -174,13 +191,10 @@
 </div>
 </details>
 <details class="menu45-section">
-<summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Member experience preview</small></span><b aria-hidden="true"></b></summary>
+<summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
 <div class="menu45-submenu">
-<a href="member-hub.html"><span>Member Hub Preview</span><b aria-hidden="true">›</b></a>
-<a href="passport.html"><span>My Trail</span><b aria-hidden="true">›</b></a>
-<a href="passport.html#trail-preview"><span>My Passport</span><b aria-hidden="true">›</b></a>
-<a href="journey.html"><span>My Journey</span><b aria-hidden="true">›</b></a>
-<a href="rewards.html"><span>Trail Outfitters &amp; Rewards</span><b aria-hidden="true">›</b></a>
+<a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
+<a href="membership-preview.html"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
 </div>
 </details>
 <details class="menu45-section">
@@ -312,7 +326,7 @@
 </article>
 <article class="library-item reveal" data-dance-id="ziggy" data-level="absolute-beginner" data-order="1" data-search="ziggy i wanna dance with somebody ziggy in tha house gary lafferty" data-title="ziggy" id="dance-ziggy">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#music"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#music"></use></svg></span>
 <span class="level-badge level-absolute-beginner">Absolute Beginner</span>
 </div>
 <h2>Ziggy</h2>
@@ -340,7 +354,7 @@
 </div></article>
 <article class="library-item reveal" data-dance-id="honky-tonk-highway" data-level="absolute-beginner" data-order="2" data-search="honky tonk highway luke combs maggie shipley" data-title="honky tonk highway" id="dance-honky-tonk-highway">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#hat"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#hat"></use></svg></span>
 <span class="level-badge level-absolute-beginner">Absolute Beginner</span>
 </div>
 <h2>Honky Tonk Highway</h2>
@@ -358,7 +372,7 @@
 </article>
 <article class="library-item reveal" data-dance-id="rockin-the-wagon-wheel" data-level="beginner" data-order="3" data-search="rockin wagon wheel darius rucker jamie marshall" data-title="rockin’ the wagon wheel" id="dance-rockin-the-wagon-wheel">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#music"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#music"></use></svg></span>
 <span class="level-badge level-beginner">Beginner</span>
 </div>
 <h2>Rockin’ The Wagon Wheel</h2>
@@ -376,7 +390,7 @@
 </article>
 <article class="library-item reveal" data-dance-id="cowgirl" data-level="beginner" data-order="4" data-search="cowgirl shaboozey sara honey delong" data-title="cowgirl" id="dance-cowgirl">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#heart"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#heart"></use></svg></span>
 <span class="level-badge level-beginner">Beginner</span>
 </div>
 <h2>Cowgirl</h2>
@@ -412,7 +426,7 @@
 </article>
 <article class="library-item reveal" data-dance-id="the-outlaw" data-level="beginner" data-order="6" data-search="the outlaw whiskey drinkin mikel knight suzanne wilson" data-title="the outlaw" id="dance-the-outlaw">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#music"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#music"></use></svg></span>
 <span class="level-badge level-beginner">Beginner</span>
 </div>
 <h2>The Outlaw</h2>
@@ -448,7 +462,7 @@
 </article>
 <article class="library-item reveal" data-dance-id="gives-me-shivers" data-level="improver" data-order="8" data-search="gives me shivers shivers ed sheeran brandon zahorsky" data-title="gives me shivers" id="dance-gives-me-shivers">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#star"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#star"></use></svg></span>
 <span class="level-badge level-improver">Improver</span>
 </div>
 <h2>Gives Me Shivers</h2>
@@ -466,7 +480,7 @@
 </article>
 <article class="library-item reveal" data-dance-id="boot-scootin-boogie" data-level="beginner" data-order="9" data-search="boot scootin boogie brooks dunn bill bader" data-title="boot scootin’ boogie" id="dance-boot-scootin-boogie">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#boot"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#star"></use></svg></span>
 <span class="level-badge level-beginner">Beginner</span>
 </div>
 <h2>Boot Scootin’ Boogie</h2>
@@ -484,7 +498,7 @@
 </article>
 <article class="library-item reveal" data-dance-id="burn-it-to-the-ground" data-level="improver" data-order="10" data-search="burn it to the ground nickelback unknown improver" data-title="burn it to the ground" id="dance-burn-it-to-the-ground">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#flame"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#flame"></use></svg></span>
 <span class="level-badge level-improver">Improver</span>
 </div>
 <h2>Burn It To The Ground</h2>
@@ -502,7 +516,7 @@
 </article>
 <article class="library-item reveal" data-dance-id="strummingbird" data-level="absolute-beginner" data-order="11" data-search="strummingbird one more james johnston maddison glover" data-title="strummingbird" id="dance-strummingbird">
 <div class="library-card-top">
-<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#guitar"></use></svg></span>
+<span class="library-icon"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#guitar"></use></svg></span>
 <span class="level-badge level-absolute-beginner">Absolute Beginner</span>
 </div>
 <h2>Strummingbird</h2>
@@ -549,7 +563,7 @@
 <img alt="Boot Scootin’ Line Dancing logo" class="brand-logo footer-logo" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
 <div class="wordmark footer-wordmark"><strong>BOOT SCOOTIN'</strong><span>LINE DANCING</span></div>
 </div>
-<p class="script">Leave with sore feet and a happy heart. <svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#heart"></use></svg></p>
+<p class="script">Leave with sore feet and a happy heart. <svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#heart"></use></svg></p>
 <p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
 <div class="site-ip-notice">
 <p><strong>© 2026 Boot Scootin’ Line Dancing. All rights reserved.</strong></p>
@@ -694,7 +708,8 @@
   }
 })();
 </script>
-<a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg#lock"></use></svg> Admin Login</a>
+<a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#lock"></use></svg> Admin Login</a>
 <script src="honky-theme.js?v=96.0.0"></script>
+<script src="member-inactivity.js?v=96.4.96"></script>
 </body>
 </html>
