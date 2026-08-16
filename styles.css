@@ -8890,3 +8890,13 @@ body.ranch-v91 .ranch-media-item small{display:block!important;max-width:100%!im
   box-shadow:none!important;
 }
 .country-guide-gateway-list span:hover{border-color:#e52a35!important}
+
+/* v96.4.114 — FINAL LAUNCH SWEEP */
+.prelaunch-hidden{display:none!important}
+/* Public Country Guide should stay in the black/red honky-tonk palette. */
+.country-guide-subpage .section.paper{background:#080505!important;color:#f4e8dc!important}
+.country-guide-subpage .guide-editorial-list.light-list{background:transparent!important}
+.country-guide-subpage .guide-editorial-item{background:#120909!important;color:#f4e8dc!important;border-color:#6b2428!important}
+.country-guide-subpage .guide-editorial-item p{color:#d8c7bb!important}
+.country-guide-subpage .guide-item-number{color:#d8c7bb!important}
+.country-guide-subpage .text-link{color:#ef3c46!important}
