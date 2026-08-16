@@ -310,6 +310,14 @@
     }catch(e){box.innerHTML=`<div class="ranch91-error">${esc(e.message||'Could not load merchandise orders.')}</div>`;}
   }
   $('#refreshMerchOrders')?.addEventListener('click',loadMerchOrders);
+  $('#adminMerchOrderForm')?.addEventListener('submit',async event=>{
+    event.preventDefault(); const form=event.currentTarget,msg=$('#adminMerchOrderMessage'),button=form.querySelector('[type=submit]');
+    const body=Object.fromEntries(new FormData(form).entries()); body.quantity=Number(body.quantity||1); body.action='CREATE';
+    button.disabled=true; if(msg)msg.textContent='Creating order…';
+    try{const result=await jsonFetch('/api/admin/merch-orders',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}); if(msg)msg.textContent=`Order ${result.reference} created.`; form.reset(); await loadMerchOrders(); toast('Merchandise order created.','success');}
+    catch(e){if(msg)msg.textContent=e.message||'Could not create order.'; toast(e.message||'Could not create order.','error');}
+    finally{button.disabled=false;}
+  });
 
   function displayNameFromEmail(email){
     if(!email)return 'Nora';

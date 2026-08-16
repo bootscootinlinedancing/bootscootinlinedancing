@@ -4133,6 +4133,15 @@ async function adminMerchOrders(request,env){
     return json({items:rows.results||[]});
   }
   const body=await request.json().catch(()=>null); if(!body)return json({error:'Invalid merchandise order request.'},400);
+  if(request.method==='POST' && clean(body.action,40)==='CREATE'){
+    const customerName=clean(body.customer_name,120),email=clean(body.customer_email,254).toLowerCase(),phone=clean(body.customer_phone,60),design=clean(body.design,120),fit=clean(body.fit,20),size=clean(body.size,20),quantity=Math.max(1,Math.min(20,Number(body.quantity||1))),fulfilment=clean(body.fulfilment_method,20),address=clean(body.delivery_address,500),status=clean(body.status,20);
+    if(!customerName||!email||!design||!['unisex','womens'].includes(fit)||!['collection','delivery'].includes(fulfilment)||!['PAID','PENDING'].includes(status))return json({error:'Please complete all required order fields.'},400);
+    if(fulfilment==='delivery'&&!address)return json({error:'Delivery address is required for delivery orders.'},400);
+    const unit=fit==='womens'?2200:2000,deliveryPence=fulfilment==='delivery'?395:0,amount=(unit*quantity)+deliveryPence,id=crypto.randomUUID(),reference=merchOrderReference();
+    await env.BOOKINGS_DB.prepare(`INSERT INTO merch_orders(id,reference,customer_name,customer_email,customer_phone,design,fit,size,quantity,unit_price_pence,amount_pence,status,fulfilment_method,delivery_address,delivery_pence,fulfilment_status,paid_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'NEW',CASE WHEN ?='PAID' THEN CURRENT_TIMESTAMP ELSE NULL END)`).bind(id,reference,customerName,email,phone,design,fit,size,quantity,unit,amount,status,fulfilment,fulfilment==='delivery'?address:'',deliveryPence,status).run();
+    await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email,'MERCH_CREATE_MANUAL','merch_order',id,JSON.stringify({reference,status,amount_pence:amount})).run().catch(()=>{});
+    return json({ok:true,id,reference,status,amount_pence:amount},201);
+  }
   const id=clean(body.id,120),action=clean(body.action,40);
   const order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE id=?`).bind(id).first();
   if(!order)return json({error:'Merchandise order not found.'},404);
@@ -4457,7 +4466,7 @@ export default {
       if (path === '/api/promotions/validate' && request.method === 'POST') return publicPromoValidate(request, env);
       if (path === '/api/merch-orders' && request.method === 'POST') return createMerchOrder(request, env);
       if (path === '/api/merch-order-status' && request.method === 'GET') return merchOrderStatus(request, env, url);
-      if (path === '/api/admin/merch-orders' && ['GET','PATCH'].includes(request.method)) return adminMerchOrders(request, env);
+      if (path === '/api/admin/merch-orders' && ['GET','POST','PATCH'].includes(request.method)) return adminMerchOrders(request, env);
       if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);
       if (path === '/api/sumup/callback' && request.method === 'GET') return sumUpOAuthCallback(request, env, url);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);

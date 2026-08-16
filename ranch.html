@@ -331,7 +331,17 @@
 
       <section class="ranch-view" data-view-panel="merch-orders">
         <div class="ranch-panel">
-          <div class="ranch-panel-head"><div><p class="kicker red">T-shirts & fulfilment</p><h2>Merchandise Orders</h2><p>Paid orders, collection/delivery details and fulfilment emails.</p></div><button class="button secondary compact" id="refreshMerchOrders" type="button">Refresh</button></div>
+          <div class="ranch-panel-head"><div><p class="kicker red">T-shirts & fulfilment</p><h2>Merchandise Orders</h2><p>Create manual orders, then manage collection/delivery and fulfilment.</p></div><button class="button secondary compact" id="refreshMerchOrders" type="button">Refresh</button></div>
+          <details class="hq-merch-create"><summary>Create merchandise order</summary><form id="adminMerchOrderForm" class="ranch-form-grid">
+            <label>Customer name<input name="customer_name" required></label><label>Email<input name="customer_email" type="email" required></label><label>Phone<input name="customer_phone" type="tel"></label>
+            <label>Design<select name="design"><option>Just One More Dance</option><option>No Mistakes, Just Variations</option></select></label>
+            <label>Fit<select name="fit"><option value="unisex">Unisex — £20</option><option value="womens">Women’s premium — £22</option></select></label>
+            <label>Size<select name="size"><option>S</option><option>M</option><option>L</option><option>XL</option><option>2XL</option><option>3XL</option><option>4XL</option><option>5XL</option></select></label>
+            <label>Quantity<input name="quantity" type="number" min="1" max="20" value="1" required></label><label>Fulfilment<select name="fulfilment_method"><option value="collection">Collection — free</option><option value="delivery">Delivery — £3.95</option></select></label>
+            <label class="wide">Delivery address<textarea name="delivery_address" rows="2" placeholder="Only needed for delivery"></textarea></label>
+            <label>Payment status<select name="status"><option value="PAID">Paid</option><option value="PENDING">Payment pending</option></select></label>
+            <div class="wide"><button class="button" type="submit">Create order</button><p id="adminMerchOrderMessage" class="form-message" aria-live="polite"></p></div>
+          </form></details>
           <div id="ranchMerchOrders" class="ranch-list">Loading…</div>
         </div>
       </section>
