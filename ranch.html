@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=96.4.104">
+  <link rel="stylesheet" href="styles.css?v=96.4.107">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
   <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.68">
@@ -339,7 +339,7 @@
             <label>Size<select name="size"><option>S</option><option>M</option><option>L</option><option>XL</option><option>2XL</option><option>3XL</option><option>4XL</option><option>5XL</option></select></label>
             <label>Quantity<input name="quantity" type="number" min="1" max="20" value="1" required></label><label>Fulfilment<select name="fulfilment_method"><option value="collection">Collection — free</option><option value="delivery">Delivery — £3.95</option></select></label>
             <label class="wide">Delivery address<textarea name="delivery_address" rows="2" placeholder="Only needed for delivery"></textarea></label>
-            <label>Payment status<select name="status"><option value="PAID">Paid</option><option value="PENDING">Payment pending</option></select></label>
+            <label>Payment method<select name="payment_option"><option value="sumup_link">SumUp payment link — send to customer</option><option value="sumup_card">SumUp card / Tap to Pay — take payment now</option><option value="cash">Cash — mark paid</option><option value="unpaid">Payment pending — no method yet</option></select></label>
             <div class="wide"><button class="button" type="submit">Create order</button><p id="adminMerchOrderMessage" class="form-message" aria-live="polite"></p></div>
           </form></details>
           <div id="ranchMerchOrders" class="ranch-list">Loading…</div>
@@ -706,7 +706,7 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=96.4.104"></script>
+  <script src="ranch.js?v=96.4.107"></script>
 
 
   <script src="honky-theme.js?v=96.0.0"></script>

@@ -3,19 +3,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/>
-<meta content="#050303" name="theme-color"/>
-<meta content="Boot Scootin' Line Dancing — fun, friendly and beginner-friendly line dancing classes in Birmingham." name="description"/>
-<title>Boot Scootin' Line Dancing | Birmingham</title>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="#090606" name="theme-color"/>
+<meta content="Photos from Boot Scootin’ line dancing classes and country events in Birmingham." name="description"/>
+<title>Gallery | Boot Scootin' Line Dancing</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Oswald:wght@400;500;600;700&amp;family=Rye&amp;family=Yellowtail&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Rye&amp;family=Oswald:wght@400;500;600;700&amp;family=Caveat:wght@600;700&amp;display=swap" rel="stylesheet"/>
 <link href="styles.css?v=96.4.107" rel="stylesheet"/>
-<link href="honky-authentic.css?v=96.4.39" rel="stylesheet"/>
 <link href="favicon.png" rel="icon" type="image/png"/>
 <link href="apple-touch-icon.png" rel="apple-touch-icon"/>
 <link href="manifest.webmanifest" rel="manifest"/>
-<link href="desktop-final-fix.css?v=96.4.39" rel="stylesheet"/>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
+<meta content="Boot Scootin’" name="apple-mobile-web-app-title"/>
 <style id="menu45-style">
 .menu45-overlay{display:none}
 @media(max-width:950px){
@@ -53,33 +55,93 @@
 }
 @media(max-width:420px){#menu45{padding-inline:18px!important}#menu45 .menu45-first strong{font-size:19px!important}#menu45 details.menu45-section>summary>span{font-size:19px!important}}
 </style>
+<style id="menu49-complete-active-fix">
+@media(max-width:950px){
+  /*
+   * Fully neutralise the old global:
+   *   #nav a[aria-current="page"]::before { content:"— "; }
+   * It was creating an extra grid item and squeezing active links vertically.
+   */
+  #nav.menu45-overlay a[aria-current="page"]::before{
+    content:none!important;
+    display:none!important;
+    position:static!important;
+    width:0!important;
+    height:0!important;
+    margin:0!important;
+    padding:0!important;
+  }
+
+  /* The featured booking link must always remain a two-column row. */
+  #menu45 > .menu45-first{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 22px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  #menu45 > .menu45-first > span{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    white-space:normal!important;
+  }
+
+  /* Every submenu link uses exactly two columns: wording + arrow. */
+  #menu45 .menu45-submenu > a{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 20px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  #menu45 .menu45-submenu > a > span{
+    display:block!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+    white-space:normal!important;
+  }
+
+  /* Show the current submenu page through colour, not generated grid content. */
+  #menu45 .menu45-submenu > a[aria-current="page"]{
+    color:#fff!important;
+    background:rgba(207,41,47,.08)!important;
+    border-left:3px solid #d64046!important;
+    padding-left:12px!important;
+  }
+
+  #menu45 .menu45-submenu > a[aria-current="page"] > span::before{
+    content:none!important;
+    display:none!important;
+  }
+}
+</style>
+<link href="honky-theme.css?v=96.4.53" rel="stylesheet"/>
+<link href="desktop-final-fix.css?v=96.4.39" rel="stylesheet"/>
 <link href="repair-v96.4.56.css?v=96.4.59" rel="stylesheet"/>
 </head>
-<body class="honky-home home-v9635 intro-open">
+<body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
-<div aria-label="Welcome to Boot Scootin’ Line Dancing" aria-modal="true" class="poster-intro boot-entry" id="intro" role="dialog" tabindex="0">
-<div class="poster-shell boot-entry-shell">
-<div class="boot-entry-brand">
-<img alt="" src="brand-logo-transparent.png"/>
-<div><strong>BOOT SCOOTIN’</strong><span>LINE DANCING</span><small>EST. 2024</small></div>
-</div>
-<p class="boot-entry-kicker">BRINGING NASHVILLE TO BIRMINGHAM</p>
-<p class="boot-entry-neon">Boots On.</p>
-<div aria-hidden="true" class="entry-boot">
-<img alt="" class="entry-boot-photo" src="entry-boot-restored.png?v=96.4.39"/>
-</div>
-<div aria-hidden="true" class="impact-dust"></div>
-<button class="poster-enter boot-entry-button" id="enterSite" type="button">
-<span>STOMP TO ENTER</span><small>Tap the boot or anywhere to step inside</small>
-</button>
-<p class="boot-entry-tagline">Good Boots. Good Music. Good Times.</p>
-</div>
-</div>
-<header class="honky-header">
-<a aria-label="Boot Scootin' Line Dancing home" class="honky-logo brand-lockup" href="index.html"><img alt="" src="brand-logo-transparent.png"/><span class="brand-lockup-copy"><strong>BOOT SCOOTIN’</strong><b>LINE DANCING</b><small>EST. 2025</small></span></a>
-<nav aria-label="Main navigation" class="honky-desktop-nav"><a class="active" href="index.html">Home</a><a href="about.html">About</a><a href="bookings.html">Classes</a><a href="private-events.html">Private Events</a><a href="gallery.html">Gallery</a><a href="ask-nora.html">Contact</a><button aria-controls="nav" aria-expanded="false" class="desktop-explore-button" id="desktopExploreButton" type="button">Explore</button></nav>
-<a class="honky-book" href="bookings.html">Book a class</a>
-<button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>
+<header class="header">
+<a aria-label="Boot Scootin' Line Dancing home" class="brand-lockup" href="index.html">
+<img alt="" class="brand-logo" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
+<span class="wordmark">
+<strong>BOOT SCOOTIN'</strong>
+<span>LINE DANCING</span>
+</span>
+</a>
+<button aria-expanded="false" class="menu" id="menuButton">Menu</button>
+<a class="button compact" href="bookings.html">Book a class</a>
 </header>
 <nav aria-label="Main navigation" class="menu45-overlay" id="nav">
 <div class="menu45-panel" id="menu45">
@@ -118,7 +180,7 @@
 <summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
 <div class="menu45-submenu">
 <a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
-<a href="member-zone-preview.html"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
+<a href="membership-preview.html"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
 </div>
 </details>
 <details class="menu45-section">
@@ -179,137 +241,63 @@
 </div>
 </div>
 </nav>
-<!-- v96.4.34: dedicated desktop start section. This sits OUTSIDE the legacy homepage main
-     so no old hero/intro-grid geometry can create a black gap on desktop. -->
-<section aria-label="Homepage introduction" class="desktop-home-start-v32">
-<div class="desktop-meet-v32 home-first-message">
-<p class="section-label">Boot Scootin’ Line Dancing</p>
-<h2>Come for the dancing.<br/>Stay for the people.</h2>
-<p>Beginner-friendly line dancing in Birmingham. No partner. No experience. No pressure. Just great music, good people and a reason to get your boots on.</p>
-<div class="home-first-actions"><a class="paper-link" href="bookings.html">Book your next class →</a><a class="paper-link secondary" href="#meet-nora-home">New here? Start here →</a></div>
-</div>
-<figure class="desktop-nora-v32"><img alt="Nora, founder of Boot Scootin’ Line Dancing, wearing her red cowboy hat" src="nora.webp"/></figure>
-<div class="desktop-upcoming-v32">
-<div class="home-title-row"><p class="section-label">Upcoming Classes</p><a href="bookings.html">View all classes →</a></div>
-<div class="class-card-grid">
-<article class="home-class-card"><img alt="Line dancing class at Edgbaston Community Centre" src="hall1.webp"/><div><span class="day-tag">Fortnightly Fridays</span><h3>Edgbaston Community Centre</h3><p>7:30PM – 8:30PM · £6</p><a href="bookings.html">Book now</a></div></article>
-<article class="home-class-card"><img alt="Low Places Bar Birmingham" src="lowplaces.webp"/><div><span class="day-tag">Fortnightly Fridays</span><h3>Low Places Bar Birmingham</h3><p>7:15PM – 9:00PM · £6</p><a href="bookings.html">Book now</a></div></article>
-</div>
-</div>
+<main>
+<section class="gallery-page">
+  <div class="gallery-page-head">
+    <p class="kicker red">Boot Scootin’ Gallery</p>
+    <h1>Real classes. Real good times.</h1>
+    <p>A little look at the people, classes and country nights that make Boot Scootin’ what it is. No perfect poses needed — just dancing, laughter and good times.</p>
+  </div>
+  <div class="gallery-grid-full">
+    <figure><img src="class1.webp" alt="Boot Scootin’ line dancing class"><figcaption>Boot Scootin’ class</figcaption></figure>
+    <figure><img src="hall2.webp" alt="Beginner line dancing class"><figcaption>Beginner line dancing</figcaption></figure>
+    <figure><img src="class2.webp" alt="Boot Scootin’ class in Birmingham"><figcaption>Learning together</figcaption></figure>
+    <figure><img src="party1.webp" alt="Country dance night"><figcaption>Country dance night</figcaption></figure>
+    <figure><img src="party2.webp" alt="Line dancing event"><figcaption>Good times off the class floor</figcaption></figure>
+    <figure><img src="lowplaces.webp" alt="Boot Scootin’ at Low Places"><figcaption>Low Places</figcaption></figure>
+    <figure><img src="summer-stomp-group.webp" alt="Country line dancing group"><figcaption>Country community</figcaption></figure>
+    <figure><img src="summer-stomp-floor-2.webp" alt="Line dancers on the dance floor"><figcaption>On the dance floor</figcaption></figure>
+    <figure><img src="summer-stomp-troy-elise.webp" alt="Country dance event"><figcaption>Learning, dancing, sharing</figcaption></figure>
+  </div>
 </section>
-<main id="main-content">
-<!-- Hero removed in v96.4.28: page now begins directly with the main homepage content. -->
-<section class="cream-home intro-grid">
-<div class="meet-copy home-first-message">
-<p class="section-label">Boot Scootin’ Line Dancing</p>
-<h2>Come for the dancing.<br/>Stay for the people.</h2>
-<p>Beginner-friendly line dancing in Birmingham. No partner. No experience. No pressure. Just great music, good people and a reason to get your boots on.</p>
-<div class="home-first-actions"><a class="paper-link" href="bookings.html">Book your next class →</a><a class="paper-link secondary" href="#meet-nora-home">New here? Start here →</a></div>
-</div>
-<figure class="nora-polaroid"><img alt="Nora, founder of Boot Scootin’ Line Dancing, wearing her red cowboy hat" src="nora.webp"/></figure>
-<div class="upcoming-home">
-<div class="home-title-row"><p class="section-label">Upcoming Classes</p><a href="bookings.html">View all classes →</a></div>
-<div class="class-card-grid">
-<article class="home-class-card"><img alt="Line dancing class at Edgbaston Community Centre" src="hall1.webp"/><div><span class="day-tag">Fortnightly Fridays</span><h3>Edgbaston Community Centre</h3><p>7:30PM – 8:30PM · £6</p><a href="bookings.html">Book now</a></div></article>
-<article class="home-class-card"><img alt="Low Places Bar Birmingham" src="lowplaces.webp"/><div><span class="day-tag">Fortnightly Fridays</span><h3>Low Places Bar Birmingham</h3><p>7:15PM – 9:00PM · £6</p><a href="bookings.html">Book now</a></div></article>
-</div>
-</div>
-</section>
-<section class="why-strip">
-<h2>Why You’ll Love It</h2>
-<div class="why-grid">
-<article><svg><use href="western-icons.svg?v=96.4.83#hat"></use></svg><div><strong>Beginner Friendly</strong><span>We’ll guide you every step of the way.</span></div></article>
-<article><svg><use href="western-icons.svg?v=96.4.83#people"></use></svg><div><strong>No Partner Needed</strong><span>Come on your own or with friends.</span></div></article>
-<article><svg><use href="western-icons.svg?v=96.4.83#badge"></use></svg><div><strong>All Ages Welcome</strong><span>It’s never too early or too late.</span></div></article>
-<article><svg><use href="western-icons.svg?v=96.4.83#music"></use></svg><div><strong>Great Music</strong><span>Country hits old and new.</span></div></article>
-<article><svg><use href="western-icons.svg?v=96.4.83#heart"></use></svg><div><strong>Friendly Atmosphere</strong><span>Good vibes, great people.</span></div></article>
-</div>
-</section>
-<section class="home-meet-nora-lower" id="meet-nora-home">
-<div class="home-meet-copy"><p class="section-label">Meet Nora</p><h2>Hi, I’m Nora!</h2><p>Operating Department Practitioner by day, line dance instructor by night. I started Boot Scootin’ Line Dancing to bring people together through a love of country music, good vibes and unforgettable nights.</p><p class="handwritten">Grab your boots and let’s dance!</p><a class="paper-link" href="about.html#meet-nora">Read Nora’s full story →</a></div>
-<figure><img alt="Nora, founder of Boot Scootin’ Line Dancing, wearing her red cowboy hat" src="nora.webp"/></figure>
-</section>
-<section class="home-new-here-stories" aria-label="New here to Boot Scootin’">
-  <article class="home-story-feature" id="about-boot-scootin-home">
-    <figure><img src="class1.webp" alt="Boot Scootin’ line dancers enjoying a Birmingham class"></figure>
-    <div>
-      <p class="section-label">About Boot Scootin’</p>
-      <h2>More than learning steps.</h2>
-      <p>Boot Scootin’ was created to be the kind of place where you can arrive on your own, learn without pressure and leave feeling like you have found your people. Complete beginners are welcome, laughter matters more than perfection, and every little bit of progress counts.</p>
-      <p class="home-western-quote">Come for the dancing. Stay because you belong.</p>
-      <a class="paper-link" href="about.html#boot-scootin-story">Read the full Boot Scootin’ story →</a>
-    </div>
-  </article>
-  <article class="home-story-feature reverse" id="first-class-advice-home">
-    <figure><img src="hall1.webp" alt="A beginner-friendly Boot Scootin’ class at Edgbaston Community Centre"></figure>
-    <div>
-      <p class="section-label">Your first steps</p>
-      <h2>Your first class should feel exciting — not scary.</h2>
-      <p>You do not need a partner, cowboy boots or dance experience. Wear something comfortable, bring water, arrive a little early and learn at your own pace. We break the dance down slowly before putting it to music.</p>
-      <div class="home-first-step-points"><span>No partner needed</span><span>Absolute beginners welcome</span><span>Comfortable footwear is perfect</span></div>
-      <a class="paper-link" href="about.html#first-class-advice">See all first-class advice →</a>
-    </div>
-  </article>
-</section>
-<section aria-label="Shop and rewards" class="home-shop-return" id="shop-and-rewards">
-<div class="home-shop-copy">
-<p class="section-label">Shop &amp; Rewards</p>
-<h2>Official Boot Scootin’ merchandise.</h2>
-<p>Shop the official Boot Scootin’ T-shirts, check your loyalty rewards and discover the country businesses we love.</p>
-<div class="home-shop-actions"><a href="community.html#merchandise">Shop merchandise</a><a href="rewards.html">My rewards</a></div>
-</div>
-<div class="home-shop-products">
-<a href="community.html#merchandise"><img alt="Boot Scootin’ official T-shirt designs" src="merch-variations.jpg"/><span>Official Merchandise</span></a>
-<a href="community.html#merchandise"><img alt="Boot Scootin’ Just One More Dance T-shirt" src="merch-just-one-more-dance.jpg"/><span>Shop now</span></a>
-</div>
-</section>
-<section class="cream-home lower-home">
-<div class="gallery-home">
-<div class="home-title-row"><p class="section-label">Real Classes. Real Good Times.</p><a href="gallery.html">View more →</a></div>
-<div class="mini-gallery"><img alt="Boot Scootin' class dancing" src="class1.webp"/><img alt="Beginner line dancing class" src="hall2.webp"/><img alt="Country dance night" src="party1.webp"/><img alt="A Boot Scootin' class in Birmingham" src="class2.webp"/></div>
-</div>
-<div class="private-home">
-<div><p class="section-label">Private Events</p><h2>Make your next event unforgettable</h2><p>Birthday parties, hen dos, corporate events, weddings and more — with a fun line dancing experience everyone can enjoy.</p><a class="paper-link" href="private-events.html">Find out more →</a></div>
-<div class="event-polaroids"><img alt="Country party dancing" src="party1.webp"/><img alt="Line dancing event" src="party2.webp"/></div>
-</div>
-</section>
-<section class="saloon-signoff"><span>Good Boots. Good Music. Good Times.</span><strong>LET’S KEEP ON DANCING.</strong></section>
 </main>
-<section class="section dark mailing-section home-mailing-section" id="home-mailing-list">
-<div class="mailing-box reveal">
-<div>
-<p class="kicker">Join the Boot Scootin’ Round-Up</p>
-<h2>Stay in the loop.</h2>
-<p>Get class dates, new dances, special events and occasional Boot Scootin’ news straight to your inbox. You can unsubscribe at any time.</p>
-</div>
-<form class="mailing-preview" id="homeMailingPreview">
-<label>First name<input autocomplete="given-name" maxlength="80" name="name" placeholder="Your first name" type="text"/></label>
-<label>Email address<input autocomplete="email" maxlength="160" name="email" placeholder="you@example.com" required="" type="email"/></label>
-<label class="consent-preview"><input name="consent" required="" type="checkbox"/> <span>I’d like to receive Boot Scootin’ news and can unsubscribe at any time.</span></label>
-<button class="button" type="submit">Join the Mailing List</button>
-<p aria-live="polite" class="mailing-status" id="homeMailingStatus"></p>
-</form>
-</div>
-</section>
-<footer class="new-home-footer presentation-footer footer-v9646">
-<div class="footer-brand-centred">
-<img alt="Boot Scootin’ Line Dancing" src="brand-logo-transparent.png"/>
-<strong>BOOT SCOOTIN’</strong>
+<footer>
+<div class="footer-lockup">
+<img alt="Boot Scootin’ Line Dancing logo" class="brand-logo footer-logo" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
+<div class="wordmark footer-wordmark">
+<strong>BOOT SCOOTIN'</strong>
 <span>LINE DANCING</span>
-<small>EST. 2024</small>
-<p>More than just a dance class. It’s a community.</p>
 </div>
-<div class="footer-info-row">
-<div class="footer-mini-column"><strong>Let’s connect</strong><p><a href="https://www.instagram.com/boot.scootin.linedancing" rel="noopener" target="_blank">Instagram</a> · <a href="https://www.facebook.com/share/1BbK2zYYk1/?mibextid=wwXIfr" rel="noopener" target="_blank">Facebook</a></p></div>
-<div class="footer-mini-column"><strong>Contact</strong><p><a href="mailto:hello@bootscootinlinedancing.co.uk">hello@bootscootinlinedancing.co.uk</a><br/>Birmingham, UK</p></div>
 </div>
-<p class="footer-script">Grab your boots. Bring your smile. Let’s dance! ♡</p>
-<div class="footer-bottom-row">
-<div class="legal-footer-links"><a href="legal.html#terms">Terms &amp; Conditions</a><a href="legal.html#privacy">Privacy</a><a href="legal.html#cancellations">Cancellation &amp; Refunds</a><a href="legal.html#cookies">Cookies</a><a href="legal.html#accessibility">Accessibility</a></div>
-<a aria-label="Administrator login" class="footer-admin-link" href="/admin-login"><svg aria-hidden="true" viewbox="0 0 24 24"><rect height="10" rx="2" width="14" x="5" y="10"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg><span>Admin Login</span></a>
-<div class="copyright-line">© 2026 Boot Scootin’ Line Dancing. All rights reserved.</div>
+<p class="script">Grab your boots. Bring your smile. Let's dance. <svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#heart"></use></svg></p>
+<p>© 2026 Boot Scootin' Line Dancing · Birmingham</p>
+<div class="site-ip-notice">
+<p><strong>© 2026 Boot Scootin’ Line Dancing. All rights reserved.</strong></p>
+<p>Boot Scootin’ Line Dancing™ and its original website text, graphics, code, branded designs and distinctive named features are the intellectual property of Boot Scootin’ Line Dancing or their respective creators. Unauthorised copying, republication or commercial reproduction is prohibited.</p>
+<p class="ip-small">™ indicates an unregistered trade mark claim. It does not mean the mark is registered with the UK Intellectual Property Office.</p>
 </div>
-</footer>
+<div class="legal-footer-links"><a href="legal.html#terms">Terms &amp; Conditions</a><a href="legal.html#privacy">Privacy</a><a href="legal.html#cancellations">Cancellation &amp; Refunds</a><a href="legal.html#cookies">Cookies</a><a href="legal.html#accessibility">Accessibility</a></div></footer>
 <script src="script.js?v=96.4.59"></script>
+<aside aria-label="Install Boot Scootin' on your phone" class="install-app" hidden="" id="installApp">
+<img alt="" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
+<div class="install-app-copy">
+<strong>Add Boot Scootin’ to your Home Screen</strong>
+<span>Open the calendar, Dance Diary and demos like an app.</span>
+</div>
+<button class="install-app-button" id="installAppButton" type="button">Add</button>
+<button aria-label="Close" class="install-app-close" id="installAppClose" type="button">×</button>
+</aside>
+<div aria-labelledby="installGuideTitle" aria-modal="true" class="install-guide" hidden="" id="installGuide" role="dialog">
+<div class="install-guide-card">
+<button aria-label="Close" class="install-guide-close" id="installGuideClose" type="button">×</button>
+<img alt="" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>
+<p class="kicker red">Add to Home Screen</p>
+<h2 id="installGuideTitle">Keep Boot Scootin’ one tap away.</h2>
+<ol id="installGuideSteps"></ol>
+<button class="button" id="installGuideDone" type="button">Got It</button>
+</div>
+</div>
+<a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#lock"></use></svg> Admin Login</a>
+<script src="honky-theme.js?v=96.0.0"></script>
 </body>
 </html>
