@@ -9082,3 +9082,688 @@ body.ranch-v91 .ranch-media-item small{display:block!important;max-width:100%!im
   .boot-entry .entry-brand-stamp:before{animation:none!important}
   .poster-intro.stomping .entry-brand-stamp{animation:none!important}
 }
+
+/* v96.4.116 — ISOLATED REALISTIC BOOT STOMP
+   Adds a separate restored cowboy boot without changing the existing logo,
+   entrance layout, interaction logic or transition timing. */
+.boot-entry .entry-stomp-boot{
+  position:absolute;
+  z-index:4;
+  left:50%;
+  bottom:15.7%;
+  width:min(44vw,190px);
+  height:auto;
+  pointer-events:none;
+  translate:-50% 0;
+  transform:translate3d(0,0,0) rotate(-1deg);
+  transform-origin:24% 88%;
+  will-change:transform;
+}
+.boot-entry .entry-stomp-boot img{
+  display:block;
+  width:100%;
+  height:auto;
+  object-fit:contain;
+  user-select:none;
+  -webkit-user-drag:none;
+  filter:drop-shadow(0 12px 13px rgba(0,0,0,.58));
+}
+.poster-intro.stomping .entry-stomp-boot{
+  animation:realisticWesternBootStomp .86s cubic-bezier(.2,.72,.22,1) both;
+}
+@keyframes realisticWesternBootStomp{
+  0%{transform:translate3d(0,0,0) rotate(-1deg) scale(1)}
+  30%{transform:translate3d(0,-17px,0) rotate(-6deg) scale(1.004)}
+  55%{transform:translate3d(0,5px,0) rotate(-2deg) scaleX(1.004) scaleY(.984)}
+  70%{transform:translate3d(0,-4px,0) rotate(-.4deg) scale(1.001)}
+  84%{transform:translate3d(0,1px,0) rotate(-.1deg) scaleY(.997)}
+  100%{transform:translate3d(0,0,0) rotate(-1deg) scale(1)}
+}
+@media(max-width:430px){
+  .boot-entry .entry-stomp-boot{
+    left:50%;
+    bottom:15.7%;
+    width:min(44vw,180px);
+  }
+}
+@media(max-height:740px){
+  .boot-entry .entry-stomp-boot{
+    left:50%;
+    bottom:16.8%;
+    width:min(40vw,150px);
+  }
+}
+@media(min-width:761px){
+  .boot-entry .entry-stomp-boot{
+    left:50%;
+    bottom:15.8%;
+    width:min(21vh,190px);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .poster-intro.stomping .entry-stomp-boot{animation:none}
+}
+
+/* v96.4.116 — ISOLATED BOOT-HERO COMPOSITION
+   Visual-only entrance override. Entry logic and timing remain unchanged. */
+.boot-entry .boot-hero-entry-v2 .boot-entry-kicker{
+  top:4.8%!important;
+}
+.boot-entry .boot-hero-entry-v2 .entry-brand-stamp{
+  top:8%!important;
+  width:105px!important;
+  height:105px!important;
+  min-height:0!important;
+  opacity:.82!important;
+  z-index:3!important;
+}
+.boot-entry .boot-hero-entry-v2 .entry-brand-stamp:before{
+  inset:5%!important;
+  opacity:.58;
+}
+.boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup{
+  top:23%!important;
+  width:94%!important;
+  z-index:5!important;
+}
+.boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup div{
+  gap:3px!important;
+}
+.boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup strong{
+  font-size:clamp(30px,8.6vw,46px)!important;
+  letter-spacing:.025em!important;
+}
+.boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup span{
+  font-size:clamp(12px,3.6vw,17px)!important;
+  letter-spacing:.3em!important;
+}
+.boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup small{
+  font-size:8px!important;
+}
+.boot-entry .boot-hero-entry-v2 .boot-entry-neon{
+  display:none!important;
+}
+.boot-entry .boot-hero-entry-v2 .entry-stomp-boot{
+  top:34%!important;
+  bottom:auto!important;
+  left:50%!important;
+  width:min(88vw,46vh,390px)!important;
+  height:auto!important;
+  translate:-50% 0;
+  z-index:4!important;
+}
+.boot-entry .boot-hero-entry-v2 .entry-stomp-boot img{
+  width:100%!important;
+  height:auto!important;
+  object-fit:contain!important;
+  filter:drop-shadow(0 18px 20px rgba(0,0,0,.68))!important;
+}
+.boot-entry .boot-hero-entry-v2 .impact-dust{
+  left:17%!important;
+  bottom:19%!important;
+  width:31%!important;
+  height:9%!important;
+  z-index:2!important;
+  background:radial-gradient(ellipse at 42% 54%,rgba(225,35,44,.58),rgba(112,13,19,.22) 43%,transparent 72%)!important;
+  filter:blur(9px)!important;
+}
+.boot-entry .boot-hero-entry-v2 .entry-floor-cracks{
+  position:absolute;
+  z-index:3;
+  left:18%;
+  top:73%;
+  width:43%;
+  height:58px;
+  opacity:0;
+  pointer-events:none;
+  transform-origin:28% 45%;
+}
+.boot-entry .boot-hero-entry-v2 .entry-floor-cracks span{
+  position:absolute;
+  left:27%;
+  top:45%;
+  width:62%;
+  height:2px;
+  border-radius:999px;
+  transform-origin:left center;
+  background:linear-gradient(90deg,rgba(126,12,19,.98),rgba(92,8,14,.72) 58%,transparent);
+  box-shadow:0 0 4px rgba(198,22,31,.72),0 0 9px rgba(111,9,15,.42);
+}
+.boot-entry .boot-hero-entry-v2 .entry-floor-cracks span:nth-child(1){width:70%;transform:rotate(7deg)}
+.boot-entry .boot-hero-entry-v2 .entry-floor-cracks span:nth-child(2){width:58%;transform:rotate(-18deg)}
+.boot-entry .boot-hero-entry-v2 .entry-floor-cracks span:nth-child(3){width:46%;transform:rotate(27deg)}
+.boot-entry .boot-hero-entry-v2 .entry-floor-cracks span:nth-child(4){width:39%;transform:rotate(-39deg)}
+.boot-entry .boot-hero-entry-v2 .entry-floor-cracks span:nth-child(5){width:31%;transform:rotate(48deg)}
+.boot-entry .boot-hero-entry-v2 .boot-entry-button{
+  bottom:9.5%!important;
+}
+.boot-entry .boot-hero-entry-v2 .boot-entry-tagline{
+  bottom:2.8%!important;
+}
+.poster-intro.stomping .boot-hero-entry-v2{
+  animation:bootHeroImpactShake .86s ease both!important;
+}
+.poster-intro.stomping .boot-hero-entry-v2 .entry-floor-cracks{
+  animation:heelFractureFlash .86s ease-out both;
+}
+@keyframes bootHeroImpactShake{
+  0%,52%{transform:translate3d(0,0,0)}
+  56%{transform:translate3d(-3px,2px,0)}
+  60%{transform:translate3d(3px,-2px,0)}
+  64%{transform:translate3d(-2px,1px,0)}
+  69%{transform:translate3d(2px,-1px,0)}
+  75%,100%{transform:translate3d(0,0,0)}
+}
+@keyframes heelFractureFlash{
+  0%,49%{opacity:0;transform:scale(.28)}
+  57%{opacity:.96;transform:scale(1)}
+  72%{opacity:.62;transform:scale(1.04)}
+  100%{opacity:0;transform:scale(1.07)}
+}
+@media(max-width:430px){
+  .boot-entry .boot-hero-entry-v2 .entry-brand-stamp{top:7.5%!important;width:92px!important;height:92px!important}
+  .boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup{top:21.5%!important}
+  .boot-entry .boot-hero-entry-v2 .entry-stomp-boot{top:32%!important;width:min(88vw,43vh,350px)!important}
+  .boot-entry .boot-hero-entry-v2 .entry-floor-cracks{left:15%;top:72%;width:48%}
+  .boot-entry .boot-hero-entry-v2 .impact-dust{left:14%!important;bottom:19.5%!important;width:35%!important}
+  .boot-entry .boot-hero-entry-v2 .boot-entry-button{bottom:9.4%!important}
+  .boot-entry .boot-hero-entry-v2 .boot-entry-tagline{bottom:2.7%!important}
+}
+@media(max-height:740px){
+  .boot-entry .boot-hero-entry-v2 .boot-entry-kicker{top:3.3%!important}
+  .boot-entry .boot-hero-entry-v2 .entry-brand-stamp{top:5.8%!important;width:78px!important;height:78px!important}
+  .boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup{top:18.5%!important}
+  .boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup strong{font-size:clamp(27px,7.8vw,38px)!important}
+  .boot-entry .boot-hero-entry-v2 .entry-stomp-boot{top:28.5%!important;width:min(82vw,43vh,315px)!important}
+  .boot-entry .boot-hero-entry-v2 .entry-floor-cracks{top:70.5%!important}
+  .boot-entry .boot-hero-entry-v2 .impact-dust{bottom:19.5%!important}
+  .boot-entry .boot-hero-entry-v2 .boot-entry-button{bottom:8.7%!important}
+  .boot-entry .boot-hero-entry-v2 .boot-entry-tagline{bottom:2.1%!important}
+}
+@media(min-width:761px){
+  .boot-entry .boot-hero-entry-v2 .entry-brand-stamp{top:6.5%!important;width:100px!important;height:100px!important}
+  .boot-entry .boot-hero-entry-v2 .boot-entry-title-lockup{top:20%!important}
+  .boot-entry .boot-hero-entry-v2 .entry-stomp-boot{top:29%!important;width:min(46vh,390px)!important}
+  .boot-entry .boot-hero-entry-v2 .entry-floor-cracks{top:73.5%!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .poster-intro.stomping .boot-hero-entry-v2{animation:none!important}
+  .poster-intro.stomping .boot-hero-entry-v2 .entry-floor-cracks{animation:none!important}
+  .boot-entry .boot-hero-entry-v2 .entry-floor-cracks{display:none!important}
+}
+
+/* Defeat the legacy desktop-mode boot sizing only for the secondary brand stamp. */
+html.desktop-mode .poster-intro.boot-entry .boot-hero-entry-v2 .entry-boot.entry-brand-stamp{
+  top:8%!important;
+  left:50%!important;
+  width:105px!important;
+  height:105px!important;
+  min-height:0!important;
+  max-height:105px!important;
+  transform:translateX(-50%)!important;
+  opacity:.82!important;
+}
+@media(max-width:430px){
+  html.desktop-mode .poster-intro.boot-entry .boot-hero-entry-v2 .entry-boot.entry-brand-stamp{
+    top:7.5%!important;
+    width:92px!important;
+    height:92px!important;
+    max-height:92px!important;
+  }
+}
+@media(max-height:740px){
+  html.desktop-mode .poster-intro.boot-entry .boot-hero-entry-v2 .entry-boot.entry-brand-stamp{
+    top:5.8%!important;
+    width:78px!important;
+    height:78px!important;
+    max-height:78px!important;
+  }
+}
+
+/* v96.4.116 — CUSTOM TRANSPARENT HERO ARTWORK
+   Final isolated visual override for boot-scootin-hero-stomp.webp. */
+.boot-entry .boot-custom-art-v3 .boot-entry-kicker{
+  top:4.8%!important;
+}
+.boot-entry .boot-custom-art-v3 .entry-brand-stamp{
+  top:7.5%!important;
+  width:92px!important;
+  height:92px!important;
+  max-height:92px!important;
+  opacity:.78!important;
+}
+.boot-entry .boot-custom-art-v3 .boot-entry-title-lockup{
+  top:21%!important;
+  width:94%!important;
+}
+.boot-entry .boot-custom-art-v3 .entry-stomp-boot{
+  top:29.5%!important;
+  bottom:auto!important;
+  left:50%!important;
+  width:min(86vw,42vh,390px)!important;
+  height:auto!important;
+  translate:-50% 0;
+  transform-origin:38% 92%!important;
+  overflow:visible!important;
+}
+.boot-entry .boot-custom-art-v3 .entry-stomp-boot img{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  filter:drop-shadow(0 20px 22px rgba(0,0,0,.66))!important;
+}
+.boot-entry .boot-custom-art-v3 .entry-stomp-boot:after{
+  content:"";
+  position:absolute;
+  z-index:2;
+  left:5%;
+  right:4%;
+  bottom:-1%;
+  height:27%;
+  border-radius:50%;
+  opacity:0;
+  pointer-events:none;
+  background:radial-gradient(ellipse at 43% 62%,rgba(255,45,55,.62),rgba(163,15,24,.24) 42%,transparent 72%);
+  filter:blur(9px);
+  mix-blend-mode:screen;
+}
+.boot-entry .boot-custom-art-v3 .entry-floor-cracks{
+  display:none!important;
+}
+.boot-entry .boot-custom-art-v3 .impact-dust{
+  left:24%!important;
+  bottom:23.5%!important;
+  width:52%!important;
+  height:8%!important;
+  opacity:0;
+  background:radial-gradient(ellipse at 43% 55%,rgba(221,35,44,.42),rgba(116,13,20,.15) 45%,transparent 74%)!important;
+  filter:blur(10px)!important;
+}
+.boot-entry .boot-custom-art-v3 .boot-entry-button{
+  bottom:9.5%!important;
+}
+.boot-entry .boot-custom-art-v3 .boot-entry-tagline{
+  bottom:2.8%!important;
+}
+.poster-intro.stomping .boot-custom-art-v3 .entry-stomp-boot img{
+  animation:customHeroArtworkImpact .86s ease-out both;
+}
+.poster-intro.stomping .boot-custom-art-v3 .entry-stomp-boot:after{
+  animation:customHeroGroundGlow .86s ease-out both;
+}
+@keyframes customHeroArtworkImpact{
+  0%,48%{filter:drop-shadow(0 20px 22px rgba(0,0,0,.66)) brightness(1)}
+  57%{filter:drop-shadow(0 23px 25px rgba(0,0,0,.76)) brightness(1.13) contrast(1.04)}
+  72%{filter:drop-shadow(0 21px 23px rgba(0,0,0,.70)) brightness(1.05)}
+  100%{filter:drop-shadow(0 20px 22px rgba(0,0,0,.66)) brightness(1)}
+}
+@keyframes customHeroGroundGlow{
+  0%,48%{opacity:0;transform:scale(.72)}
+  57%{opacity:.72;transform:scale(1.02)}
+  72%{opacity:.34;transform:scale(1.07)}
+  100%{opacity:0;transform:scale(1.10)}
+}
+@media(max-width:430px){
+  .boot-entry .boot-custom-art-v3 .entry-brand-stamp{top:7.5%!important;width:88px!important;height:88px!important;max-height:88px!important}
+  .boot-entry .boot-custom-art-v3 .boot-entry-title-lockup{top:20.5%!important}
+  .boot-entry .boot-custom-art-v3 .entry-stomp-boot{top:29%!important;width:min(86vw,42vh,350px)!important}
+  .boot-entry .boot-custom-art-v3 .impact-dust{bottom:23%!important}
+}
+@media(max-height:740px){
+  .boot-entry .boot-custom-art-v3 .boot-entry-kicker{top:3.3%!important}
+  .boot-entry .boot-custom-art-v3 .entry-brand-stamp{top:5.8%!important;width:76px!important;height:76px!important;max-height:76px!important}
+  .boot-entry .boot-custom-art-v3 .boot-entry-title-lockup{top:18%!important}
+  .boot-entry .boot-custom-art-v3 .entry-stomp-boot{top:29%!important;width:min(84vw,42vh,315px)!important}
+  .boot-entry .boot-custom-art-v3 .impact-dust{bottom:22.5%!important}
+  .boot-entry .boot-custom-art-v3 .boot-entry-button{bottom:8.7%!important}
+  .boot-entry .boot-custom-art-v3 .boot-entry-tagline{bottom:2.1%!important}
+}
+@media(min-width:761px){
+  .boot-entry .boot-custom-art-v3 .entry-brand-stamp{top:6.5%!important;width:90px!important;height:90px!important;max-height:90px!important}
+  .boot-entry .boot-custom-art-v3 .boot-entry-title-lockup{top:19.5%!important}
+  .boot-entry .boot-custom-art-v3 .entry-stomp-boot{top:28.5%!important;width:min(42vh,390px)!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .poster-intro.stomping .boot-custom-art-v3 .entry-stomp-boot img,
+  .poster-intro.stomping .boot-custom-art-v3 .entry-stomp-boot:after{animation:none!important}
+  .boot-entry .boot-custom-art-v3 .entry-stomp-boot:after{display:none!important}
+}
+
+/* v96.4.116 — FINAL CINEMATIC HONKY-TONK POSTER
+   Isolated visual layer based on the supplied final reference. */
+.boot-entry .boot-poster-final-v4{
+  isolation:isolate;
+  background:
+    linear-gradient(180deg,rgba(2,0,0,.08) 0 48%,rgba(5,1,1,.18) 59%,rgba(0,0,0,.72) 100%),
+    repeating-linear-gradient(0deg,transparent 0 57px,rgba(113,24,28,.13) 58px 60px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.008) 0 82px,rgba(74,15,18,.09) 83px 85px),
+    #050202!important;
+  box-shadow:0 0 80px rgba(0,0,0,.96),inset 0 0 80px rgba(0,0,0,.58)!important;
+}
+.boot-entry .boot-poster-final-v4:after{
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:0;
+  right:0;
+  bottom:0;
+  height:36%;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg,transparent,rgba(0,0,0,.12) 9%,rgba(0,0,0,.56) 100%),
+    repeating-linear-gradient(96deg,rgba(94,46,31,.17) 0 2px,transparent 3px 46px),
+    repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 3px,transparent 4px 25px),
+    linear-gradient(180deg,#160a08 0%,#080303 78%);
+  clip-path:polygon(0 11%,100% 0,100% 100%,0 100%);
+  opacity:.74;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-kicker{
+  top:3.7%!important;
+  width:90%!important;
+  color:#fff4ec!important;
+  font-size:clamp(9px,2.6vw,12px)!important;
+  font-weight:500!important;
+  letter-spacing:.34em!important;
+  text-shadow:0 0 5px #ff2834,0 0 13px rgba(238,28,39,.9),0 0 25px rgba(176,10,19,.55)!important;
+  z-index:6!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-kicker:before,
+.boot-entry .boot-poster-final-v4 .boot-entry-kicker:after{
+  display:inline-block;
+  color:#fff7ef;
+  font-size:1.12em;
+  letter-spacing:.05em;
+  text-shadow:0 0 4px #ff2430,0 0 11px #e51d28;
+  vertical-align:.03em;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-kicker:before{content:"— ☆ ";margin-right:.45em}
+.boot-entry .boot-poster-final-v4 .boot-entry-kicker:after{content:" ☆ —";margin-left:.25em}
+.boot-entry .boot-poster-final-v4 .entry-brand-stamp{
+  top:6.4%!important;
+  width:92px!important;
+  height:92px!important;
+  max-height:92px!important;
+  opacity:.92!important;
+  z-index:5!important;
+}
+.boot-entry .boot-poster-final-v4 .entry-brand-stamp:before{
+  inset:2%!important;
+  border:1px solid rgba(255,238,224,.72)!important;
+  box-shadow:0 0 5px #ff2632,0 0 15px rgba(235,25,35,.88),inset 0 0 17px rgba(224,23,32,.25)!important;
+}
+.boot-entry .boot-poster-final-v4 .entry-brand-stamp .entry-boot-photo{
+  filter:drop-shadow(0 0 7px rgba(241,34,44,.8)) drop-shadow(0 12px 18px rgba(0,0,0,.82))!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup{
+  top:18.7%!important;
+  width:96%!important;
+  z-index:6!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup div{
+  gap:2px!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup strong{
+  color:#f6eadb!important;
+  font:400 clamp(35px,10vw,54px)/.94 Rye,Georgia,serif!important;
+  letter-spacing:.01em!important;
+  text-shadow:0 2px 0 #511117,0 0 7px rgba(222,31,40,.72),0 7px 18px rgba(0,0,0,.9)!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup span{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:.55em!important;
+  width:100%!important;
+  color:#fff6ef!important;
+  font:500 clamp(14px,4.1vw,20px)/1.1 Oswald,sans-serif!important;
+  letter-spacing:.42em!important;
+  padding-left:.42em!important;
+  text-shadow:0 0 4px #ff2632,0 0 12px rgba(235,25,35,.9)!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup span:before,
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup span:after{
+  content:"— ☆";
+  color:#fff3e8;
+  font-size:.72em;
+  letter-spacing:0;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup span:after{content:"☆ —"}
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup small{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:.7em!important;
+  color:#ead9ca!important;
+  font:500 10px/1.2 Rye,Georgia,serif!important;
+  letter-spacing:.18em!important;
+  padding-left:.18em!important;
+  text-shadow:0 0 7px rgba(220,28,38,.5)!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup small:before,
+.boot-entry .boot-poster-final-v4 .boot-entry-title-lockup small:after{
+  content:"⌁";
+  color:#e72a34;
+  font:400 18px/1 Georgia,serif;
+  letter-spacing:0;
+}
+.boot-entry .boot-poster-final-v4 .entry-stomp-boot{
+  top:29%!important;
+  width:min(88vw,43vh,400px)!important;
+  z-index:4!important;
+}
+.boot-entry .boot-poster-final-v4 .entry-stomp-boot img{
+  filter:drop-shadow(0 22px 24px rgba(0,0,0,.76)) drop-shadow(0 0 8px rgba(196,25,33,.16))!important;
+}
+.boot-entry .boot-poster-final-v4 .impact-dust{
+  z-index:3!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-button{
+  z-index:7!important;
+  bottom:10.2%!important;
+  width:min(80vw,405px)!important;
+  min-height:62px!important;
+  border:2px solid #ff3440!important;
+  border-radius:9px!important;
+  background:linear-gradient(180deg,rgba(17,7,7,.96),rgba(4,2,2,.98))!important;
+  box-shadow:0 0 4px #fff1e7,0 0 13px #ef2632,0 0 27px rgba(206,20,29,.68),inset 0 0 18px rgba(194,19,27,.18),0 15px 28px rgba(0,0,0,.72)!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-button:hover{
+  background:linear-gradient(180deg,#251011,#080303)!important;
+  box-shadow:0 0 6px #fff1e7,0 0 17px #ef2632,0 0 34px rgba(206,20,29,.76),inset 0 0 21px rgba(208,23,32,.24)!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-button>span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:.6em;
+  color:#f5eadb;
+  font:400 clamp(20px,5.5vw,27px)/1 Rye,Georgia,serif;
+  letter-spacing:.035em;
+  white-space:nowrap;
+  text-shadow:0 2px 0 #391014,0 0 7px rgba(238,40,50,.38);
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-button>span:before,
+.boot-entry .boot-poster-final-v4 .boot-entry-button>span:after{
+  content:"☆";
+  color:#fff3e8;
+  font-family:Georgia,serif;
+  text-shadow:0 0 4px #ff2834,0 0 10px #e7202b;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-button>small{
+  margin-top:5px!important;
+  color:#cdb8aa!important;
+  font-size:8px!important;
+  letter-spacing:.14em!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-tagline{
+  z-index:7!important;
+  bottom:1.5%!important;
+  width:96%!important;
+  color:#fff4e9!important;
+  font:400 clamp(21px,6vw,29px)/1 Yellowtail,cursive!important;
+  text-shadow:0 0 4px #ff3943,0 0 12px rgba(235,28,39,.92),0 0 24px rgba(167,10,18,.62)!important;
+}
+.boot-entry .boot-poster-final-v4 .boot-entry-tagline:after{
+  content:"━━━━  ☆  ━━━━";
+  display:block;
+  margin-top:5px;
+  color:#fff3e7;
+  font:400 10px/1 Georgia,serif;
+  letter-spacing:.08em;
+  text-shadow:0 0 4px #ff2b36,0 0 10px #e51d28;
+}
+@media(max-width:430px){
+  .boot-entry .boot-poster-final-v4 .boot-entry-kicker{top:3.5%!important;font-size:8px!important;letter-spacing:.25em!important}
+  .boot-entry .boot-poster-final-v4 .entry-brand-stamp{top:6.5%!important;width:84px!important;height:84px!important;max-height:84px!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-title-lockup{top:18.5%!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-title-lockup strong{font-size:clamp(34px,9.4vw,43px)!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-title-lockup span{font-size:13px!important;letter-spacing:.34em!important}
+  .boot-entry .boot-poster-final-v4 .entry-stomp-boot{top:29%!important;width:min(88vw,42vh,355px)!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-button{bottom:10.4%!important;width:82vw!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-tagline{bottom:1.3%!important;font-size:21px!important}
+}
+@media(max-height:740px){
+  .boot-entry .boot-poster-final-v4 .boot-entry-kicker{top:2.5%!important;font-size:7px!important}
+  .boot-entry .boot-poster-final-v4 .entry-brand-stamp{top:4.7%!important;width:68px!important;height:68px!important;max-height:68px!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-title-lockup{top:15.5%!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-title-lockup strong{font-size:clamp(30px,8.4vw,38px)!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-title-lockup span{font-size:11px!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-title-lockup small{font-size:8px!important}
+  .boot-entry .boot-poster-final-v4 .entry-stomp-boot{top:26.5%!important;width:min(84vw,41vh,315px)!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-button{bottom:10.5%!important;min-height:54px!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-button>span{font-size:18px!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-tagline{bottom:.8%!important;font-size:18px!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-tagline:after{margin-top:3px;font-size:8px}
+}
+@media(min-width:761px){
+  .boot-entry .boot-poster-final-v4 .boot-entry-kicker{top:3.3%!important}
+  .boot-entry .boot-poster-final-v4 .entry-brand-stamp{top:6%!important;width:90px!important;height:90px!important;max-height:90px!important}
+  .boot-entry .boot-poster-final-v4 .boot-entry-title-lockup{top:18.5%!important}
+  .boot-entry .boot-poster-final-v4 .entry-stomp-boot{top:28.5%!important;width:min(43vh,400px)!important}
+}
+
+/* Keep the neon entrance control wide enough to preserve its single-line label. */
+html.desktop-mode .poster-intro.boot-entry .boot-poster-final-v4 .boot-entry-button{
+  left:50%!important;
+  width:min(82vw,405px)!important;
+  transform:translateX(-50%)!important;
+}
+html.desktop-mode .poster-intro.boot-entry .boot-poster-final-v4 .entry-boot.entry-brand-stamp{
+  top:7%!important;
+  width:88px!important;
+  height:88px!important;
+  max-height:88px!important;
+}
+html.desktop-mode .poster-intro.boot-entry .boot-poster-final-v4 .boot-entry-tagline{
+  left:50%!important;
+  width:min(92vw,620px)!important;
+  transform:translateX(-50%)!important;
+}
+@media(max-height:740px){
+  html.desktop-mode .poster-intro.boot-entry .boot-poster-final-v4 .entry-boot.entry-brand-stamp{
+    top:4.6%!important;
+    width:64px!important;
+    height:64px!important;
+    max-height:64px!important;
+  }
+}
+@media(min-width:761px){
+  .boot-entry .boot-poster-final-v4 .entry-stomp-boot{top:31.6%!important}
+  html.desktop-mode .poster-intro.boot-entry .boot-poster-final-v4 .boot-entry-button{bottom:11.2%!important}
+}
+
+/* =========================================================
+   BOOT SCOOTIN' ENTRANCE ENVIRONMENT — BRICK WALL + FLOOR
+   Background-only enhancement; approved foreground remains untouched.
+   ========================================================= */
+.boot-entry .boot-poster-final-v4{
+  background:
+    radial-gradient(ellipse at 50% 39%,rgba(117,12,20,.24) 0,rgba(57,5,10,.12) 30%,transparent 61%),
+    radial-gradient(ellipse at 15% 24%,rgba(108,13,18,.10),transparent 34%),
+    radial-gradient(ellipse at 84% 27%,rgba(91,8,14,.09),transparent 35%),
+    linear-gradient(180deg,rgba(15,3,5,.24),rgba(2,1,1,.38) 66%,#010101 100%),
+    #070405!important;
+  box-shadow:0 0 84px rgba(0,0,0,.97),inset 0 0 92px rgba(0,0,0,.68)!important;
+}
+.boot-entry .boot-poster-final-v4:before{
+  display:block!important;
+  content:""!important;
+  position:absolute!important;
+  z-index:0!important;
+  inset:0 0 31% 0!important;
+  pointer-events:none!important;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' seed='19'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.19'/%3E%3C/svg%3E"),
+    linear-gradient(90deg,transparent 0 48%,rgba(116,34,39,.46) 49%,rgba(8,2,3,.92) 50%,transparent 51%),
+    linear-gradient(90deg,transparent 0 48%,rgba(103,28,34,.42) 49%,rgba(7,2,3,.91) 50%,transparent 51%),
+    repeating-linear-gradient(0deg,transparent 0 52px,rgba(127,37,42,.42) 53px,rgba(7,2,3,.94) 55px,rgba(71,15,20,.34) 57px,transparent 59px),
+    linear-gradient(180deg,rgba(42,9,13,.64),rgba(11,4,6,.34));
+  background-size:180px 180px,168px 112px,168px 112px,100% 56px,100% 100%;
+  background-position:0 0,0 0,84px 56px,0 0,0 0;
+  background-repeat:repeat,repeat,repeat,repeat,no-repeat;
+  mix-blend-mode:normal;
+  opacity:.76;
+  box-shadow:inset 0 -36px 38px rgba(0,0,0,.72),inset 0 0 65px rgba(0,0,0,.48)!important;
+}
+.boot-entry .boot-poster-final-v4:after{
+  height:38%!important;
+  z-index:1!important;
+  clip-path:polygon(0 9%,100% 0,100% 100%,0 100%)!important;
+  background:
+    radial-gradient(ellipse at 39% 13%,rgba(133,13,20,.24),transparent 27%),
+    linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.42) 38%,rgba(0,0,0,.82) 100%),
+    repeating-linear-gradient(96deg,rgba(137,74,46,.18) 0 2px,rgba(25,9,7,.06) 3px 42px,rgba(0,0,0,.42) 43px 46px),
+    repeating-linear-gradient(0deg,rgba(120,61,39,.09) 0 2px,transparent 3px 25px),
+    linear-gradient(180deg,#1a0c09 0%,#0b0504 48%,#030202 100%)!important;
+  opacity:.9!important;
+  box-shadow:inset 0 18px 30px rgba(0,0,0,.72),inset 0 1px 0 rgba(120,32,34,.18)!important;
+  transform:perspective(520px) rotateX(1.8deg);
+  transform-origin:center bottom;
+}
+.poster-intro.stomping .boot-poster-final-v4:after{
+  animation:entranceFloorImpactPulse .86s ease-out both;
+}
+@keyframes entranceFloorImpactPulse{
+  0%,48%{filter:brightness(1);box-shadow:inset 0 18px 30px rgba(0,0,0,.72),inset 0 1px 0 rgba(120,32,34,.18)}
+  57%{filter:brightness(1.2);box-shadow:inset 0 18px 30px rgba(0,0,0,.68),inset 0 4px 22px rgba(207,23,31,.35)}
+  74%{filter:brightness(1.08);box-shadow:inset 0 18px 30px rgba(0,0,0,.70),inset 0 2px 12px rgba(145,13,22,.22)}
+  100%{filter:brightness(1);box-shadow:inset 0 18px 30px rgba(0,0,0,.72),inset 0 1px 0 rgba(120,32,34,.18)}
+}
+@media(prefers-reduced-motion:reduce){
+  .poster-intro.stomping .boot-poster-final-v4:after{animation:none!important}
+}
+
+/* Asset-backed environment: one continuous wall/floor across the full viewport. */
+.poster-intro.boot-entry{
+  background:
+    radial-gradient(ellipse at 50% 38%,rgba(116,10,18,.10),transparent 43%),
+    linear-gradient(90deg,rgba(0,0,0,.48),transparent 20% 80%,rgba(0,0,0,.48)),
+    linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.24)),
+    url('boot-scootin-entrance-brick-floor.webp') center center/cover no-repeat!important;
+}
+.boot-entry .boot-poster-final-v4{
+  background:rgba(3,1,2,.12)!important;
+  box-shadow:0 0 86px rgba(0,0,0,.76),inset 0 0 78px rgba(0,0,0,.34)!important;
+}
+.boot-entry .boot-poster-final-v4:before{
+  inset:0!important;
+  background:
+    radial-gradient(ellipse at 50% 42%,transparent 0 29%,rgba(0,0,0,.18) 61%,rgba(0,0,0,.58) 100%),
+    linear-gradient(180deg,rgba(0,0,0,.06),transparent 58%,rgba(0,0,0,.18))!important;
+  background-size:100% 100%!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+  opacity:1!important;
+  mix-blend-mode:normal!important;
+  box-shadow:none!important;
+}
+.boot-entry .boot-poster-final-v4:after{
+  height:38%!important;
+  background:
+    radial-gradient(ellipse at 39% 16%,rgba(144,13,21,.17),transparent 29%),
+    linear-gradient(180deg,transparent 0 52%,rgba(0,0,0,.28) 100%)!important;
+  opacity:.48!important;
+  box-shadow:none!important;
+}
