@@ -213,7 +213,11 @@
     wallet.innerHTML=(data.rewards||[]).length?(data.rewards||[]).map(r=>`<article class="customer-reward-card ${r.available?'available':'used'}"><div><p class="kicker red">${esc(r.available?'Available reward':'Past reward')}</p><h4>${esc(r.name||r.issued_reason||'Boot Scootin’ reward')}</h4><p>${esc(r.label||'Reward')}</p></div><div><code>${esc(r.code)}</code><small>${r.expires_at?`Expires ${esc(new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric'}).format(new Date(r.expires_at)))}`:'No expiry set'}</small></div></article>`).join(''):'<div class="customer-empty">Your birthday, loyalty and promotional rewards will appear here.</div>';
 
     const achievements=document.getElementById('customerAchievements');
-    achievements.innerHTML=(data.achievements||[]).map(a=>`<article class="customer-achievement ${a.earned?'earned':'locked'}"><span aria-hidden="true">${a.icon}</span><div><h4>${esc(a.title)}</h4><p>${esc(a.description)}</p></div><strong>${a.earned?'Unlocked':'Locked'}</strong></article>`).join('');
+    const achievementIconIds={first_steps:'boot',regular:'star',trailblazer:'hat',legend:'trophy',birthday_dancer:'gift'};
+    achievements.innerHTML=(data.achievements||[]).map(a=>{
+      const iconId=achievementIconIds[a.id]||'star';
+      return `<article class="customer-achievement ${a.earned?'earned':'locked'}"><span aria-hidden="true"><svg class="western-icon"><use href="western-icons.svg?v=96.4.83#${iconId}"></use></svg></span><div><h4>${esc(a.title)}</h4><p>${esc(a.description)}</p></div><strong>${a.earned?'Unlocked':'Locked'}</strong></article>`;
+    }).join('');
 
     const stamps=document.getElementById('customerLoyaltyStamps');
     stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.83#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.83#star"></use></svg>'}</span>`).join('');

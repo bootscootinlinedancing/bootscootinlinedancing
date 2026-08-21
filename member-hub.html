@@ -173,17 +173,17 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
         </div>
         <div class="member-rank-card">
           <small>TRAIL RANK</small>
-          <strong id="memberRankCard">☆ First Steps</strong>
+          <strong id="memberRankCard"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#star"></use></svg> First Steps</strong>
           <div class="member-progress"><i id="memberRankProgress" style="width:0%"></i></div>
           <span id="memberPointsProgress">0 Boot Points</span>
         </div>
       </div>
 
       <div class="member-stat-grid">
-        <article><span>☆</span><strong id="memberBootPoints">0</strong><small>Boot Points</small></article>
-        <article><span>♬</span><strong id="memberClassesAttended">0</strong><small>Classes attended</small></article>
-        <article><span>♡</span><strong id="memberDancesLearned">0</strong><small>Dances learned</small></article>
-        <article><span>✦</span><strong id="memberCurrentStreak">0</strong><small>Week streak</small></article>
+        <article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#star"></use></svg></span><strong id="memberBootPoints">0</strong><small>Boot Points</small></article>
+        <article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#music"></use></svg></span><strong id="memberClassesAttended">0</strong><small>Classes attended</small></article>
+        <article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#heart"></use></svg></span><strong id="memberDancesLearned">0</strong><small>Dances learned</small></article>
+        <article><span><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#flame"></use></svg></span><strong id="memberCurrentStreak">0</strong><small>Week streak</small></article>
       </div>
 
       <article class="member-card member-live-loyalty">
@@ -478,7 +478,9 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
       document.getElementById('memberTrailRank').textContent=rank;
       const mini=document.querySelector('.member-mini-profile span');
       if(mini) mini.textContent=`${rank} · ${identityLabel} · Secure member profile`;
-      document.getElementById('memberRankCard').textContent='☆ '+rank;
+      const rankCard=document.getElementById('memberRankCard');
+      rankCard.innerHTML='<svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#star"></use></svg> ';
+      rankCard.append(document.createTextNode(rank));
       document.getElementById('memberPointsProgress').textContent=`${points} Boot Points`;
       document.getElementById('memberRankProgress').style.width=`${Math.min(100,points/10)}%`;
       document.getElementById('memberBootPoints').textContent=String(points);
@@ -492,7 +494,7 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
       const progress=Math.max(0,Math.min(9,Number(loyalty.progress||0)));
       document.getElementById('memberStampProgress').textContent=String(progress);
       const row=document.getElementById('memberStampRow');
-      if(row) row.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<progress?'earned':''}" aria-hidden="true">👢</span>`).join('');
+      if(row) row.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<progress?'earned':''}" aria-hidden="true"><svg class="western-icon"><use href="western-icons.svg?v=96.4.83#boot"></use></svg></span>`).join('');
       const msg=document.getElementById('memberStampMessage');
       if(msg) msg.textContent=progress===0
         ? 'Your loyalty trail starts at zero. Qualifying paid class bookings add a stamp; a confirmed full refund removes it again.'

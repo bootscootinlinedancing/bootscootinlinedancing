@@ -7873,8 +7873,9 @@ body:not(.ranch-v91):not(.admin-login-body) :is(input,textarea)::placeholder{col
 body:not(.ranch-v91):not(.admin-login-body) .moonshine-request-form :is(h3,label,strong){color:#fff7ed!important}
 body:not(.ranch-v91):not(.admin-login-body) .moonshine-request-form :is(p,small){color:#d1beb3!important}
 body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row .earned{background:#a91d24!important;color:#fff!important;border-color:#ef434b!important}
-body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row span:not(.earned){font-size:0!important}
-body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row span:not(.earned)::before{content:'☆';font-size:1.6rem;color:#bca8a0}
+body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row span:not(.earned){font-size:1.7rem!important;color:#bca8a0!important}
+body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row span:not(.earned)::before{content:none}
+body:not(.ranch-v91):not(.admin-login-body) .reward-progress-row span:not(.earned) .western-icon{margin:0}
 
 /* Preserve functional white QR surface only. */
 body:not(.ranch-v91):not(.admin-login-body) :is(.reward-qr,.qr-card img,.qr-code,img[alt*="QR code"]){background:#fff!important}
