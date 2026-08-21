@@ -4243,44 +4243,7 @@ async function adminPrivateEvents(request, env) {
 }
 
 async function health(request, env) {
-  const admin = adminState(request, env);
-  const services = {
-    website: { status: 'online', message: 'The website and HQ frontend are responding.' },
-    access: admin.email
-      ? { status: 'protected', message: `Cloudflare Access is active. Signed in as ${admin.email}.` }
-      : { status: 'setup', message: 'HQ is not protected by Cloudflare Access yet. Media uploads remain locked.' },
-    database: { status: 'setup', message: 'D1 booking database has not been connected yet.' },
-    media: { status: 'setup', message: 'R2 media binding has not been detected yet.' },
-    payments: { status: 'setup', message: 'SumUp sandbox is not connected yet.' },
-    email: notificationConfig(env).emailReady ? { status: 'ready', message: 'Transactional email is configured.' } : { status: 'setup', message: 'Add RESEND_API_KEY and EMAIL_FROM for confirmations.' },
-    backups: { status: 'setup', message: 'No tested export and restore record yet.' }
-  };
-
-  if (env.BOOKINGS_DB) {
-    try {
-      const tableCount = await ensureBookingSchema(env);
-      services.database = { status: 'ready', message: `Cloudflare D1 is connected, responding and prepared with ${tableCount} booking tables.` };
-    } catch (error) {
-      services.database = { status: 'attention', message: `D1 is bound, but database setup failed: ${error.message}` };
-    }
-  }
-  if (env.MEDIA_BUCKET) {
-    try {
-      await env.MEDIA_BUCKET.list({ limit: 1 });
-      services.media = { status: 'ready', message: 'Cloudflare R2 is connected to MEDIA_BUCKET and responding.' };
-    } catch (error) {
-      services.media = { status: 'attention', message: `R2 is bound, but its test request failed: ${error.message}` };
-    }
-  }
-  const sumupCheck = await checkSumUpConnection(env);
-  services.payments = sumupCheck.ready
-    ? { status: 'test_mode', message: sumupCheck.message }
-    : { status: sumupCheck.status, message: sumupCheck.message };
-  if (notificationConfig(env).emailReady) services.email = { status: 'ready', message: 'Email credentials are configured.' };
-  services.sms = notificationConfig(env).smsReady ? { status: 'ready', message: 'SMS credentials are configured.' } : { status: 'setup', message: 'Add Twilio credentials to send optional text confirmations.' };
-  if (env.BACKUP_LAST_TESTED) services.backups = { status: 'ready', message: `Last restore test recorded: ${String(env.BACKUP_LAST_TESTED).slice(0, 30)}` };
-
-  return json({ mode: 'free-pilot', version: 76, checked_at: new Date().toISOString(), services });
+  return json({ status: 'ok', checked_at: new Date().toISOString() });
 }
 
 async function mediaStatus(request, env) {

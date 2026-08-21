@@ -692,11 +692,13 @@
 
   cards.forEach(card => {
     const id = card.dataset.danceId;
-    const state = stateFor(id);
     const tools = card.querySelector(".dance-card-member-tools");
+    if (!tools) return;
     const learned = tools.querySelector(".learned-tool");
     const favourite = tools.querySelector(".favourite-tool");
     const confidence = tools.querySelector(".dance-confidence");
+    if (!learned || !favourite || !confidence) return;
+    const state = stateFor(id);
 
     function render() {
       learned.setAttribute("aria-pressed", String(state.learned));
