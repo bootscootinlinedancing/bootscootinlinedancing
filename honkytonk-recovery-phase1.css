@@ -1,0 +1,221 @@
+/* Recovered Wednesday-night visual layer: homepage/header/footer only.
+   Entrance, member, booking, merchandise, Ranch and backend surfaces are excluded. */
+:root{
+  --bs-brick-black:#080405;
+  --bs-panel-black:rgba(13,7,8,.84);
+  --bs-burgundy:#421015;
+  --bs-red:#d9232d;
+  --bs-red-soft:#8f1820;
+  --bs-cream:#f5e9dc;
+  --bs-cream-muted:#d4c1b3;
+  --bs-panel-border:rgba(151,37,45,.58);
+  --bs-display-heading-glow:0 1px 0 rgba(91,17,22,.92),0 0 7px rgba(207,45,51,.34),0 6px 18px rgba(0,0,0,.42);
+}
+
+body.honky-home:not(.intro-open){
+  background-color:var(--bs-brick-black)!important;
+  background-image:
+    linear-gradient(180deg,rgba(3,1,2,.12),rgba(7,2,4,.34)),
+    radial-gradient(ellipse at 50% 10%,rgba(159,11,25,.20),transparent 50%),
+    repeating-linear-gradient(0deg,transparent 0 55px,rgba(125,35,42,.34) 56px,rgba(5,2,3,.78) 58px,transparent 60px),
+    linear-gradient(90deg,transparent 0 48%,rgba(119,33,39,.30) 49%,rgba(5,2,3,.70) 50%,transparent 51%),
+    linear-gradient(90deg,transparent 0 48%,rgba(105,28,34,.28) 49%,rgba(5,2,3,.68) 50%,transparent 51%),
+    url('boot-scootin-entrance-brick-floor.webp')!important;
+  background-size:auto,auto,100% 60px,180px 120px,180px 120px,cover!important;
+  background-position:center top,center top,0 0,0 0,90px 60px,center 44%!important;
+  background-repeat:no-repeat,no-repeat,repeat,repeat,repeat,no-repeat!important;
+  background-attachment:fixed!important;
+  color:var(--bs-cream)!important;
+}
+body.honky-home:not(.intro-open) main{background:transparent!important}
+
+body.honky-home .honky-header{
+  background:rgba(5,2,3,.94)!important;
+  border-bottom:1px solid rgba(174,35,43,.5)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.42)!important;
+}
+body.honky-home .honky-logo>img{
+  filter:drop-shadow(0 0 5px rgba(255,44,55,.72)) drop-shadow(0 0 13px rgba(183,10,25,.42))!important;
+}
+body.honky-home .brand-wordmark{
+  display:block!important;
+  width:min(230px,72vw)!important;
+  max-width:100%!important;
+  height:auto!important;
+  min-width:0!important;
+  line-height:0!important;
+  background:transparent!important;
+}
+body.honky-home .brand-wordmark .brand-wordmark__art{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  height:auto!important;
+  object-fit:contain!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+  animation:none!important;
+  mix-blend-mode:screen;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 2.5%,#000 97.5%,transparent 100%),linear-gradient(180deg,transparent 0,#000 4%,#000 96%,transparent 100%);
+  -webkit-mask-composite:source-in;
+  mask-image:linear-gradient(90deg,transparent 0,#000 2.5%,#000 97.5%,transparent 100%),linear-gradient(180deg,transparent 0,#000 4%,#000 96%,transparent 100%);
+  mask-composite:intersect;
+}
+.poster-intro.boot-entry .boot-entry-brand.boot-entry-title-lockup .brand-wordmark{
+  display:block!important;
+  width:min(86vw,390px)!important;
+  max-width:96vw!important;
+  margin-inline:auto!important;
+}
+body.honky-home .honky-header .brand-lockup-copy.brand-wordmark,
+html.desktop-mode body.honky-home .honky-header .brand-lockup-copy.brand-wordmark{
+  width:122px!important;
+  min-width:122px!important;
+  margin:0!important;
+}
+body.honky-home .brand-wordmark--menu{width:min(190px,64vw)!important}
+body.honky-home .footer-brand-centred .brand-wordmark{width:min(250px,72vw)!important;margin-inline:auto!important}
+
+body.honky-home:not(.intro-open) :is(.desktop-home-start-v32,.cream-home,.home-meet-nora-lower,.home-new-here-stories,.home-shop-return,.lower-home,.why-strip,.home-mailing-section){
+  color:var(--bs-cream)!important;
+  border-color:var(--bs-panel-border)!important;
+  background:
+    radial-gradient(circle at 84% 12%,rgba(160,15,26,.08),transparent 29%),
+    linear-gradient(145deg,rgba(10,5,6,.36),rgba(20,7,9,.32))!important;
+  backdrop-filter:blur(1.5px);
+}
+body.honky-home:not(.intro-open) :is(.desktop-home-start-v32,.cream-home,.home-meet-nora-lower,.home-new-here-stories,.home-shop-return,.lower-home,.why-strip,.home-mailing-section) :is(h1,h2,h3,h4,strong,label,legend){color:var(--bs-cream)!important}
+body.honky-home:not(.intro-open) :is(.desktop-home-start-v32,.cream-home,.home-meet-nora-lower,.home-new-here-stories,.home-shop-return,.lower-home,.why-strip,.home-mailing-section) :is(p,li,small){color:var(--bs-cream-muted)!important}
+body.honky-home:not(.intro-open) :is(.home-first-message,.home-story-feature,.home-class-card,.home-meet-copy,.home-shop-copy,.private-home){
+  background:rgba(10,5,6,.84)!important;
+  border:1px solid var(--bs-panel-border)!important;
+  box-shadow:0 18px 38px rgba(0,0,0,.34),inset 0 1px rgba(255,239,226,.035)!important;
+}
+body.honky-home:not(.intro-open) :is(.home-first-message,.home-meet-copy,.home-shop-copy,.private-home){padding:clamp(22px,3vw,38px)!important}
+body.honky-home:not(.intro-open) :is(.home-first-message,.home-story-feature,.home-meet-copy,.home-shop-copy,.private-home)>:is(h1,h2,h3){
+  color:#fff3e8!important;
+  text-shadow:var(--bs-display-heading-glow)!important;
+}
+body.honky-home:not(.intro-open) .section-label{color:#ed3842!important;letter-spacing:.12em!important}
+body.honky-home:not(.intro-open) .home-class-card{overflow:hidden!important}
+body.honky-home:not(.intro-open) .home-class-card>div{background:rgba(8,4,5,.82)!important}
+body.honky-home:not(.intro-open) .home-class-card :is(h3,p){color:var(--bs-cream)!important}
+body.honky-home:not(.intro-open) :is(.class-card-grid,.mini-gallery,.event-polaroids){
+  background:
+    linear-gradient(180deg,transparent calc(100% - 20px),rgba(0,0,0,.18) 100%),
+    repeating-linear-gradient(94deg,#3a1d13 0 2px,#1d0e09 3px 62px,#0b0503 63px 67px)!important;
+  background-size:100% 100%,100% 20px!important;
+  background-position:center,bottom!important;
+  background-repeat:no-repeat!important;
+  box-shadow:0 14px 20px -14px rgba(0,0,0,.92),inset 0 -1px rgba(126,50,34,.52)!important;
+}
+body.honky-home:not(.intro-open) .why-grid article{border-color:var(--bs-panel-border)!important;background:rgba(10,5,6,.72)!important}
+body.honky-home:not(.intro-open) .why-grid article>svg{
+  width:52px!important;height:52px!important;padding:7px;box-sizing:border-box;
+  color:var(--bs-cream)!important;fill:none!important;stroke:currentColor!important;stroke-width:0;
+  border:1px solid rgba(202,49,58,.52);border-radius:50%;
+  background:radial-gradient(circle,rgba(88,14,20,.48),rgba(11,5,6,.72));
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.72)) drop-shadow(0 0 5px rgba(214,44,54,.26))!important;
+}
+body.honky-home:not(.intro-open) :is(.button,.honky-book,.paper-link){box-shadow:0 8px 20px rgba(0,0,0,.28),0 0 0 1px rgba(224,37,47,.16)!important}
+body.honky-home:not(.intro-open) :is(.button,.honky-book,.paper-link):focus-visible,
+body.honky-home:not(.intro-open) a:focus-visible{outline:2px solid #ff5961!important;outline-offset:3px!important}
+body.honky-home:not(.intro-open) :is(footer,.saloon-signoff){
+  background:linear-gradient(180deg,rgba(4,2,2,.42),rgba(3,2,2,.76)),url('boot-scootin-entrance-brick-floor.webp') center bottom/cover no-repeat!important;
+  border-top:1px solid rgba(174,35,43,.50)!important;
+  box-shadow:inset 0 28px 46px rgba(0,0,0,.46),0 -16px 32px rgba(0,0,0,.42)!important;
+}
+
+@media(max-width:950px){
+  body.honky-home .honky-header .brand-lockup-copy.brand-wordmark,
+  body.honky-home .honky-header .brand-lockup-copy.brand-wordmark img{width:112px!important;min-width:112px!important}
+}
+@media(max-width:760px){
+  body.honky-home:not(.intro-open){background-attachment:scroll!important}
+  body.honky-home:not(.intro-open) :is(.class-card-grid,.mini-gallery,.event-polaroids){background-size:100% 100%,100% 13px!important}
+  body.honky-home:not(.intro-open) .why-grid article>svg{width:46px!important;height:46px!important;padding:6px}
+  html.desktop-mode body.honky-home .honky-desktop-nav,
+  body.honky-home .honky-desktop-nav{display:none!important}
+  html.desktop-mode body.honky-home .honky-menu-button,
+  body.honky-home .honky-menu-button{display:flex!important;position:relative!important;right:auto!important;top:auto!important}
+  html.desktop-mode body.honky-home .honky-menu-button span,
+  body.honky-home .honky-menu-button span{display:block!important;width:20px!important;height:2px!important;background:var(--bs-cream)!important}
+  html.desktop-mode body.honky-home .honky-book,
+  body.honky-home .honky-book{display:none!important}
+}
+
+/* Later approved entrance finish, transplanted from the final local pass. */
+.poster-intro.boot-entry .boot-entry-shell.boot-poster-final-v4{
+  width:100vw!important;
+  max-width:none!important;
+  border-left:0!important;
+  border-right:0!important;
+  box-shadow:none!important;
+}
+.poster-intro.boot-entry .boot-entry-shell.boot-poster-final-v4::after{
+  height:42%!important;
+  left:0!important;
+  right:0!important;
+  clip-path:none!important;
+  background:linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.08) 42%,rgba(0,0,0,.22) 100%)!important;
+  opacity:1!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+@media(max-width:430px){
+  .poster-intro.boot-entry .boot-entry-brand.boot-entry-title-lockup .brand-wordmark{width:min(80vw,310px)!important}
+}
+@media(max-height:740px){
+  .poster-intro.boot-entry .boot-entry-brand.boot-entry-title-lockup .brand-wordmark{width:min(76vw,285px)!important}
+}
+
+/* Compact Explore index: same content and destinations, less vertical expansion. */
+@media(min-width:951px){
+  body.honky-home #menu45{
+    width:min(1120px,calc(100vw - 48px))!important;
+    min-height:0!important;
+    padding:0 20px 18px!important;
+  }
+  body.honky-home #menu45 .menu45-head{
+    min-height:58px!important;
+    height:58px!important;
+    padding:5px 0!important;
+    margin-bottom:6px!important;
+  }
+  body.honky-home #menu45 .menu45-head h2{font-size:26px!important}
+  body.honky-home #menu45 .nav-close{width:42px!important;height:42px!important;min-width:42px!important}
+  body.honky-home #menu45 .menu45-first{
+    min-height:68px!important;
+    padding:10px 14px!important;
+    margin:0 0 9px!important;
+  }
+  body.honky-home #menu45 .menu45-first small{font-size:9px!important}
+  body.honky-home #menu45 .menu45-first strong{font-size:18px!important;margin:3px 0!important}
+  body.honky-home #menu45 .menu45-first em{font-size:11px!important}
+  body.honky-home #menu45 .menu45-sections{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px 10px!important;border:0!important}
+  body.honky-home #menu45 details.menu45-section{border:1px solid #492025!important}
+  body.honky-home #menu45 details.menu45-section>summary{
+    min-height:56px!important;
+    padding:8px 11px!important;
+  }
+  body.honky-home #menu45 .menu45-summary-copy strong{font-size:16px!important;line-height:1.1!important}
+  body.honky-home #menu45 .menu45-summary-copy small{font-size:10px!important;line-height:1.2!important;margin-top:3px!important}
+  body.honky-home #menu45 details.menu45-section>summary>b{width:24px!important;height:24px!important}
+  body.honky-home #menu45 .menu45-home{margin-top:10px!important;padding:10px 0!important}
+  body.honky-home #menu45 .menu45-footer-brand{margin-top:4px!important;font-size:11px!important}
+}
+@media(max-width:950px){
+  body.honky-home #menu45{padding:0 18px 26px!important}
+  body.honky-home #menu45 .menu45-head{min-height:72px!important;padding:9px 0!important;margin-bottom:4px!important}
+  body.honky-home #menu45 .menu45-head h2{font-size:25px!important}
+  body.honky-home #menu45 .nav-close{width:44px!important;height:44px!important;min-width:44px!important}
+  body.honky-home #menu45 .menu45-first{min-height:76px!important;padding:12px 0!important;margin-bottom:10px!important}
+  body.honky-home #menu45 .menu45-first strong{font-size:18px!important;margin-bottom:4px!important}
+  body.honky-home #menu45 .menu45-first em{font-size:12px!important;margin-top:7px!important}
+  body.honky-home #menu45 details.menu45-section>summary{min-height:58px!important;padding:13px 0 11px!important}
+  body.honky-home #menu45 details.menu45-section>summary>span{font-size:17px!important;text-underline-offset:6px!important}
+  body.honky-home #menu45 .menu45-summary-copy small{font-size:10px!important;margin-top:3px!important}
+  body.honky-home #menu45 .menu45-home{margin-top:14px!important;padding:11px 0!important}
+}

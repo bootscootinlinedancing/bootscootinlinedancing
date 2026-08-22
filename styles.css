@@ -415,7 +415,6 @@ nav a[aria-current="page"]{color:var(--red)}
   .story-panel{position:static}
 }
 
-
 /* VERSION 14 — INTERACTIVE CLASS CALENDAR */
 .calendar-page{padding-top:78px}
 .calendar-hero{padding-bottom:3.5rem}
@@ -9767,4 +9766,141 @@ html.desktop-mode .poster-intro.boot-entry .boot-poster-final-v4 .boot-entry-tag
     linear-gradient(180deg,transparent 0 52%,rgba(0,0,0,.28) 100%)!important;
   opacity:.48!important;
   box-shadow:none!important;
+}
+/* Recovered Wednesday-night honky-tonk environment.
+   Presentation only. The intro-open guard protects the approved entrance. */
+:root{
+  --bs-env-brick:#080405;
+  --bs-env-panel:rgba(12,6,7,.78);
+  --bs-env-panel-strong:rgba(18,8,10,.88);
+  --bs-env-border:rgba(202,49,58,.52);
+  --bs-env-cream:#f5e9dc;
+  --bs-env-copy:#d4c1b3;
+}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open){
+  background-color:var(--bs-env-brick)!important;
+  background-image:
+    linear-gradient(180deg,rgba(3,1,2,.08),rgba(7,2,4,.28)),
+    radial-gradient(ellipse at 50% 8%,rgba(153,10,22,.16),transparent 48%),
+    url('boot-scootin-entrance-brick-floor.webp')!important;
+  background-position:center,center,center 44%!important;
+  background-size:auto,auto,cover!important;
+  background-repeat:no-repeat!important;
+  background-attachment:fixed!important;
+  color:var(--bs-env-cream)!important;
+}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) main,
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) :is(.booking-page,.feature-page,.community-page,.events-page,.rewards-page){
+  background:transparent!important;
+  background-image:none!important;
+}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) :is(
+  .section.paper,.section.dark,.cream-home,.booking-content,.booking-help,.booking-policy-section,
+  .booking-arrival-section,.feature-content,.feature-section,.reward-benefits,.community-section
+){
+  background:linear-gradient(145deg,rgba(8,4,5,.38),rgba(15,5,7,.28))!important;
+  background-image:linear-gradient(145deg,rgba(8,4,5,.38),rgba(15,5,7,.28))!important;
+  border-color:var(--bs-env-border)!important;
+  color:var(--bs-env-cream)!important;
+  box-shadow:inset 0 1px rgba(255,240,225,.025),inset 0 -1px rgba(125,24,31,.22)!important;
+}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) :is(
+  .card,[class$="-card"],[class*="-card "]
+):not(.menu45-first):not(.dance-pass-card):not(.booking-dialog){
+  background-color:var(--bs-env-panel)!important;
+  background-image:linear-gradient(145deg,rgba(21,9,11,.40),rgba(8,4,5,.28))!important;
+  border-color:var(--bs-env-border)!important;
+  color:var(--bs-env-cream)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,240,225,.025)!important;
+}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) :is(h1,h2,h3,h4,strong,label,legend){color:var(--bs-env-cream)!important}
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) :is(p,li,dd,small){color:var(--bs-env-copy)}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) :is(.feature-hero,.booking-hero,.trail-hero){
+  box-shadow:inset 0 -30px 32px rgba(0,0,0,.48),0 4px 0 #0b0503,0 9px 0 rgba(111,48,30,.86),0 13px 0 rgba(33,14,9,.94),0 25px 35px rgba(0,0,0,.58)!important;
+}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) footer{
+  background:linear-gradient(180deg,rgba(4,2,2,.58),rgba(3,2,2,.82))!important;
+  border-top:1px solid rgba(174,35,43,.50)!important;
+  box-shadow:inset 0 22px 42px rgba(0,0,0,.42),0 -12px 28px rgba(0,0,0,.24)!important;
+}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.intro-open) #nav.menu45-overlay{
+  background:
+    linear-gradient(180deg,rgba(5,2,3,.82),rgba(7,2,4,.88)),
+    url('boot-scootin-entrance-brick-floor.webp') center 44%/cover no-repeat!important;
+}
+
+body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.intro-open) #menu45.menu45-panel{
+  background:transparent!important;
+}
+
+/* Shared member-facing presentation uses the same recovered environment. */
+body.member-hub-body{
+  background-color:var(--bs-env-brick)!important;
+  background-image:
+    linear-gradient(180deg,rgba(3,1,2,.08),rgba(7,2,4,.28)),
+    radial-gradient(ellipse at 50% 8%,rgba(153,10,22,.16),transparent 48%),
+    url('boot-scootin-entrance-brick-floor.webp')!important;
+  background-position:center,center,center 44%!important;
+  background-size:auto,auto,cover!important;
+  background-repeat:no-repeat!important;
+  background-attachment:fixed!important;
+  color:var(--bs-env-cream)!important;
+}
+
+body.member-hub-body :is(.member-entry-heading,.member-auth-shell,.member-app-simple,.member-content-full,.member-content){
+  background:transparent!important;
+  background-image:none!important;
+}
+
+body.member-hub-body :is(
+  .member-auth-card,.membership-preview,.membership-preview-grid article,.member-mini-profile-top,
+  .member-rank-card,.member-stat-grid article,.member-card,.member-profile-settings article,
+  .member-section-head,.member-welcome>div:first-child
+){
+  background:linear-gradient(145deg,rgba(21,9,11,.84),rgba(8,4,5,.78))!important;
+  border:1px solid var(--bs-env-border)!important;
+  border-radius:0!important;
+  color:var(--bs-env-cream)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.24)!important;
+}
+
+body.member-hub-body :is(h1,h2,h3,h4,strong,label){color:var(--bs-env-cream)!important}
+body.member-hub-body :is(p,li,small,span){color:var(--bs-env-copy)}
+
+body.member-hub-body .member-hub-topbar{
+  background:rgba(5,3,3,.88)!important;
+  border-bottom:1px solid rgba(214,44,54,.48)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.38)!important;
+}
+
+@media(max-width:760px){
+  body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open),
+  body.member-hub-body{
+    background-position:center,center,center top!important;
+    background-size:auto,auto,auto 100svh!important;
+    background-attachment:scroll!important;
+  }
+}
+
+/* Recovered Wednesday-night reflected-neon treatment for major display titles. */
+:root{
+  --bs-display-heading-colour:#fff3e8;
+  --bs-display-heading-glow:0 1px 0 rgba(91,17,22,.92),0 0 7px rgba(207,45,51,.34),0 6px 18px rgba(0,0,0,.42);
+}
+
+.display-heading-glow,
+body:not(.intro-open) #menu45 .menu45-head>div>h2,
+body:not(.intro-open) :is(.about-page,.booking-page,.community-page,.events-page,.trail-page,.journey-page,.rewards-page) :is(.feature-hero,.booking-hero,.trail-hero,.section-title,.panel-heading)>:is(h1,h2),
+body:not(.intro-open) .booking-page :is(.booking-toolbar,.booking-arrival-card) h2,
+body.member-hub-body :is(.member-entry-heading,.member-auth-card,.membership-preview)>h1{
+  color:var(--bs-display-heading-colour)!important;
+  text-shadow:var(--bs-display-heading-glow)!important;
 }
