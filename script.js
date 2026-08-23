@@ -135,7 +135,7 @@ function repairPersistentExploreLinks(){
   render('Shop & Rewards',[
     ['community.html#merchandise','Official Merchandise',true],
     ['rewards.html','Boot Scootin’ Rewards',true],
-    ['passport.html#trail-rewards','Trail Rewards Preview',false]
+    ['passport.html#trail-rewards','Trail & Rewards',false]
   ]);
 }
 

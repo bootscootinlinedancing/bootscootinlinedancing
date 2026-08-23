@@ -9912,3 +9912,40 @@ body.member-hub-body :is(.member-entry-heading,.member-auth-card,.membership-pre
   color:var(--bs-display-heading-colour)!important;
   text-shadow:var(--bs-display-heading-glow)!important;
 }
+
+/* Phase 1 completion polish: keep the approved brick visible behind content. */
+.merchandise-section.merch-dark{background:linear-gradient(180deg,rgba(9,5,5,.84),rgba(18,7,8,.76))}
+.gallery-page{background:linear-gradient(180deg,rgba(9,5,5,.82),rgba(17,7,8,.7))}
+
+/* Shared normalization for canonical policy pages and the policy summary. */
+body.legal-page{
+  min-height:100vh;margin:0;color:#f3e7d8;font-family:Oswald,sans-serif;
+  background:linear-gradient(180deg,rgba(2,2,2,.16),rgba(5,2,2,.42)),url("boot-scootin-entrance-brick-floor.webp") center top/cover fixed no-repeat,#100606;
+}
+.legal-site-header{display:flex;align-items:center;justify-content:space-between;gap:24px;width:min(1180px,calc(100% - 36px));margin:0 auto;padding:18px 0;border-bottom:1px solid rgba(184,35,42,.62)}
+.legal-site-brand{display:block;width:min(280px,58vw)}
+.legal-site-brand img{display:block;width:100%;height:auto;filter:drop-shadow(0 0 12px rgba(184,35,42,.28))}
+.legal-site-home{color:#f3e7d8;font:600 .82rem/1 Oswald,sans-serif;letter-spacing:.12em;text-decoration:none;text-transform:uppercase}
+.legal-page .legal-shell{width:min(900px,calc(100% - 36px));margin:clamp(28px,6vw,72px) auto;padding:clamp(24px,5vw,58px);box-sizing:border-box;border:1px solid rgba(184,35,42,.7);background:linear-gradient(155deg,rgba(17,7,7,.9),rgba(7,4,4,.76));box-shadow:0 24px 70px rgba(0,0,0,.35),inset 0 0 38px rgba(128,18,24,.05)}
+.legal-page .legal-shell h1{max-width:100%;margin:.35rem 0 1.3rem;color:#f6eadb;font:400 clamp(2.35rem,7vw,5.25rem)/1.02 Rye,serif;overflow-wrap:anywhere;text-shadow:0 0 5px rgba(202,45,50,.48),0 0 15px rgba(119,17,23,.34)}
+.legal-page .legal-shell h2{margin:2rem 0 .6rem;color:#f3e7d8;font:400 clamp(1.45rem,3.5vw,2.35rem)/1.1 Rye,serif}
+.legal-page .legal-shell p,.legal-page .legal-shell li{font-size:clamp(1rem,2vw,1.12rem);line-height:1.7;color:#ddcec0}
+.legal-page .legal-shell a{color:#f1b7ae}
+.legal-page .legal-back,.legal-page .legal-updated{color:#c85055;font:600 .78rem/1.4 Oswald,sans-serif;letter-spacing:.12em;text-transform:uppercase}
+.legal-site-footer{width:min(1180px,calc(100% - 36px));margin:0 auto;padding:30px 0 42px;text-align:center;border-top:1px solid rgba(184,35,42,.62);color:#cdbdaf}
+.legal-site-footer img{width:min(260px,70vw);height:auto;filter:drop-shadow(0 0 12px rgba(184,35,42,.22))}
+.legal-site-footer .legal-footer-links{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 20px;margin-top:18px}
+.legal-site-footer a{color:#e7d8ca;text-decoration:none}
+.legal-site-footer a[aria-current="page"]{color:#d35459}
+.legal-summary-page .section{width:min(900px,calc(100% - 36px));margin:0 auto;background:transparent}
+.legal-summary-page .section.dark{padding-bottom:12px}
+.legal-summary-page .section.paper{padding-top:12px}
+.legal-summary-page .section-title,.legal-summary-page .copy{padding:clamp(24px,5vw,58px);border:1px solid rgba(184,35,42,.7);background:linear-gradient(155deg,rgba(17,7,7,.9),rgba(7,4,4,.76))}
+.legal-summary-page .section-title h1{font-size:clamp(2.35rem,7vw,5.25rem);text-shadow:0 0 5px rgba(202,45,50,.48),0 0 15px rgba(119,17,23,.34)}
+@media(max-width:600px){
+  .legal-site-header{align-items:flex-start}
+  .legal-site-brand{width:min(220px,62vw)}
+  .legal-page .legal-shell{width:calc(100% - 24px);padding:24px 18px}
+  .legal-page .legal-shell h1{font-size:clamp(2.15rem,12vw,3.4rem)}
+  .legal-summary-page .section{width:calc(100% - 24px)}
+}
