@@ -230,11 +230,15 @@
 <div>
 <p class="kicker">Quick answers before you dance</p>
 <h1>Ask Nora</h1>
-<p>This helpful preview answers common questions using information already on the website. It is not a live AI service yet.</p>
+<p>Find quick answers about classes, venues and what to expect — or contact Nora directly if you would prefer a personal reply.</p>
 </div>
 <img alt="Nora wearing a red cowboy hat" src="nora.webp"/>
 </section>
 <section class="section paper">
+<div class="ask-nora-contact" aria-labelledby="contactNoraTitle">
+<div><p class="kicker red">Contact Boot Scootin’</p><h2 id="contactNoraTitle">Need a personal reply?</h2><p>Choose the email that best matches your question and the right person will get back to you.</p></div>
+<div class="ask-nora-contact-links"><a href="mailto:hello@bootscootinlinedancing.co.uk"><strong>General enquiries</strong><span>hello@bootscootinlinedancing.co.uk</span></a><a href="mailto:bookings@bootscootinlinedancing.co.uk"><strong>Class booking help</strong><span>bookings@bootscootinlinedancing.co.uk</span></a><a href="mailto:events@bootscootinlinedancing.co.uk"><strong>Private events</strong><span>events@bootscootinlinedancing.co.uk</span></a></div>
+</div>
 <div class="ask-nora-app reveal">
 <div aria-live="polite" class="chat-window" id="chatWindow">
 <div class="chat-message nora-message"><strong>Nora:</strong> <svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#hat"></use></svg> Howdy! What would you like to know about classes?</div>
@@ -267,7 +271,7 @@
       { words:["partner","alone","own"], answer:"You do not need a partner. Line dancing is danced together in rows, and lots of people come on their own." },
       { words:["wear","shoes","boots"], answer:"Wear something comfortable that you can move in. Cowboy boots are welcome, but trainers or supportive flat shoes are perfectly fine." },
       { words:["park","parking"], answer:"Edgbaston Community Centre has free parking. Low Places has paid parking available opposite the venue." },
-      { words:["book","booking","ticket"], answer:"Open the Calendar & Bookings page, choose your class date and tap Reserve My Boots to reach the correct booking link." },
+      { words:["book","booking","ticket"], answer:"Open the Book a Class page, choose your class date and tap Book now to open the secure booking form." },
       { words:["moonshine","good times","community"], answer:"Moonshine & Good Times Gang is Nora’s friendly UK country community for music, events, festivals and genuine friendships. To keep members safe, the invitation link is not public; new members submit a short join request and social-media profile for approval." },
       { words:["toilet","accessible"], answer:"Toilets and accessible toilets are available at both Edgbaston Community Centre and Low Places." },
       { words:["price","cost"], answer:"Regular class pricing and the correct booking fee are shown on each event before you reserve your place." }
@@ -282,7 +286,7 @@
       chat.insertAdjacentHTML("beforeend", `<div class="chat-message user-message"><strong>You:</strong> ${text.replace(/[<>]/g,"")}</div>`);
       const lower = text.toLowerCase();
       const match = answers.find(item => item.words.some(word => lower.includes(word)));
-      const answer = match?.answer || "I don’t have that answer in this preview yet. The live version will use approved website information and direct visitors to Nora when needed.";
+      const answer = match?.answer || "I’m not certain about that one. Please email hello@bootscootinlinedancing.co.uk and Nora will help you directly.";
       chat.insertAdjacentHTML("beforeend", `<div class="chat-message nora-message"><strong>Nora:</strong> ${answer}</div>`);
       chat.scrollTop = chat.scrollHeight;
       input.value = "";

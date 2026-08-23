@@ -11,6 +11,8 @@
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(n)||0);
   const dateFmt=s=>new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(s));
+  const venueLabel=venue=>/^(low places bar|low places bar birmingham)$/i.test(String(venue||'').trim())?'Low Places Bar Birmingham':String(venue||'').trim();
+  const venueKey=venue=>venueLabel(venue).toLowerCase();
 
   function summaryText(text){
     const clean=String(text||'').replace(/\s+/g,' ').trim();
@@ -21,7 +23,7 @@
   function eventUrl(c){return `${location.origin}${location.pathname}?event=${encodeURIComponent(c.id)}`;}
   function render(){
     const venue=filter.value;
-    const rows=classes.filter(c=>venue==='all'||c.venue===venue);
+    const rows=classes.filter(c=>venue==='all'||venueKey(c.venue)===venue);
     grid.innerHTML=rows.length?rows.map(c=>{
       const full=Number(c.spaces_remaining)<1;
       const nearly=Number(c.spaces_remaining)>0&&Number(c.spaces_remaining)<5;
@@ -29,7 +31,7 @@
         ${c.poster_url?`<div class="class-poster"><img src="${esc(c.poster_url)}" alt="${esc(c.title)} poster" loading="lazy"></div>`:''}
         <div class="class-date"><span>${new Date(c.starts_at).toLocaleDateString('en-GB',{month:'short'}).toUpperCase()}</span><strong>${new Date(c.starts_at).getDate()}</strong></div>
         <div class="class-info">
-          <p class="class-venue">${esc(c.venue)}</p><h3>${esc(c.title)}</h3>
+          <p class="class-venue">${esc(venueLabel(c.venue))}</p><h3>${esc(c.title)}</h3>
           <p>${esc(dateFmt(c.starts_at))}</p><p>${esc(c.location)}</p>
           <div class="class-footer"><span><b>${money(c.price)}</b> per person</span>
           <span class="spaces ${nearly?'low':''} ${full?'full':''}">${full?'Class full':`${c.spaces_remaining} spaces left`}</span></div>
@@ -42,7 +44,7 @@
   function openEventDetails(c){
     const d=document.getElementById('eventDetailsDialog'),box=document.getElementById('eventDetailsContent'); if(!d||!box)return;
     const full=Number(c.spaces_remaining)<1; const url=eventUrl(c);
-    box.innerHTML=`<p class="eyebrow">${esc(c.venue)}</p><h2>${esc(c.title)}</h2>${c.poster_url?`<img class="event-detail-poster" src="${esc(c.poster_url)}" alt="${esc(c.title)} poster">`:''}<p class="event-detail-meta"><strong>${esc(dateFmt(c.starts_at))}</strong><br>${esc(c.location)}<br>${money(c.price)} per person · ${full?'Class full':`${esc(c.spaces_remaining)} spaces left`}</p>${c.public_notes?`<div class="event-full-description">${esc(c.public_notes).replace(/\n/g,'<br>')}</div>`:''}<div class="event-detail-actions"><button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button><button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p>`;
+    box.innerHTML=`<p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2>${c.poster_url?`<img class="event-detail-poster" src="${esc(c.poster_url)}" alt="${esc(c.title)} poster">`:''}<p class="event-detail-meta"><strong>${esc(dateFmt(c.starts_at))}</strong><br>${esc(c.location)}<br>${money(c.price)} per person · ${full?'Class full':`${esc(c.spaces_remaining)} spaces left`}</p>${c.public_notes?`<div class="event-full-description">${esc(c.public_notes).replace(/\n/g,'<br>')}</div>`:''}<div class="event-detail-actions"><button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button><button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p>`;
     if(typeof d.showModal==='function')d.showModal();
   }
 
@@ -58,8 +60,8 @@
       status.textContent='The live class register is temporarily unavailable. Please try again shortly or email bookings@bootscootinlinedancing.co.uk.';
     }
     filter.innerHTML='<option value="all">All venues</option>';
-    [...new Set(classes.map(c=>c.venue))].forEach(v=>{
-      const option=document.createElement('option');option.value=v;option.textContent=v;filter.append(option);
+    [...new Map(classes.map(c=>[venueKey(c.venue),venueLabel(c.venue)])).entries()].forEach(([key,label])=>{
+      const option=document.createElement('option');option.value=key;option.textContent=label;filter.append(option);
     });
     render();
     const requested=new URLSearchParams(location.search).get('event');
@@ -77,7 +79,7 @@
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
     document.getElementById('bookingDialogKicker').textContent=waitlist?'Join the waiting list':'Book your place';
     document.getElementById('selectedClassName').textContent=c.title;
-    document.getElementById('selectedClassMeta').textContent=`${dateFmt(c.starts_at)} · ${c.venue} · ${money(c.price)} per person`;
+    document.getElementById('selectedClassMeta').textContent=`${dateFmt(c.starts_at)} · ${venueLabel(c.venue)} · ${money(c.price)} per person`;
     document.getElementById('bookingSubmit').textContent=waitlist?'Join Waiting List':'Continue to Secure Payment';
     form.reset();
     document.getElementById('promoMessage').textContent='';document.getElementById('promoTotals').hidden=true;

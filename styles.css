@@ -6811,6 +6811,14 @@ body{background:#030202;color:#f5ece6}
 .country-guide-gateway-card p,.featured-venue-card p,.inspiration-profile p{color:#cbbab0!important}
 .home-class-card,.venue-card,.nora-polaroid,.polaroids figure,.event-polaroids img,.mini-gallery img{background:#100909!important;color:#f5ece6!important;border-color:#5d2529!important}
 .home-class-card p,.venue-card p,.nora-polaroid figcaption,.polaroids figcaption{color:#cbbab0!important}
+.home-classes-status{grid-column:1/-1;margin:0;padding:22px;border:1px solid rgba(188,30,39,.55);background:rgba(8,4,5,.72);color:#eadbd0;text-align:center}
+.home-classes-status a{color:#f5e9dc;font-weight:700}
+.ask-nora-contact{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(22px,4vw,48px);max-width:1120px;margin:0 auto 28px;padding:clamp(22px,4vw,38px);border:1px solid rgba(188,30,39,.62);background:rgba(9,4,5,.78)}
+.ask-nora-contact h2{margin:.2rem 0 .7rem}.ask-nora-contact p{margin-bottom:0}
+.ask-nora-contact-links{display:grid;gap:10px}.ask-nora-contact-links a{display:grid;gap:3px;padding:13px 15px;border:1px solid rgba(188,30,39,.48);background:rgba(36,7,10,.46);color:#f5e9dc;text-decoration:none}
+.ask-nora-contact-links a:hover,.ask-nora-contact-links a:focus-visible{border-color:#d53b43;background:rgba(74,11,16,.55)}
+.ask-nora-contact-links span{color:#cfbdb0;overflow-wrap:anywhere}
+@media(max-width:700px){.ask-nora-contact{grid-template-columns:1fr;padding:20px 17px}.home-classes-status{padding:18px 15px}}
 .booking-page input,.booking-page select,.booking-page textarea,.customer-lookup-form input,
 .member-content input,.member-content select,.member-content textarea,
 .paper input,.paper select,.paper textarea{background:#070404!important;color:#fff!important;border-color:#6b2a2f!important}
