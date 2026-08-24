@@ -1245,6 +1245,11 @@ Type REFUNDED to continue.`);
   }
 
   // Media
+  function buildMediaTitlePayload(id,value){
+    const title=String(value??'').trim();
+    return title?{id,title}:null;
+  }
+
   async function loadMedia(){
     if(!state.bootstrap){
       await loadBootstrap(false,{silent:true}).catch(()=>null);
@@ -1264,12 +1269,27 @@ Type REFUNDED to continue.`);
       const data=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{cache:'no-store'});
       state.media=data.items||data.files||[];
       const count=$('#ranchMediaCount');if(count)count.textContent=state.media.length;
-      box.innerHTML=state.media.length?state.media.map(m=>{const places=String(m.placement||'library').split(',').map(x=>x.trim()).filter(Boolean);const hasDance=places.includes('dance-library'),hasGallery=places.includes('gallery');return `<article class="ranch-media-item" data-media-id="${esc(m.id)}"><div class="ranch-media-copy"><strong>${esc(m.title||m.original_name)}</strong><small title="${esc(m.original_name||m.storage_key)}">${esc(m.original_name||m.storage_key)}</small><div class="media-current-placements">${places.map(x=>`<span>${esc(x.replaceAll('-',' '))}</span>`).join('')} ${Number(m.published||0)===1?'<span>published</span>':'<span>hidden</span>'}</div></div><div class="ranch91-row-actions media-quick-actions"><button class="button secondary compact" type="button" data-media-copy="/media/${esc(m.storage_key)}">Copy link</button>${hasDance?'':`<button class="button secondary compact" type="button" data-media-add-place="dance-library" data-id="${esc(m.id)}">Add to Dance Library</button>`}${hasGallery?'':`<button class="button secondary compact" type="button" data-media-add-place="gallery" data-id="${esc(m.id)}">Add to Gallery</button>`}</div></article>`}).join(''):emptyPanel('No media uploaded yet.');
+      box.innerHTML=state.media.length?state.media.map(m=>{const places=String(m.placement||'library').split(',').map(x=>x.trim()).filter(Boolean);const hasDance=places.includes('dance-library'),hasGallery=places.includes('gallery');return `<article class="ranch-media-item" data-media-id="${esc(m.id)}"><div class="ranch-media-copy"><strong>${esc(m.title||m.original_name)}</strong><small title="${esc(m.original_name||m.storage_key)}">${esc(m.original_name||m.storage_key)}</small><div class="media-current-placements">${places.map(x=>`<span>${esc(x.replaceAll('-',' '))}</span>`).join('')} ${Number(m.published||0)===1?'<span>published</span>':'<span>hidden</span>'}</div></div><div class="ranch91-row-actions media-quick-actions"><button class="button secondary compact" type="button" data-media-edit-title data-id="${esc(m.id)}">Edit title</button><button class="button secondary compact" type="button" data-media-copy="/media/${esc(m.storage_key)}">Copy link</button>${hasDance?'':`<button class="button secondary compact" type="button" data-media-add-place="dance-library" data-id="${esc(m.id)}">Add to Dance Library</button>`}${hasGallery?'':`<button class="button secondary compact" type="button" data-media-add-place="gallery" data-id="${esc(m.id)}">Add to Gallery</button>`}</div></article>`}).join(''):emptyPanel('No media uploaded yet.');
     }catch(error){box.innerHTML=lockedPanel('Media unavailable',error.message);}
   }
 
 
   $('#ranchMedia')?.addEventListener('click',async event=>{
+    const edit=event.target.closest('[data-media-edit-title]');
+    if(edit){
+      const item=state.media.find(m=>m.id===edit.dataset.id);if(!item)return;
+      const next=window.prompt('Edit media title',item.title||item.original_name||'');
+      if(next===null)return;
+      const payload=buildMediaTitlePayload(item.id,next);
+      if(!payload){toast('Media title cannot be empty.','error');return;}
+      edit.disabled=true;edit.textContent='Saving…';
+      try{
+        await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+        toast('Media title updated.','success');
+        await loadMedia();
+      }catch(error){toast(error.message||'Media title could not be updated.','error');edit.disabled=false;edit.textContent='Edit title';}
+      return;
+    }
     const copy=event.target.closest('[data-media-copy]');
     if(copy){
       const absolute=new URL(copy.dataset.mediaCopy,window.location.origin).toString();
