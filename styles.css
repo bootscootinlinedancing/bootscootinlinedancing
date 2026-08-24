@@ -9914,7 +9914,7 @@ body.member-hub-body :is(.member-entry-heading,.member-auth-card,.membership-pre
 }
 
 /* Phase 1 completion polish: keep the approved brick visible behind content. */
-.merchandise-section.merch-dark{background:linear-gradient(180deg,rgba(9,5,5,.84),rgba(18,7,8,.76))}
+.merchandise-section.merch-dark{background:linear-gradient(180deg,rgba(9,5,5,.84),rgba(18,7,8,.76))!important}
 .gallery-page{background:linear-gradient(180deg,rgba(9,5,5,.82),rgba(17,7,8,.7))}
 
 /* Shared normalization for canonical policy pages and the policy summary. */

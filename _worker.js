@@ -238,7 +238,7 @@ function repairMemberNavigationHtml(html){
 <summary><span class="menu45-summary-copy"><strong>My Boot Scootin’</strong><small>Login, profile &amp; member rewards</small></span><b aria-hidden="true"></b></summary>
 <div class="menu45-submenu">
 <a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
-<a href="member-zone-preview.html"><span>Membership Preview — What You Get</span><b aria-hidden="true">›</b></a>
+<a href="member-hub.html"><span>Membership &amp; Benefits</span><b aria-hidden="true">›</b></a>
 </div>
 </details>`;
   return String(html||'').replace(
