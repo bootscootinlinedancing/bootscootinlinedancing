@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Preview the future Boot Scootin' member area: Trail, Passport, Journey, bookings, dances and rewards in one place.">
+  <meta name="description" content="Log in or register for My Boot Scootin’ to view your member profile, Trail progress, bookings and loyalty in one secure place.">
   <title>My Boot Scootin’ | Member Login & Registration</title>
   <link rel="icon" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -43,8 +43,24 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
 .member-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px}.member-hub-topbar{position:static!important;top:auto!important;background:#050303!important}
 .member-preview-pill{border-color:#743038!important;background:#19090b!important;color:#e7c6a9!important}
 .member-feature-intro{padding:1.1rem 1.2rem;margin:0 0 18px;border-left:4px solid #d52b38;background:#120809;color:var(--member-muted)}
+.member-hub-brand{gap:.55rem!important;min-width:0}
+.member-hub-brand img.member-hub-brand-mark{width:40px!important;height:40px!important;flex:0 0 40px!important}
+.member-hub-brand img.member-hub-wordmark{width:clamp(142px,16vw,205px)!important;height:auto!important;max-height:48px!important;object-fit:contain!important;object-position:left center!important;border-radius:0!important;filter:drop-shadow(0 0 8px rgba(205,38,48,.28))}
+body.member-hub-body .member-entry-heading{margin:1rem auto .35rem!important}
+body.member-hub-body .member-entry-heading h1{font-size:clamp(1.85rem,4.2vw,3rem)!important;line-height:1.02!important;margin:.1rem 0 .35rem!important}
+body.member-hub-body .member-entry-heading p:last-child{max-width:680px;margin:.3rem auto 0;font-size:clamp(.92rem,1.8vw,1.02rem)!important;line-height:1.45}
+body.member-hub-body #memberAuthShell{min-height:0!important;padding:.35rem 1rem 1rem!important;place-items:start center!important}
+body.member-hub-body #memberAuthShell .member-auth-card{width:min(680px,100%)!important;padding:clamp(1.05rem,2.6vw,1.65rem)!important}
+body.member-hub-body #memberAuthShell .member-auth-card>h1{max-width:none!important;margin:.15rem 0 .45rem!important;font-size:clamp(1.85rem,3.7vw,2.75rem)!important;line-height:1.05!important;letter-spacing:-.015em!important}
+body.member-hub-body #memberAuthIntro{margin:.35rem 0 .65rem;line-height:1.45}
+body.member-hub-body #memberAuthTabs{margin:.75rem 0!important;gap:.65rem!important}
+body.member-hub-body #memberAuthTabs button{min-height:50px!important;padding:.7rem .9rem!important}
+body.member-hub-body .member-auth-form{gap:.75rem!important}
+body.member-hub-body .member-auth-form label{gap:.3rem!important}
+body.member-hub-body .member-auth-form input,body.member-hub-body .member-auth-form select{min-height:50px;box-sizing:border-box}
+body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:1.2em!important}
 @media(max-width:900px){.member-main-nav{grid-template-columns:repeat(2,1fr)}.member-welcome{grid-template-columns:1fr!important}}
-@media(max-width:760px){.member-app-simple{padding-left:16px;padding-right:16px}.member-benefit-grid{grid-template-columns:1fr}.member-stat-grid{grid-template-columns:repeat(2,1fr)}.member-profile-form .two{grid-template-columns:1fr}.member-main-nav{grid-template-columns:1fr 1fr}.member-main-nav a,.member-main-nav button{font-size:12px;min-height:58px;padding:10px 6px}}
+@media(max-width:760px){.member-app-simple{padding-left:16px;padding-right:16px}.member-benefit-grid{grid-template-columns:1fr}.member-stat-grid{grid-template-columns:repeat(2,1fr)}.member-profile-form .two{grid-template-columns:1fr}.member-main-nav{grid-template-columns:1fr 1fr}.member-main-nav a,.member-main-nav button{font-size:12px;min-height:58px;padding:10px 6px}.member-hub-topbar{padding:.45rem .7rem!important}.member-hub-brand img.member-hub-brand-mark{width:34px!important;height:34px!important;flex-basis:34px!important}.member-hub-brand img.member-hub-wordmark{width:min(150px,42vw)!important;max-height:40px!important}body.member-hub-body .member-entry-heading{margin:.7rem auto .2rem!important}body.member-hub-body .member-entry-heading h1{font-size:clamp(1.65rem,8vw,2.15rem)!important}body.member-hub-body .member-entry-heading p:last-child{font-size:.9rem!important}body.member-hub-body #memberAuthShell{padding:.25rem .75rem .8rem!important}body.member-hub-body #memberAuthShell .member-auth-card{padding:1rem!important}body.member-hub-body #memberAuthShell .member-auth-card>h1{font-size:clamp(1.65rem,7vw,2.05rem)!important;line-height:1.08!important}body.member-hub-body #memberAuthIntro{font-size:.92rem;margin-bottom:.55rem}body.member-hub-body #memberAuthTabs button{min-height:48px!important;font-size:.9rem!important}}
 </style>
 
 </head>
@@ -52,8 +68,8 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <header class="member-hub-topbar">
     <a class="member-hub-brand" href="index.html">
-      <img src="brand-logo-transparent.png" alt="Boot Scootin' Line Dancing">
-      <span>My Boot Scootin’</span>
+      <img class="member-hub-brand-mark" src="brand-logo-transparent.png" alt="">
+      <img class="member-hub-wordmark" src="boot-scootin-wordmark-master.png" alt="Boot Scootin’ Line Dancing — Established 2025">
     </a>
     <div class="member-preview-pill">MEMBER LOGIN & REGISTRATION</div>
     <div class="member-top-actions"><button class="member-logout" type="button" onclick="memberLogout()" hidden>Log out</button><a class="member-exit" href="index.html">Back to website</a></div>
