@@ -2677,6 +2677,50 @@ async function privateEventRespond(request, env) {
   return json({error:'That action is not available yet.'},400);
 }
 
+const CLASS_TIME_ZONE='Europe/London';
+const classTimeFormatter=new Intl.DateTimeFormat('en-GB',{
+  timeZone:CLASS_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit',
+  hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'
+});
+function classLondonParts(date){
+  return Object.fromEntries(classTimeFormatter.formatToParts(date).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]));
+}
+function londonLocalClassDate(value,label){
+  const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(String(value||''));
+  if(!match)throw new Error(`${label} must be a valid Birmingham date and time.`);
+  const wanted={year:match[1],month:match[2],day:match[3],hour:match[4],minute:match[5],second:match[6]||'00'};
+  const wallClock=Date.UTC(Number(wanted.year),Number(wanted.month)-1,Number(wanted.day),Number(wanted.hour),Number(wanted.minute),Number(wanted.second));
+  const candidates=[];
+  for(let offsetMinutes=-180;offsetMinutes<=180;offsetMinutes+=15){
+    const instant=new Date(wallClock+offsetMinutes*60000);
+    const part=classLondonParts(instant);
+    if(Object.keys(wanted).every(key=>part[key]===wanted[key]))candidates.push(instant);
+  }
+  if(candidates.length===0)throw new Error(`${label} does not exist in Birmingham because the clocks change at that time.`);
+  if(candidates.length>1)throw new Error(`${label} is ambiguous in Birmingham because the clocks change at that time. Choose a time outside the repeated hour.`);
+  return candidates[0];
+}
+function explicitClassDate(value,label){
+  const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if(!match)throw new Error(`${label} must be a valid date and time.`);
+  const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
+  const hour=Number(match[4]),minute=Number(match[5]),second=Number(match[6]||0);
+  const offsetHour=match[10]===undefined?0:Number(match[10]),offsetMinute=match[11]===undefined?0:Number(match[11]);
+  const leap=year%4===0&&(year%100!==0||year%400===0);
+  const days=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31];
+  if(month<1||month>12||day<1||day>days[month-1]||hour>23||minute>59||second>59||offsetHour>23||offsetMinute>59){
+    throw new Error(`${label} must be a valid calendar date and time.`);
+  }
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))throw new Error(`${label} must be a valid date and time.`);
+  return date;
+}
+function parseClassDateTime(value,label){
+  const text=String(value||'').trim();
+  if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(text))return londonLocalClassDate(text,label);
+  return explicitClassDate(text,label);
+}
+
 async function adminClasses(request, env) {
   const check=requireAccessAdmin(request,env);
   if(check.response)return check.response;
@@ -2778,8 +2822,13 @@ async function adminClasses(request, env) {
   const title=clean(b.title,160);
   const venue=clean(b.venue,160);
   const location=clean(b.location,240);
-  const starts=new Date(b.starts_at);
-  const ends=b.ends_at?new Date(b.ends_at):null;
+  let starts,ends;
+  try{
+    starts=parseClassDateTime(b.starts_at,'Start time');
+    ends=b.ends_at?parseClassDateTime(b.ends_at,'Finish time'):null;
+  }catch(error){
+    return json({error:error.message},400);
+  }
 
   if(!title || !venue || !location || Number.isNaN(starts.getTime())){
     return json({error:'Please complete the class title, venue, location and start time.'},400);

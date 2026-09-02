@@ -527,12 +527,35 @@
   }
 
   // Classes
+  const CLASS_TIME_ZONE='Europe/London';
+  const classTimeFormatter=new Intl.DateTimeFormat('en-GB',{
+    timeZone:CLASS_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'
+  });
+  function classLondonParts(date){
+    return Object.fromEntries(classTimeFormatter.formatToParts(date).filter(part=>part.type!=='literal').map(part=>[part.type,part.value]));
+  }
   function classLocalValue(value){
     if(!value)return '';
     const d=new Date(value);
     if(Number.isNaN(d.getTime()))return '';
-    const pad=n=>String(n).padStart(2,'0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const part=classLondonParts(d);
+    return `${part.year}-${part.month}-${part.day}T${part.hour}:${part.minute}`;
+  }
+  function classLocalToUtc(value,label='Class time'){
+    const match=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(String(value||''));
+    if(!match)throw new Error(`${label} must be a valid Birmingham date and time.`);
+    const wanted={year:match[1],month:match[2],day:match[3],hour:match[4],minute:match[5],second:match[6]||'00'};
+    const wallClock=Date.UTC(Number(wanted.year),Number(wanted.month)-1,Number(wanted.day),Number(wanted.hour),Number(wanted.minute),Number(wanted.second));
+    const candidates=[];
+    for(let offsetMinutes=-180;offsetMinutes<=180;offsetMinutes+=15){
+      const instant=new Date(wallClock+offsetMinutes*60000);
+      const part=classLondonParts(instant);
+      if(Object.keys(wanted).every(key=>part[key]===wanted[key]))candidates.push(instant);
+    }
+    if(candidates.length===0)throw new Error(`${label} does not exist in Birmingham because the clocks change at that time.`);
+    if(candidates.length>1)throw new Error(`${label} is ambiguous in Birmingham because the clocks change at that time. Choose a time outside the repeated hour.`);
+    return candidates[0].toISOString();
   }
   function updateClassSummary(rows){
     const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
@@ -698,11 +721,16 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     event.preventDefault();
     const form=event.currentTarget,button=$('#saveClassButton'),message=$('#classEditorMessage');
     const id=form.elements.id.value;
+    let startsAt,endsAt;
+    try{
+      startsAt=classLocalToUtc(form.elements.starts_at.value,'Start time');
+      endsAt=form.elements.ends_at.value?classLocalToUtc(form.elements.ends_at.value,'Finish time'):null;
+    }catch(error){message.textContent=error.message;toast(error.message,'error');return;}
     let posterUrl=form.elements.poster_url.value||'';
     try{posterUrl=await uploadClassPosterIfNeeded();}catch(error){message.textContent=`Poster upload failed: ${error.message}`;toast(message.textContent,'error');return;}
     const payload={
       id:id||undefined,title:form.elements.title.value.trim(),venue:form.elements.venue.value.trim(),location:form.elements.location.value.trim(),
-      starts_at:form.elements.starts_at.value,ends_at:form.elements.ends_at.value||null,
+      starts_at:startsAt,ends_at:endsAt,
       price_pence:Math.round(Number(form.elements.price_gbp.value||0)*100),capacity:Number(form.elements.capacity.value||0),
       status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl
     };
