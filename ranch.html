@@ -580,7 +580,7 @@
             <ul>
               <li>Collect only name, email, class, quantity and payment status.</li>
               <li>Do not collect medical details or sensitive free-text notes.</li>
-              <li>Keep payments in SumUp sandbox until all tests pass.</li>
+              <li>Keep SumUp payment settings private and verify the connection before taking payments.</li>
               <li>Do not invite public member sign-ups during the owner-only alpha.</li>
               <li>Use Cloudflare Access for HQ and never commit secrets to GitHub.</li>
             </ul>
@@ -628,8 +628,8 @@
         </section>
 
         <div class="ranch-grid-2">
-          <section class="ranch-panel"><p class="kicker red">Free pilot</p><h2>Low-cost launch checklist</h2><ul class="ranch-checklist"><li>Protect HQ pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Use test data and test every booking and capacity rule</li><li>Connect SumUp Sandbox before any live payments</li><li>Review ICO fee status before public member accounts launch</li></ul></section>
-          <section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp status</h2><p>Not connected yet. This is safe: no card details are collected and no live booking is confirmed.</p><div class="ranch-connection"><span></span> Awaiting sandbox connection</div></section>
+          <section class="ranch-panel"><p class="kicker red">Launch checklist</p><h2>Core service checklist</h2><ul class="ranch-checklist"><li>Protect HQ pages with Cloudflare Access</li><li>Bind the D1 database as <code>BOOKINGS_DB</code></li><li>Bind an R2 bucket as <code>MEDIA_BUCKET</code></li><li>Add your administrator email as <code>ADMIN_EMAIL</code></li><li>Use test data and test every booking and capacity rule</li><li>Verify SumUp Payments before taking payments</li><li>Review ICO fee status before public member accounts launch</li></ul></section>
+          <section class="ranch-panel"><p class="kicker red">Payments</p><h2>SumUp Payments status</h2><p>Checking the secure payment connection.</p><div class="ranch-connection"><span></span> Awaiting connection status</div></section>
         </div>
       </section>
     

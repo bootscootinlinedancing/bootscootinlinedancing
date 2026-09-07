@@ -2,6 +2,7 @@
   const state={
     currentView:'overview',
     bootstrap:null,
+    bootstrapVerified:false,
     classes:[],
     bookings:null,
     customers:null,
@@ -29,12 +30,14 @@
   };
 
 
-  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v93-2-0';
+  const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v96-4-118-access';
   const ADMIN_API_PREFIX='/ranch/api/admin';
   const BOOTSTRAP_FRESH_MS=30000;
+  try{localStorage.removeItem('boot-scootin-hq-bootstrap-v93-2-0');}catch(_){}
 
   function saveBootstrapCache(data){
     try{
+      if(data?.mode!=='protected' || data?.authentication?.access_verified!==true || data?.authentication?.authorised!==true)return;
       localStorage.setItem(BOOTSTRAP_CACHE_KEY,JSON.stringify({
         savedAt:Date.now(),
         data
@@ -45,7 +48,10 @@
   function readBootstrapCache(){
     try{
       const cached=JSON.parse(localStorage.getItem(BOOTSTRAP_CACHE_KEY)||'null');
-      if(!cached?.data)return null;
+      if(cached?.data?.mode!=='protected' || cached?.data?.authentication?.access_verified!==true || cached?.data?.authentication?.authorised!==true){
+        localStorage.removeItem(BOOTSTRAP_CACHE_KEY);
+        return null;
+      }
       return cached;
     }catch(_){return null;}
   }
@@ -328,6 +334,13 @@
     return local.split(/\s+/).map(part=>part.charAt(0).toUpperCase()+part.slice(1)).join(' ');
   }
 
+  function hasVerifiedAccessSession(){
+    return state.bootstrapVerified===true
+      && state.bootstrap?.mode==='protected'
+      && state.bootstrap?.authentication?.access_verified===true
+      && state.bootstrap?.authentication?.authorised===true;
+  }
+
   function setAccessPresentation(protectedMode,email){
     const name=displayNameFromEmail(email);
     const welcome=$('#ranch91Welcome');
@@ -339,18 +352,18 @@
     if(warning){
       warning.hidden=protectedMode;
       if(!protectedMode){
-        warning.querySelector('strong').textContent='⚠ HQ is currently publicly accessible.';
-        warning.querySelector('span').textContent='Do not store sensitive customer information here until Cloudflare Access is enabled.';
+        warning.querySelector('strong').textContent='Cloudflare Access session could not be verified.';
+        warning.querySelector('span').textContent='Please sign in again or refresh your HQ session. Private administration remains locked.';
       }
     }
 
     const note=$('#ranch91AccessNote');
     if(note){
       note.classList.toggle('protected',protectedMode);
-      note.querySelector('strong').textContent=protectedMode?'Protected by Cloudflare Access':'Public until protected';
+      note.querySelector('strong').textContent=protectedMode?'Protected by Cloudflare Access':'Access session not verified';
       note.querySelector('span').textContent=protectedMode
         ?`Secure session verified for ${email||name}.`
-        :'Cloudflare Access is not configured yet.';
+        :'Please sign in again or refresh your HQ session.';
     }
   }
 
@@ -360,13 +373,14 @@
     const modebar=$('#ranch92Modebar');
     const title=$('#ranch92ModeTitle');
     const detail=$('#ranch92ModeDetail');
-    modebar.classList.toggle('protected',b.mode==='protected');
-    modebar.classList.toggle('pilot',b.mode!=='protected');
-    setAccessPresentation(b.mode==='protected',b.admin_email);
-    title.textContent=b.mode==='protected'?'Protected HQ mode':'Public pilot mode';
-    detail.textContent=b.mode==='protected'
+    const protectedMode=hasVerifiedAccessSession();
+    modebar.classList.toggle('protected',protectedMode);
+    modebar.classList.toggle('pilot',!protectedMode);
+    setAccessPresentation(protectedMode,b.admin_email);
+    title.textContent=protectedMode?'Protected HQ mode':'Cloudflare Access session not verified';
+    detail.textContent=protectedMode
       ?`Signed in${b.admin_email?` as ${b.admin_email}`:''}. Private administration is available.`
-      :'Only non-sensitive summaries are shown. Customer and private-event details remain locked until Cloudflare Access is enabled.';
+      :'Please sign in again or refresh your HQ session. Private administration remains locked.';
   }
 
   function renderSetup(){
@@ -374,11 +388,11 @@
     if(!box||!state.bootstrap)return;
     const c=state.bootstrap.configured;
     const rows=[
-      ['Cloudflare Access',c.access,'Protects private customer administration.'],
-      ['ADMIN_EMAIL',c.admin_email,'Limits HQ access to your email address.'],
+      ['Cloudflare Access',hasVerifiedAccessSession(),'Protects private customer administration.'],
+      ['ADMIN_EMAIL',c.admin_email,'Optional additional restriction to the configured administrator address.'],
       ['D1 database',c.database,'Stores classes, bookings, attendance and event inquiries.'],
       ['R2 media bucket',c.media,'Stores website images, videos and PDFs.'],
-      ['SumUp Sandbox',c.sumup,'Tests secure payment checkout before going live.']
+      ['SumUp Payments',c.sumup,'Secure payment checkout connection.']
     ];
     box.innerHTML=rows.map(([name,ready,detail])=>`<article class="ranch92-connection ${ready?'ready':'setup'}"><span></span><div><strong>${esc(name)}</strong><small>${esc(detail)}</small></div><b>${ready?'Connected':'Setup'}</b></article>`).join('')
       +(state.bootstrap.setup_steps.length?`<div class="ranch92-steps"><h3>Next steps</h3><ol>${state.bootstrap.setup_steps.map(step=>`<li>${esc(step)}</li>`).join('')}</ol></div>`:'<div class="ranch92-complete">All core backend connections are available.</div>');
@@ -407,10 +421,10 @@
 
     const attention=$('#ranch91Attention');
     const items=[];
-    if(!b.configured.access)items.push(['Protect HQ','Cloudflare Access is required before private customer administration.','settings']);
+    if(!hasVerifiedAccessSession())items.push(['Verify HQ session','Sign in again or refresh before using private customer administration.','settings']);
     if(!b.configured.database)items.push(['Connect D1','Classes, bookings and operations require the BOOKINGS_DB binding.','settings']);
     if(!b.configured.media)items.push(['Connect R2','Media uploads require the MEDIA_BUCKET binding.','settings']);
-    if(!b.configured.sumup)items.push(['Connect SumUp Sandbox','Payment testing can begin after Access and D1 are ready.','settings']);
+    if(!b.configured.sumup)items.push(['Connect SumUp Payments','Payment setup can continue after Access and D1 are ready.','settings']);
     if(b.summary.pending_payments)items.push([`${b.summary.pending_payments} pending payment${b.summary.pending_payments===1?'':'s'}`,'Review and confirm payment status.','bookings']);
     if(b.summary.refund_review)items.push([`${b.summary.refund_review} refund or credit review${b.summary.refund_review===1?'':'s'}`,'Open bookings to review the request.','bookings']);
     if(b.summary.waiting_guests)items.push([`${b.summary.waiting_guests} waiting-list guest${b.summary.waiting_guests===1?'':'s'}`,'Review available class capacity.','operations']);
@@ -422,7 +436,7 @@
 
   async function loadBootstrap(showToast=false,{force=false,silent=false}={}){
     const age=Date.now()-state.bootstrapLoadedAt;
-    if(!force && state.bootstrap && age<BOOTSTRAP_FRESH_MS){
+    if(!force && hasVerifiedAccessSession() && state.bootstrap && age<BOOTSTRAP_FRESH_MS){
       renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
       return state.bootstrap;
     }
@@ -433,6 +447,7 @@
       const cached=readBootstrapCache();
       if(cached?.data){
         state.bootstrap=cached.data;
+        state.bootstrapVerified=false;
         state.bootstrapLoadedAt=cached.savedAt||Date.now();
         renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
         updateLastUpdated('cache');
@@ -445,7 +460,12 @@
     state.bootstrapPromise=(async()=>{
       try{
         const data=await jsonFetch(`${ADMIN_API_PREFIX}/bootstrap`,{cache:'no-store'},6000);
+        if(data?.mode!=='protected' || data?.authentication?.access_verified!==true || data?.authentication?.authorised!==true){
+          const invalid=new Error('Cloudflare Access session could not be verified. Please sign in again or refresh your HQ session.');
+          invalid.code='ACCESS_REQUIRED';invalid.status=401;throw invalid;
+        }
         state.bootstrap=data;
+        state.bootstrapVerified=true;
         state.bootstrapLoadedAt=Date.now();
         state.bootstrapError=null;
         saveBootstrapCache(data);
@@ -456,6 +476,13 @@
         return data;
       }catch(error){
         state.bootstrapError=error;
+        state.bootstrapVerified=false;
+        if(error.status===401||error.status===403){
+          state.bootstrap=null;
+          state.bootstrapLoadedAt=0;
+          try{localStorage.removeItem(BOOTSTRAP_CACHE_KEY);}catch(_){}
+          setAccessPresentation(false,'');
+        }
         setConnectionIndicator(state.bootstrap?'cached':'error',state.bootstrap?'Saved data':'Unavailable');
         if(state.bootstrap){
           renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
@@ -466,10 +493,13 @@
 
         const title=document.getElementById('ranch92ModeTitle');
         const detail=document.getElementById('ranch92ModeDetail');
-        if(title)title.textContent='Backend check unavailable';
-        if(detail)detail.textContent='The live check did not finish. Tap Refresh to try again.';
+        const accessFailure=error.status===401||error.status===403;
+        if(title)title.textContent=accessFailure?'Cloudflare Access session not verified':'Backend check unavailable';
+        if(detail)detail.textContent=accessFailure?'Please sign in again or refresh your HQ session. Private administration remains locked.':'The live check did not finish. Tap Refresh to try again.';
         const attention=document.getElementById('ranch91Attention');
-        if(attention)attention.innerHTML=setupPanel('Backend temporarily unavailable','The page stopped waiting after six seconds. Tap Refresh to retry.');
+        if(attention)attention.innerHTML=accessFailure
+          ?lockedPanel('HQ session not verified','Please sign in again or refresh your HQ session. No private information has been loaded.')
+          :setupPanel('Backend temporarily unavailable','The page stopped waiting after six seconds. Tap Refresh to retry.');
         if(showToast)toast('Backend refresh timed out.','error');
         throw error;
       }finally{
@@ -1022,9 +1052,9 @@ Type REFUNDED to continue.`);
     const waiting=$('#ranchWaitingList');
     if(!box)return;
 
-    if(state.bootstrap?.mode!=='protected'){
-      box.innerHTML=lockedPanel('Booking details are protected','Enable Cloudflare Access before viewing names, emails, payments or deleting test bookings.');
-      if(waiting)waiting.innerHTML=lockedPanel('Waiting-list details are protected','Enable Cloudflare Access before viewing customer details.');
+    if(!hasVerifiedAccessSession()){
+      box.innerHTML=lockedPanel('Booking details are protected','Verify your Cloudflare Access session before viewing names, emails, payments or deleting test bookings.');
+      if(waiting)waiting.innerHTML=lockedPanel('Waiting-list details are protected','Verify your Cloudflare Access session before viewing customer details.');
       const panel=$('#bookingCleanupPanel');
       if(panel)panel.hidden=true;
       return;
@@ -1068,7 +1098,7 @@ Type REFUNDED to continue.`);
   async function loadCustomers(){
     if(!state.bootstrap)await loadBootstrap(false,{silent:true}).catch(()=>null);
     const box=$('#ranchCustomers');if(!box)return;
-    if(state.bootstrap?.mode!=='protected'){box.innerHTML=lockedPanel('Customer CRM is locked','Enable Cloudflare Access before viewing customer profiles.');return;}
+    if(!hasVerifiedAccessSession()){box.innerHTML=lockedPanel('Customer CRM is locked','Verify your Cloudflare Access session before viewing customer profiles.');return;}
     box.innerHTML='<div class="ranch91-loading">Loading customers…</div>';
     try{
       state.customers=await jsonFetch(`${ADMIN_API_PREFIX}/customers`,{cache:'no-store'});
@@ -1111,9 +1141,9 @@ Type REFUNDED to continue.`);
     set('opsWaitingGuests',b.summary.waiting_guests);
     set('opsRefundReview',b.summary.refund_review);
     const q=$('#operationsQueue');
-    if(q)q.innerHTML=b.mode==='protected'
+    if(q)q.innerHTML=hasVerifiedAccessSession()
       ?emptyPanel('Open Bookings to review individual actions.')
-      :lockedPanel('Detailed action queue is locked','Enable Cloudflare Access before customer-specific actions are shown.');
+      :lockedPanel('Detailed action queue is locked','Verify your Cloudflare Access session before customer-specific actions are shown.');
     const a=$('#operationsActivity');
     if(a)a.innerHTML=b.activity.length?b.activity.map(row=>`<article class="operations-activity-row"><strong>${esc(String(row.action).replaceAll('_',' '))}</strong><span>${esc(row.target_type)} · ${fmt(row.created_at)}</span></article>`).join(''):emptyPanel('No recent activity.');
     const c=$('#operationsClasses');
@@ -1127,8 +1157,8 @@ Type REFUNDED to continue.`);
       await loadBootstrap(false,{silent:true}).catch(()=>null);
     }
     const box=$('#ranchPrivateEvents');if(!box)return;
-    if(state.bootstrap?.mode!=='protected'){
-      box.innerHTML=lockedPanel('Private-event inquiries are locked','Enable Cloudflare Access before viewing customer names, contact details and event addresses.');
+    if(!hasVerifiedAccessSession()){
+      box.innerHTML=lockedPanel('Private-event inquiries are locked','Verify your Cloudflare Access session before viewing customer names, contact details and event addresses.');
       return;
     }
     box.innerHTML='<div class="ranch91-loading">Loading private events…</div>';
@@ -1288,8 +1318,8 @@ Type REFUNDED to continue.`);
       const count=$('#ranchMediaCount');if(count)count.textContent='0';
       return;
     }
-    if(state.bootstrap?.mode!=='protected'){
-      box.innerHTML=lockedPanel('Media management is locked','Enable Cloudflare Access before listing, uploading or deleting files.');
+    if(!hasVerifiedAccessSession()){
+      box.innerHTML=lockedPanel('Media management is locked','Verify your Cloudflare Access session before listing, uploading or deleting files.');
       return;
     }
     box.innerHTML='<div class="ranch91-loading">Loading media…</div>';
@@ -1675,6 +1705,7 @@ Type REFUNDED to continue.`);
   const cachedBootstrap=readBootstrapCache();
   if(cachedBootstrap?.data){
     state.bootstrap=cachedBootstrap.data;
+    state.bootstrapVerified=false;
     state.bootstrapLoadedAt=cachedBootstrap.savedAt||Date.now();
     renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
     updateLastUpdated('cache');
