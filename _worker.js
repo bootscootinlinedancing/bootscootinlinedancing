@@ -1123,7 +1123,7 @@ async function checkSumUpConnection(env) {
     return {
       ready: true,
       status: 'test_mode',
-      message: `SumUp sandbox connection verified for merchant ${configuredCode}. No real money is processed in sandbox.`
+      message: `SumUp Payments connection verified for merchant ${configuredCode}.`
     };
   } catch (error) {
     return { ready: false, status: 'attention', message: `SumUp connection test failed: ${error.message}` };
@@ -1904,7 +1904,7 @@ async function systemHealth(request, env) {
       label: 'Cloudflare Access protecting HQ',
       detail: `Secure administrator session verified${access.state.email ? ` for ${access.state.email}` : ''}`
     },
-    payments: { status: 'setup', label: 'SumUp sandbox connected' },
+    payments: { status: 'setup', label: 'SumUp Payments connected' },
     checked_at: new Date().toISOString()
   };
 
@@ -1935,8 +1935,8 @@ async function systemHealth(request, env) {
 
   const sumupCheck = await checkSumUpConnection(env);
   result.payments = sumupCheck.ready
-    ? { status: 'ready', label: 'SumUp sandbox connected', detail: sumupCheck.message }
-    : { status: sumupCheck.status === 'setup' ? 'setup' : 'error', label: 'SumUp sandbox needs attention', detail: sumupCheck.message };
+    ? { status: 'ready', label: 'SumUp Payments connected', detail: sumupCheck.message }
+    : { status: sumupCheck.status === 'setup' ? 'setup' : 'error', label: 'SumUp Payments needs attention', detail: sumupCheck.message };
 
   result.email = {
     status: 'info',
@@ -2884,12 +2884,26 @@ async function adminClasses(request, env) {
 
 async function adminBootstrap(request, env) {
   const admin = adminState(request, env);
+  if (!admin.email) {
+    return json({
+      error: 'Cloudflare Access session could not be verified. Please sign in again or refresh your HQ session.',
+      code: 'ACCESS_REQUIRED'
+    }, 401);
+  }
+  if (!admin.authorised) {
+    return json({ error: 'This email is not authorised to use Boot Scootin’ HQ.', code: 'ADMIN_NOT_AUTHORISED' }, 403);
+  }
   const result = {
-    mode: admin.email && admin.authorised ? 'protected' : 'public_pilot',
-    admin_email: admin.authorised ? admin.email : null,
+    mode: 'protected',
+    admin_email: admin.email,
+    authentication: {
+      access_verified: true,
+      authorised: true,
+      admin_email_configured: Boolean(admin.configured)
+    },
     configured: {
-      access: Boolean(admin.email),
-      admin_email: Boolean(String(env.ADMIN_EMAIL || '').trim()) || Boolean(admin.email),
+      access: true,
+      admin_email: Boolean(admin.configured),
       database: Boolean(env.BOOKINGS_DB),
       media: Boolean(env.MEDIA_BUCKET),
       sumup: sumUpConfigured(env)
@@ -2913,11 +2927,10 @@ async function adminBootstrap(request, env) {
     warnings: []
   };
 
-  if (!admin.email) result.setup_steps.push('Protect /ranch* and /api/admin/* with Cloudflare Access.');
   if (!env.BOOKINGS_DB) result.setup_steps.push('Create and bind a D1 database using the binding name BOOKINGS_DB.');
   if (!env.MEDIA_BUCKET) result.setup_steps.push('Create and bind an R2 bucket using the binding name MEDIA_BUCKET.');
-  if (!String(env.ADMIN_EMAIL || '').trim() && !admin.email) result.setup_steps.push('Add ADMIN_EMAIL as an environment variable.');
-  if (!sumUpConfigured(env)) result.setup_steps.push('Connect SumUp Sandbox after D1 and Access checks pass.');
+  if (!admin.configured) result.setup_steps.push('Add ADMIN_EMAIL as an environment variable to restrict HQ to the configured administrator address as well as the Access policy.');
+  if (!sumUpConfigured(env)) result.setup_steps.push('Connect SumUp Payments after D1 and Access checks pass.');
 
   if (env.BOOKINGS_DB) {
     try {
