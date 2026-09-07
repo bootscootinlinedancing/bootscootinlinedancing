@@ -6605,6 +6605,9 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
 .ranch91-drawer:not(.open){
   pointer-events:none;
 }
+@media(min-width:1000px){
+  body.ranch-v91 .ranch91-drawer:not(.open){pointer-events:auto}
+}
 .known-test-cleanup{
   border-left:5px solid #b77f3b;
   background:#fff1d9;
