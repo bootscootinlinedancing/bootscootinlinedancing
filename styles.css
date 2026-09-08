@@ -8865,6 +8865,21 @@ body.ranch-v91{
 .crm-profile-header p{margin:0!important;color:#decabd!important;overflow-wrap:anywhere}
 .crm-tabs{position:static!important;top:auto!important;z-index:auto!important}
 
+/* HQ retrospective attendance and immutable loyalty history */
+body.ranch-v91 .crm-attendance-history,
+body.ranch-v91 .crm-loyalty-history{display:grid;gap:.7rem}
+body.ranch-v91 .crm-attendance-history>article,
+body.ranch-v91 .crm-loyalty-history>article{padding:.8rem 0;border-bottom:1px solid rgba(201,167,125,.35)}
+body.ranch-v91 .crm-attendance-history>article:last-child,
+body.ranch-v91 .crm-loyalty-history>article:last-child{border-bottom:0}
+body.ranch-v91 .crm-attendance-history p,
+body.ranch-v91 .crm-loyalty-history p{margin:.25rem 0}
+body.ranch-v91 #crmLoyaltyTransactionForm{display:grid;gap:.75rem}
+body.ranch-v91 #crmLoyaltyTransactionForm label{margin:0}
+body.ranch-v91 .crm-legacy-adjustment{margin-top:1rem;padding:.75rem;border-left:3px solid #bc8a36}
+body.ranch-v91 .crm-booking-list .button.compact{justify-self:end;margin-top:.25rem}
+@media(max-width:760px){body.ranch-v91 .crm-booking-list .button.compact{justify-self:start}}
+
 /* v96.4.106 — HQ polish: compact member tags, readable media names, merch alignment */
 body.ranch-v91 .crm-tag-list{display:flex!important;flex-wrap:wrap!important;gap:.55rem!important}
 body.ranch-v91 .crm-tag-list label{display:inline-flex!important;align-items:center!important;gap:.5rem!important;width:auto!important;margin:0!important;padding:.55rem .75rem!important;border:1px solid #713137!important;border-radius:999px!important;background:#14090a!important;line-height:1.1!important;cursor:pointer}

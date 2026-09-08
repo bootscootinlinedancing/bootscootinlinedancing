@@ -216,7 +216,7 @@ async function reverseLoyaltyStampForBooking(env,bookingId){
 
 async function attendanceForBooking(env,bookingId){
   return env.BOOKINGS_DB.prepare(`
-    SELECT id,booking_id,checked_in_at,checked_in_by
+    SELECT id,booking_id,checked_in_at,recorded_at,checked_in_by
     FROM attendance WHERE booking_id=? ORDER BY checked_in_at,id LIMIT 1
   `).bind(bookingId).first();
 }
@@ -257,7 +257,7 @@ async function uniqueAttendanceCountForEmail(env,email,since=null){
 }
 async function attendanceForClass(env,classId){
   const result=await env.BOOKINGS_DB.prepare(`
-    SELECT a.id,a.booking_id,a.checked_in_at,a.checked_in_by
+    SELECT a.id,a.booking_id,a.checked_in_at,a.recorded_at,a.checked_in_by
     FROM attendance a JOIN bookings b ON b.id=a.booking_id
     WHERE b.class_id=?
       AND a.id=(SELECT a2.id FROM attendance a2 WHERE a2.booking_id=a.booking_id ORDER BY a2.checked_in_at,a2.id LIMIT 1)
@@ -265,16 +265,52 @@ async function attendanceForClass(env,classId){
   `).bind(classId).all();
   return result.results||[];
 }
-async function recordAttendance(env,{bookingId,checkedInBy}){
+async function recordAttendance(env,{bookingId,checkedInBy,checkedInAt=null}){
   const id=crypto.randomUUID();
   const result=await env.BOOKINGS_DB.prepare(`
-    INSERT OR IGNORE INTO attendance(id,booking_id,checked_in_at,checked_in_by)
-    VALUES(?,?,CURRENT_TIMESTAMP,?)
-  `).bind(id,bookingId,checkedInBy||null).run();
+    INSERT OR IGNORE INTO attendance(id,booking_id,checked_in_at,recorded_at,checked_in_by)
+    VALUES(?,?,COALESCE(?,CURRENT_TIMESTAMP),CURRENT_TIMESTAMP,?)
+  `).bind(id,bookingId,checkedInAt||null,checkedInBy||null).run();
   const attendance=await attendanceForBooking(env,bookingId);
   return {attendance,created:Number(result?.meta?.changes||0)>0};
 }
-async function loyaltySummary(env,email){
+async function loyaltyTransactionBalance(env,email,customerId=null){
+  const normalized=String(email||'').trim().toLowerCase();
+  const row=await env.BOOKINGS_DB.prepare(`
+    SELECT
+      COALESCE((SELECT SUM(stamp_delta) FROM loyalty_stamp_ledger WHERE lower(customer_email)=lower(?)),0)
+      + COALESCE((SELECT SUM(amount) FROM loyalty_transactions WHERE customer_id=? OR (customer_id IS NULL AND lower(customer_email)=lower(?))),0)
+      + COALESCE((SELECT loyalty_adjustment FROM customer_crm_profiles WHERE lower(customer_key)=lower(?)),0) total
+  `).bind(normalized,customerId,normalized,normalized).first();
+  return Math.max(0,Number(row?.total||0));
+}
+async function attendanceLoyaltyCredit(env,{booking,attendance,createdBy}){
+  const existingPayment=await env.BOOKINGS_DB.prepare(`
+    SELECT id FROM loyalty_stamp_ledger
+    WHERE booking_id=? AND stamp_delta>0
+    LIMIT 1
+  `).bind(booking.id).first();
+  if(existingPayment)return {credited:false,reconciled_to:'EXISTING_BOOKING_CREDIT'};
+  if(booking.status!=='PAID' || Number(booking.amount_pence||0)<=0 || booking.refund_status==='REFUNDED'){
+    return {credited:false,reconciled_to:'NOT_QUALIFYING_BOOKING'};
+  }
+  const attendanceBalance=await env.BOOKINGS_DB.prepare(`
+    SELECT COALESCE(SUM(amount),0) total FROM loyalty_transactions
+    WHERE booking_id=? AND source_type IN ('ATTENDANCE','ATTENDANCE_RESTORED','ATTENDANCE_UNDO')
+  `).bind(booking.id).first();
+  if(Number(attendanceBalance?.total||0)>0)return {credited:false,reconciled_to:'ATTENDANCE_ALREADY_CREDITED'};
+  const originalCredit=await env.BOOKINGS_DB.prepare(`SELECT id FROM loyalty_transactions WHERE source_type='ATTENDANCE' AND source_id=? LIMIT 1`).bind(booking.id).first();
+  const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(booking.customer_email).first();
+  const sourceType=originalCredit?'ATTENDANCE_RESTORED':'ATTENDANCE';
+  const sourceId=originalCredit?attendance.id:booking.id;
+  const result=await env.BOOKINGS_DB.prepare(`
+    INSERT OR IGNORE INTO loyalty_transactions(
+      id,customer_id,customer_email,member_id,booking_id,amount,transaction_type,reason,source_type,source_id,created_by
+    ) VALUES(?,?,?,?,?,1,?,'Historical booking marked attended',?,?,?)
+  `).bind(crypto.randomUUID(),booking.stable_customer_id||booking.customer_id||null,String(booking.customer_email||'').toLowerCase(),member?.id||null,booking.id,sourceType,sourceType,sourceId,createdBy||null).run();
+  return {credited:Number(result?.meta?.changes||0)>0,reconciled_to:sourceType};
+}
+async function loyaltySummary(env,email,customerId=null){
   const normalized=String(email||'').trim().toLowerCase();
   const account=await env.BOOKINGS_DB.prepare(`SELECT created_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(normalized).first();
   const row=await env.BOOKINGS_DB.prepare(`
@@ -287,7 +323,9 @@ async function loyaltySummary(env,email){
         OR account_created_at_placeholder = account_created_at_placeholder
       )
   `.replace('account_created_at_placeholder = account_created_at_placeholder','1=1')).bind(normalized).first();
-  const total=Math.max(0,Number(row?.total||0));
+  const transactionRow=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(amount),0) total FROM loyalty_transactions WHERE customer_id=? OR (customer_id IS NULL AND lower(customer_email)=lower(?))`).bind(customerId,normalized).first();
+  const legacyAdjustment=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(loyalty_adjustment,0) total FROM customer_crm_profiles WHERE lower(customer_key)=lower(?)`).bind(normalized).first();
+  const total=Math.max(0,Number(row?.total||0)+Number(transactionRow?.total||0)+Number(legacyAdjustment?.total||0));
   const completed=Math.floor(total/9);
   const progress=total===0?0:(total%9===0?9:total%9);
   return {total_stamps:total,progress,goal:9,free_class_milestones:completed,reward_ready:total>=9};
@@ -396,6 +434,7 @@ async function ensureBookingSchema(env) {
       id TEXT PRIMARY KEY,
       booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
       checked_in_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       checked_in_by TEXT
     )`,
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_booking_unique ON attendance(booking_id)`,
@@ -635,6 +674,26 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_member_sessions_token ON member_sessions(token_hash)`,
     `CREATE INDEX IF NOT EXISTS idx_member_tokens_token ON member_email_tokens(token_hash)`,
     `CREATE INDEX IF NOT EXISTS idx_loyalty_email ON loyalty_stamp_ledger(customer_email,created_at)`,
+    `CREATE TABLE IF NOT EXISTS loyalty_transactions (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT,
+      customer_email TEXT NOT NULL,
+      member_id TEXT,
+      booking_id TEXT,
+      amount INTEGER NOT NULL CHECK(amount <> 0),
+      transaction_type TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      source_type TEXT NOT NULL,
+      source_id TEXT NOT NULL,
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(source_type,source_id)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_loyalty_transactions_customer ON loyalty_transactions(customer_email,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_loyalty_transactions_customer_id ON loyalty_transactions(customer_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_loyalty_transactions_booking ON loyalty_transactions(booking_id,created_at)`,
+    `CREATE TRIGGER IF NOT EXISTS loyalty_transactions_no_update BEFORE UPDATE ON loyalty_transactions BEGIN SELECT RAISE(ABORT,'loyalty transactions are immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS loyalty_transactions_no_delete BEFORE DELETE ON loyalty_transactions BEGIN SELECT RAISE(ABORT,'loyalty transactions are immutable'); END`,
     `CREATE TABLE IF NOT EXISTS customer_crm_profiles (
       customer_key TEXT PRIMARY KEY,
       birthday TEXT,
@@ -2303,7 +2362,7 @@ async function memberMe(request,env){
   const session=await memberSession(request,env);
   if(!session) return json({authenticated:false},401);
 
-  const loyalty=await loyaltySummary(env,session.email);
+  const loyalty=await loyaltySummary(env,session.email,session.customer_id);
   const bookings=await env.BOOKINGS_DB.prepare(`
     SELECT b.reference,b.status,b.amount_pence,b.paid_at,c.title,c.starts_at,c.venue
     FROM bookings b LEFT JOIN classes c ON c.id=b.class_id
@@ -3761,6 +3820,68 @@ async function adminCustomers(request, env) {
     const customerKey = clean(body.customer_key || body.email || '', 320).toLowerCase();
     if (!customerKey || !customerKey.includes('@')) return json({ error: 'A valid customer email is required.' }, 400);
 
+    if (action === 'RETROSPECTIVE_ATTENDANCE') {
+      const bookingId=clean(body.booking_id||'',120);
+      const booking=await env.BOOKINGS_DB.prepare(`
+        SELECT b.*,c.title class_title,c.starts_at,c.venue,
+          (SELECT id FROM customers WHERE lower(email)=lower(b.customer_email) LIMIT 1) stable_customer_id
+        FROM bookings b JOIN classes c ON c.id=b.class_id
+        WHERE b.id=? AND lower(b.customer_email)=lower(?)
+      `).bind(bookingId,customerKey).first();
+      if(!booking)return json({error:'That booking does not belong to this customer.'},404);
+      if(!['PAID','PENDING'].includes(booking.status))return json({error:'Only a genuine paid or pending historical booking can be marked attended.'},409);
+      const classTime=new Date(booking.starts_at);
+      if(Number.isNaN(classTime.getTime())||classTime>=new Date())return json({error:'Only a class that has already taken place can be marked retrospectively attended.'},409);
+      const attendanceResult=await recordAttendance(env,{bookingId,checkedInBy:check.state.email,checkedInAt:booking.starts_at});
+      const loyaltyResult=await attendanceLoyaltyCredit(env,{booking,attendance:attendanceResult.attendance,createdBy:check.state.email});
+      await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+        .bind(check.state.email||'hq','RETROSPECTIVE_ATTENDANCE','booking',bookingId,JSON.stringify({attendance_id:attendanceResult.attendance?.id||null,class_id:booking.class_id,class_starts_at:booking.starts_at,created:attendanceResult.created,loyalty_credited:loyaltyResult.credited,reconciliation:loyaltyResult.reconciled_to})).run();
+      return json({ok:true,created:attendanceResult.created,already_attended:!attendanceResult.created,attendance:attendanceResult.attendance,loyalty:loyaltyResult,balance:await loyaltyTransactionBalance(env,customerKey,booking.stable_customer_id||booking.customer_id)});
+    }
+    if (action === 'UNDO_RETROSPECTIVE_ATTENDANCE') {
+      const bookingId=clean(body.booking_id||'',120),reason=clean(body.reason||'',500);
+      if(!reason)return json({error:'An audit reason is required to undo attendance.'},400);
+      const booking=await env.BOOKINGS_DB.prepare(`SELECT b.id,b.class_id,b.customer_id,b.customer_email,(SELECT id FROM customers WHERE lower(email)=lower(b.customer_email) LIMIT 1) stable_customer_id FROM bookings b WHERE b.id=? AND lower(b.customer_email)=lower(?)`).bind(bookingId,customerKey).first();
+      if(!booking)return json({error:'That booking does not belong to this customer.'},404);
+      const attendance=await attendanceForBooking(env,bookingId);
+      if(!attendance)return json({ok:true,removed:false,already_not_attended:true,balance:await loyaltyTransactionBalance(env,customerKey,booking.stable_customer_id||booking.customer_id)});
+      const credit=await env.BOOKINGS_DB.prepare(`
+        SELECT id,amount FROM loyalty_transactions
+        WHERE booking_id=? AND amount>0
+          AND ((source_type='ATTENDANCE' AND source_id=?) OR (source_type='ATTENDANCE_RESTORED' AND source_id=?))
+        ORDER BY created_at DESC LIMIT 1
+      `).bind(bookingId,bookingId,attendance.id).first();
+      const statements=[];
+      if(credit&&Number(credit.amount)>0){
+        statements.push(env.BOOKINGS_DB.prepare(`
+          INSERT OR IGNORE INTO loyalty_transactions(id,customer_id,customer_email,booking_id,amount,transaction_type,reason,source_type,source_id,created_by)
+          VALUES(?,?,?,?,?,'ATTENDANCE_CORRECTION',?,'ATTENDANCE_UNDO',?,?)
+        `).bind(crypto.randomUUID(),booking.stable_customer_id||booking.customer_id||null,customerKey,bookingId,-Number(credit.amount),reason,attendance.id,check.state.email));
+      }
+      statements.push(env.BOOKINGS_DB.prepare(`DELETE FROM attendance WHERE id=? AND booking_id=?`).bind(attendance.id,bookingId));
+      statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+        .bind(check.state.email||'hq','RETROSPECTIVE_ATTENDANCE_UNDONE','booking',bookingId,JSON.stringify({attendance_id:attendance.id,class_id:booking.class_id,checked_in_at:attendance.checked_in_at,recorded_at:attendance.recorded_at,reason,loyalty_reversed:Boolean(credit&&Number(credit.amount)>0)})));
+      await env.BOOKINGS_DB.batch(statements);
+      return json({ok:true,removed:true,balance:await loyaltyTransactionBalance(env,customerKey,booking.stable_customer_id||booking.customer_id)});
+    }
+    if (action === 'ADD_LOYALTY_TRANSACTION') {
+      const amount=Number(body.amount),reason=clean(body.reason||'',500);
+      if(!Number.isInteger(amount)||amount===0||Math.abs(amount)>100)return json({error:'Enter a whole-number adjustment between -100 and 100, excluding zero.'},400);
+      if(!reason)return json({error:'A reason is required for every manual loyalty adjustment.'},400);
+      const customer=await env.BOOKINGS_DB.prepare(`SELECT id FROM customers WHERE lower(email)=lower(?)`).bind(customerKey).first();
+      if(!customer)return json({error:'Customer not found.'},404);
+      const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(customerKey).first();
+      const id=crypto.randomUUID();
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`
+          INSERT INTO loyalty_transactions(id,customer_id,customer_email,member_id,amount,transaction_type,reason,source_type,source_id,created_by)
+          VALUES(?,?,?,?,?, 'MANUAL_MIGRATION',?,'MANUAL_MIGRATION',?,?)
+        `).bind(id,customer.id,customerKey,member?.id||null,amount,reason,id,check.state.email),
+        env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+          .bind(check.state.email||'hq','LOYALTY_MANUAL_MIGRATION','customer',customerKey,JSON.stringify({transaction_id:id,amount,reason}))
+      ]);
+      return json({ok:true,id,balance:await loyaltyTransactionBalance(env,customerKey,customer.id)});
+    }
     if (action === 'SAVE_PROFILE') {
       const birthday = clean(body.birthday || '', 20) || null;
       const emergencyName = clean(body.emergency_contact_name || '', 120) || null;
@@ -3768,15 +3889,13 @@ async function adminCustomers(request, env) {
       const emergencyRelationship = clean(body.emergency_contact_relationship || '', 80) || null;
       const medicalNotes = clean(body.medical_notes || '', 2000) || null;
       const summary = clean(body.instructor_notes_summary || '', 1200) || null;
-      const loyaltyAdjustment = Math.max(-100, Math.min(100, Number(body.loyalty_adjustment || 0)));
       await env.BOOKINGS_DB.prepare(`
-        INSERT INTO customer_crm_profiles(customer_key,birthday,emergency_contact_name,emergency_contact_phone,emergency_contact_relationship,medical_notes,instructor_notes_summary,loyalty_adjustment)
-        VALUES(?,?,?,?,?,?,?,?)
+        INSERT INTO customer_crm_profiles(customer_key,birthday,emergency_contact_name,emergency_contact_phone,emergency_contact_relationship,medical_notes,instructor_notes_summary)
+        VALUES(?,?,?,?,?,?,?)
         ON CONFLICT(customer_key) DO UPDATE SET birthday=excluded.birthday,emergency_contact_name=excluded.emergency_contact_name,
           emergency_contact_phone=excluded.emergency_contact_phone,emergency_contact_relationship=excluded.emergency_contact_relationship,
-          medical_notes=excluded.medical_notes,instructor_notes_summary=excluded.instructor_notes_summary,
-          loyalty_adjustment=excluded.loyalty_adjustment,updated_at=CURRENT_TIMESTAMP
-      `).bind(customerKey,birthday,emergencyName,emergencyPhone,emergencyRelationship,medicalNotes,summary,loyaltyAdjustment).run();
+          medical_notes=excluded.medical_notes,instructor_notes_summary=excluded.instructor_notes_summary,updated_at=CURRENT_TIMESTAMP
+      `).bind(customerKey,birthday,emergencyName,emergencyPhone,emergencyRelationship,medicalNotes,summary).run();
       await env.BOOKINGS_DB.prepare(`DELETE FROM customer_crm_tags WHERE customer_key=?`).bind(customerKey).run();
       const tags = [...new Set((Array.isArray(body.tags) ? body.tags : []).map(v => clean(v,40)).filter(Boolean))].slice(0,20);
       for (const tag of tags) await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO customer_crm_tags(customer_key,tag) VALUES(?,?)`).bind(customerKey,tag).run();
@@ -3802,6 +3921,7 @@ async function adminCustomers(request, env) {
 
   const customerMetricsSql = `
     SELECT
+      cu.id customer_id,
       lower(cu.email) customer_key,
       cu.name customer_name,
       lower(cu.email) customer_email,
@@ -3811,6 +3931,9 @@ async function adminCustomers(request, env) {
       (SELECT COUNT(*) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='CANCELLED') cancelled_bookings,
       (SELECT COUNT(*) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='REFUNDED') refunded_bookings,
       (SELECT COUNT(DISTINCT a.booking_id) FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE lower(b.customer_email)=lower(cu.email)) attended_classes,
+      COALESCE((SELECT SUM(l.stamp_delta) FROM loyalty_stamp_ledger l WHERE lower(l.customer_email)=lower(cu.email)),0)
+        + COALESCE((SELECT SUM(t.amount) FROM loyalty_transactions t WHERE t.customer_id=cu.id OR (t.customer_id IS NULL AND lower(t.customer_email)=lower(cu.email))),0)
+        + COALESCE((SELECT p.loyalty_adjustment FROM customer_crm_profiles p WHERE lower(p.customer_key)=lower(cu.email)),0) loyalty_balance,
       COALESCE((SELECT SUM(b.amount_pence) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='PAID'),0) gross_paid_pence,
       COALESCE((SELECT SUM(COALESCE(b.refund_amount_pence,b.amount_pence)) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='REFUNDED'),0) refunded_pence,
       CASE WHEN cu.marketing_consent=1 OR COALESCE((SELECT MAX(b.marketing_consent) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email)),0)=1 THEN 1 ELSE 0 END marketing_consent,
@@ -3827,23 +3950,25 @@ async function adminCustomers(request, env) {
       const last = row.last_booking_at ? new Date(row.last_booking_at).getTime() : 0;
       const days = last ? Math.floor((now-last)/86400000) : 9999;
       const health_status = days <= 14 ? 'ACTIVE' : days <= 56 ? 'AT_RISK' : 'INACTIVE';
-      const attended = Number(row.attended_classes||0);
-      return {...row, lifetime_spend_pence:Math.max(0,Number(row.gross_paid_pence||0)-Number(row.refunded_pence||0)), loyalty_progress:attended%9, reward_ready:attended>0&&attended%9===0, health_status};
+      const loyaltyBalance=Math.max(0,Number(row.loyalty_balance||0));
+      return {...row, lifetime_spend_pence:Math.max(0,Number(row.gross_paid_pence||0)-Number(row.refunded_pence||0)), loyalty_balance:loyaltyBalance,loyalty_progress:loyaltyBalance===0?0:(loyaltyBalance%9===0?9:loyaltyBalance%9), reward_ready:loyaltyBalance>=9, health_status};
     })});
   }
 
   const customer = await env.BOOKINGS_DB.prepare(customerMetricsSql + ` WHERE lower(cu.email)=?`).bind(email).first();
   if (!customer) return json({error:'Customer not found.'},404);
-  const [bookings, waiting, notes, tags, profile, notifications, campaigns] = await Promise.all([
-    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE lower(b.customer_email)=? ORDER BY b.created_at DESC LIMIT 100`).bind(email).all(),
+  const [bookings, waiting, notes, tags, profile, notifications, campaigns, attendanceHistory, loyaltyHistory] = await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE lower(b.customer_email)=? ORDER BY b.created_at DESC LIMIT 100`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w LEFT JOIN classes c ON c.id=w.class_id WHERE lower(w.customer_email)=? ORDER BY w.created_at DESC LIMIT 50`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_notes WHERE customer_key=? ORDER BY created_at DESC LIMIT 100`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT tag FROM customer_crm_tags WHERE customer_key=? ORDER BY tag`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_profiles WHERE customer_key=?`).bind(email).first(),
     env.BOOKINGS_DB.prepare(`SELECT event_type,channel,status,created_at,sent_at,error_message FROM notification_log WHERE lower(recipient)=? ORDER BY created_at DESC LIMIT 50`).bind(email).all(),
-    env.BOOKINGS_DB.prepare(`SELECT ec.subject,ec.status,ec.sent_at,ec.created_at,ecr.status recipient_status FROM email_campaign_recipients ecr JOIN email_campaigns ec ON ec.id=ecr.campaign_id WHERE lower(ecr.email)=? ORDER BY ec.created_at DESC LIMIT 50`).bind(email).all()
+    env.BOOKINGS_DB.prepare(`SELECT ec.subject,ec.status,ec.sent_at,ec.created_at,ecr.status recipient_status FROM email_campaign_recipients ecr JOIN email_campaigns ec ON ec.id=ecr.campaign_id WHERE lower(ecr.email)=? ORDER BY ec.created_at DESC LIMIT 50`).bind(email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT a.id,a.booking_id,a.checked_in_at,a.recorded_at,a.checked_in_by,b.reference,c.title class_title,c.starts_at,c.venue FROM attendance a JOIN bookings b ON b.id=a.booking_id LEFT JOIN classes c ON c.id=b.class_id WHERE lower(b.customer_email)=? ORDER BY a.checked_in_at DESC,a.id DESC LIMIT 100`).bind(email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT id,booking_id,stamp_delta amount,reason,'LEGACY' source_type,event_key source_id,NULL created_by,created_at FROM loyalty_stamp_ledger WHERE lower(customer_email)=lower(?) UNION ALL SELECT id,booking_id,amount,reason,source_type,source_id,created_by,created_at FROM loyalty_transactions WHERE customer_id=? OR (customer_id IS NULL AND lower(customer_email)=lower(?)) ORDER BY created_at DESC LIMIT 200`).bind(email,customer.id,email).all()
   ]);
-  const attended = Number(customer.attended_classes||0) + Number(profile?.loyalty_adjustment||0);
+  const loyaltyBalance=Math.max(0,Number(customer.loyalty_balance||0));
   const last = customer.last_booking_at ? new Date(customer.last_booking_at).getTime() : 0;
   const days = last ? Math.floor((Date.now()-last)/86400000) : 9999;
   const health_status = days <= 14 ? 'ACTIVE' : days <= 56 ? 'AT_RISK' : 'INACTIVE';
@@ -3851,11 +3976,13 @@ async function adminCustomers(request, env) {
     ...(bookings.results||[]).map(b=>({type:'BOOKING',title:`${b.status}: ${b.class_title||'Class'}`,detail:b.reference,created_at:b.created_at})),
     ...(notes.results||[]).map(n=>({type:'NOTE',title:'Instructor note added',detail:n.note_text,created_at:n.created_at})),
     ...(notifications.results||[]).map(n=>({type:'COMMUNICATION',title:`${n.event_type} · ${n.status}`,detail:n.channel,created_at:n.sent_at||n.created_at})),
-    ...(campaigns.results||[]).map(c=>({type:'EMAIL',title:c.subject,detail:c.recipient_status||c.status,created_at:c.sent_at||c.created_at}))
+    ...(campaigns.results||[]).map(c=>({type:'EMAIL',title:c.subject,detail:c.recipient_status||c.status,created_at:c.sent_at||c.created_at})),
+    ...(attendanceHistory.results||[]).map(a=>({type:'ATTENDANCE',title:`Attended: ${a.class_title||'Class'}`,detail:a.venue||'',created_at:a.recorded_at||a.checked_in_at})),
+    ...(loyaltyHistory.results||[]).map(l=>({type:'LOYALTY',title:`${Number(l.amount)>0?'+':''}${Number(l.amount)||0} stamp${Math.abs(Number(l.amount)||0)===1?'':'s'}`,detail:l.reason||l.source_type,created_at:l.created_at}))
   ].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,100);
   return json({
-    customer:{...customer,health_status,lifetime_spend_pence:Math.max(0,Number(customer.gross_paid_pence||0)-Number(customer.refunded_pence||0)),loyalty_progress:Math.max(0,attended)%9,reward_ready:attended>0&&attended%9===0},
-    profile:profile||{customer_key:email,loyalty_adjustment:0}, tags:(tags.results||[]).map(r=>r.tag), notes:notes.results||[], bookings:bookings.results||[], waiting:waiting.results||[], communications:[...(notifications.results||[]),...(campaigns.results||[])], timeline
+    customer:{...customer,health_status,lifetime_spend_pence:Math.max(0,Number(customer.gross_paid_pence||0)-Number(customer.refunded_pence||0)),loyalty_balance:loyaltyBalance,loyalty_progress:loyaltyBalance===0?0:(loyaltyBalance%9===0?9:loyaltyBalance%9),reward_ready:loyaltyBalance>=9},
+    profile:profile||{customer_key:email,loyalty_adjustment:0}, tags:(tags.results||[]).map(r=>r.tag), notes:notes.results||[], bookings:bookings.results||[], attendance:attendanceHistory.results||[], loyalty_history:loyaltyHistory.results||[], waiting:waiting.results||[], communications:[...(notifications.results||[]),...(campaigns.results||[])], timeline
   });
 }
 
