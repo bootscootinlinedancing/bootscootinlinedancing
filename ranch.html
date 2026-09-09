@@ -234,7 +234,7 @@
             <button class="button" data-open-class>Add a class</button>
           </div>
           <div class="ranch-filter-row">
-            <select id="ranchClassFilter" aria-label="Filter classes"><option value="upcoming">Upcoming</option><option value="all">All classes</option><option value="draft">Drafts</option><option value="closed">Closed</option></select>
+            <select id="ranchClassFilter" aria-label="Filter classes"><option value="upcoming">Upcoming</option><option value="past">Past classes</option><option value="all">All classes</option><option value="draft">Drafts</option><option value="closed">Closed</option></select>
             <button class="button secondary compact" id="refreshRanch">Refresh</button>
           </div>
           <div id="classManagerSummary" class="class-manager-summary">
@@ -444,6 +444,7 @@
             <h3>Automatic customer journeys</h3>
             <p>Marketing emails include an unsubscribe link. Essential booking and safety updates are still sent when needed.</p>
             <div id="emailAutomationSettings" class="email-automation-settings">Loading automations…</div>
+            <p class="email-automation-note"><strong>New-class announcements are drafts only.</strong> Nora must review and send or schedule them manually.</p>
             <button class="button" id="saveEmailAutomations" type="button">Save automation settings</button>
             <details><summary>Recent automatic emails</summary><div id="emailAutomationHistory">No automatic emails yet.</div></details>
           </section>
@@ -451,8 +452,9 @@
           <section class="email-centre-card email-campaign-history">
             <div class="ranch-panel-head">
               <div><p class="kicker red">Campaigns</p><h3>Scheduled and sent emails</h3></div>
-              <button class="button secondary compact" id="processDueEmails" type="button">Process due emails</button>
+              <button class="button secondary compact" id="processDueEmails" type="button">Process due emails now</button>
             </div>
+            <p class="email-automation-note">Runs any automatic emails that are currently due. Scheduled sending should normally happen automatically.</p>
             <div id="emailCampaignList">Loading campaigns…</div>
           </section>
 

@@ -1369,10 +1369,13 @@ function normaliseUkPhone(value) {
   return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
 }
 
-async function sendTransactionalEmail(env, to, subject, html, text, senderType='general') {
+async function sendTransactionalEmail(env, to, subject, html, text, senderType='general', options={}) {
   const apiKey = String(env.RESEND_API_KEY || env.EMAIL_API_KEY || '').trim();
   const from = emailSender(env, senderType);
   if (!apiKey || !from) return { skipped: true, reason: 'Email provider is not configured.' };
+  const replyTo=emailOk(options.replyTo)?String(options.replyTo).trim().toLowerCase():'';
+  const payload={ from, to: [to], subject, html, text };
+  if(replyTo)payload.reply_to=replyTo;
   let response;
   try {
     response = await fetch('https://api.resend.com/emails', {
@@ -1382,7 +1385,7 @@ async function sendTransactionalEmail(env, to, subject, html, text, senderType='
         'Content-Type': 'application/json',
         'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.7.0'
       },
-      body: JSON.stringify({ from, to: [to], subject, html, text })
+      body: JSON.stringify(payload)
     });
   } catch (error) {
     throw new Error(`Email provider connection failed: ${clean(error?.message || error, 220)}`);
@@ -2604,6 +2607,41 @@ async function bookingCalendar(request,env,url){
   return new Response(ics,{headers:{'Content-Type':'text/calendar; charset=utf-8','Content-Disposition':`attachment; filename="${b.reference}.ics"`}});
 }
 
+function validatedSocialProfileUrl(value){
+  const raw=clean(value,500);
+  if(!raw)return '';
+  try{
+    const parsed=new URL(raw);
+    if(!['http:','https:'].includes(parsed.protocol) || !parsed.hostname || !parsed.hostname.includes('.'))return '';
+    if(parsed.username||parsed.password)return '';
+    return parsed.toString();
+  }catch{return ''}
+}
+
+async function moonshineJoinRequest(request,env){
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  const body=await request.json().catch(()=>null);
+  if(!body)return json({error:'The join request could not be read.'},400);
+  if(clean(body.website,80))return json({ok:true,message:'Your request has been received.'},202);
+  const name=clean(body.name,100),email=clean(body.email,160).toLowerCase(),socialUrl=validatedSocialProfileUrl(body.social_profile_url);
+  const about=clean(body.about,2000),found=clean(body.found,100),rulesAccepted=body.rules_accepted===true;
+  if(!name||!emailOk(email)||!about||!found||!rulesAccepted)return json({error:'Please complete every field and accept the community rules.'},400);
+  if(!socialUrl)return json({error:'Please paste a complete social media profile link beginning with http:// or https://.'},400);
+
+  const recipient='hello@bootscootinlinedancing.co.uk';
+  const subject=`Moonshine community join request — ${name}`;
+  const text=`MOONSHINE & GOOD TIMES GANG — JOIN REQUEST\n\nName: ${name}\nEmail: ${email}\nSocial media profile: ${socialUrl}\nHow they found Boot Scootin’: ${found}\n\nAbout them:\n${about}\n\nThe applicant confirmed that they agree to follow the community rules.\n\nPlease review their social media profile before sending any private community invitation.`;
+  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>Moonshine community join request</h2><p><strong>Name:</strong> ${htmlEscape(name)}<br><strong>Email:</strong> ${htmlEscape(email)}<br><strong>Social media profile:</strong> <a href="${htmlEscape(socialUrl)}">${htmlEscape(socialUrl)}</a><br><strong>How they found Boot Scootin’:</strong> ${htmlEscape(found)}</p><p><strong>About them:</strong><br>${htmlEscape(about).replace(/\n/g,'<br>')}</p><p>The applicant confirmed that they agree to follow the community rules.</p><p><strong>Review the social profile before sending any private community invitation.</strong></p></div>`;
+  try{
+    const result=await sendTransactionalEmail(env,recipient,subject,html,text,'general',{replyTo:email});
+    if(result?.skipped)return json({error:'The join-request email service is temporarily unavailable. Please try again later.'},503);
+    return json({ok:true,message:'Your request has been sent to Nora for review.'},201);
+  }catch(error){
+    console.error('MOONSHINE_JOIN_REQUEST_EMAIL_ERROR',error?.stack||error);
+    return json({error:'Your request could not be sent right now. Please try again later.'},502);
+  }
+}
+
 
 async function privateEventInquiry(request, env) {
   if (!env.BOOKINGS_DB) return json({ error:'The inquiry service is temporarily unavailable.' },503);
@@ -3600,6 +3638,10 @@ async function processDueCampaigns(env){
   return results;
 }
 
+function automaticScheduleConfigured(env){
+  return String(env.EMAIL_AUTOMATION_CRON_CONFIGURED||'').trim().toLowerCase()==='true';
+}
+
 
 async function sha256Hex(value) {
   const bytes = new TextEncoder().encode(String(value || ''));
@@ -3663,7 +3705,7 @@ async function adminEmailCentreInner(request,env,ctx){
   if(request.method==='GET'){
     const [templates,campaigns,subscribers,classes]=await Promise.all([
       env.BOOKINGS_DB.prepare(`SELECT * FROM email_templates ORDER BY is_system DESC,name`).all(),
-      env.BOOKINGS_DB.prepare(`SELECT * FROM email_campaigns ORDER BY created_at DESC LIMIT 50`).all(),
+      env.BOOKINGS_DB.prepare(`SELECT ec.*,c.starts_at automation_class_starts_at FROM email_campaigns ec LEFT JOIN classes c ON c.id=COALESCE(json_extract(ec.audience_json,'$.automation_class_id'),json_extract(ec.audience_json,'$.class_id')) ORDER BY ec.created_at DESC LIMIT 50`).all(),
       env.BOOKINGS_DB.prepare(`
         SELECT email,MAX(name) name,MAX(phone) phone,MAX(last_booking_at) last_booking_at FROM (
           SELECT lower(b.customer_email) email,MAX(b.customer_name) name,MAX(b.customer_phone) phone,MAX(b.created_at) last_booking_at
@@ -3684,7 +3726,8 @@ async function adminEmailCentreInner(request,env,ctx){
     const customers=await env.BOOKINGS_DB.prepare(`SELECT lower(customer_email) email,MAX(customer_name) name,MAX(created_at) last_booking_at FROM bookings WHERE customer_email IS NOT NULL AND customer_email<>'' GROUP BY lower(customer_email) ORDER BY last_booking_at DESC LIMIT 1000`).all();
     const automations=await env.BOOKINGS_DB.prepare(`SELECT setting_key,enabled FROM email_automation_settings ORDER BY setting_key`).all();
     const automationHistory=await env.BOOKINGS_DB.prepare(`SELECT * FROM email_automation_log ORDER BY created_at DESC LIMIT 50`).all();
-    return json({provider:{ready:notificationConfig(env).emailReady,from:emailSender(env,'general'),senders:{general:emailSender(env,'general'),bookings:emailSender(env,'bookings'),events:emailSender(env,'events'),members:emailSender(env,'members')},scheduling_ready:true,cron_note:'Scheduled campaigns are sent by the Worker scheduled handler or the Process due emails button.'},templates:templates.results||[],campaigns:campaigns.results||[],subscribers:subscribers.results||[],customers:customers.results||[],classes:classes.results||[],automations:automations.results||[],automation_history:automationHistory.results||[]});
+    const schedulingReady=automaticScheduleConfigured(env);
+    return json({provider:{ready:notificationConfig(env).emailReady,from:emailSender(env,'general'),senders:{general:emailSender(env,'general'),bookings:emailSender(env,'bookings'),events:emailSender(env,'events'),members:emailSender(env,'members')},scheduling_ready:schedulingReady,cron_note:schedulingReady?'Automatic scheduled processing is configured.':'Automatic scheduled processing is not yet confirmed. Use “Process due emails now” until the separate Cron Worker is deployed and verified.'},templates:templates.results||[],campaigns:campaigns.results||[],subscribers:subscribers.results||[],customers:customers.results||[],classes:classes.results||[],automations:automations.results||[],automation_history:automationHistory.results||[]});
   }
   if(request.method!=='POST')return json({error:'Method not allowed.'},405);
   let body;try{body=await request.json()}catch{return json({error:'Invalid request.'},400)}
@@ -3728,7 +3771,10 @@ async function adminEmailCentreInner(request,env,ctx){
   if(action==='CANCEL_CAMPAIGN'){
     await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='SCHEDULED'`).bind(body.id||'').run();return json({ok:true});
   }
-  if(action==='PROCESS_DUE')return json({ok:true,results:await processDueCampaigns(env)});
+  if(action==='PROCESS_DUE'){
+    const [scheduledCampaigns,automaticJourneys]=await Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env)]);
+    return json({ok:true,scheduled_campaigns:scheduledCampaigns,automatic_journeys:automaticJourneys});
+  }
   return json({error:'Unknown email action.'},400);
 }
 
@@ -4816,6 +4862,7 @@ export default {
       if (path === '/api/customer-portal-link' && request.method === 'POST') return customerPortalLink(request, env);
       if (path === '/api/customer-portal' && request.method === 'GET') return customerPortal(request, env, url);
       if (path === '/api/booking-calendar' && request.method === 'GET') return bookingCalendar(request, env, url);
+      if (path === '/api/moonshine-join-request') return await moonshineJoinRequest(request, env);
       if (path === '/api/private-events/inquiries' && request.method === 'POST') return privateEventInquiry(request, env);
       if (path === '/api/private-events/quote' && request.method === 'GET') return publicPrivateQuote(request, env, url);
       if (path === '/api/private-events/respond' && request.method === 'POST') return privateEventRespond(request, env);

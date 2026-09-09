@@ -309,9 +309,9 @@
             <input autocomplete="email" id="joinEmail" name="email" required="" type="email"/>
 </label>
 <label>
-            Social-media profile or handle
-            <input id="joinSocial" name="social" placeholder="Instagram, Facebook or TikTok" required="" type="text"/>
-<small>Please include the platform and your username or full profile link.</small>
+            Social media profile link
+            <input id="joinSocial" name="social_profile_url" pattern="https?://.+" placeholder="https://instagram.com/your-profile" required="" type="url"/>
+<small>Please paste the link to your social media profile so we can review your request.</small>
 </label>
 <label>
             Tell us a little about yourself
@@ -334,6 +334,7 @@
 <input id="joinRules" name="rules" required="" type="checkbox"/>
 <span>I agree to treat members with kindness and respect and to follow the community rules.</span>
 </label>
+<input aria-hidden="true" autocomplete="off" class="form-honeypot" name="website" tabindex="-1"/>
 <button class="button" type="submit">Send My Join Request</button>
 <p aria-live="polite" class="form-status" id="moonshineFormStatus" role="status"></p>
 <div class="instagram-request-option">
@@ -365,39 +366,33 @@
 
   const status = document.getElementById("moonshineFormStatus");
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     if (!form.reportValidity()) return;
 
     const name = document.getElementById("joinName").value.trim();
     const email = document.getElementById("joinEmail").value.trim();
-    const social = document.getElementById("joinSocial").value.trim();
+    const socialProfileUrl = document.getElementById("joinSocial").value.trim();
     const about = document.getElementById("joinAbout").value.trim();
     const found = document.getElementById("joinFound").value;
-
-    const subject = `Moonshine community join request — ${name}`;
-    const body = [
-      "MOONSHINE & GOOD TIMES GANG — JOIN REQUEST",
-      "",
-      `Name: ${name}`,
-      `Email: ${email}`,
-      `Social-media profile: ${social}`,
-      `How they found Boot Scootin’: ${found}`,
-      "",
-      "About them:",
-      about,
-      "",
-      "The applicant confirmed that they agree to follow the community rules.",
-      "",
-      "Please review their social-media profile before sending any private community invitation."
-    ].join("\n");
-
-    status.textContent = "Opening your email app with the completed request…";
-
-    const recipient = "princessnora9070@gmail.com";
-    window.location.href =
-      `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const button=form.querySelector('[type="submit"]');
+    button.disabled=true;
+    status.textContent = "Sending your request securely…";
+    try {
+      const response=await fetch('/api/moonshine-join-request',{
+        method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({name,email,social_profile_url:socialProfileUrl,about,found,rules_accepted:document.getElementById('joinRules').checked,website:form.elements.website.value})
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.error||'Your request could not be sent.');
+      form.reset();
+      status.textContent=data.message||'Your request has been sent to Nora for review.';
+    } catch(error) {
+      status.textContent=error.message||'Your request could not be sent right now. Please try again later.';
+    } finally {
+      button.disabled=false;
+    }
   });
 })();
 </script>
