@@ -1,0 +1,9 @@
+name = "bootscootin-email-automation"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+[triggers]
+crons = ["5 * * * *"]
+
+[vars]
+AUTOMATION_ENDPOINT = "https://bootscootinlinedancing.co.uk/api/automation/run"
