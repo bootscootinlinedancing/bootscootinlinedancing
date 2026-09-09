@@ -284,7 +284,7 @@ async function loyaltyTransactionBalance(env,email,customerId=null){
   `).bind(normalized,customerId,normalized,normalized).first();
   return Math.max(0,Number(row?.total||0));
 }
-async function attendanceLoyaltyCredit(env,{booking,attendance,createdBy}){
+async function attendanceLoyaltyCredit(env,{booking,attendance,createdBy,reason='Booking marked attended'}){
   const existingPayment=await env.BOOKINGS_DB.prepare(`
     SELECT id FROM loyalty_stamp_ledger
     WHERE booking_id=? AND stamp_delta>0
@@ -301,14 +301,38 @@ async function attendanceLoyaltyCredit(env,{booking,attendance,createdBy}){
   if(Number(attendanceBalance?.total||0)>0)return {credited:false,reconciled_to:'ATTENDANCE_ALREADY_CREDITED'};
   const originalCredit=await env.BOOKINGS_DB.prepare(`SELECT id FROM loyalty_transactions WHERE source_type='ATTENDANCE' AND source_id=? LIMIT 1`).bind(booking.id).first();
   const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(booking.customer_email).first();
+  const customerId=booking.stable_customer_id||booking.customer_id||(await env.BOOKINGS_DB.prepare(`SELECT id FROM customers WHERE lower(email)=lower(?)`).bind(booking.customer_email).first())?.id||null;
   const sourceType=originalCredit?'ATTENDANCE_RESTORED':'ATTENDANCE';
   const sourceId=originalCredit?attendance.id:booking.id;
   const result=await env.BOOKINGS_DB.prepare(`
     INSERT OR IGNORE INTO loyalty_transactions(
       id,customer_id,customer_email,member_id,booking_id,amount,transaction_type,reason,source_type,source_id,created_by
-    ) VALUES(?,?,?,?,?,1,?,'Historical booking marked attended',?,?,?)
-  `).bind(crypto.randomUUID(),booking.stable_customer_id||booking.customer_id||null,String(booking.customer_email||'').toLowerCase(),member?.id||null,booking.id,sourceType,sourceType,sourceId,createdBy||null).run();
+    ) VALUES(?,?,?,?,?,1,?,?,?,?,?)
+  `).bind(crypto.randomUUID(),customerId,String(booking.customer_email||'').toLowerCase(),member?.id||null,booking.id,sourceType,clean(reason,500),sourceType,sourceId,createdBy||null).run();
   return {credited:Number(result?.meta?.changes||0)>0,reconciled_to:sourceType};
+}
+async function undoAttendance(env,{booking,reason,createdBy,auditAction='ATTENDANCE_UNDONE'}){
+  const attendance=await attendanceForBooking(env,booking.id);
+  if(!attendance)return {removed:false,already_not_attended:true,loyalty_reversed:false};
+  const credit=await env.BOOKINGS_DB.prepare(`
+    SELECT id,amount FROM loyalty_transactions
+    WHERE booking_id=? AND amount>0
+      AND ((source_type='ATTENDANCE' AND source_id=?) OR (source_type='ATTENDANCE_RESTORED' AND source_id=?))
+    ORDER BY created_at DESC LIMIT 1
+  `).bind(booking.id,booking.id,attendance.id).first();
+  const customerId=booking.stable_customer_id||booking.customer_id||(await env.BOOKINGS_DB.prepare(`SELECT id FROM customers WHERE lower(email)=lower(?)`).bind(booking.customer_email).first())?.id||null;
+  const statements=[];
+  if(credit&&Number(credit.amount)>0){
+    statements.push(env.BOOKINGS_DB.prepare(`
+      INSERT OR IGNORE INTO loyalty_transactions(id,customer_id,customer_email,booking_id,amount,transaction_type,reason,source_type,source_id,created_by)
+      VALUES(?,?,?,?,?,'ATTENDANCE_CORRECTION',?,'ATTENDANCE_UNDO',?,?)
+    `).bind(crypto.randomUUID(),customerId,String(booking.customer_email||'').toLowerCase(),booking.id,-Number(credit.amount),reason,attendance.id,createdBy||null));
+  }
+  statements.push(env.BOOKINGS_DB.prepare(`DELETE FROM attendance WHERE id=? AND booking_id=?`).bind(attendance.id,booking.id));
+  statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+    .bind(createdBy||'hq',auditAction,'booking',booking.id,JSON.stringify({attendance_id:attendance.id,class_id:booking.class_id,checked_in_at:attendance.checked_in_at,recorded_at:attendance.recorded_at,reason,loyalty_reversed:Boolean(credit&&Number(credit.amount)>0)})));
+  await env.BOOKINGS_DB.batch(statements);
+  return {removed:true,already_not_attended:false,loyalty_reversed:Boolean(credit&&Number(credit.amount)>0)};
 }
 async function loyaltySummary(env,email,customerId=null){
   const normalized=String(email||'').trim().toLowerCase();
@@ -2843,6 +2867,25 @@ async function adminClasses(request, env) {
   await ensureBookingSchema(env);
 
   if(request.method==='GET'){
+    const registerClassId=clean(new URL(request.url).searchParams.get('register')||'',120);
+    if(registerClassId){
+      const classItem=await env.BOOKINGS_DB.prepare(`SELECT id,title,venue,location,starts_at,ends_at,status,capacity FROM classes WHERE id=?`).bind(registerClassId).first();
+      if(!classItem)return json({error:'Class not found.'},404);
+      const response=await env.BOOKINGS_DB.prepare(`
+        SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,
+          CASE WHEN a.id IS NULL THEN 0 ELSE 1 END checked_in,a.checked_in_at,a.recorded_at
+        FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id
+        WHERE b.class_id=? AND b.status IN ('PAID','PENDING')
+        ORDER BY lower(b.customer_name),b.created_at
+      `).bind(registerClassId).all();
+      const bookings=response.results||[];
+      return json({class:classItem,bookings,stats:{
+        checked_in_bookings:bookings.filter(b=>Number(b.checked_in)).length,
+        total_bookings:bookings.length,
+        checked_in_places:bookings.filter(b=>Number(b.checked_in)).reduce((n,b)=>n+Number(b.quantity||1),0),
+        total_places:bookings.reduce((n,b)=>n+Number(b.quantity||1),0)
+      }});
+    }
     // Reconciliation is helpful, but a temporary SumUp/API problem must never
     // take the Classes screen down. The class list remains available from D1.
     let reconciliation_warning = '';
@@ -3833,7 +3876,7 @@ async function adminCustomers(request, env) {
       const classTime=new Date(booking.starts_at);
       if(Number.isNaN(classTime.getTime())||classTime>=new Date())return json({error:'Only a class that has already taken place can be marked retrospectively attended.'},409);
       const attendanceResult=await recordAttendance(env,{bookingId,checkedInBy:check.state.email,checkedInAt:booking.starts_at});
-      const loyaltyResult=await attendanceLoyaltyCredit(env,{booking,attendance:attendanceResult.attendance,createdBy:check.state.email});
+      const loyaltyResult=await attendanceLoyaltyCredit(env,{booking,attendance:attendanceResult.attendance,createdBy:check.state.email,reason:'Historical booking marked attended'});
       await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
         .bind(check.state.email||'hq','RETROSPECTIVE_ATTENDANCE','booking',bookingId,JSON.stringify({attendance_id:attendanceResult.attendance?.id||null,class_id:booking.class_id,class_starts_at:booking.starts_at,created:attendanceResult.created,loyalty_credited:loyaltyResult.credited,reconciliation:loyaltyResult.reconciled_to})).run();
       return json({ok:true,created:attendanceResult.created,already_attended:!attendanceResult.created,attendance:attendanceResult.attendance,loyalty:loyaltyResult,balance:await loyaltyTransactionBalance(env,customerKey,booking.stable_customer_id||booking.customer_id)});
@@ -3843,26 +3886,8 @@ async function adminCustomers(request, env) {
       if(!reason)return json({error:'An audit reason is required to undo attendance.'},400);
       const booking=await env.BOOKINGS_DB.prepare(`SELECT b.id,b.class_id,b.customer_id,b.customer_email,(SELECT id FROM customers WHERE lower(email)=lower(b.customer_email) LIMIT 1) stable_customer_id FROM bookings b WHERE b.id=? AND lower(b.customer_email)=lower(?)`).bind(bookingId,customerKey).first();
       if(!booking)return json({error:'That booking does not belong to this customer.'},404);
-      const attendance=await attendanceForBooking(env,bookingId);
-      if(!attendance)return json({ok:true,removed:false,already_not_attended:true,balance:await loyaltyTransactionBalance(env,customerKey,booking.stable_customer_id||booking.customer_id)});
-      const credit=await env.BOOKINGS_DB.prepare(`
-        SELECT id,amount FROM loyalty_transactions
-        WHERE booking_id=? AND amount>0
-          AND ((source_type='ATTENDANCE' AND source_id=?) OR (source_type='ATTENDANCE_RESTORED' AND source_id=?))
-        ORDER BY created_at DESC LIMIT 1
-      `).bind(bookingId,bookingId,attendance.id).first();
-      const statements=[];
-      if(credit&&Number(credit.amount)>0){
-        statements.push(env.BOOKINGS_DB.prepare(`
-          INSERT OR IGNORE INTO loyalty_transactions(id,customer_id,customer_email,booking_id,amount,transaction_type,reason,source_type,source_id,created_by)
-          VALUES(?,?,?,?,?,'ATTENDANCE_CORRECTION',?,'ATTENDANCE_UNDO',?,?)
-        `).bind(crypto.randomUUID(),booking.stable_customer_id||booking.customer_id||null,customerKey,bookingId,-Number(credit.amount),reason,attendance.id,check.state.email));
-      }
-      statements.push(env.BOOKINGS_DB.prepare(`DELETE FROM attendance WHERE id=? AND booking_id=?`).bind(attendance.id,bookingId));
-      statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
-        .bind(check.state.email||'hq','RETROSPECTIVE_ATTENDANCE_UNDONE','booking',bookingId,JSON.stringify({attendance_id:attendance.id,class_id:booking.class_id,checked_in_at:attendance.checked_in_at,recorded_at:attendance.recorded_at,reason,loyalty_reversed:Boolean(credit&&Number(credit.amount)>0)})));
-      await env.BOOKINGS_DB.batch(statements);
-      return json({ok:true,removed:true,balance:await loyaltyTransactionBalance(env,customerKey,booking.stable_customer_id||booking.customer_id)});
+      const result=await undoAttendance(env,{booking,reason,createdBy:check.state.email,auditAction:'RETROSPECTIVE_ATTENDANCE_UNDONE'});
+      return json({ok:true,...result,balance:await loyaltyTransactionBalance(env,customerKey,booking.stable_customer_id||booking.customer_id)});
     }
     if (action === 'ADD_LOYALTY_TRANSACTION') {
       const amount=Number(body.amount),reason=clean(body.reason||'',500);
@@ -4214,6 +4239,17 @@ async function adminBookings(request, env, ctx) {
     await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
       .bind(check.state.email,action,'booking',id,JSON.stringify({...body,created:attendanceResult.created})).run();
     return json({ok:true,checked_in:true,already_checked_in:!attendanceResult.created});
+  }else if(action==='REGISTER_CHECK_IN'){
+    const attendanceResult=await recordAttendance(env,{bookingId:id,checkedInBy:check.state.email});
+    const loyaltyResult=await attendanceLoyaltyCredit(env,{booking,attendance:attendanceResult.attendance,createdBy:check.state.email});
+    await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+      .bind(check.state.email,action,'booking',id,JSON.stringify({created:attendanceResult.created,loyalty_credited:loyaltyResult.credited,reconciliation:loyaltyResult.reconciled_to})).run();
+    return json({ok:true,checked_in:true,already_checked_in:!attendanceResult.created,attendance:attendanceResult.attendance,loyalty:loyaltyResult});
+  }else if(action==='UNDO_CHECK_IN'){
+    const reason=clean(body.reason||'',500);
+    if(!reason)return json({error:'An audit reason is required to undo attendance.'},400);
+    const result=await undoAttendance(env,{booking,reason,createdBy:check.state.email,auditAction:'CLASS_REGISTER_ATTENDANCE_UNDONE'});
+    return json({ok:true,...result});
   }else if(action==='NO_SHOW'){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET admin_notes=? WHERE id=?`).bind(`NO SHOW — ${clean(body.admin_notes,500)}`,id).run();
   }else{

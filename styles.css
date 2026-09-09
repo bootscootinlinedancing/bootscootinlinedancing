@@ -6511,6 +6511,53 @@ body.ranch91-drawer-open{overflow:hidden!important;touch-action:none}
   .ranch-class-row,.ranch-booking-row{align-items:start;flex-direction:column}
 }
 
+/* Phase 3 HQ class register / venue check-in. */
+body.ranch-v91 .class-register-panel{margin-top:28px;padding:clamp(18px,3vw,28px);border:1px solid rgba(205,54,62,.58);background:rgba(12,6,7,.72);scroll-margin-top:24px}
+body.ranch-v91 .class-register-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding-bottom:18px;border-bottom:1px solid rgba(205,54,62,.35)}
+body.ranch-v91 .class-register-head h2{margin:.15rem 0 .35rem}
+body.ranch-v91 .class-register-head p{margin:.25rem 0}
+body.ranch-v91 .class-register-tools{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+body.ranch-v91 .class-register-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0}
+body.ranch-v91 .class-register-summary article{padding:15px;border:1px solid rgba(205,54,62,.35);background:rgba(28,11,13,.72)}
+body.ranch-v91 .class-register-summary span,body.ranch-v91 .class-register-summary strong{display:block}
+body.ranch-v91 .class-register-summary span{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase}
+body.ranch-v91 .class-register-summary strong{margin-top:4px;font-size:1.65rem;color:#fff1df}
+body.ranch-v91 .class-register-list{display:grid;gap:10px}
+body.ranch-v91 .class-register-row{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(130px,.65fr) minmax(170px,.7fr);align-items:center;gap:16px;padding:16px;border:1px solid rgba(205,54,62,.34);background:rgba(16,8,9,.74)}
+body.ranch-v91 .class-register-row.is-checked-in{border-color:rgba(66,162,103,.72);background:rgba(11,30,20,.72)}
+body.ranch-v91 .class-register-person,body.ranch-v91 .class-register-payment,body.ranch-v91 .class-register-attendance{display:grid;gap:4px;min-width:0}
+body.ranch-v91 .class-register-person strong{font-size:1.18rem;color:#fff1df}
+body.ranch-v91 .class-register-person span,body.ranch-v91 .class-register-person small{overflow-wrap:anywhere}
+body.ranch-v91 .class-register-payment{justify-items:start}
+body.ranch-v91 .class-register-attendance{justify-items:stretch;text-align:center}
+body.ranch-v91 .class-check-in-button{min-height:54px;width:100%;font-size:1.05rem}
+body.ranch-v91 .checked-in-label{color:#8ee0aa;font-size:1.05rem}
+body.ranch-v91 .class-register-correct{justify-self:center;padding:4px 7px;border:0;background:transparent;color:#d6b3a8;text-decoration:underline;cursor:pointer}
+body.ranch-v91 .class-register-loading{padding:24px;text-align:center}
+@media(max-width:720px){
+  body.ranch-v91 .class-register-panel{margin-inline:-10px;padding:14px}
+  body.ranch-v91 .class-register-head{display:grid}
+  body.ranch-v91 .class-register-tools{justify-content:stretch}
+  body.ranch-v91 .class-register-tools .button{flex:1 1 auto}
+  body.ranch-v91 .class-register-summary{grid-template-columns:1fr 1fr}
+  body.ranch-v91 .class-register-row{grid-template-columns:1fr;gap:12px}
+  body.ranch-v91 .class-register-payment{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  body.ranch-v91 .class-check-in-button{min-height:60px;font-size:1.15rem}
+}
+@media print{
+  body.printing-class-register .ranch91-drawer,body.printing-class-register .ranch91-topbar,body.printing-class-register .ranch91-statusbar,body.printing-class-register .ranch-notice,body.printing-class-register .ranch-panel-head,body.printing-class-register .ranch-filter-row,body.printing-class-register .class-manager-summary,body.printing-class-register #ranchClasses{display:none!important}
+  body.printing-class-register .ranch-view{display:none!important}
+  body.printing-class-register .ranch-view[data-view-panel="classes"]{display:block!important}
+  body.printing-class-register .ranch-main{padding:0!important;margin:0!important}
+  body.printing-class-register .ranch-panel,body.printing-class-register .class-register-panel{display:block!important;margin:0!important;padding:0!important;border:0!important;background:#fff!important;color:#000!important;box-shadow:none!important}
+  body.printing-class-register .class-register-head{display:block!important;border-bottom:2px solid #000!important}
+  body.printing-class-register .class-register-tools,body.printing-class-register .class-register-email,body.printing-class-register .class-register-correct,body.printing-class-register .class-check-in-button{display:none!important}
+  body.printing-class-register .class-register-summary{grid-template-columns:1fr 1fr!important}
+  body.printing-class-register .class-register-summary article,body.printing-class-register .class-register-row{break-inside:avoid;border:1px solid #777!important;background:#fff!important;color:#000!important}
+  body.printing-class-register .class-register-row{grid-template-columns:1.5fr .7fr .7fr!important}
+  body.printing-class-register .class-register-panel :is(h2,p,strong,span,small){color:#000!important;text-shadow:none!important}
+}
+
 
 /* V92.2 — BACKEND PERFORMANCE */
 #ranch92LastUpdated{

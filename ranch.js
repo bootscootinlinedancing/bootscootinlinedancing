@@ -4,6 +4,7 @@
     bootstrap:null,
     bootstrapVerified:false,
     classes:[],
+    classRegister:null,
     bookings:null,
     customers:null,
     emailCentre:null,
@@ -617,6 +618,7 @@
         ?`<b>FULL</b><small>Waiting list open</small>`
         :`<b>${Math.max(0,Number(c.capacity||0)-Number(c.sold||0))} place${Math.max(0,Number(c.capacity||0)-Number(c.sold||0))===1?'':'s'} remaining</b><small>${esc(c.status)}</small>`}</div>
       <div class="ranch-class-actions">
+        <button type="button" class="button compact" data-class-register="${esc(c.id)}">Register</button>
         <button type="button" class="button secondary compact" data-edit-class="${esc(c.id)}">Edit</button>
         <button type="button" class="button secondary compact" data-duplicate-class="${esc(c.id)}">Duplicate</button>
         ${c.status==='open'?`<button type="button" class="button secondary compact" data-class-status="closed" data-class-id="${esc(c.id)}">Close</button>`:`<button type="button" class="button secondary compact" data-class-status="open" data-class-id="${esc(c.id)}">Open</button>`}
@@ -624,6 +626,7 @@
       </div>
     </article>`).join(''):emptyPanel('No classes match this filter.');
     box.querySelectorAll('[data-edit-class]').forEach(btn=>btn.addEventListener('click',()=>openClassEditor(state.classes.find(c=>c.id===btn.dataset.editClass))));
+    box.querySelectorAll('[data-class-register]').forEach(btn=>btn.addEventListener('click',()=>loadClassRegister(btn.dataset.classRegister)));
     box.querySelectorAll('[data-duplicate-class]').forEach(btn=>btn.addEventListener('click',()=>duplicateClass(btn.dataset.duplicateClass)));
     box.querySelectorAll('[data-class-status]').forEach(btn=>btn.addEventListener('click',()=>changeClassStatus(btn.dataset.classId,btn.dataset.classStatus)));
     box.querySelectorAll('[data-delete-class]').forEach(btn=>btn.addEventListener('click',()=>deleteClass(btn.dataset.deleteClass)));
@@ -641,6 +644,59 @@
     }catch(error){
       box.innerHTML=(error.status===401||error.status===403)?lockedPanel('Class editing is locked','Cloudflare Access must authorise this HQ session.'):setupPanel('Classes unavailable',error.message);
     }
+  }
+  function renderClassRegister(){
+    const panel=$('#classRegisterPanel'),data=state.classRegister;
+    if(!panel||!data)return;
+    const c=data.class||{},rows=data.bookings||[],stats=data.stats||{};
+    panel.hidden=false;
+    panel.innerHTML=`<header class="class-register-head">
+      <div><p class="kicker red">Class register</p><h2>${esc(c.title||'Class')}</h2><p><strong>${esc(fmt(c.starts_at))}</strong> · ${esc(c.venue||'Venue not supplied')}</p></div>
+      <div class="class-register-tools"><button type="button" class="button secondary compact" id="printClassRegister">Print</button><button type="button" class="button secondary compact" id="exportClassRegister">Export CSV</button><button type="button" class="button secondary compact" id="closeClassRegister">Close</button></div>
+    </header>
+    <div class="class-register-summary"><article><span>Checked-in bookings</span><strong>${Number(stats.checked_in_bookings||0)} / ${Number(stats.total_bookings||0)}</strong></article><article><span>Checked-in places</span><strong>${Number(stats.checked_in_places||0)} / ${Number(stats.total_places||0)}</strong></article></div>
+    <div class="class-register-list">${rows.length?rows.map(b=>`<article class="class-register-row ${Number(b.checked_in)?'is-checked-in':''}" data-register-booking="${esc(b.id)}">
+      <div class="class-register-person"><strong>${esc(b.customer_name||'Name not supplied')}</strong><span class="class-register-email">${esc(b.customer_email||'Email not supplied')}</span><small>${esc(b.reference||'')} · ${Number(b.quantity||1)} place${Number(b.quantity||1)===1?'':'s'}</small></div>
+      <div class="class-register-payment"><span class="booking-status">${esc(b.status)}</span><small>${money(b.amount_pence)} · ${esc(b.payment_provider||'')}</small></div>
+      <div class="class-register-attendance">${Number(b.checked_in)?`<strong class="checked-in-label">✓ Checked in</strong><small>${esc(fmt(b.checked_in_at))}</small><button type="button" class="class-register-correct" data-register-undo="${esc(b.id)}">Correct</button>`:`<button type="button" class="button class-check-in-button" data-register-check-in="${esc(b.id)}">Check in</button><small>${b.status==='PENDING'?'Attendance only — no loyalty credit while pending':'Ready to check in'}</small>`}</div>
+    </article>`).join(''):emptyPanel('No active paid or pending bookings are attached to this class.')}</div>`;
+    panel.querySelectorAll('[data-register-check-in]').forEach(button=>button.addEventListener('click',()=>checkInFromRegister(button)));
+    panel.querySelectorAll('[data-register-undo]').forEach(button=>button.addEventListener('click',()=>undoCheckInFromRegister(button)));
+    $('#closeClassRegister')?.addEventListener('click',()=>{panel.hidden=true;state.classRegister=null;});
+    $('#printClassRegister')?.addEventListener('click',()=>{document.body.classList.add('printing-class-register');window.print();});
+    $('#exportClassRegister')?.addEventListener('click',exportClassRegisterCsv);
+  }
+  async function loadClassRegister(classId){
+    const panel=$('#classRegisterPanel');if(!panel)return;
+    panel.hidden=false;panel.innerHTML='<div class="class-register-loading">Loading class register…</div>';
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    try{state.classRegister=await jsonFetch(`${ADMIN_API_PREFIX}/classes?register=${encodeURIComponent(classId)}`,{cache:'no-store'});renderClassRegister();}
+    catch(error){panel.innerHTML=lockedPanel('Class register unavailable',error.message);}
+  }
+  async function checkInFromRegister(button){
+    const id=button.dataset.registerCheckIn,classId=state.classRegister?.class?.id;if(!id||!classId)return;
+    button.disabled=true;button.textContent='Checking in…';
+    try{
+      const result=await jsonFetch(`${ADMIN_API_PREFIX}/bookings`,{method:'PATCH',body:JSON.stringify({id,action:'REGISTER_CHECK_IN'})});
+      toast(result.already_checked_in?'Already checked in.':'Checked in.','success');
+      await loadClassRegister(classId);
+    }catch(error){button.disabled=false;button.textContent='Check in';toast(error.message,'error');}
+  }
+  async function undoCheckInFromRegister(button){
+    const id=button.dataset.registerUndo,classId=state.classRegister?.class?.id;if(!id||!classId)return;
+    const reason=window.prompt('Why is this check-in being corrected?');
+    if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
+    button.disabled=true;
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/bookings`,{method:'PATCH',body:JSON.stringify({id,action:'UNDO_CHECK_IN',reason:reason.trim()})});toast('Attendance correction recorded.','success');await loadClassRegister(classId);}
+    catch(error){button.disabled=false;toast(error.message,'error');}
+  }
+  function exportClassRegisterCsv(){
+    const data=state.classRegister,rows=data?.bookings||[];if(!data||!rows.length)return toast('There are no bookings to export.','error');
+    const date=String(data.class?.starts_at||'class').slice(0,10),slug=String(data.class?.title||'class').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    downloadCsv(`boot-scootin-register-${date}-${slug||'class'}.csv`,
+      ['Customer name','Email','Booking reference','Places','Booking/payment status','Amount GBP','Payment provider','Attendance status','Checked in at'],
+      rows.map(b=>[b.customer_name,b.customer_email,b.reference,b.quantity,b.status,(Number(b.amount_pence||0)/100).toFixed(2),b.payment_provider,Number(b.checked_in)?'Checked in':'Not checked in',b.checked_in_at||'']));
+    toast('Class register CSV downloaded.');
   }
   const CLASS_VENUE_TEMPLATES={
     edgbaston:{
@@ -1634,6 +1690,7 @@ Type REFUNDED to continue.`);
   });
   document.addEventListener('submit',event=>{if(event.target?.id==='crmLoyaltyTransactionForm'){event.preventDefault();addManualLoyaltyTransaction(event.target);}});
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#classEditorModal')?.hidden)closeClassEditor();});
+  window.addEventListener('afterprint',()=>document.body.classList.remove('printing-class-register'));
 
 
 
