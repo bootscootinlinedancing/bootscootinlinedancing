@@ -827,7 +827,8 @@ async function publicClasses(env) {
       COALESCE((
         SELECT SUM(b.quantity)
         FROM bookings b
-        WHERE b.class_id=c.id AND b.status='PAID'
+        WHERE b.class_id=c.id
+          AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
       ),0) AS sold,
       c.status,c.level,c.public_notes,c.poster_url,
       MAX(
@@ -836,7 +837,8 @@ async function publicClasses(env) {
         - COALESCE((
             SELECT SUM(b.quantity)
             FROM bookings b
-            WHERE b.class_id=c.id AND b.status='PAID'
+            WHERE b.class_id=c.id
+              AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
           ),0)
         - COALESCE((
             SELECT SUM(h.quantity)
@@ -1567,6 +1569,22 @@ async function bookingWithClass(env, bookingId) {
   return env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.id=?`).bind(bookingId).first();
 }
 
+async function reconcileClassSold(env, classId) {
+  if (!classId) return 0;
+  await env.BOOKINGS_DB.prepare(`
+    UPDATE classes
+    SET sold=COALESCE((
+      SELECT SUM(b.quantity)
+      FROM bookings b
+      WHERE b.class_id=classes.id
+        AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
+    ),0),updated_at=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).bind(classId).run();
+  const row=await env.BOOKINGS_DB.prepare(`SELECT sold FROM classes WHERE id=?`).bind(classId).first();
+  return Math.max(0,Number(row?.sold||0));
+}
+
 
 function normalisePromoCode(value){return clean(value,48).toUpperCase().replace(/[^A-Z0-9-]/g,'');}
 function promoDiscountPence(promo, subtotal){
@@ -1644,13 +1662,22 @@ async function createClassReservation(request, env) {
 
   if (!classRow) return json({ error: 'This class is no longer open for booking.' }, 404);
 
-  const held = await env.BOOKINGS_DB.prepare(
-    `SELECT COALESCE(SUM(quantity),0) total FROM booking_holds WHERE class_id=? AND expires_at>?`
-  ).bind(classId, new Date().toISOString()).first();
+  const occupancy = await env.BOOKINGS_DB.prepare(`
+    SELECT
+      COALESCE((
+        SELECT SUM(b.quantity) FROM bookings b
+        WHERE b.class_id=?
+          AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
+      ),0) booked,
+      COALESCE((
+        SELECT SUM(h.quantity) FROM booking_holds h
+        WHERE h.class_id=? AND h.expires_at>?
+      ),0) held
+  `).bind(classId,classId,new Date().toISOString()).first();
 
   const spaces = Math.max(
     0,
-    Number(classRow.capacity || 0) - Number(classRow.sold || 0) - Number(held?.total || 0)
+    Number(classRow.capacity || 0) - Number(occupancy?.booked || 0) - Number(occupancy?.held || 0)
   );
 
   const id = crypto.randomUUID();
@@ -1687,9 +1714,33 @@ async function createClassReservation(request, env) {
   const holdId = crypto.randomUUID();
   const holdExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-  await env.BOOKINGS_DB.prepare(
-    `INSERT INTO booking_holds(id,class_id,quantity,expires_at) VALUES(?,?,?,?)`
-  ).bind(holdId, classId, quantity, holdExpiry).run();
+  const holdResult=await env.BOOKINGS_DB.prepare(`
+    INSERT INTO booking_holds(id,class_id,quantity,expires_at)
+    SELECT ?,?,?,?
+    FROM classes c
+    WHERE c.id=? AND c.status='open' AND c.starts_at>?
+      AND ?<=c.capacity
+        - COALESCE((
+            SELECT SUM(b.quantity) FROM bookings b
+            WHERE b.class_id=c.id
+              AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
+          ),0)
+        - COALESCE((
+            SELECT SUM(h.quantity) FROM booking_holds h
+            WHERE h.class_id=c.id AND h.expires_at>?
+          ),0)
+  `).bind(holdId,classId,quantity,holdExpiry,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
+
+  if(Number(holdResult?.meta?.changes||0)===0){
+    await env.BOOKINGS_DB.prepare(
+      `INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token)
+       VALUES(?,?,?,?,?,'WAITING',?)`
+    ).bind(id,classId,name,email,quantity,secureToken).run();
+    return json({
+      ok:true,waitlisted:true,reference,status:'WAITLISTED',secure_token:secureToken,customer_token:customerToken,
+      message:'You have been added to the waiting list. No payment has been taken.'
+    },201);
+  }
 
   // Try the upgraded schema first. If the customer_token column has not yet
   // propagated, use the compatible schema and continue safely.
@@ -1733,6 +1784,7 @@ async function createClassReservation(request, env) {
 
   if(amount===0){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
+    await reconcileClassSold(env,classId);
     if(promotion)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotion_redemptions(id,promotion_code_id,booking_id,customer_email,discount_pence) VALUES(?,?,?,?,?)`).bind(crypto.randomUUID(),promotion.promotion_code_id,id,email,discountPence).run();
     const paidBooking=await bookingWithClass(env,id); if(paidBooking)await deliverBookingNotification(env,paidBooking,'BOOKING_PAID');
     return json({ok:true,reference,status:'PAID',secure_token:secureToken,customer_token:customerToken,discount_pence:discountPence,total_pence:0},201);
@@ -1810,16 +1862,13 @@ async function createClassReservation(request, env) {
   // Safe fallback before SumUp has been configured: reserve the space and let Nora confirm payment manually.
   await env.BOOKINGS_DB.batch([
     env.BOOKINGS_DB.prepare(
-      `UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP
-       WHERE id=? AND sold+?<=capacity`
-    ).bind(quantity, classId, quantity),
-    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId),
-    env.BOOKINGS_DB.prepare(
       `UPDATE bookings SET payment_provider='MANUAL',
        admin_notes='Online payment unavailable; manual confirmation required.'
        WHERE id=?`
-    ).bind(id)
+    ).bind(id),
+    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
   ]);
+  await reconcileClassSold(env,classId);
 
   return json({
     ok: true,
@@ -1864,10 +1913,6 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
 
     if (Number(paid?.meta?.changes || 0) > 0) {
       await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(
-          `UPDATE classes SET sold=sold+?,updated_at=CURRENT_TIMESTAMP
-           WHERE id=? AND sold+?<=capacity`
-        ).bind(booking.quantity, booking.class_id, booking.quantity),
         env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
         env.BOOKINGS_DB.prepare(
           `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
@@ -1879,6 +1924,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
           checkout_status: checkoutStatus
         }))
       ]);
+      await reconcileClassSold(env,booking.class_id);
       const confirmedBooking = await bookingWithClass(env, booking.id);
       if (confirmedBooking) await deliverBookingNotification(env, confirmedBooking, 'BOOKING_CONFIRMED');
       await awardLoyaltyStampForBooking(env, booking.id);
@@ -2022,10 +2068,10 @@ async function cancelBooking(request,env){
 
   await env.BOOKINGS_DB.batch([
     env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=CURRENT_TIMESTAMP,cancellation_band=?,refund_status=? WHERE id=?`).bind(band,refundStatus,booking.id),
-    env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(booking.quantity,booking.class_id),
     env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
     env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(booking.customer_email,'CUSTOMER_CANCELLED','booking',booking.id,JSON.stringify({band,refundStatus}))
   ]);
+  await reconcileClassSold(env,booking.class_id);
 
   const message=band==='FULL_REFUND'
     ?'Your cancellation is recorded. A full refund or class credit is due.'
@@ -3056,14 +3102,19 @@ async function adminClasses(request, env) {
   if(request.method==='PATCH'){
     const existing=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(id).first();
     if(!existing)return json({error:'The class could not be found.'},404);
-    if(Number(b.capacity)<Number(existing.sold||0)){
-      return json({error:`Capacity cannot be lower than the ${existing.sold} places already booked.`},409);
+    const occupied=await env.BOOKINGS_DB.prepare(`
+      SELECT COALESCE(SUM(quantity),0) total FROM bookings
+      WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))
+    `).bind(id).first();
+    if(Number(b.capacity)<Number(occupied?.total||0)){
+      return json({error:`Capacity cannot be lower than the ${occupied.total} places already booked.`},409);
     }
     await env.BOOKINGS_DB.prepare(`
       UPDATE classes
       SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,poster_url=?,updated_at=CURRENT_TIMESTAMP
       WHERE id=?
     `).bind(...vals,id).run();
+    await reconcileClassSold(env,id);
     const detailsChanged=existing && (existing.starts_at!==starts.toISOString() || String(existing.venue||'')!==venue || String(existing.location||'')!==location || String(existing.title||'')!==title);
     let notified=0;
     if(detailsChanged && await automationEnabled(env,'class_updates')){
@@ -4091,11 +4142,7 @@ async function deleteTestBooking(env, booking, actor) {
     ).bind(holdId).run();
   }
 
-  await env.BOOKINGS_DB.prepare(`
-    UPDATE classes
-    SET sold=MAX(0,sold-?),updated_at=CURRENT_TIMESTAMP
-    WHERE id=?
-  `).bind(Number(booking.quantity || 0), booking.class_id).run();
+  await reconcileClassSold(env,booking.class_id);
 
   await env.BOOKINGS_DB.prepare(`
     INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
@@ -4201,6 +4248,7 @@ async function adminBookings(request, env, ctx) {
   if(action==='MARK_PAID'){
     if(booking.status!=='PAID'){
       await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
+      await reconcileClassSold(env,booking.class_id);
       const confirmed=await bookingWithClass(env,id);if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED');
       await awardLoyaltyStampForBooking(env,id);
     }
@@ -4209,6 +4257,7 @@ async function adminBookings(request, env, ctx) {
       const refundStatus = booking.status === 'PAID' && booking.payment_provider === 'SUMUP' ? 'REFUND_DUE' : 'NO_PAYMENT_TAKEN';
       await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),refund_status=? WHERE id=?`)
         .bind(refundStatus,id).run();
+      await reconcileClassSold(env,booking.class_id);
       const cancelled=await bookingWithClass(env,id);if(cancelled)await deliverBookingNotification(env,cancelled,'BOOKING_CANCELLED');
     }
   }else if(action==='REFUND_SUMUP'){
@@ -4242,6 +4291,7 @@ async function adminBookings(request, env, ctx) {
         await refundSumUpTransaction(env,transactionId,isFull?null:requested);
         await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status=?,refund_status='REFUNDED',refund_amount_pence=?,provider_transaction_id=?,cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),admin_notes=? WHERE id=?`)
           .bind(isFull?'REFUNDED':'CANCELLED',requested,transactionId,clean(`Refund confirmed by SumUp. Trace ${refundTraceId}. ${body.admin_notes||''}`,600),id).run();
+        await reconcileClassSold(env,booking.class_id);
         if(isFull) await reverseLoyaltyStampForBooking(env,id);
         await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
           .bind(check.state.email,'REFUND_SUMUP','booking',id,JSON.stringify({trace_id:refundTraceId,requested_amount_pence:requested,transaction_id:transactionId,full_refund:isFull})).run().catch(()=>{});
@@ -4269,6 +4319,7 @@ async function adminBookings(request, env, ctx) {
     const refundAmount=Math.max(0,Number(body.refund_amount_pence)||booking.amount_pence);
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='REFUNDED',refund_status='REFUNDED',refund_amount_pence=?,admin_notes=? WHERE id=?`)
       .bind(refundAmount,clean(body.admin_notes,600),id).run();
+    await reconcileClassSold(env,booking.class_id);
     await reverseLoyaltyStampForBooking(env,id); // MANUAL_LOYALTY_REFUND_REVERSAL
     const refunded=await bookingWithClass(env,id);if(refunded)await deliverBookingNotification(env,{...refunded,refund_amount_pence:refundAmount},'REFUND_CONFIRMED');
   }else if(action==='ISSUE_CREDIT'){
