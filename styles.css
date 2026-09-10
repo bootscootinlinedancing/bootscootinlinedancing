@@ -6558,6 +6558,40 @@ body.ranch-v91 .class-register-loading{padding:24px;text-align:center}
   body.printing-class-register .class-register-panel :is(h2,p,strong,span,small){color:#000!important;text-shadow:none!important}
 }
 
+/* Stage 6 HQ class-pass administration. */
+body.ranch-v91 .class-pass-admin-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 18px}
+body.ranch-v91 .class-pass-admin-summary article{padding:14px;border:1px solid rgba(205,54,62,.38);background:rgba(25,10,12,.72)}
+body.ranch-v91 .class-pass-admin-summary span,body.ranch-v91 .class-pass-admin-summary strong{display:block}
+body.ranch-v91 .class-pass-admin-summary span{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em}
+body.ranch-v91 .class-pass-admin-summary strong{margin-top:5px;color:#fff1df;font-size:1.55rem}
+body.ranch-v91 .class-pass-admin-tools{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end;margin-bottom:18px}
+body.ranch-v91 .class-pass-admin-tools label{display:grid;gap:5px;font-weight:700}
+body.ranch-v91 .class-pass-admin-tools input:not([type=checkbox]),body.ranch-v91 .class-pass-admin-tools select{min-height:44px;padding:8px 10px;border:1px solid rgba(205,54,62,.45);background:#170b0c;color:#fff1df}
+body.ranch-v91 .class-pass-nearing{display:flex!important;align-items:center;min-height:44px;gap:7px}
+body.ranch-v91 .class-pass-admin-list{display:grid;gap:12px}
+body.ranch-v91 .class-pass-admin-card{padding:16px;border:1px solid rgba(205,54,62,.4);background:rgba(16,8,9,.74)}
+body.ranch-v91 .class-pass-admin-card>header{display:flex;justify-content:space-between;gap:15px;align-items:start}
+body.ranch-v91 .class-pass-admin-card h3,body.ranch-v91 .class-pass-admin-card p{margin:.2rem 0}
+body.ranch-v91 .class-pass-admin-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0}
+body.ranch-v91 .class-pass-admin-facts span{display:flex;flex-direction:column-reverse;padding:9px;border-left:2px solid #b9242d;font-size:.72rem}
+body.ranch-v91 .class-pass-admin-facts b{font-size:1rem;color:#fff1df}
+body.ranch-v91 .class-pass-admin-detail{margin-top:14px}
+body.ranch-v91 .class-pass-reconciliation{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:12px;border:1px solid rgba(205,54,62,.32);background:rgba(34,13,15,.72)}
+body.ranch-v91 .class-pass-reconciliation span,body.ranch-v91 .class-pass-reconciliation b{display:block;overflow-wrap:anywhere}
+body.ranch-v91 .class-pass-reconciliation span{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}
+body.ranch-v91 .class-pass-reconciliation b{margin-bottom:3px;color:#fff1df;font-size:.86rem;text-transform:none;letter-spacing:0}
+body.ranch-v91 .class-pass-admin-actions,body.ranch-v91 .class-pass-history-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+body.ranch-v91 .class-pass-admin-actions form,body.ranch-v91 .class-pass-history-grid>section{padding:13px;border:1px solid rgba(205,54,62,.32);background:rgba(34,13,15,.72)}
+body.ranch-v91 .class-pass-admin-actions label{display:grid;gap:5px;margin:8px 0}
+body.ranch-v91 .class-pass-admin-actions :is(input,textarea){box-sizing:border-box;width:100%;padding:8px;border:1px solid #815158;background:#100809;color:#fff1df}
+body.ranch-v91 .class-pass-history-grid{grid-template-columns:1fr 1fr}
+body.ranch-v91 .class-pass-history-grid article,body.ranch-v91 .class-pass-admin-detail>section>article{padding:9px 0;border-bottom:1px solid rgba(205,54,62,.22)}
+body.ranch-v91 .class-pass-eligibility-admin{margin-top:28px;padding-top:20px;border-top:1px solid rgba(205,54,62,.4)}
+body.ranch-v91 .class-pass-eligibility-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 4px;border-bottom:1px solid rgba(205,54,62,.25)}
+body.ranch-v91 .class-pass-eligibility-row div{display:grid;gap:3px}
+@media(max-width:900px){body.ranch-v91 .class-pass-admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}body.ranch-v91 .class-pass-admin-tools{grid-template-columns:1fr 1fr}body.ranch-v91 .class-pass-admin-actions{grid-template-columns:1fr}body.ranch-v91 .class-pass-reconciliation{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){body.ranch-v91 .class-pass-admin-tools,body.ranch-v91 .class-pass-history-grid,body.ranch-v91 .class-pass-reconciliation{grid-template-columns:1fr}body.ranch-v91 .class-pass-admin-facts{grid-template-columns:1fr 1fr}body.ranch-v91 .class-pass-eligibility-row{align-items:start;flex-direction:column}}
+
 
 /* V92.2 — BACKEND PERFORMANCE */
 #ranch92LastUpdated{

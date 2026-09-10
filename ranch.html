@@ -102,6 +102,7 @@
     <nav class="ranch91-nav" aria-label="HQ sections">
       <button type="button" data-view="overview" class="active">Overview</button>
       <button type="button" data-view="classes">Classes</button>
+      <button type="button" data-view="class-passes">Class Passes</button>
       <button type="button" data-view="bookings">Bookings</button>
       <button type="button" data-view="customers">Customers</button>
       <button type="button" data-view="merch-orders">Merch Orders</button>
@@ -148,6 +149,24 @@
         <strong id="ranch92ModeTitle">Checking backend configuration…</strong>
         <span id="ranch92ModeDetail">Please wait.</span>
         <small id="ranch92LastUpdated"></small>
+      </section>
+
+      <section class="ranch-view" data-view-panel="class-passes">
+        <div class="ranch-panel">
+          <div class="ranch-panel-head"><div><p class="kicker red">Secure pass management</p><h2>Class Passes</h2><p>Review purchased passes, authoritative credit balances, expiry and class eligibility.</p></div><button class="button secondary compact" id="refreshClassPasses" type="button">Refresh</button></div>
+          <div id="classPassAdminSummary" class="class-pass-admin-summary" aria-live="polite"></div>
+          <div class="class-pass-admin-tools">
+            <label>Search<input id="classPassAdminSearch" type="search" placeholder="Member name or email"></label>
+            <label>Status<select id="classPassAdminStatus"><option value="">All statuses</option><option>ACTIVE</option><option>USED</option><option>EXPIRED</option><option>CANCELLED</option><option>PENDING</option></select></label>
+            <label>Product<select id="classPassAdminProduct"><option value="">All products</option></select></label>
+            <label class="class-pass-nearing"><input id="classPassAdminNearing" type="checkbox"> Expiring within 7 days</label>
+          </div>
+          <div id="ranchClassPasses" class="class-pass-admin-list">Loading…</div>
+          <section class="class-pass-eligibility-admin">
+            <header><div><p class="kicker red">Class settings</p><h3>Class-pass eligibility</h3><p>Normal classes can accept credits; special, private and anniversary events can be excluded.</p></div></header>
+            <div id="ranchClassPassEligibility">Loading…</div>
+          </section>
+        </div>
       </section>
       <section class="ranch91-warning" id="ranch91AccessWarning" aria-live="polite">
         <strong>Checking Cloudflare Access protection…</strong>

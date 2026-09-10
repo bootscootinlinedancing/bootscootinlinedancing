@@ -1250,16 +1250,23 @@ async function ensureBookingSchema(env) {
       idempotency_key TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS class_pass_admin_operations (
+      idempotency_key TEXT PRIMARY KEY,action TEXT NOT NULL,target_type TEXT NOT NULL,target_id TEXT NOT NULL,
+      actor TEXT NOT NULL,reason TEXT NOT NULL,previous_json TEXT,next_json TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE INDEX IF NOT EXISTS idx_member_passes_member ON member_passes(member_id,status,valid_through)`,
     `CREATE INDEX IF NOT EXISTS idx_member_passes_customer ON member_passes(customer_id,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_pass ON class_pass_credit_ledger(pass_id,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_member ON class_pass_credit_ledger(member_id,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_booking ON class_pass_credit_ledger(booking_id,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_class_pass_audit_pass ON class_pass_audit_log(pass_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_admin_operations_target ON class_pass_admin_operations(target_type,target_id,created_at)`,
     `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_update BEFORE UPDATE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
     `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_delete BEFORE DELETE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
     `CREATE TRIGGER IF NOT EXISTS class_pass_audit_no_update BEFORE UPDATE ON class_pass_audit_log BEGIN SELECT RAISE(ABORT,'class pass audit log is immutable'); END`,
     `CREATE TRIGGER IF NOT EXISTS class_pass_audit_no_delete BEFORE DELETE ON class_pass_audit_log BEGIN SELECT RAISE(ABORT,'class pass audit log is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_admin_operations_no_update BEFORE UPDATE ON class_pass_admin_operations BEGIN SELECT RAISE(ABORT,'class pass admin operations are immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_admin_operations_no_delete BEFORE DELETE ON class_pass_admin_operations BEGIN SELECT RAISE(ABORT,'class pass admin operations are immutable'); END`,
     `CREATE TABLE IF NOT EXISTS customer_crm_profiles (
       customer_key TEXT PRIMARY KEY,
       birthday TEXT,
@@ -3537,6 +3544,129 @@ function parseClassDateTime(value,label){
   return explicitClassDate(text,label);
 }
 
+function adminPassOperationId(value){
+  const id=String(value||'').trim();
+  return /^[A-Za-z0-9_-]{12,100}$/.test(id)?id:'';
+}
+
+async function adminClassPassDetail(env,passId){
+  const pass=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.name product_name,p.code product_code,c.name customer_name,c.email customer_email,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+    JOIN customers c ON c.id=mp.customer_id WHERE mp.id=?
+  `).bind(passId).first();
+  if(!pass)return null;
+  const [ledger,bookings,audit]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT l.id,l.amount,l.event_type,l.reason,l.actor_type,l.actor_id,l.created_at,l.booking_id,c.title class_title,c.starts_at,c.venue FROM class_pass_credit_ledger l LEFT JOIN bookings b ON b.id=l.booking_id LEFT JOIN classes c ON c.id=b.class_id WHERE l.pass_id=? ORDER BY l.created_at DESC,l.id`).bind(passId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.status,b.amount_pence,b.created_at,c.title,c.starts_at,c.venue FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.class_pass_id=? ORDER BY c.starts_at DESC`).bind(passId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT action,actor_type,actor_id,reason,previous_json,next_json,created_at FROM class_pass_audit_log WHERE pass_id=? ORDER BY created_at DESC,id`).bind(passId).all()
+  ]);
+  return {...pass,remaining_credits:Number(pass.remaining_credits||0),derived_status:classPassDerivedStatus(pass,pass.remaining_credits),ledger:ledger.results||[],bookings:bookings.results||[],audit:audit.results||[]};
+}
+
+function safeAdminClassPass(pass,withHistory=false){
+  const safe={id:pass.id,product_id:pass.product_id,product_name:pass.product_name,product_code:pass.product_code,
+    customer_name:pass.customer_name,customer_email:pass.customer_email,status:pass.status,derived_status:pass.derived_status,
+    purchased_at:pass.purchased_at,original_valid_through:pass.original_valid_through,valid_through:pass.valid_through,
+    original_credits:Number(pass.original_credits||0),remaining_credits:Number(pass.remaining_credits||0),
+    purchase_amount_pence:Number(pass.purchase_amount_pence||0),currency:pass.currency||'GBP',payment_provider:pass.payment_provider,
+    provider_transaction_id:pass.provider_transaction_id||null,created_at:pass.created_at,updated_at:pass.updated_at};
+  if(withHistory)Object.assign(safe,{ledger:pass.ledger||[],bookings:pass.bookings||[],audit:pass.audit||[]});
+  return safe;
+}
+
+async function adminClassPasses(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env);
+  const url=new URL(request.url);
+  if(request.method==='GET'&&url.searchParams.get('mode')==='eligibility'){
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT c.id,c.title,c.venue,c.starts_at,c.status,COALESCE(e.eligible,0) eligible,e.reason,e.updated_by,e.updated_at FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id ORDER BY c.starts_at DESC LIMIT 300`).all();
+    return json({classes:rows.results||[]});
+  }
+  if(request.method==='GET'&&url.searchParams.get('id')){
+    const detail=await adminClassPassDetail(env,clean(url.searchParams.get('id'),120));
+    return detail?json({pass:safeAdminClassPass(detail,true)}):json({error:'Class pass not found.'},404);
+  }
+  if(request.method==='GET'){
+    const result=await env.BOOKINGS_DB.prepare(`
+      SELECT mp.*,p.name product_name,p.code product_code,c.name customer_name,c.email customer_email,
+        COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+      FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id JOIN customers c ON c.id=mp.customer_id
+      ORDER BY COALESCE(mp.purchased_at,mp.created_at) DESC LIMIT 500
+    `).all();
+    const today=londonCalendarDate(),near=addCalendarDays(today,7);
+    let passes=(result.results||[]).map(pass=>({...pass,remaining_credits:Number(pass.remaining_credits||0),derived_status:classPassDerivedStatus(pass,pass.remaining_credits,today)}));
+    const all=passes;
+    const search=clean(url.searchParams.get('search'),160).toLowerCase(),status=clean(url.searchParams.get('status'),20).toUpperCase(),product=clean(url.searchParams.get('product'),80),nearing=url.searchParams.get('nearing_expiry')==='1';
+    passes=passes.filter(pass=>(!search||`${pass.customer_name} ${pass.customer_email}`.toLowerCase().includes(search))&&(!status||pass.derived_status===status)&&(!product||pass.product_id===product)&&(!nearing||(pass.derived_status==='ACTIVE'&&pass.remaining_credits>0&&pass.valid_through>=today&&pass.valid_through<=near)));
+    const products=await activeClassPassProducts(env);
+    return json({passes:passes.map(pass=>safeAdminClassPass(pass)),products,summary:{
+      passes_sold:all.filter(p=>p.status==='ACTIVE'||Boolean(p.purchased_at)).length,
+      active_passes:all.filter(p=>p.derived_status==='ACTIVE').length,
+      outstanding_credits:all.filter(p=>p.derived_status==='ACTIVE').reduce((n,p)=>n+p.remaining_credits,0),
+      revenue_pence:all.filter(p=>p.status==='ACTIVE').reduce((n,p)=>n+Number(p.purchase_amount_pence||0),0),
+      nearing_expiry:all.filter(p=>p.derived_status==='ACTIVE'&&p.remaining_credits>0&&p.valid_through>=today&&p.valid_through<=near).length
+    }});
+  }
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),action=clean(body?.action,40),operationId=adminPassOperationId(body?.operation_id),reason=clean(body?.reason,500);
+  if(!body||!operationId||!reason)return json({error:'A valid operation reference and audit reason are required.'},400);
+  if(action==='SET_ELIGIBILITY'){
+    const classId=clean(body.class_id,120),eligible=body.eligible===true||body.eligible===1?1:0;
+    const klass=await env.BOOKINGS_DB.prepare(`SELECT id FROM classes WHERE id=?`).bind(classId).first();if(!klass)return json({error:'Class not found.'},404);
+    const key=`admin-pass-eligibility:${classId}:${operationId}`;
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT reason,next_json FROM class_pass_admin_operations WHERE idempotency_key=?`).bind(key).first();
+    if(existing){const prior=JSON.parse(existing.next_json||'{}');if(Number(prior.eligible)!==eligible||existing.reason!==reason)return json({error:'Operation reference conflicts with an earlier eligibility change.'},409);return json({ok:true,idempotent:true,eligible:Boolean(prior.eligible)});}
+    const previous=await env.BOOKINGS_DB.prepare(`SELECT eligible,reason,updated_by,updated_at FROM class_pass_class_eligibility WHERE class_id=?`).bind(classId).first();
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_admin_operations(idempotency_key,action,target_type,target_id,actor,reason,previous_json,next_json) VALUES(?,'ELIGIBILITY_CHANGED','class',?,?,?,?,?)`).bind(key,classId,check.state.email,reason,JSON.stringify(previous||{eligible:0}),JSON.stringify({eligible})),
+      env.BOOKINGS_DB.prepare(`INSERT INTO class_pass_class_eligibility(class_id,eligible,reason,updated_by,updated_at) SELECT ?,?,?,?,CURRENT_TIMESTAMP WHERE EXISTS(SELECT 1 FROM class_pass_admin_operations WHERE idempotency_key=? AND reason=? AND next_json=?) ON CONFLICT(class_id) DO UPDATE SET eligible=excluded.eligible,reason=excluded.reason,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP`).bind(classId,eligible,reason,check.state.email,key,reason,JSON.stringify({eligible}))
+    ]);
+    const recorded=await env.BOOKINGS_DB.prepare(`SELECT reason,next_json FROM class_pass_admin_operations WHERE idempotency_key=?`).bind(key).first(),recordedNext=JSON.parse(recorded?.next_json||'{}');
+    if(!recorded||recorded.reason!==reason||Number(recordedNext.eligible)!==eligible)return json({error:'Operation reference conflicts with an earlier eligibility change.'},409);
+    return json({ok:true,eligible:Boolean(eligible)});
+  }
+  const passId=clean(body.pass_id,120),pass=await adminClassPassDetail(env,passId);if(!pass)return json({error:'Class pass not found.'},404);
+  if(action==='ADJUST_CREDIT'){
+    const amount=Number(body.amount);if(!Number.isInteger(amount)||amount===0||Math.abs(amount)>100)return json({error:'Adjustment must be a non-zero whole number between -100 and 100.'},400);
+    if(pass.status!=='ACTIVE')return json({error:'Credits can be adjusted only on an activated, non-cancelled pass.'},409);
+    const key=`admin-pass-adjust:${passId}:${operationId}`;
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_pass_credit_ledger WHERE idempotency_key=?`).bind(key).first();
+    if(existing){if(existing.pass_id!==passId||Number(existing.amount)!==amount||existing.reason!==reason)return json({error:'Operation reference conflicts with an earlier adjustment.'},409);return json({ok:true,idempotent:true,balance:await classPassBalance(env,passId,pass.member_id)});}
+    const ledgerId=crypto.randomUUID();
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_credit_ledger(id,pass_id,member_id,amount,event_type,reason,actor_type,actor_id,idempotency_key) SELECT ?,p.id,p.member_id,?,'ADMIN_ADJUSTMENT',?,'ADMIN',?,? FROM member_passes p WHERE p.id=? AND (? > 0 OR COALESCE((SELECT SUM(amount) FROM class_pass_credit_ledger WHERE pass_id=p.id),0)+?>=0)`).bind(ledgerId,amount,reason,check.state.email,key,passId,amount,amount),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_audit_log(id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key) SELECT ?,p.id,'CREDIT_ADJUSTED','ADMIN',?,?,?, ?,? FROM member_passes p WHERE p.id=? AND EXISTS(SELECT 1 FROM class_pass_credit_ledger WHERE idempotency_key=?)`).bind(crypto.randomUUID(),check.state.email,reason,JSON.stringify({balance:pass.remaining_credits}),JSON.stringify({balance:pass.remaining_credits+amount,amount}),`admin-pass-adjust-audit:${passId}:${operationId}`,passId,key)
+    ]);
+    if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'This adjustment would make the authoritative balance negative.'},409);
+    return json({ok:true,balance:await classPassBalance(env,passId,pass.member_id)});
+  }
+  if(action==='EXTEND_EXPIRY'){
+    const nextDate=clean(body.valid_through,10),key=`admin-pass-expiry:${passId}:${operationId}`;
+    if(!dateOk(nextDate)||addCalendarDays(nextDate,0)!==nextDate)return json({error:'New expiry must be a valid calendar date.'},400);
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT reason,next_json FROM class_pass_audit_log WHERE idempotency_key=?`).bind(key).first();if(existing){const prior=JSON.parse(existing.next_json||'{}');if(prior.valid_through!==nextDate||existing.reason!==reason)return json({error:'Operation reference conflicts with an earlier expiry change.'},409);return json({ok:true,idempotent:true,valid_through:prior.valid_through});}
+    if(!pass.valid_through||nextDate<=pass.valid_through)return json({error:'New expiry must be later than the current expiry.'},400);
+    if(pass.status==='CANCELLED')return json({error:'A cancelled pass cannot be extended or reactivated.'},409);
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE member_passes SET valid_through=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'CANCELLED' AND valid_through=?`).bind(nextDate,passId,pass.valid_through),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_audit_log(id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key) VALUES(?,?,'EXPIRY_EXTENDED','ADMIN',?,?,?,?,?)`).bind(crypto.randomUUID(),passId,check.state.email,reason,JSON.stringify({valid_through:pass.valid_through}),JSON.stringify({valid_through:nextDate}),key)
+    ]);
+    return json({ok:true,valid_through:nextDate,derived_status:classPassDerivedStatus({...pass,valid_through:nextDate},pass.remaining_credits)});
+  }
+  if(action==='CANCEL_PASS'){
+    const key=`admin-pass-cancel:${passId}:${operationId}`,existing=await env.BOOKINGS_DB.prepare(`SELECT id FROM class_pass_audit_log WHERE idempotency_key=?`).bind(key).first();if(existing)return json({ok:true,idempotent:true,status:'CANCELLED'});
+    if(pass.status==='CANCELLED')return json({ok:true,idempotent:true,status:'CANCELLED'});
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE member_passes SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'CANCELLED'`).bind(passId),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_audit_log(id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key) VALUES(?,?,'PASS_CANCELLED','ADMIN',?,?,?,?,?)`).bind(crypto.randomUUID(),passId,check.state.email,reason,JSON.stringify({status:pass.status}),JSON.stringify({status:'CANCELLED',refund:'NOT_AUTOMATIC'}),key)
+    ]);
+    return json({ok:true,status:'CANCELLED',refund_issued:false});
+  }
+  return json({error:'Unsupported class-pass action.'},400);
+}
+
 async function adminClasses(request, env) {
   const check=requireAccessAdmin(request,env);
   if(check.response)return check.response;
@@ -5651,6 +5781,7 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env, ctx);

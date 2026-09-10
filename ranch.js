@@ -4,6 +4,7 @@
     bootstrap:null,
     bootstrapVerified:false,
     classes:[],
+    classPasses:null,
     classRegister:null,
     bookings:null,
     customers:null,
@@ -278,7 +279,7 @@
   window.addEventListener('pagehide',clearLegacyScrollLocks);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!drawer?.classList.contains('open'))clearLegacyScrollLocks();});
 
-  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
+  const titles={overview:'HQ Home',classes:'Classes','class-passes':'Class Passes',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
     state.currentView=name;
     $$('.ranch-view').forEach(panel=>panel.classList.toggle('active',panel.dataset.viewPanel===name));
@@ -287,6 +288,7 @@
     setDrawer(false);
     window.scrollTo({top:0,behavior:'instant'});
     if(name==='classes')loadClasses();
+    if(name==='class-passes')loadClassPasses();
     if(name==='bookings')loadBookings();
     if(name==='customers')loadCustomers();
     if(name==='merch-orders')loadMerchOrders();
@@ -1139,6 +1141,27 @@ Type REFUNDED to continue.`);
   const CRM_TAGS=['Beginner','Improver','Advanced','Regular','VIP','Volunteer','Instructor','Loyalty Member','Inactive','Birthday Month'];
   function customerHealthBadge(status){const label=status==='ACTIVE'?'Active':status==='AT_RISK'?'At risk':'Inactive';return `<span class="crm-health crm-health-${String(status||'').toLowerCase()}">${label}</span>`;}
 
+  function passOperationId(){return crypto.randomUUID().replaceAll('-','');}
+  function renderClassPasses(){
+    const data=state.classPasses,box=$('#ranchClassPasses'),summary=$('#classPassAdminSummary');if(!data||!box||!summary)return;
+    const s=data.summary||{};
+    summary.innerHTML=`<article><span>Passes sold</span><strong>${Number(s.passes_sold||0)}</strong></article><article><span>Active passes</span><strong>${Number(s.active_passes||0)}</strong></article><article><span>Spendable credits</span><strong>${Number(s.outstanding_credits||0)}</strong></article><article><span>Pass revenue</span><strong>${money(s.revenue_pence||0)}</strong></article><article><span>Expiring in 7 days</span><strong>${Number(s.nearing_expiry||0)}</strong></article>`;
+    const products=$('#classPassAdminProduct');if(products&&products.options.length===1)(data.products||[]).forEach(p=>products.add(new Option(p.name,p.id)));
+    box.innerHTML=(data.passes||[]).length?(data.passes||[]).map(p=>`<article class="class-pass-admin-card" data-admin-pass="${esc(p.id)}"><header><div><h3>${esc(p.customer_name||'Member')}</h3><p>${esc(p.customer_email||'')}</p></div><span class="status-pill ${String(p.derived_status||'').toLowerCase()}">${esc(p.derived_status)}</span></header><div class="class-pass-admin-facts"><span><b>${esc(p.product_name)}</b>Product</span><span><b>${Number(p.remaining_credits||0)} / ${Number(p.original_credits||0)}</b>Credits</span><span><b>${esc(p.valid_through||'—')}</b>Valid through</span><span><b>${money(p.purchase_amount_pence||0)}</b>Purchase</span></div><button type="button" class="button secondary compact" data-open-admin-pass="${esc(p.id)}">View and manage</button><div class="class-pass-admin-detail" data-admin-pass-detail="${esc(p.id)}"></div></article>`).join(''):emptyPanel('No class passes match these filters.');
+  }
+  async function loadClassPasses(){
+    const box=$('#ranchClassPasses');if(!box)return;box.innerHTML='<div class="ranch91-loading">Loading class passes…</div>';
+    const q=new URLSearchParams();if($('#classPassAdminSearch')?.value.trim())q.set('search',$('#classPassAdminSearch').value.trim());if($('#classPassAdminStatus')?.value)q.set('status',$('#classPassAdminStatus').value);if($('#classPassAdminProduct')?.value)q.set('product',$('#classPassAdminProduct').value);if($('#classPassAdminNearing')?.checked)q.set('nearing_expiry','1');
+    try{state.classPasses=await jsonFetch(`${ADMIN_API_PREFIX}/class-passes?${q}`,{cache:'no-store'});renderClassPasses();await loadClassPassEligibility();}catch(error){box.innerHTML=lockedPanel('Class passes unavailable',error.message);}
+  }
+  function passHistoryRows(rows,kind){return rows.length?rows.map(row=>`<article><strong>${kind==='ledger'?(Number(row.amount)>0?'+':'')+Number(row.amount)+' credit'+(Math.abs(Number(row.amount))===1?'':'s'):esc(String(row.action||'').replaceAll('_',' '))}</strong><p>${esc(row.reason||row.class_title||'')}</p><small>${row.class_title?`${esc(row.class_title)} · `:''}${esc(fmt(row.created_at))}</small></article>`).join(''):emptyPanel(`No ${kind} history.`)}
+  async function openAdminPass(passId){
+    const target=document.querySelector(`[data-admin-pass-detail="${CSS.escape(passId)}"]`);if(!target)return;target.innerHTML='<div class="ranch91-loading">Loading pass history…</div>';
+    try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/class-passes?id=${encodeURIComponent(passId)}`,{cache:'no-store'}),p=data.pass;target.innerHTML=`<div class="class-pass-reconciliation"><span><b>${esc(fmt(p.purchased_at))}</b>Purchased</span><span><b>${esc(p.original_valid_through||'—')}</b>Original expiry</span><span><b>${esc(p.valid_through||'—')}</b>Current expiry</span><span><b>${esc(p.provider_transaction_id||'Not recorded')}</b>SumUp transaction</span></div><div class="class-pass-admin-actions"><form data-pass-adjust="${esc(p.id)}"><h4>Adjust credits</h4><label>Signed amount<input name="amount" type="number" min="-100" max="100" step="1" required placeholder="1 or -1"></label><label>Required reason<textarea name="reason" required rows="2"></textarea></label><button class="button compact">Record adjustment</button></form><form data-pass-expiry="${esc(p.id)}"><h4>Extend expiry</h4><p>Original: ${esc(p.original_valid_through||'—')} · Current: ${esc(p.valid_through||'—')}</p><label>New valid-through date<input name="valid_through" type="date" min="${esc(p.valid_through||'')}" required></label><label>Required reason<textarea name="reason" required rows="2"></textarea></label><button class="button compact">Extend pass</button></form><form data-pass-cancel="${esc(p.id)}"><h4>Cancel pass</h4><p>This prevents future spending. It does not issue a refund or delete history.</p><label>Required reason<textarea name="reason" required rows="2"></textarea></label><button class="button secondary compact" ${p.status==='CANCELLED'?'disabled':''}>Cancel without refund</button></form></div><div class="class-pass-history-grid"><section><h4>Credit ledger</h4>${passHistoryRows(p.ledger||[],'ledger')}</section><section><h4>Pass audit history</h4>${passHistoryRows(p.audit||[],'audit')}</section></div><section><h4>Associated bookings</h4>${(p.bookings||[]).length?p.bookings.map(b=>`<article><strong>${esc(b.title)}</strong><p>${esc(fmt(b.starts_at))} · ${esc(b.venue)} · ${esc(b.status)}</p></article>`).join(''):emptyPanel('No class bookings use this pass.')}</section>`;}catch(error){target.innerHTML=lockedPanel('Pass detail unavailable',error.message);}
+  }
+  async function classPassAdminAction(form,action){const passId=form.dataset.passAdjust||form.dataset.passExpiry||form.dataset.passCancel,fd=new FormData(form),reason=String(fd.get('reason')||'').trim();if(!reason)return toast('An audit reason is required.','error');const submit=form.querySelector('[type="submit"],button:not([type])');if(submit?.disabled)return;const operationId=form.dataset.operationId||passOperationId();form.dataset.operationId=operationId;const payload={action,pass_id:passId,reason,operation_id:operationId};if(action==='ADJUST_CREDIT')payload.amount=Number(fd.get('amount'));if(action==='EXTEND_EXPIRY')payload.valid_through=String(fd.get('valid_through')||'');if(action==='CANCEL_PASS'&&!confirm('Cancel this pass without issuing a refund? Existing bookings and all history will be preserved.'))return;if(submit)submit.disabled=true;try{await jsonFetch(`${ADMIN_API_PREFIX}/class-passes`,{method:'POST',body:JSON.stringify(payload)});toast('Class pass updated.','success');await loadClassPasses();}catch(error){if(submit)submit.disabled=false;toast(error.message,'error');}}
+  async function loadClassPassEligibility(){const box=$('#ranchClassPassEligibility');if(!box)return;try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/class-passes?mode=eligibility`,{cache:'no-store'});box.innerHTML=(data.classes||[]).map(c=>`<article class="class-pass-eligibility-row"><div><strong>${esc(c.title)}</strong><span>${esc(fmt(c.starts_at))} · ${esc(c.venue)} · ${esc(c.status)}</span></div><label><input type="checkbox" data-pass-eligibility="${esc(c.id)}" ${Number(c.eligible)?'checked':''}> Accept class-pass credits</label></article>`).join('')||emptyPanel('No classes found.');}catch(error){box.innerHTML=lockedPanel('Eligibility unavailable',error.message);}}
+
   async function loadPromotions(){
     const box=$('#promotionList');if(!box)return;box.innerHTML='<div class="ranch-loading">Loading promotions…</div>';
     try{
@@ -1670,6 +1693,11 @@ Type REFUNDED to continue.`);
   $('#classPosterFile')?.addEventListener('change',event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const wrap=$('#classPosterPreviewWrap'),img=$('#classPosterPreview'),remove=$('#removeClassPoster'),status=$('#classPosterStatus');if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent=`Selected: ${file.name}. It will upload when you save the class.`;});
   $('#removeClassPoster')?.addEventListener('click',()=>{const input=$('#classPosterFile');if(input)input.value='';setClassPosterPreview('');});
   $('#ranchClassFilter')?.addEventListener('change',renderClasses);
+  $('#refreshClassPasses')?.addEventListener('click',loadClassPasses);
+  $('#classPassAdminSearch')?.addEventListener('input',()=>{clearTimeout(loadClassPasses.timer);loadClassPasses.timer=setTimeout(loadClassPasses,250);});
+  $('#classPassAdminStatus')?.addEventListener('change',loadClassPasses);
+  $('#classPassAdminProduct')?.addEventListener('change',loadClassPasses);
+  $('#classPassAdminNearing')?.addEventListener('change',loadClassPasses);
   $('#classEditorForm')?.addEventListener('submit',saveClass);
   $$('[data-class-template]').forEach(node=>node.addEventListener('click',()=>applyClassTemplate(node.dataset.classTemplate)));
   $('#classEditorForm')?.elements?.starts_at?.addEventListener('change',event=>{if(activeClassTemplate)applyTemplateTimes(event.currentTarget.form,activeClassTemplate);});
@@ -1696,6 +1724,8 @@ Type REFUNDED to continue.`);
     const cancel=event.target.closest?.('[data-cancel-campaign]');if(cancel&&confirm('Cancel this scheduled email?')){try{await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'CANCEL_CAMPAIGN',id:cancel.dataset.cancelCampaign})});loadEmailCentre();}catch(error){toast(error.message,'error');}}
   });
   document.addEventListener('submit',event=>{if(event.target?.id==='crmLoyaltyTransactionForm'){event.preventDefault();addManualLoyaltyTransaction(event.target);}});
+  document.addEventListener('submit',event=>{const form=event.target;if(form.matches?.('[data-pass-adjust]')){event.preventDefault();classPassAdminAction(form,'ADJUST_CREDIT');}else if(form.matches?.('[data-pass-expiry]')){event.preventDefault();classPassAdminAction(form,'EXTEND_EXPIRY');}else if(form.matches?.('[data-pass-cancel]')){event.preventDefault();classPassAdminAction(form,'CANCEL_PASS');}});
+  document.addEventListener('click',async event=>{const open=event.target.closest?.('[data-open-admin-pass]');if(open){event.preventDefault();await openAdminPass(open.dataset.openAdminPass);return;}const eligibility=event.target.closest?.('[data-pass-eligibility]');if(eligibility){const desired=eligibility.checked,reason=window.prompt(`Reason for marking this class ${desired?'eligible':'ineligible'} for class passes:`);if(!reason?.trim()){eligibility.checked=!desired;return toast('An audit reason is required.','error');}const operationId=eligibility.dataset.operationId||passOperationId();eligibility.dataset.operationId=operationId;eligibility.disabled=true;try{await jsonFetch(`${ADMIN_API_PREFIX}/class-passes`,{method:'POST',body:JSON.stringify({action:'SET_ELIGIBILITY',class_id:eligibility.dataset.passEligibility,eligible:desired,reason:reason.trim(),operation_id:operationId})});delete eligibility.dataset.operationId;toast('Class eligibility updated.','success');}catch(error){eligibility.checked=!desired;toast(error.message,'error');}finally{eligibility.disabled=false;}}});
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#classEditorModal')?.hidden)closeClassEditor();});
   window.addEventListener('afterprint',()=>document.body.classList.remove('printing-class-register'));
 
