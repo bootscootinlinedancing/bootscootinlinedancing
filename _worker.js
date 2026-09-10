@@ -595,6 +595,7 @@ async function applySumUpClassPassState(env,pass,checkout,actor='SUMUP_RECONCILI
     if(!activated||activated.status!=='ACTIVE'||(transactionId&&activated.provider_transaction_id!==transactionId)){
       throw new Error('CLASS_PASS_PAYMENT_MISMATCH');
     }
+    await sendClassPassEmailOnce(env,{key:`CLASS_PASS_PURCHASED:${pass.id}`,type:'CLASS_PASS_PURCHASED',passId:pass.id}).catch(()=>{});
   }else if(['FAILED','CANCELLED','EXPIRED'].includes(checkoutStatus)&&pass.status==='PENDING'){
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`
@@ -818,6 +819,7 @@ async function createClassCreditBooking(request,env){
   await reconcileClassSold(env,classId);
   const confirmed=await bookingWithClass(env,booking.id);
   if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED').catch(()=>{});
+  await sendClassPassBalanceEmail(env,pass.id,booking.id,booking.class_pass_ledger_id).catch(()=>{});
   return json({ok:true,reference:booking.reference,status:'PAID',secure_token:booking.secure_token,customer_token:booking.customer_token,total_pence:0,payment_enabled:false,class_credit_used:true},201);
 }
 
@@ -1931,7 +1933,8 @@ async function sendTransactionalEmail(env, to, subject, html, text, senderType='
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.7.0'
+        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.7.0',
+        ...(options.idempotencyKey ? {'Idempotency-Key': clean(options.idempotencyKey, 180)} : {})
       },
       body: JSON.stringify(payload)
     });
@@ -2630,7 +2633,8 @@ async function cancelBooking(request,env){
     const band=returnCredit?'CLASS_CREDIT_RETURN':'LATE_CANCELLATION';
     const refundStatus=returnCredit?'CLASS_CREDIT_RETURNED':'NO_CREDIT_RETURN';
     const returnKey=`class-pass-credit-return:${booking.id}`;
-    await env.BOOKINGS_DB.batch([
+    const returnLedgerId=crypto.randomUUID();
+    const cancellationResults=await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=CURRENT_TIMESTAMP,cancellation_band=?,refund_status=? WHERE id=? AND status='PAID' AND payment_provider='CLASS_PASS'`).bind(band,refundStatus,booking.id),
       env.BOOKINGS_DB.prepare(`
         INSERT OR IGNORE INTO class_pass_credit_ledger(
@@ -2639,11 +2643,16 @@ async function cancelBooking(request,env){
         SELECT ?,mp.id,mp.member_id,b.id,1,'CLASS_CREDIT_RETURN','Class credit returned for cancellation at least 24 hours before class','CUSTOMER',mp.member_id,?
         FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
         WHERE b.id=? AND b.status='CANCELLED' AND b.payment_provider='CLASS_PASS' AND ?=1
-      `).bind(crypto.randomUUID(),returnKey,booking.id,returnCredit?1:0),
+      `).bind(returnLedgerId,returnKey,booking.id,returnCredit?1:0),
       env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
       env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(booking.customer_email,'CUSTOMER_CANCELLED_CLASS_PASS','booking',booking.id,JSON.stringify({band,refundStatus,credit_returned:returnCredit}))
     ]);
     await reconcileClassSold(env,booking.class_id);
+    const returnInserted=returnCredit&&Number(cancellationResults?.[1]?.meta?.changes||0)===1;
+    if(returnInserted){
+      const klass=londonDateParts(booking.starts_at);
+      await sendClassPassEmailOnce(env,{key:`CLASS_PASS_CREDIT_RETURNED:${returnLedgerId}`,type:'CLASS_PASS_CREDIT_RETURNED',passId:booking.class_pass_id,bookingId:booking.id,details:{classSummary:`Your cancellation for ${klass.date} at ${klass.time} has been recorded.`}}).catch(()=>{});
+    }
     return json({ok:true,band,refund_status:refundStatus,credit_returned:returnCredit,message:returnCredit?'Your booking is cancelled and one class credit has been returned to the original pass. Its expiry date has not changed.':'Your late cancellation is recorded. The class credit has not been returned.'});
   }
   const band=hours>=48?'FULL_REFUND':hours>=24?'CLASS_CREDIT':'LATE_CANCELLATION';
@@ -4112,6 +4121,138 @@ async function recordAutomation(env,key,type,email,meta={},result=null,error=nul
   await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_automation_log(automation_key,automation_type,email,class_id,booking_id,provider_id,status,error_message,created_at) VALUES(?,?,?,?,?,?,?, ?,CURRENT_TIMESTAMP)`)
     .bind(key,type,String(email||'').toLowerCase(),meta.class_id||null,meta.booking_id||null,result?.id||null,error?'FAILED':'SENT',error?clean(error?.message||error,400):null).run();
 }
+
+function classPassEmailDate(value){
+  const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!match)return '';
+  const date=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));
+  return new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(date);
+}
+
+async function classPassEmailContext(env,passId){
+  const pass=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.name product_name,a.email member_email,c.email customer_email,c.name customer_name,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp
+    JOIN class_pass_products p ON p.id=mp.product_id
+    JOIN member_accounts a ON a.id=mp.member_id
+    LEFT JOIN customers c ON c.id=mp.customer_id
+    WHERE mp.id=?
+  `).bind(passId).first();
+  if(!pass)return null;
+  const email=emailOk(pass.member_email)?String(pass.member_email).trim().toLowerCase():
+    (emailOk(pass.customer_email)?String(pass.customer_email).trim().toLowerCase():'');
+  return {...pass,email,remaining_credits:Number(pass.remaining_credits||0)};
+}
+
+function classPassEmailCopy(type,pass,details={}){
+  const remaining=Number(pass.remaining_credits||0);
+  const validDate=classPassEmailDate(pass.valid_through);
+  const common=`${pass.product_name}. Valid until ${validDate}. ${remaining} class credit${remaining===1?'':'s'} remaining.`;
+  if(type==='CLASS_PASS_PURCHASED')return {subject:`Your ${pass.product_name} is ready`,heading:'Your class pass is ready',paragraphs:['Your secure one-off payment has been confirmed. This class pass is not a subscription.',common]};
+  if(type==='CLASS_PASS_ONE_REMAINING')return {subject:'You have one class credit remaining',heading:'One class credit remaining',paragraphs:[common,'Book your next class whenever you are ready.']};
+  if(type==='CLASS_PASS_FINAL_USED')return {subject:'Your final class-pass credit has been used',heading:'Your final credit has been used',paragraphs:[common,'Your existing class bookings remain safely confirmed.']};
+  if(type==='CLASS_PASS_CREDIT_RETURNED')return {subject:'Your class credit has been returned',heading:'Class credit returned',paragraphs:[details.classSummary||'Your eligible cancellation has been recorded.',common,'The original pass expiry date has not changed.']};
+  if(type==='CLASS_PASS_EXPIRY_7_DAYS')return {subject:`Your ${pass.product_name} expires in 7 days`,heading:'Seven days left on your class pass',paragraphs:[common,'Unused credits cannot be used after the valid-until date, so book soon if you would like to use them.']};
+  return {subject:`Your ${pass.product_name} has expired`,heading:'Your class pass has expired',paragraphs:[`${pass.product_name} expired on ${validDate}.`,`${remaining} unused class credit${remaining===1?' was':'s were'} remaining when the pass expired. These credits are no longer spendable.`]};
+}
+
+async function sendClassPassEmailOnce(env,{key,type,passId,bookingId=null,details={}}){
+  await ensureEmailCentreSchema(env);
+  const pass=await classPassEmailContext(env,passId);
+  if(!pass)return {skipped:true,reason:'Class pass not found.'};
+  const existing=await env.BOOKINGS_DB.prepare(`SELECT status,created_at FROM email_automation_log WHERE automation_key=?`).bind(key).first();
+  if(existing?.status==='SENT'||existing?.status==='SKIPPED')return {skipped:true,reason:'Already processed.'};
+  const today=londonCalendarDate();
+  const stillRelevant=type==='CLASS_PASS_PURCHASED'?pass.status==='ACTIVE':
+    type==='CLASS_PASS_ONE_REMAINING'?pass.status==='ACTIVE'&&pass.remaining_credits===1:
+    type==='CLASS_PASS_FINAL_USED'?pass.status==='ACTIVE'&&pass.remaining_credits===0:
+    type==='CLASS_PASS_EXPIRY_7_DAYS'?pass.status==='ACTIVE'&&pass.remaining_credits>0&&pass.valid_through===addCalendarDays(today,7):
+    type==='CLASS_PASS_EXPIRED'?pass.status==='ACTIVE'&&String(pass.valid_through||'')<today:true;
+  if(!stillRelevant){
+    if(existing)await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET status='SKIPPED',error_message='Lifecycle event is no longer current.' WHERE automation_key=? AND status IN ('FAILED','PROCESSING')`).bind(key).run();
+    return {skipped:true,reason:'Lifecycle event is no longer current.'};
+  }
+  if(!pass.email){
+    await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_automation_log(automation_key,automation_type,email,booking_id,status,error_message,created_at) VALUES(?,?,?,?,'SKIPPED','Member email is unavailable.',CURRENT_TIMESTAMP)`).bind(key,type,'',bookingId).run();
+    return {skipped:true,reason:'Member email is unavailable.'};
+  }
+  let claimed;
+  if(existing?.status==='FAILED'){
+    claimed=await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET status='PROCESSING',error_message=NULL,created_at=CURRENT_TIMESTAMP WHERE automation_key=? AND status='FAILED'`).bind(key).run();
+  }else if(existing?.status==='PROCESSING'&&Date.now()-new Date(`${String(existing.created_at||'').replace(' ','T')}Z`).getTime()>15*60*1000){
+    claimed=await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET created_at=CURRENT_TIMESTAMP WHERE automation_key=? AND status='PROCESSING' AND created_at=?`).bind(key,existing.created_at).run();
+  }else{
+    claimed=await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_automation_log(automation_key,automation_type,email,booking_id,status,created_at) VALUES(?,?,?,?, 'PROCESSING',CURRENT_TIMESTAMP)`).bind(key,type,pass.email,bookingId).run();
+  }
+  if(Number(claimed?.meta?.changes||0)!==1)return {skipped:true,reason:'Already processing.'};
+  const copy=classPassEmailCopy(type,pass,details);
+  const html=brandedEmailHtml({heading:copy.heading,greeting:`Hi ${String(pass.customer_name||'there').trim().split(/\s+/)[0]||'there'},`,paragraphs:copy.paragraphs,buttons:[{label:'View my class passes',href:`${SITE_ORIGIN}/member-hub.html#class-passes`},{label:'Book a class',href:`${SITE_ORIGIN}/bookings.html`,secondary:true}]});
+  const text=[copy.heading,...copy.paragraphs,`View my class passes: ${SITE_ORIGIN}/member-hub.html#class-passes`,`Book a class: ${SITE_ORIGIN}/bookings.html`].join('\n\n');
+  try{
+    const result=await sendTransactionalEmail(env,pass.email,copy.subject,html,text,'members',{idempotencyKey:key});
+    if(result?.skipped)throw new Error(result.reason||'Email provider is not configured.');
+    await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET status='SENT',provider_id=?,error_message=NULL WHERE automation_key=? AND status='PROCESSING'`).bind(result.id||null,key).run();
+    return {sent:true,id:result.id||null};
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET status='FAILED',error_message=? WHERE automation_key=? AND status='PROCESSING'`).bind(clean(error?.message||error,400),key).run();
+    return {sent:false,error:clean(error?.message||error,400)};
+  }
+}
+
+async function retryClassPassEmails(env){
+  const rows=await env.BOOKINGS_DB.prepare(`
+    SELECT automation_key,automation_type,booking_id FROM email_automation_log
+    WHERE automation_type IN ('CLASS_PASS_PURCHASED','CLASS_PASS_ONE_REMAINING','CLASS_PASS_FINAL_USED','CLASS_PASS_CREDIT_RETURNED','CLASS_PASS_EXPIRY_7_DAYS','CLASS_PASS_EXPIRED')
+      AND (status='FAILED' OR (status='PROCESSING' AND created_at<datetime('now','-15 minutes')))
+    ORDER BY created_at LIMIT 100
+  `).all();
+  let sent=0,failed=0,skipped=0;
+  for(const row of rows.results||[]){
+    let passId=String(row.automation_key||'').slice(String(row.automation_type||'').length+1);
+    if(row.automation_type==='CLASS_PASS_CREDIT_RETURNED'){
+      const ledger=await env.BOOKINGS_DB.prepare(`SELECT pass_id,booking_id FROM class_pass_credit_ledger WHERE id=? AND event_type='CLASS_CREDIT_RETURN' AND amount>0`).bind(passId).first();
+      passId=ledger?.pass_id||'';
+      if(ledger?.booking_id)row.booking_id=ledger.booking_id;
+    }
+    const result=passId?await sendClassPassEmailOnce(env,{key:row.automation_key,type:row.automation_type,passId,bookingId:row.booking_id||null}):{skipped:true};
+    if(result.sent)sent++;else if(result.error)failed++;else skipped++;
+  }
+  return {sent,failed,skipped,candidates:(rows.results||[]).length};
+}
+
+async function sendClassPassBalanceEmail(env,passId,bookingId,ledgerId){
+  const pass=await classPassEmailContext(env,passId);
+  if(!pass)return {skipped:true};
+  if(pass.remaining_credits===1)return sendClassPassEmailOnce(env,{key:`CLASS_PASS_ONE_REMAINING:${passId}`,type:'CLASS_PASS_ONE_REMAINING',passId,bookingId});
+  if(pass.remaining_credits===0)return sendClassPassEmailOnce(env,{key:`CLASS_PASS_FINAL_USED:${passId}`,type:'CLASS_PASS_FINAL_USED',passId,bookingId,details:{ledgerId}});
+  return {skipped:true};
+}
+
+async function processClassPassAutomation(env){
+  const retries=await retryClassPassEmails(env);
+  const today=londonCalendarDate();
+  const expiryTarget=addCalendarDays(today,7);
+  const expiring=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.id FROM member_passes mp
+    WHERE mp.status='ACTIVE' AND mp.valid_through=?
+      AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+    LIMIT 250
+  `).bind(expiryTarget).all();
+  const expired=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.id FROM member_passes mp WHERE mp.status='ACTIVE' AND mp.valid_through<? LIMIT 250
+  `).bind(today).all();
+  let sent=0,failed=0,skipped=0;
+  for(const row of expiring.results||[]){
+    const result=await sendClassPassEmailOnce(env,{key:`CLASS_PASS_EXPIRY_7_DAYS:${row.id}`,type:'CLASS_PASS_EXPIRY_7_DAYS',passId:row.id});
+    if(result.sent)sent++;else if(result.error)failed++;else skipped++;
+  }
+  for(const row of expired.results||[]){
+    const result=await sendClassPassEmailOnce(env,{key:`CLASS_PASS_EXPIRED:${row.id}`,type:'CLASS_PASS_EXPIRED',passId:row.id});
+    if(result.sent)sent++;else if(result.error)failed++;else skipped++;
+  }
+  return {sent,failed,skipped,retries,expiring_candidates:(expiring.results||[]).length,expired_candidates:(expired.results||[]).length};
+}
 async function sendMarketingAutomation(env,{key,type,email,name,subject,text,senderType='general',klass=null,meta={}}){
   if(!email || await automationAlreadySent(env,key)) return {skipped:true,reason:'Already sent or missing email.'};
   const unsub=await env.BOOKINGS_DB.prepare(`SELECT email FROM mailing_unsubscribes WHERE lower(email)=lower(?)`).bind(email).first();
@@ -4262,7 +4403,8 @@ async function processAutomaticBookingNotifications(env){
     for(const booking of attended.results||[]){await deliverBookingNotification(env,booking,'THANK_YOU_AFTER_CLASS');processed++;}
   }
   const birthdays=await processBirthdayEmails(env);
-  return {processed,birthdays:birthdays.processed||0};
+  const classPasses=await processClassPassAutomation(env);
+  return {processed,birthdays:birthdays.processed||0,class_passes:classPasses};
 }
 
 async function processDueCampaigns(env){
