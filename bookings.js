@@ -7,6 +7,7 @@
   let classes=[];
   let selectedClass=null;
   let appliedPromo=null;
+  let creditOperationId='';
 
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(n)||0);
@@ -21,6 +22,19 @@
     return sentence||`${clean.slice(0,150)}${clean.length>150?'…':''}`;
   }
   function eventUrl(c){return `${location.origin}${location.pathname}?event=${encodeURIComponent(c.id)}`;}
+  async function loadClassCreditOption(c){
+    const box=document.getElementById('classCreditOption'),button=document.getElementById('classCreditSubmit'),summary=document.getElementById('classCreditSummary');
+    box.hidden=true;summary.textContent='';
+    try{
+      const response=await fetch(`/api/member/class-credit-options?class_id=${encodeURIComponent(c.id)}`,{headers:{Accept:'application/json'},cache:'no-store'});
+      if(!response.ok)return;
+      const result=await response.json();
+      if(!result.can_use_credit)return;
+      box.hidden=false;
+      button.textContent=result.class_full?'Join Waiting List — No Credit Used':'Use 1 Class Credit';
+      summary.textContent=`Signed-in member option: ${result.pass.product_name} · ${result.pass.remaining_credits} credit${Number(result.pass.remaining_credits)===1?'':'s'} remaining.`;
+    }catch(_){}
+  }
   function render(){
     const venue=filter.value;
     const rows=classes.filter(c=>venue==='all'||venueKey(c.venue)===venue);
@@ -86,6 +100,8 @@
     document.getElementById('classId').value=c.id;
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
     dialog.showModal();
+    creditOperationId=crypto.randomUUID();
+    loadClassCreditOption(c);
   });
 
   document.getElementById('closeEventDetails')?.addEventListener('click',()=>document.getElementById('eventDetailsDialog')?.close());
@@ -97,6 +113,16 @@
   });
   document.getElementById('closeBooking').onclick=()=>dialog.close();
   filter.onchange=render;
+  document.getElementById('classCreditSubmit').addEventListener('click',async()=>{
+    if(!selectedClass||!creditOperationId)return;
+    const button=document.getElementById('classCreditSubmit'),msg=document.getElementById('formMessage');
+    button.disabled=true;msg.textContent='Using your class credit…';
+    try{
+      const response=await fetch('/api/member/class-credit-booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({class_id:selectedClass.id,operation_id:creditOperationId})});
+      const result=await response.json();if(!response.ok)throw new Error(result.error||'Your class credit could not be used.');
+      location.href=`booking-confirmation.html?reference=${encodeURIComponent(result.reference||'')}&token=${encodeURIComponent(result.secure_token||'')}&customer=${encodeURIComponent(result.customer_token||'')}`;
+    }catch(error){msg.textContent=error.message;button.disabled=false;}
+  });
 
 
   function showPromoTotals(result){

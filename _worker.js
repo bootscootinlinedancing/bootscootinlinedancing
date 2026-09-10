@@ -291,7 +291,7 @@ async function attendanceLoyaltyCredit(env,{booking,attendance,createdBy,reason=
     LIMIT 1
   `).bind(booking.id).first();
   if(existingPayment)return {credited:false,reconciled_to:'EXISTING_BOOKING_CREDIT'};
-  if(booking.status!=='PAID' || Number(booking.amount_pence||0)<=0 || booking.refund_status==='REFUNDED'){
+  if(booking.status!=='PAID' || (Number(booking.amount_pence||0)<=0 && booking.payment_provider!=='CLASS_PASS') || booking.refund_status==='REFUNDED'){
     return {credited:false,reconciled_to:'NOT_QUALIFYING_BOOKING'};
   }
   const attendanceBalance=await env.BOOKINGS_DB.prepare(`
@@ -472,7 +472,7 @@ async function earliestExpiringEligiblePass(env,{memberId,classId}){
     WHERE mp.member_id=? AND mp.status='ACTIVE'
       AND mp.valid_through>=?
       AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
-    ORDER BY mp.valid_through,mp.purchased_at,mp.id
+    ORDER BY mp.valid_through,COALESCE(mp.purchased_at,mp.created_at),mp.id
     LIMIT 1
   `).bind(memberId,classDate).first();
   return pass?{...pass,remaining_credits:Number(pass.remaining_credits||0),class_date:classDate}:null;
@@ -665,6 +665,129 @@ async function classPassPurchaseStatus(request,env,url){
     pass=await syncSumUpClassPass(env,pass,'MEMBER_STATUS_CHECK');
   }
   return json({ok:true,pass:safeClassPass(pass)});
+}
+
+function classCreditOperationId(value){
+  const id=String(value||'').trim();
+  return /^[A-Za-z0-9_-]{12,100}$/.test(id)?id:'';
+}
+
+async function classCreditOptions(request,env,url){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({authenticated:false,can_use_credit:false},401);
+  const classId=clean(url.searchParams.get('class_id'),120);
+  const klass=classId?await env.BOOKINGS_DB.prepare(`
+    SELECT c.id,c.status,c.starts_at,c.capacity,COALESCE(e.eligible,0) pass_eligible,
+      c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+      -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>CURRENT_TIMESTAMP),0) spaces_remaining
+    FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id WHERE c.id=?
+  `).bind(classId).first():null;
+  if(!klass||klass.status!=='open'||new Date(klass.starts_at).getTime()<=Date.now())return json({authenticated:true,can_use_credit:false});
+  const pass=Number(klass.pass_eligible)===1?await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId}):null;
+  return json({
+    authenticated:true,can_use_credit:Boolean(pass),class_full:Number(klass.spaces_remaining||0)<1,
+    pass:pass?{product_name:pass.product_name,remaining_credits:Number(pass.remaining_credits),valid_through:pass.valid_through}:null
+  });
+}
+
+async function createClassCreditBooking(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to use a class credit.'},401);
+  if(!sameOriginWrite(request))return json({error:'This booking request could not be verified.'},403);
+  const body=await request.json().catch(()=>null);
+  const classId=clean(body?.class_id,120),operationId=classCreditOperationId(body?.operation_id);
+  if(!classId||!operationId)return json({error:'Choose a class and retry the booking.'},400);
+  const operationKey=`class-pass-booking:${session.member_id}:${operationId}`;
+  const bookingId=`cpb-${await memberSha256Hex(operationKey)}`;
+  const existing=await env.BOOKINGS_DB.prepare(`
+    SELECT b.* FROM bookings b LEFT JOIN class_pass_credit_ledger l ON l.id=b.class_pass_ledger_id
+    WHERE b.id=? AND b.customer_id=? AND (l.idempotency_key=? OR b.payment_provider='CLASS_PASS')
+  `).bind(bookingId,session.customer_id,operationKey).first();
+  if(existing)return json({ok:true,idempotent:true,reference:existing.reference,status:existing.status,secure_token:existing.secure_token,customer_token:existing.customer_token,total_pence:0,payment_enabled:false},200);
+  const waitingId=`cpw-${await memberSha256Hex(operationKey)}`;
+  const existingWait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE id=? AND lower(customer_email)=lower(?)`).bind(waitingId,session.email).first();
+  if(existingWait)return json({ok:true,idempotent:true,waitlisted:true,status:'WAITLISTED',secure_token:existingWait.secure_token,message:'You are on the waiting list. No class credit has been used.'},200);
+
+  const klass=await env.BOOKINGS_DB.prepare(`
+    SELECT c.*,COALESCE(e.eligible,0) pass_eligible
+    FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id
+    WHERE c.id=? AND c.status='open' AND c.starts_at>?
+  `).bind(classId,new Date().toISOString()).first();
+  if(!klass)return json({error:'This class is no longer open for booking.'},404);
+  if(Number(klass.pass_eligible)!==1)return json({error:'Class credits are not available for this class.'},409);
+  const pass=await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId});
+  if(!pass)return json({error:'You do not have an active class pass that can be used for this class.'},409);
+
+  const holdId=crypto.randomUUID(),holdExpiry=new Date(Date.now()+15*60*1000).toISOString(),now=new Date().toISOString();
+  const held=await env.BOOKINGS_DB.prepare(`
+    INSERT INTO booking_holds(id,class_id,quantity,expires_at)
+    SELECT ?,c.id,1,? FROM classes c
+    WHERE c.id=? AND c.status='open' AND c.starts_at>?
+      AND 1<=c.capacity
+        -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
+  `).bind(holdId,holdExpiry,classId,now,now).run();
+  if(Number(held?.meta?.changes||0)===0){
+    const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+    await env.BOOKINGS_DB.prepare(`
+      INSERT OR IGNORE INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token)
+      VALUES(?,?,?,?,1,'WAITING',?)
+    `).bind(waitingId,classId,session.name,session.email,secureToken).run();
+    const wait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE id=?`).bind(waitingId).first();
+    return json({ok:true,waitlisted:true,status:'WAITLISTED',secure_token:wait?.secure_token||secureToken,message:'The class is full, so you have been added to the waiting list. No class credit has been used.'},201);
+  }
+
+  const ledgerId=crypto.randomUUID(),secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const reference=`BC-${(await memberSha256Hex(operationKey)).slice(0,12).toUpperCase()}`;
+  try{
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO bookings(
+          id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,quantity,
+          amount_pence,original_amount_pence,discount_pence,status,payment_provider,secure_token,customer_token,
+          terms_accepted_at,paid_at,retention_delete_after,class_pass_id
+        )
+        SELECT ?,?,?,?,mp.customer_id,?,?,?,1,0,0,0,'PAID','CLASS_PASS',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,datetime('now','+24 months'),mp.id
+        FROM member_passes mp
+        WHERE mp.id=? AND mp.member_id=? AND mp.customer_id=? AND mp.status='ACTIVE' AND mp.valid_through>=?
+          AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+          AND EXISTS(SELECT 1 FROM class_pass_class_eligibility e WHERE e.class_id=? AND e.eligible=1)
+          AND EXISTS(SELECT 1 FROM booking_holds h WHERE h.id=? AND h.class_id=? AND h.expires_at>CURRENT_TIMESTAMP)
+      `).bind(bookingId,reference,classId,holdId,session.name,session.email,session.phone||'',secureToken,customerToken,
+        pass.id,session.member_id,session.customer_id,pass.class_date,classId,holdId,classId),
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO class_pass_credit_ledger(
+          id,pass_id,member_id,booking_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
+        )
+        SELECT ?,mp.id,mp.member_id,b.id,-1,'CLASS_BOOKING','One class credit used','MEMBER',mp.member_id,?
+        FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
+        WHERE b.id=? AND b.customer_id=? AND b.payment_provider='CLASS_PASS' AND b.status='PAID'
+          AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+      `).bind(ledgerId,operationKey,bookingId,session.customer_id),
+      env.BOOKINGS_DB.prepare(`
+        UPDATE bookings SET class_pass_ledger_id=(SELECT id FROM class_pass_credit_ledger WHERE idempotency_key=?)
+        WHERE id=? AND customer_id=? AND class_pass_ledger_id IS NULL
+      `).bind(operationKey,bookingId,session.customer_id),
+      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
+    ]);
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId).run().catch(()=>{});
+    throw error;
+  }
+  const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=? AND customer_id=?`).bind(bookingId,session.customer_id).first();
+  if(!booking?.class_pass_ledger_id){
+    if(booking)await env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=? AND class_pass_ledger_id IS NULL`).bind(bookingId).run().catch(()=>{});
+    await reconcileClassSold(env,classId);
+    return json({error:'That class place or class credit was just taken. Please refresh and try again.'},409);
+  }
+  await reconcileClassSold(env,classId);
+  const confirmed=await bookingWithClass(env,booking.id);
+  if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED').catch(()=>{});
+  return json({ok:true,reference:booking.reference,status:'PAID',secure_token:booking.secure_token,customer_token:booking.customer_token,total_pence:0,payment_enabled:false,class_credit_used:true},201);
 }
 
 
@@ -2464,9 +2587,34 @@ async function cancelBooking(request,env){
     await env.BOOKINGS_DB.prepare(`UPDATE waiting_list SET status='CANCELLED' WHERE id=?`).bind(wait.id).run();
     return json({ok:true,message:'You have been removed from the waiting list. No payment was taken.'});
   }
+  if(booking.payment_provider==='CLASS_PASS'&&booking.status==='CANCELLED'){
+    const returned=await env.BOOKINGS_DB.prepare(`SELECT id FROM class_pass_credit_ledger WHERE idempotency_key=?`).bind(`class-pass-credit-return:${booking.id}`).first();
+    return json({ok:true,idempotent:true,band:booking.cancellation_band||'',credit_returned:Boolean(returned),message:returned?'This booking was already cancelled and its class credit was returned once.':'This booking was already cancelled. No additional class credit was returned.'});
+  }
   if(!['PENDING','PAID'].includes(booking.status))return json({error:'This booking can no longer be cancelled online.'},409);
 
   const hours=(new Date(booking.starts_at)-new Date())/3600000;
+  if(booking.payment_provider==='CLASS_PASS'){
+    const returnCredit=hours>=24;
+    const band=returnCredit?'CLASS_CREDIT_RETURN':'LATE_CANCELLATION';
+    const refundStatus=returnCredit?'CLASS_CREDIT_RETURNED':'NO_CREDIT_RETURN';
+    const returnKey=`class-pass-credit-return:${booking.id}`;
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=CURRENT_TIMESTAMP,cancellation_band=?,refund_status=? WHERE id=? AND status='PAID' AND payment_provider='CLASS_PASS'`).bind(band,refundStatus,booking.id),
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO class_pass_credit_ledger(
+          id,pass_id,member_id,booking_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
+        )
+        SELECT ?,mp.id,mp.member_id,b.id,1,'CLASS_CREDIT_RETURN','Class credit returned for cancellation at least 24 hours before class','CUSTOMER',mp.member_id,?
+        FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
+        WHERE b.id=? AND b.status='CANCELLED' AND b.payment_provider='CLASS_PASS' AND ?=1
+      `).bind(crypto.randomUUID(),returnKey,booking.id,returnCredit?1:0),
+      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(booking.customer_email,'CUSTOMER_CANCELLED_CLASS_PASS','booking',booking.id,JSON.stringify({band,refundStatus,credit_returned:returnCredit}))
+    ]);
+    await reconcileClassSold(env,booking.class_id);
+    return json({ok:true,band,refund_status:refundStatus,credit_returned:returnCredit,message:returnCredit?'Your booking is cancelled and one class credit has been returned to the original pass. Its expiry date has not changed.':'Your late cancellation is recorded. The class credit has not been returned.'});
+  }
   const band=hours>=48?'FULL_REFUND':hours>=24?'CLASS_CREDIT':'LATE_CANCELLATION';
   const refundStatus=booking.status==='PAID'?(band==='FULL_REFUND'?'REFUND_DUE':band==='CLASS_CREDIT'?'CREDIT_DUE':'REVIEW_IF_RESOLD'):'NO_PAYMENT_TAKEN';
 
@@ -5313,6 +5461,8 @@ export default {
       if (path === '/api/member/me' && request.method === 'GET') return memberMe(request, env);
       if (path === '/api/member/class-pass-checkout' && request.method === 'POST') return createClassPassCheckout(request, env);
       if (path === '/api/member/class-pass-purchase-status' && request.method === 'GET') return classPassPurchaseStatus(request, env, url);
+      if (path === '/api/member/class-credit-options' && request.method === 'GET') return classCreditOptions(request, env, url);
+      if (path === '/api/member/class-credit-booking' && request.method === 'POST') return createClassCreditBooking(request, env);
       if (path === '/api/member/profile' && request.method === 'POST') return memberProfileUpdate(request, env);
       if (path === '/api/member/export' && request.method === 'GET') return memberExport(request, env);
       if (path === '/api/member/pause' && request.method === 'POST') return memberPause(request, env);
