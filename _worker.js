@@ -355,6 +355,129 @@ async function loyaltySummary(env,email,customerId=null){
   return {total_stamps:total,progress,goal:9,free_class_milestones:completed,reward_ready:total>=9};
 }
 
+function londonCalendarDate(value=new Date()){
+  const date=value instanceof Date?value:new Date(value);
+  if(Number.isNaN(date.getTime()))return '';
+  const parts=new Intl.DateTimeFormat('en-GB',{
+    timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(date).reduce((out,part)=>{out[part.type]=part.value;return out;},{});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function addCalendarDays(isoDate,days){
+  const match=String(isoDate||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!match)return '';
+  const date=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));
+  if(date.getUTCFullYear()!==Number(match[1])||date.getUTCMonth()!==Number(match[2])-1||date.getUTCDate()!==Number(match[3]))return '';
+  date.setUTCDate(date.getUTCDate()+Number(days||0));
+  return date.toISOString().slice(0,10);
+}
+
+function classPassValidThrough(purchasedAt,validityDays){
+  const purchaseDate=londonCalendarDate(purchasedAt);
+  const days=Number(validityDays);
+  if(!purchaseDate||!Number.isInteger(days)||days<=0)return '';
+  return addCalendarDays(purchaseDate,days);
+}
+
+function classPassDerivedStatus(pass,balance,onDate=londonCalendarDate()){
+  if(!pass)return 'UNAVAILABLE';
+  if(pass.status==='CANCELLED')return 'CANCELLED';
+  if(pass.status!=='ACTIVE')return 'PENDING';
+  if(!pass.valid_through||String(pass.valid_through)<String(onDate))return 'EXPIRED';
+  if(Number(balance||0)<=0)return 'USED';
+  return 'ACTIVE';
+}
+
+async function activeClassPassProducts(env){
+  const result=await env.BOOKINGS_DB.prepare(`
+    SELECT id,code,name,price_pence,original_credits,validity_days,display_order
+    FROM class_pass_products WHERE active=1
+    ORDER BY display_order,name
+  `).all();
+  return result.results||[];
+}
+
+async function memberClassPasses(env,memberId){
+  const result=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.code product_code,p.name product_name,p.validity_days,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+    WHERE mp.member_id=?
+    ORDER BY mp.valid_through,mp.created_at,mp.id
+  `).bind(memberId).all();
+  const today=londonCalendarDate();
+  return (result.results||[]).map(pass=>({...pass,
+    remaining_credits:Number(pass.remaining_credits||0),
+    derived_status:classPassDerivedStatus(pass,pass.remaining_credits,today)
+  }));
+}
+
+async function classPassBalance(env,passId,memberId){
+  const row=await env.BOOKINGS_DB.prepare(`
+    SELECT COALESCE(SUM(l.amount),0) balance
+    FROM member_passes p LEFT JOIN class_pass_credit_ledger l ON l.pass_id=p.id
+    WHERE p.id=? AND p.member_id=?
+  `).bind(passId,memberId).first();
+  return row?Number(row.balance||0):null;
+}
+
+async function appendClassPassLedgerEvent(env,{
+  passId,memberId,bookingId=null,amount,eventType,reason,actorType,actorId=null,idempotencyKey
+}){
+  const delta=Number(amount);
+  if(!passId||!memberId||!Number.isInteger(delta)||delta===0||!eventType||!reason||!actorType||!idempotencyKey){
+    return {ok:false,code:'INVALID_LEDGER_EVENT'};
+  }
+  const result=await env.BOOKINGS_DB.prepare(`
+    INSERT OR IGNORE INTO class_pass_credit_ledger(
+      id,pass_id,member_id,booking_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
+    )
+    SELECT ?,p.id,p.member_id,?,?,?,?,?,?,?
+    FROM member_passes p
+    WHERE p.id=? AND p.member_id=?
+      AND (? > 0 OR COALESCE((
+        SELECT SUM(existing.amount) FROM class_pass_credit_ledger existing WHERE existing.pass_id=p.id
+      ),0) + ? >= 0)
+  `).bind(
+    crypto.randomUUID(),bookingId,delta,eventType,reason,actorType,actorId,idempotencyKey,
+    passId,memberId,delta,delta
+  ).run();
+  const event=await env.BOOKINGS_DB.prepare(`
+    SELECT * FROM class_pass_credit_ledger WHERE idempotency_key=?
+  `).bind(idempotencyKey).first();
+  if(event){
+    const same=event.pass_id===passId&&event.member_id===memberId&&Number(event.amount)===delta&&event.event_type===eventType;
+    return same
+      ?{ok:true,created:Number(result?.meta?.changes||0)>0,event,balance:await classPassBalance(env,passId,memberId)}
+      :{ok:false,code:'IDEMPOTENCY_KEY_CONFLICT'};
+  }
+  const owned=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_passes WHERE id=? AND member_id=?`).bind(passId,memberId).first();
+  return {ok:false,code:owned?'INSUFFICIENT_CREDITS':'PASS_NOT_FOUND'};
+}
+
+async function earliestExpiringEligiblePass(env,{memberId,classId}){
+  const klass=await env.BOOKINGS_DB.prepare(`
+    SELECT c.id,c.starts_at,COALESCE(e.eligible,0) pass_eligible
+    FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id
+    WHERE c.id=?
+  `).bind(classId).first();
+  if(!klass||Number(klass.pass_eligible)!==1)return null;
+  const classDate=londonCalendarDate(klass.starts_at);
+  if(!classDate)return null;
+  const pass=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.code product_code,p.name product_name,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+    WHERE mp.member_id=? AND mp.status='ACTIVE'
+      AND mp.valid_through>=?
+      AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+    ORDER BY mp.valid_through,mp.purchased_at,mp.id
+    LIMIT 1
+  `).bind(memberId,classDate).first();
+  return pass?{...pass,remaining_credits:Number(pass.remaining_credits||0),class_date:classDate}:null;
+}
+
 
 function repairMemberNavigationHtml(html){
   const desired = `<details class="menu45-section">
@@ -441,6 +564,8 @@ async function ensureBookingSchema(env) {
       provider_checkout_id TEXT,
       provider_transaction_id TEXT,
       provider_transaction_code TEXT,
+      class_pass_id TEXT REFERENCES member_passes(id),
+      class_pass_ledger_id TEXT REFERENCES class_pass_credit_ledger(id),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       paid_at TEXT,
       retention_delete_after TEXT
@@ -718,6 +843,78 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_loyalty_transactions_booking ON loyalty_transactions(booking_id,created_at)`,
     `CREATE TRIGGER IF NOT EXISTS loyalty_transactions_no_update BEFORE UPDATE ON loyalty_transactions BEGIN SELECT RAISE(ABORT,'loyalty transactions are immutable'); END`,
     `CREATE TRIGGER IF NOT EXISTS loyalty_transactions_no_delete BEFORE DELETE ON loyalty_transactions BEGIN SELECT RAISE(ABORT,'loyalty transactions are immutable'); END`,
+    `CREATE TABLE IF NOT EXISTS class_pass_products (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      price_pence INTEGER NOT NULL CHECK(price_pence >= 0),
+      original_credits INTEGER NOT NULL CHECK(original_credits > 0),
+      validity_days INTEGER NOT NULL CHECK(validity_days > 0),
+      active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS member_passes (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL REFERENCES member_accounts(id),
+      customer_id TEXT NOT NULL REFERENCES customers(id),
+      product_id TEXT NOT NULL REFERENCES class_pass_products(id),
+      status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','ACTIVE','CANCELLED')),
+      purchased_at TEXT,
+      original_valid_through TEXT,
+      valid_through TEXT,
+      original_credits INTEGER NOT NULL CHECK(original_credits > 0),
+      purchase_amount_pence INTEGER NOT NULL CHECK(purchase_amount_pence >= 0),
+      currency TEXT NOT NULL DEFAULT 'GBP',
+      payment_provider TEXT NOT NULL DEFAULT 'SUMUP',
+      provider_checkout_id TEXT UNIQUE,
+      provider_transaction_id TEXT UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS class_pass_credit_ledger (
+      id TEXT PRIMARY KEY,
+      pass_id TEXT NOT NULL REFERENCES member_passes(id),
+      member_id TEXT NOT NULL REFERENCES member_accounts(id),
+      booking_id TEXT REFERENCES bookings(id),
+      amount INTEGER NOT NULL CHECK(amount <> 0),
+      event_type TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      actor_type TEXT NOT NULL,
+      actor_id TEXT,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS class_pass_class_eligibility (
+      class_id TEXT PRIMARY KEY REFERENCES classes(id) ON DELETE CASCADE,
+      eligible INTEGER NOT NULL DEFAULT 0 CHECK(eligible IN (0,1)),
+      reason TEXT,
+      updated_by TEXT,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS class_pass_audit_log (
+      id TEXT PRIMARY KEY,
+      pass_id TEXT NOT NULL REFERENCES member_passes(id),
+      action TEXT NOT NULL,
+      actor_type TEXT NOT NULL,
+      actor_id TEXT,
+      reason TEXT NOT NULL,
+      previous_json TEXT,
+      next_json TEXT,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_member_passes_member ON member_passes(member_id,status,valid_through)`,
+    `CREATE INDEX IF NOT EXISTS idx_member_passes_customer ON member_passes(customer_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_pass ON class_pass_credit_ledger(pass_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_member ON class_pass_credit_ledger(member_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_booking ON class_pass_credit_ledger(booking_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_audit_pass ON class_pass_audit_log(pass_id,created_at)`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_update BEFORE UPDATE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_delete BEFORE DELETE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_audit_no_update BEFORE UPDATE ON class_pass_audit_log BEGIN SELECT RAISE(ABORT,'class pass audit log is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_audit_no_delete BEFORE DELETE ON class_pass_audit_log BEGIN SELECT RAISE(ABORT,'class pass audit log is immutable'); END`,
     `CREATE TABLE IF NOT EXISTS customer_crm_profiles (
       customer_key TEXT PRIMARY KEY,
       birthday TEXT,
@@ -768,6 +965,8 @@ async function ensureBookingSchema(env) {
     `ALTER TABLE bookings ADD COLUMN original_amount_pence INTEGER`,
     `ALTER TABLE bookings ADD COLUMN discount_pence INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE bookings ADD COLUMN promo_code TEXT`,
+    `ALTER TABLE bookings ADD COLUMN class_pass_id TEXT REFERENCES member_passes(id)`,
+    `ALTER TABLE bookings ADD COLUMN class_pass_ledger_id TEXT REFERENCES class_pass_credit_ledger(id)`,
     `ALTER TABLE waiting_list ADD COLUMN secure_token TEXT`,
     `ALTER TABLE merch_orders ADD COLUMN fulfilment_method TEXT NOT NULL DEFAULT 'collection'`,
     `ALTER TABLE merch_orders ADD COLUMN delivery_address TEXT`,
@@ -785,6 +984,10 @@ async function ensureBookingSchema(env) {
   try { await env.BOOKINGS_DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_secure_token ON bookings(secure_token)`).run(); } catch (_) {}
   try { await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_booking_customer_token ON bookings(customer_token)`).run(); } catch (_) {}
   try { await env.BOOKINGS_DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_secure_token ON waiting_list(secure_token)`).run(); } catch (_) {}
+  try { await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_bookings_class_pass ON bookings(class_pass_id)`).run(); } catch (_) {}
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_products(id,code,name,price_pence,original_credits,validity_days,active,display_order) VALUES
+    ('class-pass-4','CLASS_PASS_4','4-Class Pass',2200,4,42,1,10),
+    ('class-pass-6','CLASS_PASS_6','6-Class Pass',3200,6,56,1,20)`).run();
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO venues(id,name,location,capacity) VALUES
     ('ecc','Edgbaston Community Centre','Birmingham',20),
     ('low-places','Low Places','Birmingham',50)`).run();
