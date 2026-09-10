@@ -377,7 +377,7 @@ function classPassValidThrough(purchasedAt,validityDays){
   const purchaseDate=londonCalendarDate(purchasedAt);
   const days=Number(validityDays);
   if(!purchaseDate||!Number.isInteger(days)||days<=0)return '';
-  return addCalendarDays(purchaseDate,days);
+  return addCalendarDays(purchaseDate,days-1);
 }
 
 function classPassDerivedStatus(pass,balance,onDate=londonCalendarDate()){
@@ -476,6 +476,195 @@ async function earliestExpiringEligiblePass(env,{memberId,classId}){
     LIMIT 1
   `).bind(memberId,classDate).first();
   return pass?{...pass,remaining_credits:Number(pass.remaining_credits||0),class_date:classDate}:null;
+}
+
+function safeClassPass(pass){
+  if(!pass)return null;
+  return {
+    id:pass.id,
+    product_id:pass.product_id,
+    product_name:pass.product_name||null,
+    status:pass.status,
+    purchased_at:pass.purchased_at||null,
+    valid_through:pass.valid_through||null,
+    original_credits:Number(pass.original_credits||0),
+    remaining_credits:Number(pass.remaining_credits||0),
+    purchase_amount_pence:Number(pass.purchase_amount_pence||0),
+    currency:pass.currency||'GBP',
+    created_at:pass.created_at||null
+  };
+}
+
+async function classPassForMember(env,passId,memberId){
+  return env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.name product_name,p.validity_days,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+    WHERE mp.id=? AND mp.member_id=?
+  `).bind(passId,memberId).first();
+}
+
+async function appendClassPassAudit(env,{passId,action,actorType,actorId=null,reason,previous=null,next=null,idempotencyKey}){
+  return env.BOOKINGS_DB.prepare(`
+    INSERT OR IGNORE INTO class_pass_audit_log(
+      id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key
+    ) VALUES(?,?,?,?,?,?,?,?,?)
+  `).bind(
+    crypto.randomUUID(),passId,action,actorType,actorId,reason,
+    previous===null?null:JSON.stringify(previous),next===null?null:JSON.stringify(next),idempotencyKey
+  ).run();
+}
+
+async function applySumUpClassPassState(env,pass,checkout,actor='SUMUP_RECONCILIATION'){
+  if(!pass||!checkout)return pass;
+  const checkoutStatus=String(checkout.status||'').toUpperCase();
+  const transactionId=clean(checkoutTransactionId(checkout),180)||null;
+
+  if(checkoutStatus==='PAID'){
+    const purchasedAt=pass.purchased_at||new Date().toISOString();
+    const validThrough=pass.valid_through||classPassValidThrough(purchasedAt,Number(pass.validity_days));
+    if(!validThrough)throw new Error('CLASS_PASS_VALIDITY_INVALID');
+    try{
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`
+          UPDATE member_passes
+          SET status='ACTIVE',purchased_at=COALESCE(purchased_at,?),
+              original_valid_through=COALESCE(original_valid_through,?),valid_through=COALESCE(valid_through,?),
+              provider_transaction_id=COALESCE(provider_transaction_id,?),updated_at=CURRENT_TIMESTAMP
+          WHERE id=? AND provider_checkout_id=? AND status IN ('PENDING','ACTIVE')
+            AND (provider_transaction_id IS NULL OR provider_transaction_id=?)
+        `).bind(purchasedAt,validThrough,validThrough,transactionId,pass.id,pass.provider_checkout_id,transactionId),
+        env.BOOKINGS_DB.prepare(`
+          INSERT OR IGNORE INTO class_pass_credit_ledger(
+            id,pass_id,member_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
+          )
+          SELECT ?,mp.id,mp.member_id,mp.original_credits,'PASS_PURCHASE',?,'SYSTEM',?,?
+          FROM member_passes mp
+          WHERE mp.id=? AND mp.member_id=? AND mp.status='ACTIVE'
+            AND mp.provider_checkout_id=? AND (mp.provider_transaction_id IS ? OR mp.provider_transaction_id=?)
+        `).bind(crypto.randomUUID(),`Paid ${pass.product_name||'class pass'} purchase`,actor,
+          `class-pass-purchase:${pass.id}`,pass.id,pass.member_id,pass.provider_checkout_id,transactionId,transactionId),
+        env.BOOKINGS_DB.prepare(`
+          INSERT OR IGNORE INTO class_pass_audit_log(
+            id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key
+          )
+          SELECT ?,mp.id,'PASS_ACTIVATED','SYSTEM',?,'SumUp payment confirmed',?,?,?
+          FROM member_passes mp
+          WHERE mp.id=? AND mp.member_id=? AND mp.status='ACTIVE'
+            AND mp.provider_checkout_id=? AND (mp.provider_transaction_id IS ? OR mp.provider_transaction_id=?)
+        `).bind(crypto.randomUUID(),actor,JSON.stringify({status:pass.status}),
+          JSON.stringify({status:'ACTIVE',purchased_at:purchasedAt,valid_through:validThrough}),
+          `class-pass-activated:${pass.id}`,pass.id,pass.member_id,pass.provider_checkout_id,transactionId,transactionId)
+      ]);
+    }catch(error){
+      if(String(error?.message||error).toLowerCase().includes('unique'))throw new Error('CLASS_PASS_TRANSACTION_ALREADY_USED');
+      throw error;
+    }
+    const activated=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_passes WHERE id=?`).bind(pass.id).first();
+    if(!activated||activated.status!=='ACTIVE'||(transactionId&&activated.provider_transaction_id!==transactionId)){
+      throw new Error('CLASS_PASS_PAYMENT_MISMATCH');
+    }
+  }else if(['FAILED','CANCELLED','EXPIRED'].includes(checkoutStatus)&&pass.status==='PENDING'){
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`
+        UPDATE member_passes SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND provider_checkout_id=? AND status='PENDING'
+      `).bind(pass.id,pass.provider_checkout_id),
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO class_pass_audit_log(
+          id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key
+        )
+        SELECT ?,mp.id,?,'SYSTEM',?,?,?, ?,?
+        FROM member_passes mp WHERE mp.id=? AND mp.status='CANCELLED' AND mp.provider_checkout_id=?
+      `).bind(crypto.randomUUID(),`PAYMENT_${checkoutStatus}`,actor,`SumUp checkout ${checkoutStatus.toLowerCase()}`,
+        JSON.stringify({status:'PENDING'}),JSON.stringify({status:'CANCELLED'}),
+        `class-pass-payment-${checkoutStatus.toLowerCase()}:${pass.id}`,pass.id,pass.provider_checkout_id)
+    ]);
+  }
+  return env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.name product_name,p.validity_days,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id WHERE mp.id=?
+  `).bind(pass.id).first();
+}
+
+async function syncSumUpClassPass(env,pass,actor='SUMUP_STATUS_CHECK'){
+  if(!pass?.provider_checkout_id||!sumUpConfigured(env))return pass;
+  const checkout=await retrieveSumUpCheckout(env,pass.provider_checkout_id);
+  return checkout?applySumUpClassPassState(env,pass,checkout,actor):pass;
+}
+
+async function createClassPassCheckout(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to purchase a class pass.'},401);
+  if(!sameOriginWrite(request))return json({error:'This purchase request could not be verified.'},403);
+  if(!sumUpConfigured(env))return json({error:'Secure SumUp payment is not available right now. No payment has been taken.'},503);
+  const body=await request.json().catch(()=>null);
+  const productId=clean(body?.product_id,80);
+  const product=productId?await env.BOOKINGS_DB.prepare(`
+    SELECT id,code,name,price_pence,original_credits,validity_days
+    FROM class_pass_products WHERE id=? AND active=1
+  `).bind(productId).first():null;
+  if(!product)return json({error:'Choose an available class pass.'},400);
+
+  const id=crypto.randomUUID();
+  const reference=`BSP-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,8).toUpperCase()}`;
+  await env.BOOKINGS_DB.prepare(`
+    INSERT INTO member_passes(
+      id,member_id,customer_id,product_id,status,original_credits,purchase_amount_pence,currency,payment_provider
+    ) VALUES(?,?,?,?, 'PENDING',?,?,'GBP','SUMUP')
+  `).bind(id,session.member_id,session.customer_id,product.id,Number(product.original_credits),Number(product.price_pence)).run();
+  await appendClassPassAudit(env,{
+    passId:id,action:'PURCHASE_STARTED',actorType:'MEMBER',actorId:session.member_id,
+    reason:'Member started secure SumUp checkout',next:{product_id:product.id,status:'PENDING'},
+    idempotencyKey:`class-pass-purchase-started:${id}`
+  });
+
+  try{
+    const origin=new URL(request.url).origin;
+    const response=await sumUpFetch(env,'/v0.1/checkouts',{
+      method:'POST',body:JSON.stringify({
+        checkout_reference:reference,
+        amount:Number((Number(product.price_pence)/100).toFixed(2)),currency:'GBP',
+        merchant_code:String(env.SUMUP_MERCHANT_CODE),description:`Boot Scootin’ ${product.name}`,
+        redirect_url:`${origin}/member-hub.html?class_pass_purchase=${encodeURIComponent(id)}`,
+        return_url:`${origin}/api/sumup-webhook`,hosted_checkout:{enabled:true}
+      })
+    });
+    const checkout=await response.json().catch(()=>({}));
+    const rawUrl=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||'';
+    let checkoutUrl='';
+    try{const parsed=new URL(rawUrl);if(parsed.protocol==='https:')checkoutUrl=parsed.toString();}catch(_){}
+    if(!response.ok||!checkout.id||!checkoutUrl)throw new Error(clean(checkout?.message||checkout?.error_message||checkout?.error||'SUMUP_CHECKOUT_FAILED',180));
+    await env.BOOKINGS_DB.prepare(`UPDATE member_passes SET provider_checkout_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`)
+      .bind(clean(checkout.id,180),id).run();
+    return json({ok:true,purchase_id:id,status:'PENDING',checkout_url:checkoutUrl,product:{id:product.id,name:product.name}},201);
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`UPDATE member_passes SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`).bind(id).run();
+    await appendClassPassAudit(env,{
+      passId:id,action:'CHECKOUT_CREATION_FAILED',actorType:'SYSTEM',actorId:'SUMUP_CHECKOUT',
+      reason:'SumUp checkout could not be created',previous:{status:'PENDING'},next:{status:'CANCELLED'},
+      idempotencyKey:`class-pass-checkout-failed:${id}`
+    });
+    return json({error:'SumUp could not open the secure payment page. No payment has been taken.'},502);
+  }
+}
+
+async function classPassPurchaseStatus(request,env,url){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to view this purchase.'},401);
+  const purchaseId=clean(url.searchParams.get('purchase_id'),80);
+  if(!purchaseId)return json({error:'Purchase reference is missing.'},400);
+  let pass=await classPassForMember(env,purchaseId,session.member_id);
+  if(!pass)return json({error:'Class-pass purchase not found.'},404);
+  if(['PENDING','ACTIVE'].includes(pass.status)&&pass.provider_checkout_id){
+    pass=await syncSumUpClassPass(env,pass,'MEMBER_STATUS_CHECK');
+  }
+  return json({ok:true,pass:safeClassPass(pass)});
 }
 
 
@@ -2199,15 +2388,28 @@ async function sumUpWebhook(request, env) {
     return new Response(null, { status: 204 });
   }
 
-  const booking = await env.BOOKINGS_DB.prepare(
-    `SELECT * FROM bookings WHERE provider_checkout_id=?`
-  ).bind(checkoutId).first();
+  const [booking,classPass,order,privatePayment]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE provider_checkout_id=?`).bind(checkoutId).first(),
+    env.BOOKINGS_DB.prepare(`
+      SELECT mp.*,p.name product_name,p.validity_days
+      FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+      WHERE mp.provider_checkout_id=?
+    `).bind(checkoutId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE provider_checkout_id=?`).bind(checkoutId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first()
+  ]);
+  if([booking,classPass,order,privatePayment].filter(Boolean).length>1){
+    throw new Error('SUMUP_CHECKOUT_REFERENCE_COLLISION');
+  }
   const checkout = await retrieveSumUpCheckout(env, checkoutId);
   if (booking) {
     if (checkout) await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
     return new Response(null, { status: 204 });
   }
-  const order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE provider_checkout_id=?`).bind(checkoutId).first();
+  if(classPass){
+    if(checkout)await applySumUpClassPassState(env,classPass,checkout,'SUMUP_WEBHOOK');
+    return new Response(null,{status:204});
+  }
   if(order&&checkout){
     const cs=String(checkout?.status||'').toUpperCase();
     if(cs==='PAID'){
@@ -2217,7 +2419,6 @@ async function sumUpWebhook(request, env) {
     } else if(['FAILED','EXPIRED'].includes(cs)) await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run();
     return new Response(null, { status: 204 });
   }
-  const privatePayment=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first();
   if(privatePayment&&checkout){
     const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE id=?`).bind(privatePayment.inquiry_id).first();
     const quote=privatePayment.quote_id?await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE id=?`).bind(privatePayment.quote_id).first():null;
@@ -5110,6 +5311,8 @@ export default {
       if (path === '/api/member/forgot' && request.method === 'POST') return memberForgot(request, env);
       if (path === '/api/member/reset' && request.method === 'POST') return memberReset(request, env);
       if (path === '/api/member/me' && request.method === 'GET') return memberMe(request, env);
+      if (path === '/api/member/class-pass-checkout' && request.method === 'POST') return createClassPassCheckout(request, env);
+      if (path === '/api/member/class-pass-purchase-status' && request.method === 'GET') return classPassPurchaseStatus(request, env, url);
       if (path === '/api/member/profile' && request.method === 'POST') return memberProfileUpdate(request, env);
       if (path === '/api/member/export' && request.method === 'GET') return memberExport(request, env);
       if (path === '/api/member/pause' && request.method === 'POST') return memberPause(request, env);
