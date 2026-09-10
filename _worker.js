@@ -413,6 +413,37 @@ async function memberClassPasses(env,memberId){
   }));
 }
 
+async function memberClassPassList(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to view your class passes.'},401);
+  const passes=await memberClassPasses(env,session.member_id);
+  const bookingsResult=await env.BOOKINGS_DB.prepare(`
+    SELECT b.class_pass_id,b.status,c.title,c.starts_at,c.venue,
+      EXISTS(SELECT 1 FROM class_pass_credit_ledger returned
+        WHERE returned.booking_id=b.id AND returned.pass_id=b.class_pass_id
+          AND returned.member_id=? AND returned.event_type='CLASS_CREDIT_RETURN' AND returned.amount>0) credit_returned
+    FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
+    LEFT JOIN classes c ON c.id=b.class_id
+    WHERE mp.member_id=? AND b.customer_id=? AND b.payment_provider='CLASS_PASS'
+    ORDER BY c.starts_at DESC,b.created_at DESC
+  `).bind(session.member_id,session.member_id,session.customer_id).all();
+  const bookingsByPass=new Map();
+  for(const booking of bookingsResult.results||[]){
+    const rows=bookingsByPass.get(booking.class_pass_id)||[];
+    rows.push({title:booking.title||'Boot Scootin’ class',starts_at:booking.starts_at||null,
+      venue:booking.venue||'',status:booking.status,credit_returned:Boolean(booking.credit_returned)});
+    bookingsByPass.set(booking.class_pass_id,rows);
+  }
+  const products=(await activeClassPassProducts(env)).map(product=>({id:product.id,name:product.name,
+    price_pence:Number(product.price_pence),original_credits:Number(product.original_credits),validity_days:Number(product.validity_days)}));
+  return json({ok:true,passes:passes.map(pass=>({id:pass.id,product_name:pass.product_name,
+    purchased_at:pass.purchased_at||null,valid_through:pass.valid_through||null,
+    original_credits:Number(pass.original_credits),remaining_credits:Number(pass.remaining_credits),
+    status:pass.derived_status,bookings:bookingsByPass.get(pass.id)||[]})),products});
+}
+
 async function classPassBalance(env,passId,memberId){
   const row=await env.BOOKINGS_DB.prepare(`
     SELECT COALESCE(SUM(l.amount),0) balance
@@ -5459,6 +5490,7 @@ export default {
       if (path === '/api/member/forgot' && request.method === 'POST') return memberForgot(request, env);
       if (path === '/api/member/reset' && request.method === 'POST') return memberReset(request, env);
       if (path === '/api/member/me' && request.method === 'GET') return memberMe(request, env);
+      if (path === '/api/member/class-passes' && request.method === 'GET') return memberClassPassList(request, env);
       if (path === '/api/member/class-pass-checkout' && request.method === 'POST') return createClassPassCheckout(request, env);
       if (path === '/api/member/class-pass-purchase-status' && request.method === 'GET') return classPassPurchaseStatus(request, env, url);
       if (path === '/api/member/class-credit-options' && request.method === 'GET') return classCreditOptions(request, env, url);
