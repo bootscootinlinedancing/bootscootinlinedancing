@@ -103,6 +103,7 @@
       <button type="button" data-view="overview" class="active">Overview</button>
       <button type="button" data-view="classes">Classes</button>
       <button type="button" data-view="class-passes">Class Passes</button>
+      <button type="button" data-view="reviews">Reviews</button>
       <button type="button" data-view="bookings">Bookings</button>
       <button type="button" data-view="customers">Customers</button>
       <button type="button" data-view="merch-orders">Merch Orders</button>
@@ -166,6 +167,21 @@
             <header><div><p class="kicker red">Class settings</p><h3>Class-pass eligibility</h3><p>Normal classes can accept credits; special, private and anniversary events can be excluded.</p></div></header>
             <div id="ranchClassPassEligibility">Loading…</div>
           </section>
+        </div>
+      </section>
+      <section class="ranch-view" data-view-panel="reviews">
+        <div class="ranch-panel ranch-review-admin">
+          <div class="ranch-panel-head"><div><p class="kicker red">Dancer feedback</p><h2>Review Moderation</h2><p>Publish genuine feedback, protect member privacy, and manage approved homepage features without editing a dancer’s words.</p></div><button class="button secondary compact" id="refreshReviews" type="button">Refresh</button></div>
+          <div id="reviewAdminSummary" class="review-admin-summary" aria-live="polite"></div>
+          <div class="review-admin-tools">
+            <label>Search<input id="reviewAdminSearch" type="search" placeholder="Reviewer name or email"></label>
+            <label>Status<select id="reviewAdminStatus"><option value="">All statuses</option><option value="PENDING">Pending</option><option value="PUBLISHED">Published</option><option value="PRIVATE">Private</option><option value="REJECTED">Rejected</option><option value="ARCHIVED">Archived</option></select></label>
+            <label>Rating<select id="reviewAdminRating"><option value="">All ratings</option><option value="5">5 stars</option><option value="4">4 stars</option><option value="3">3 stars</option><option value="2">2 stars</option><option value="1">1 star</option></select></label>
+            <label>Verified<select id="reviewAdminVerified"><option value="">All dancers</option><option value="1">Verified dancers</option><option value="0">Not verified</option></select></label>
+            <label>Reuse<select id="reviewAdminReuse"><option value="">All permissions</option><option value="website">Website permission</option><option value="social">Social permission</option><option value="featured">Featured</option></select></label>
+            <label>Order<select id="reviewAdminOrder"><option value="newest">Newest</option><option value="oldest">Oldest</option></select></label>
+          </div>
+          <div class="review-admin-layout"><div id="ranchReviews" class="review-admin-list" aria-live="polite">Loading…</div><aside id="ranchReviewDetail" class="review-admin-detail" aria-live="polite"><div class="ranch91-empty">Select a review to inspect its full history and moderation options.</div></aside></div>
         </div>
       </section>
       <section class="ranch91-warning" id="ranch91AccessWarning" aria-live="polite">

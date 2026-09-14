@@ -1262,12 +1262,12 @@ async function ensureBookingSchema(env) {
       first_name_only INTEGER NOT NULL DEFAULT 1 CHECK(first_name_only IN (0,1)),is_private INTEGER NOT NULL DEFAULT 0 CHECK(is_private IN (0,1)),
       website_permission INTEGER NOT NULL DEFAULT 0 CHECK(website_permission IN (0,1)),social_permission INTEGER NOT NULL DEFAULT 0 CHECK(social_permission IN (0,1)),
       moderation_status TEXT NOT NULL DEFAULT 'PENDING' CHECK(moderation_status IN ('PENDING','PUBLISHED','PRIVATE','REJECTED','ARCHIVED')),
-      featured_homepage INTEGER NOT NULL DEFAULT 0 CHECK(featured_homepage IN (0,1)),version INTEGER NOT NULL DEFAULT 1 CHECK(version>0),
+      featured_homepage INTEGER NOT NULL DEFAULT 0 CHECK(featured_homepage IN (0,1)),version INTEGER NOT NULL DEFAULT 1 CHECK(version>0),moderation_operation_id TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,archived_at TEXT
     )`,
     `CREATE TABLE IF NOT EXISTS review_history (
       id TEXT PRIMARY KEY,review_id TEXT NOT NULL REFERENCES reviews(id),event_type TEXT NOT NULL CHECK(event_type IN ('CREATED','UPDATED','ARCHIVED')),review_version INTEGER NOT NULL CHECK(review_version>0),
-      operation_id TEXT NOT NULL UNIQUE,actor_type TEXT NOT NULL,actor_id TEXT NOT NULL,previous_json TEXT,next_json TEXT NOT NULL,
+      operation_id TEXT NOT NULL UNIQUE,actor_type TEXT NOT NULL,actor_id TEXT NOT NULL,previous_json TEXT,next_json TEXT NOT NULL,moderation_note TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE INDEX IF NOT EXISTS idx_member_passes_member ON member_passes(member_id,status,valid_through)`,
@@ -1281,6 +1281,7 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_reviews_moderation ON reviews(moderation_status,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_reviews_public ON reviews(moderation_status,is_private,archived_at,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_reviews_featured ON reviews(featured_homepage,moderation_status,website_permission,created_at)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_moderation_operation ON reviews(moderation_operation_id) WHERE moderation_operation_id IS NOT NULL`,
     `CREATE INDEX IF NOT EXISTS idx_review_history_review ON review_history(review_id,created_at)`,
     `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_update BEFORE UPDATE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
     `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_delete BEFORE DELETE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
@@ -3818,6 +3819,64 @@ async function archiveMemberReview(request,env){
   return json({ok:true,archived:true});
 }
 
+function safeAdminReview(row){
+  if(!row)return null;
+  return {...safeMemberReview(row),id:row.id,reviewer_name:row.customer_name||'',reviewer_email:row.customer_email||'',verified_dancer:Boolean(row.verified_dancer)};
+}
+
+async function adminReviewRow(env,id){
+  return env.BOOKINGS_DB.prepare(`SELECT r.*,cu.name customer_name,cu.email customer_email,c.title class_title,c.venue,
+    EXISTS(SELECT 1 FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=r.customer_id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) verified_dancer
+    FROM reviews r JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id WHERE r.id=? LIMIT 1`).bind(id).first();
+}
+
+async function adminReviews(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env);const url=new URL(request.url);
+  if(request.method==='GET'){
+    const id=clean(url.searchParams.get('id'),120);
+    if(id){
+      const row=await adminReviewRow(env,id);if(!row)return json({error:'Review not found.'},404);
+      const history=await env.BOOKINGS_DB.prepare(`SELECT event_type,review_version,actor_type,actor_id,previous_json,next_json,moderation_note,created_at FROM review_history WHERE review_id=? ORDER BY created_at DESC,id DESC`).bind(id).all();
+      return json({review:safeAdminReview(row),history:history.results||[]});
+    }
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT r.*,cu.name customer_name,cu.email customer_email,c.title class_title,c.venue,
+      EXISTS(SELECT 1 FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=r.customer_id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) verified_dancer
+      FROM reviews r JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id ORDER BY r.updated_at DESC,r.id DESC LIMIT 500`).all();
+    const all=(rows.results||[]).map(safeAdminReview),published=all.filter(r=>r.moderation_status==='PUBLISHED'&&!r.is_private&&!r.archived_at);
+    return json({reviews:all,summary:{pending:all.filter(r=>r.moderation_status==='PENDING'&&!r.archived_at).length,published:published.length,
+      private:all.filter(r=>r.moderation_status==='PRIVATE'&&!r.archived_at).length,featured:published.filter(r=>r.featured_homepage&&r.website_permission).length,
+      average_published_rating:published.length?Number((published.reduce((sum,r)=>sum+r.rating,0)/published.length).toFixed(2)):0}});
+  }
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!sameOriginWrite(request))return json({error:'This HQ review request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),id=clean(body?.id,120),action=clean(body?.action,30).toUpperCase(),rawOperation=reviewOperationId(body?.operation_id),note=clean(body?.note,1000),expectedVersion=Number(body?.version);
+  if(!body||!id||!rawOperation||!Number.isInteger(expectedVersion)||expectedVersion<1)return json({error:'Review, version and operation reference are required.'},400);
+  const allowed=['PUBLISH','REJECT','MARK_PRIVATE','ARCHIVE','FEATURE','UNFEATURE'];if(!allowed.includes(action))return json({error:'Unsupported review action.'},400);
+  if(['REJECT','MARK_PRIVATE','ARCHIVE'].includes(action)&&!note)return json({error:'A moderation reason is required for this action.'},400);
+  const operationId=`admin-review:${check.state.email}:${rawOperation}`,intent={action,note,version:expectedVersion};
+  const replay=await env.BOOKINGS_DB.prepare(`SELECT review_id,next_json FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,check.state.email).first();
+  if(replay){const saved=JSON.parse(replay.next_json||'{}')._admin_intent;if(JSON.stringify(saved)!==JSON.stringify(intent)||replay.review_id!==id)return json({error:'Operation reference conflicts with an earlier moderation action.'},409);return json({ok:true,idempotent:true,review:safeAdminReview(await adminReviewRow(env,id))});}
+  const current=await adminReviewRow(env,id);if(!current)return json({error:'Review not found.'},404);
+  if(expectedVersion!==Number(current.version))return json({error:'This review changed since it was opened. Refresh and try again.'},409);
+  if(current.archived_at||current.moderation_status==='ARCHIVED')return json({error:'Archived reviews cannot be moderated.'},409);
+  let status=current.moderation_status,isPrivate=Number(current.is_private),featured=Number(current.featured_homepage),archive=false;
+  if(action==='PUBLISH'){if(isPrivate||status==='PRIVATE')return json({error:'A member-private review cannot be published by HQ.'},409);status='PUBLISHED';}
+  else if(action==='REJECT'){status='REJECTED';featured=0;}
+  else if(action==='MARK_PRIVATE'){status='PRIVATE';isPrivate=1;featured=0;}
+  else if(action==='ARCHIVE'){status='ARCHIVED';isPrivate=1;featured=0;archive=true;}
+  else if(action==='FEATURE'){if(status!=='PUBLISHED'||isPrivate||!Number(current.website_permission))return json({error:'Only a published, public review with website permission can be featured.'},409);featured=1;}
+  else if(action==='UNFEATURE'){featured=0;}
+  const previous=reviewSnapshot(current),next={...previous,is_private:Boolean(isPrivate),moderation_status:status,featured_homepage:Boolean(featured),archived_at:archive?'RECORDED_AT_OPERATION':null,_admin_intent:intent},eventType=archive?'ARCHIVED':'UPDATED';
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE reviews SET moderation_status=?,is_private=?,featured_homepage=?,archived_at=CASE WHEN ?=1 THEN CURRENT_TIMESTAMP ELSE archived_at END,updated_at=CURRENT_TIMESTAMP,version=version+1,moderation_operation_id=? WHERE id=? AND version=? AND archived_at IS NULL`).bind(status,isPrivate,featured,archive?1:0,operationId,id,current.version),
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO review_history(id,review_id,event_type,review_version,operation_id,actor_type,actor_id,previous_json,next_json,moderation_note) SELECT ?,r.id,?,r.version,?,'ADMIN',?,?,?,? FROM reviews r WHERE r.id=? AND r.version=? AND r.moderation_operation_id=?`).bind(crypto.randomUUID(),eventType,operationId,check.state.email,JSON.stringify(previous),JSON.stringify(next),note||null,id,Number(current.version)+1,operationId)
+  ]);
+  const recorded=await env.BOOKINGS_DB.prepare(`SELECT review_id FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,check.state.email).first();
+  if(!recorded)return json({error:'This review changed since it was opened. Refresh and try again.'},409);
+  return json({ok:true,review:safeAdminReview(await adminReviewRow(env,id))});
+}
+
 async function publicReviews(request,env){
   await ensureBookingSchema(env);const url=new URL(request.url),sort=clean(url.searchParams.get('sort'),20).toLowerCase();
   const order=sort==='highest'?'r.rating DESC,r.created_at DESC':sort==='lowest'?'r.rating ASC,r.created_at DESC':'r.created_at DESC';
@@ -5948,6 +6007,7 @@ export default {
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
+      if (path === '/api/admin/reviews') return adminReviews(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env, ctx);
