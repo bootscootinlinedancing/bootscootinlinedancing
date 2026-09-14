@@ -830,6 +830,7 @@ function repairMemberNavigationHtml(html){
 <div class="menu45-submenu">
 <a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
 <a href="member-hub.html"><span>Membership &amp; Benefits</span><b aria-hidden="true">›</b></a>
+<a href="reviews.html"><span>Reviews &amp; Feedback</span><b aria-hidden="true">›</b></a>
 </div>
 </details>`;
   return String(html||'').replace(
