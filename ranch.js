@@ -618,11 +618,11 @@
     }
     updateClassSummary(state.classes);
     const rows=filteredClasses();
-    box.innerHTML=rows.length?rows.map(c=>`<article class="ranch-class-row" data-class-id="${esc(c.id)}">
+    box.innerHTML=rows.length?rows.map(c=>{const remaining=Math.max(0,Number(c.spaces_remaining??(Number(c.capacity||0)-Number(c.sold||0))));return `<article class="ranch-class-row" data-class-id="${esc(c.id)}">
       <div class="ranch-class-main"><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)} · ${money(c.price_pence)}</span></div>
-      <div class="ranch-class-meta">${Math.max(0,Number(c.capacity||0)-Number(c.sold||0))===0
+      <div class="ranch-class-meta">${remaining===0
         ?`<b>FULL</b><small>Waiting list open</small>`
-        :`<b>${Math.max(0,Number(c.capacity||0)-Number(c.sold||0))} place${Math.max(0,Number(c.capacity||0)-Number(c.sold||0))===1?'':'s'} remaining</b><small>${esc(c.status)}</small>`}</div>
+        :`<b>${remaining} place${remaining===1?'':'s'} remaining</b><small>${esc(c.status)}</small>`}</div>
       <div class="ranch-class-actions">
         <button type="button" class="button compact" data-class-register="${esc(c.id)}">Register</button>
         <button type="button" class="button secondary compact" data-edit-class="${esc(c.id)}">Edit</button>
@@ -630,7 +630,7 @@
         ${c.status==='open'?`<button type="button" class="button secondary compact" data-class-status="closed" data-class-id="${esc(c.id)}">Close</button>`:`<button type="button" class="button secondary compact" data-class-status="open" data-class-id="${esc(c.id)}">Open</button>`}
         <button type="button" class="button danger compact" data-delete-class="${esc(c.id)}">Delete</button>
       </div>
-    </article>`).join(''):emptyPanel('No classes match this filter.');
+    </article>`}).join(''):emptyPanel('No classes match this filter.');
     box.querySelectorAll('[data-edit-class]').forEach(btn=>btn.addEventListener('click',()=>openClassEditor(state.classes.find(c=>c.id===btn.dataset.editClass))));
     box.querySelectorAll('[data-class-register]').forEach(btn=>btn.addEventListener('click',()=>loadClassRegister(btn.dataset.classRegister)));
     box.querySelectorAll('[data-duplicate-class]').forEach(btn=>btn.addEventListener('click',()=>duplicateClass(btn.dataset.duplicateClass)));

@@ -4061,7 +4061,13 @@ async function adminClasses(request, env) {
         ORDER BY c.starts_at
       `).all();
       const rows=Array.isArray(response?.results)?response.results:[];
-      return json(rows,200);
+      const anniversary=await anniversaryInventory(env).catch(()=>null);
+      return json(rows.map(row=>({
+        ...row,
+        spaces_remaining:anniversary?.event?.class_id===row.id
+          ? Number(anniversary.remaining||0)
+          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0))
+      })),200);
     } catch (error) {
       return json({
         error:'Classes could not be loaded from the booking database.',
