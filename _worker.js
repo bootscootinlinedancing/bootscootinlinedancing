@@ -1406,13 +1406,13 @@ async function anniversaryInventory(env,{includePrivate=false}={}){
   const releases=await env.BOOKINGS_DB.prepare(`
     SELECT r.*,
       COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) native_used,
-      COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>CURRENT_TIMESTAMP),0) held,
+      COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0) held,
       COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0) recorded_used
     FROM anniversary_ticket_releases r WHERE r.event_id=? AND r.active=1 ORDER BY r.display_order
   `).bind(event.id).all();
   const [guest,eventUsage,recorded]=await Promise.all([
     env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(places),0) used FROM anniversary_guest_list WHERE event_id=? AND status='ACTIVE'`).bind(event.id).first(),
-    env.BOOKINGS_DB.prepare(`SELECT COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0) booked,COALESCE((SELECT SUM(quantity) FROM booking_holds WHERE class_id=? AND expires_at>CURRENT_TIMESTAMP),0) held`).bind(event.class_id,event.class_id).first(),
+    env.BOOKINGS_DB.prepare(`SELECT COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0) booked,COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=? AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0) held`).bind(event.class_id,event.class_id).first(),
     env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(places),0) used FROM anniversary_ticket_adjustments WHERE event_id=? AND status='ACTIVE'`).bind(event.id).first()
   ]);
   const list=(releases.results||[]).map(row=>{
@@ -1453,7 +1453,7 @@ async function adminAnniversary(request,env){
       INSERT INTO anniversary_guest_list(id,event_id,guest_name,places,category,notes,created_by,updated_by)
       SELECT ?,e.id,?,?,?,?,?,? FROM anniversary_events e WHERE e.id=? AND ?>0 AND ?<=e.total_capacity
         -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=e.class_id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
-        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=e.class_id AND h.expires_at>CURRENT_TIMESTAMP),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=e.class_id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
         -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
         -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
     `).bind(id,name,places,category,notes||null,actor,actor,eventId,places,places),
@@ -1476,12 +1476,12 @@ async function adminAnniversary(request,env){
       SELECT ?,e.id,r.id,?,?,?,?,? FROM anniversary_events e JOIN anniversary_ticket_releases r ON r.event_id=e.id
       WHERE e.id=? AND r.id=? AND r.active=1 AND ?<=e.total_capacity
         -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=e.class_id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
-        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=e.class_id AND h.expires_at>CURRENT_TIMESTAMP),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=e.class_id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
         -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
         -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
         AND (r.allocation IS NULL OR ?<=r.allocation
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
-          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>CURRENT_TIMESTAMP),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
           -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0))
     `).bind(id,source,reference,places,notes||null,actor,eventId,releaseId,places,places),
     env.BOOKINGS_DB.prepare(`INSERT INTO anniversary_audit_log(id,event_id,action,target_type,target_id,actor,reason,next_json,operation_id)
@@ -2418,12 +2418,12 @@ async function createClassReservation(request, env) {
       WHERE c.id=? AND r.id=? AND c.status='open' AND c.starts_at>? AND ?>0
         AND ?<=e.total_capacity
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
-          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>CURRENT_TIMESTAMP),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
           -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
           -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
         AND (r.allocation IS NULL OR ?<=r.allocation
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
-          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>CURRENT_TIMESTAMP),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
           -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0))
     `).bind(holdId,quantity,holdExpiry,classId,anniversaryRelease.id,new Date().toISOString(),quantity,quantity,quantity).run()
     :await env.BOOKINGS_DB.prepare(`
