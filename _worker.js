@@ -717,6 +717,8 @@ async function classCreditOptions(request,env,url){
     FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id WHERE c.id=?
   `).bind(classId).first():null;
   if(!klass||klass.status!=='open'||new Date(klass.starts_at).getTime()<=Date.now())return json({authenticated:true,can_use_credit:false});
+  const anniversaryClass=await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_events WHERE class_id=? AND active=1`).bind(classId).first().catch(()=>null);
+  if(anniversaryClass)return json({authenticated:true,can_use_credit:false,special_event:true});
   const pass=Number(klass.pass_eligible)===1?await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId}):null;
   return json({
     authenticated:true,can_use_credit:Boolean(pass),class_full:Number(klass.spaces_remaining||0)<1,
@@ -750,6 +752,8 @@ async function createClassCreditBooking(request,env){
     WHERE c.id=? AND c.status='open' AND c.starts_at>?
   `).bind(classId,new Date().toISOString()).first();
   if(!klass)return json({error:'This class is no longer open for booking.'},404);
+  const anniversaryClass=await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_events WHERE class_id=? AND active=1`).bind(classId).first().catch(()=>null);
+  if(anniversaryClass)return json({error:'Class credits cannot be used for the anniversary party.'},409);
   if(Number(klass.pass_eligible)!==1)return json({error:'Class credits are not available for this class.'},409);
   const pass=await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId});
   if(!pass)return json({error:'You do not have an active class pass that can be used for this class.'},409);
@@ -1396,6 +1400,105 @@ async function ensureBookingSchema(env) {
   return Number(row?.tables || 0);
 }
 
+async function anniversaryInventory(env,{includePrivate=false}={}){
+  const event=await env.BOOKINGS_DB.prepare(`SELECT * FROM anniversary_events WHERE active=1 ORDER BY created_at LIMIT 1`).first();
+  if(!event)return null;
+  const releases=await env.BOOKINGS_DB.prepare(`
+    SELECT r.*,
+      COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) native_used,
+      COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0) held,
+      COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0) recorded_used
+    FROM anniversary_ticket_releases r WHERE r.event_id=? AND r.active=1 ORDER BY r.display_order
+  `).bind(event.id).all();
+  const [guest,eventUsage,recorded]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(places),0) used FROM anniversary_guest_list WHERE event_id=? AND status='ACTIVE'`).bind(event.id).first(),
+    env.BOOKINGS_DB.prepare(`SELECT COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0) booked,COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=? AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0) held`).bind(event.class_id,event.class_id).first(),
+    env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(places),0) used FROM anniversary_ticket_adjustments WHERE event_id=? AND status='ACTIVE'`).bind(event.id).first()
+  ]);
+  const list=(releases.results||[]).map(row=>{
+    const sold=Number(row.native_used||0)+Number(row.recorded_used||0),held=Number(row.held||0),allocation=row.allocation==null?null:Number(row.allocation);
+    return {id:row.id,code:row.code,name:row.name,price_pence:Number(row.price_pence),allocation,sold,held,remaining:allocation==null?null:Math.max(0,allocation-sold-held)};
+  });
+  const paid=Number(eventUsage?.booked||0)+Number(recorded?.used||0),held=Number(eventUsage?.held||0),guestPlaces=Number(guest?.used||0);
+  const remaining=Math.max(0,Number(event.total_capacity)-paid-held-guestPlaces);
+  const current=list.find(row=>remaining>0&&(row.allocation==null||row.remaining>0))||null;
+  const safe={event:{id:event.id,class_id:event.class_id,title:event.title,total_capacity:Number(event.total_capacity)},paid,guest_list:guestPlaces,held,remaining,current_release:current?{id:current.id,code:current.code,name:current.name,price_pence:current.price_pence,remaining:current.allocation==null?remaining:Math.min(remaining,current.remaining)}:null,releases:list.map(row=>({...row,remaining:row.allocation==null?remaining:Math.min(remaining,row.remaining??remaining)}))};
+  if(includePrivate){
+    const [guests,adjustments,audit]=await Promise.all([
+      env.BOOKINGS_DB.prepare(`SELECT id,guest_name,places,category,notes,status,created_by,updated_by,created_at,updated_at FROM anniversary_guest_list WHERE event_id=? ORDER BY status,created_at DESC`).bind(event.id).all(),
+      env.BOOKINGS_DB.prepare(`SELECT a.id,a.source,a.external_reference,a.places,a.status,a.notes,a.created_by,a.created_at,a.updated_at,r.name release_name,r.code release_code FROM anniversary_ticket_adjustments a JOIN anniversary_ticket_releases r ON r.id=a.release_id WHERE a.event_id=? ORDER BY a.created_at DESC`).bind(event.id).all(),
+      env.BOOKINGS_DB.prepare(`SELECT action,target_type,target_id,actor,reason,previous_json,next_json,created_at FROM anniversary_audit_log WHERE event_id=? ORDER BY created_at DESC LIMIT 200`).bind(event.id).all()
+    ]);
+    safe.guests=guests.results||[];safe.adjustments=adjustments.results||[];safe.audit=audit.results||[];
+  }
+  return safe;
+}
+
+async function adminAnniversary(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env);
+  const inventory=await anniversaryInventory(env,{includePrivate:true});if(!inventory)return json({error:'The anniversary event is not configured.'},404);
+  if(request.method==='GET')return json(inventory);
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),action=clean(body?.action,40),reason=clean(body?.reason,500),operationId=clean(body?.operation_id,100);
+  if(!body||!reason||!/^[A-Za-z0-9_-]{12,100}$/.test(operationId))return json({error:'A reason and valid operation reference are required.'},400);
+  const eventId=inventory.event.id,actor=check.state.email;
+  const prior=await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_audit_log WHERE operation_id=?`).bind(operationId).first();
+  if(prior)return json({ok:true,idempotent:true,inventory:await anniversaryInventory(env,{includePrivate:true})});
+  if(action==='ADD_GUEST'){
+    const name=clean(body.guest_name,140),places=Math.floor(Number(body.places)),category=clean(body.category,40),notes=clean(body.notes,600),id=crypto.randomUUID();
+    if(!name||!Number.isInteger(places)||places<1||!['VENDOR','ARTIST_PERFORMER','FRIEND_GUEST','COMPLIMENTARY','OTHER'].includes(category))return json({error:'Enter a guest, valid number of places and category.'},400);
+    const results=await env.BOOKINGS_DB.batch([env.BOOKINGS_DB.prepare(`
+      INSERT INTO anniversary_guest_list(id,event_id,guest_name,places,category,notes,created_by,updated_by)
+      SELECT ?,e.id,?,?,?,?,?,? FROM anniversary_events e WHERE e.id=? AND ?>0 AND ?<=e.total_capacity
+        -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=e.class_id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=e.class_id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
+        -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
+        -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
+    `).bind(id,name,places,category,notes||null,actor,actor,eventId,places,places),
+    env.BOOKINGS_DB.prepare(`INSERT INTO anniversary_audit_log(id,event_id,action,target_type,target_id,actor,reason,next_json,operation_id)
+      SELECT ?,?,'GUEST_ADDED','guest',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM anniversary_guest_list WHERE id=?)`)
+      .bind(crypto.randomUUID(),eventId,id,actor,reason,JSON.stringify({guest_name:name,places,category}),operationId,id)]);
+    const result=results?.[0];
+    if(Number(result?.meta?.changes||0)!==1)return json({error:'Not enough anniversary capacity remains for this guest allocation.'},409);
+  }else if(action==='CANCEL_GUEST'){
+    const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM anniversary_guest_list WHERE id=? AND event_id=?`).bind(id,eventId).first();if(!row)return json({error:'Guest allocation not found.'},404);
+    if(row.status==='ACTIVE')await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE anniversary_guest_list SET status='CANCELLED',updated_by=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='ACTIVE'`).bind(actor,id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO anniversary_audit_log(id,event_id,action,target_type,target_id,actor,reason,previous_json,next_json,operation_id) VALUES(?,?,'GUEST_CANCELLED','guest',?,?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,id,actor,reason,JSON.stringify({status:'ACTIVE',places:row.places}),JSON.stringify({status:'CANCELLED',places:row.places}),operationId)
+    ]);
+  }else if(action==='RECORD_TICKETS'){
+    const releaseId=clean(body.release_id,120),source=clean(body.source,20),reference=clean(body.external_reference,160),places=Math.floor(Number(body.places)),notes=clean(body.notes,600),id=crypto.randomUUID();
+    if(!['EVENTBRITE','MANUAL'].includes(source)||!reference||!Number.isInteger(places)||places<1)return json({error:'Choose a release and enter a unique source reference and places.'},400);
+    const results=await env.BOOKINGS_DB.batch([env.BOOKINGS_DB.prepare(`
+      INSERT INTO anniversary_ticket_adjustments(id,event_id,release_id,source,external_reference,places,notes,created_by)
+      SELECT ?,e.id,r.id,?,?,?,?,? FROM anniversary_events e JOIN anniversary_ticket_releases r ON r.event_id=e.id
+      WHERE e.id=? AND r.id=? AND r.active=1 AND ?<=e.total_capacity
+        -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=e.class_id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=e.class_id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
+        -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
+        -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
+        AND (r.allocation IS NULL OR ?<=r.allocation
+          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
+          -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0))
+    `).bind(id,source,reference,places,notes||null,actor,eventId,releaseId,places,places),
+    env.BOOKINGS_DB.prepare(`INSERT INTO anniversary_audit_log(id,event_id,action,target_type,target_id,actor,reason,next_json,operation_id)
+      SELECT ?,?,'TICKETS_RECORDED','ticket_adjustment',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM anniversary_ticket_adjustments WHERE id=?)`)
+      .bind(crypto.randomUUID(),eventId,id,actor,reason,JSON.stringify({source,external_reference:reference,places,release_id:releaseId}),operationId,id)]);
+    const result=results?.[0];
+    if(Number(result?.meta?.changes||0)!==1)return json({error:'This reference already exists, or the release/event capacity is insufficient.'},409);
+  }else if(action==='CANCEL_TICKETS'){
+    const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM anniversary_ticket_adjustments WHERE id=? AND event_id=?`).bind(id,eventId).first();if(!row)return json({error:'Recorded ticket allocation not found.'},404);
+    if(row.status==='ACTIVE')await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE anniversary_ticket_adjustments SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='ACTIVE'`).bind(id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO anniversary_audit_log(id,event_id,action,target_type,target_id,actor,reason,previous_json,next_json,operation_id) VALUES(?,?,'TICKETS_CANCELLED','ticket_adjustment',?,?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,id,actor,reason,JSON.stringify({status:'ACTIVE',places:row.places}),JSON.stringify({status:'CANCELLED',places:row.places}),operationId)
+    ]);
+  }else return json({error:'Unsupported anniversary action.'},400);
+  return json({ok:true,inventory:await anniversaryInventory(env,{includePrivate:true})});
+}
+
 async function publicClasses(env) {
   if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
   try {
@@ -1427,7 +1530,14 @@ async function publicClasses(env) {
       ) AS spaces_remaining
       FROM classes c WHERE c.status='open' AND c.starts_at>? ORDER BY c.starts_at
     `).bind(now,now).all();
-    return json(results.map(row => ({ ...row, price: row.price_pence / 100 })));
+    const anniversary=await anniversaryInventory(env).catch(()=>null);
+    return json(results.map(row => {
+      if(anniversary&&row.id===anniversary.event.class_id){
+        const price=anniversary.current_release?.price_pence??row.price_pence;
+        return {...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))};
+      }
+      return { ...row, price: row.price_pence / 100 };
+    }));
   } catch (error) {
     return json({ error: 'The booking database could not be prepared.', detail: error.message }, 500);
   }
@@ -2206,8 +2316,10 @@ async function issuePersonalPromotion(env,{email,name,type='BIRTHDAY',percent=20
 async function publicPromoValidate(request,env){
   await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
   const classRow=await env.BOOKINGS_DB.prepare(`SELECT price_pence FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
-  const quantity=Math.max(1,Math.min(4,Number(body.quantity)||1)); const subtotal=Number(classRow.price_pence||0)*quantity;
-  const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId:clean(body.classId,120),subtotal});
+  const anniversary=await anniversaryInventory(env).catch(()=>null),classId=clean(body.classId,120);
+  const unitPrice=anniversary?.event?.class_id===classId&&anniversary.current_release?anniversary.current_release.price_pence:Number(classRow.price_pence||0);
+  const quantity=Math.max(1,Math.min(4,Number(body.quantity)||1)); const subtotal=unitPrice*quantity;
+  const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId,subtotal});
   return result.valid?json({ok:true,...result,subtotal_pence:subtotal}):json({error:result.error},400);
 }
 
@@ -2242,6 +2354,10 @@ async function createClassReservation(request, env) {
 
   if (!classRow) return json({ error: 'This class is no longer open for booking.' }, 404);
 
+  const anniversary = await anniversaryInventory(env).catch(()=>null);
+  const anniversaryRelease = anniversary?.event?.class_id===classId ? anniversary.current_release : null;
+  if(anniversary?.event?.class_id===classId&&!anniversaryRelease)return json({error:'Anniversary tickets are currently sold out.'},409);
+
   const occupancy = await env.BOOKINGS_DB.prepare(`
     SELECT
       COALESCE((
@@ -2255,7 +2371,7 @@ async function createClassReservation(request, env) {
       ),0) held
   `).bind(classId,classId,new Date().toISOString()).first();
 
-  const spaces = Math.max(
+  const spaces = anniversaryRelease ? Number(anniversaryRelease.remaining) : Math.max(
     0,
     Number(classRow.capacity || 0) - Number(occupancy?.booked || 0) - Number(occupancy?.held || 0)
   );
@@ -2282,7 +2398,8 @@ async function createClassReservation(request, env) {
     }, 201);
   }
 
-  const originalAmount = Number(classRow.price_pence || 0) * quantity;
+  const unitPrice = anniversaryRelease ? Number(anniversaryRelease.price_pence) : Number(classRow.price_pence || 0);
+  const originalAmount = unitPrice * quantity;
   let promotion = null;
   if(requestedPromoCode){
     promotion = await validatePromotion(env,{code:requestedPromoCode,email,classId,subtotal:originalAmount});
@@ -2294,22 +2411,30 @@ async function createClassReservation(request, env) {
   const holdId = crypto.randomUUID();
   const holdExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-  const holdResult=await env.BOOKINGS_DB.prepare(`
-    INSERT INTO booking_holds(id,class_id,quantity,expires_at)
-    SELECT ?,?,?,?
-    FROM classes c
-    WHERE c.id=? AND c.status='open' AND c.starts_at>?
-      AND ?<=c.capacity
-        - COALESCE((
-            SELECT SUM(b.quantity) FROM bookings b
-            WHERE b.class_id=c.id
-              AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
-          ),0)
-        - COALESCE((
-            SELECT SUM(h.quantity) FROM booking_holds h
-            WHERE h.class_id=c.id AND h.expires_at>?
-          ),0)
-  `).bind(holdId,classId,quantity,holdExpiry,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
+  const holdResult=anniversaryRelease
+    ?await env.BOOKINGS_DB.prepare(`
+      INSERT INTO booking_holds(id,class_id,quantity,expires_at,anniversary_release_id)
+      SELECT ?,c.id,?,?,r.id FROM classes c JOIN anniversary_events e ON e.class_id=c.id JOIN anniversary_ticket_releases r ON r.event_id=e.id
+      WHERE c.id=? AND r.id=? AND c.status='open' AND c.starts_at>? AND ?>0
+        AND ?<=e.total_capacity
+          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
+          -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
+          -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
+        AND (r.allocation IS NULL OR ?<=r.allocation
+          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
+          -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0))
+    `).bind(holdId,quantity,holdExpiry,classId,anniversaryRelease.id,new Date().toISOString(),quantity,quantity,quantity).run()
+    :await env.BOOKINGS_DB.prepare(`
+      INSERT INTO booking_holds(id,class_id,quantity,expires_at)
+      SELECT ?,?,?,?
+      FROM classes c
+      WHERE c.id=? AND c.status='open' AND c.starts_at>?
+        AND ?<=c.capacity
+          - COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          - COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
+    `).bind(holdId,classId,quantity,holdExpiry,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
 
   if(Number(holdResult?.meta?.changes||0)===0){
     await env.BOOKINGS_DB.prepare(
@@ -2329,14 +2454,15 @@ async function createClassReservation(request, env) {
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,customer_token,
-        terms_accepted_at,marketing_consent,retention_delete_after
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
+        terms_accepted_at,marketing_consent,retention_delete_after,anniversary_release_id
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?)`
     ).bind(
       id, reference, classId, holdId, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken, customerToken,
-      Number(Boolean(body.marketing_consent))
+      Number(Boolean(body.marketing_consent)),anniversaryRelease?.id||null
     ).run();
-  } catch (_) {
+  } catch (error) {
+    if(anniversaryRelease)throw error;
     await env.BOOKINGS_DB.prepare(
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,
@@ -2378,7 +2504,7 @@ async function createClassReservation(request, env) {
         amount: Number((amount / 100).toFixed(2)),
         currency: 'GBP',
         merchant_code: String(env.SUMUP_MERCHANT_CODE),
-        description: `${classRow.title} — ${quantity} place${quantity === 1 ? '' : 's'}`,
+        description: `${classRow.title}${anniversaryRelease?` — ${anniversaryRelease.name}`:''} — ${quantity} place${quantity === 1 ? '' : 's'}`,
         redirect_url: `${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}&customer=${encodeURIComponent(customerToken)}`,
         return_url: `${origin}/api/sumup-webhook`,
         valid_until: holdExpiry,
@@ -5961,6 +6087,9 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
+      if (path === '/api/anniversary' && request.method === 'GET') {
+        const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
+      }
       if (path === '/api/reviews' && request.method === 'GET') return publicReviews(request, env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
       if (path === '/api/promotions/validate' && request.method === 'POST') return publicPromoValidate(request, env);
@@ -6006,6 +6135,7 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/anniversary') return adminAnniversary(request, env);
       if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
       if (path === '/api/admin/reviews') return adminReviews(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);

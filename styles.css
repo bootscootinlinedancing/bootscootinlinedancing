@@ -10065,3 +10065,15 @@ body.legal-page{
 @media(max-width:900px){.home-featured-review-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.home-featured-review-card:last-child:nth-child(odd){grid-column:1/-1}}
 .home-featured-review-card footer strong{overflow-wrap:anywhere}
 @media(max-width:620px){.home-featured-reviews{padding-inline:16px}.home-featured-reviews-head{align-items:flex-start;flex-direction:column}.home-featured-reviews-head>.paper-link{display:none}.home-featured-review-grid{grid-template-columns:1fr}.home-featured-review-card:last-child:nth-child(odd){grid-column:auto}.home-featured-review-actions{display:grid}.home-featured-review-actions .button{width:100%;box-sizing:border-box}}
+/* Anniversary inventory stays within the existing HQ/class visual system. */
+.anniversary-admin{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(191,31,31,.55)}
+.anniversary-summary,.anniversary-release-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.75rem;margin:1rem 0}
+.anniversary-release-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.anniversary-summary article,.anniversary-release-grid article{padding:1rem;border:1px solid rgba(192,37,37,.7);background:rgba(18,6,7,.58);border-radius:10px}
+.anniversary-summary span,.anniversary-release-grid span,.anniversary-release-grid small{display:block;color:var(--cream,#f4ead7)}
+.anniversary-summary strong,.anniversary-release-grid strong{display:block;margin:.25rem 0;color:#fff;font-size:1.35rem}
+.anniversary-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin:1rem 0}
+.anniversary-admin-grid>form,.anniversary-admin-grid>section{padding:1rem;border:1px solid rgba(192,37,37,.45);border-radius:10px;background:rgba(12,4,5,.42)}
+.anniversary-ticket-release,.anniversary-public-release{margin:.75rem 0;padding:.7rem .85rem;border:1px solid rgba(214,44,44,.75);border-radius:8px;background:rgba(35,5,7,.55);color:var(--cream,#f4ead7)}
+.anniversary-public-release{display:flex;flex-direction:column;gap:.25rem}
+@media(max-width:760px){.anniversary-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.anniversary-release-grid,.anniversary-admin-grid{grid-template-columns:1fr}}
