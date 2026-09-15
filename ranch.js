@@ -647,9 +647,36 @@
     try{
       state.classes=await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{cache:'no-store'});
       renderClasses();
+      await loadAnniversary();
     }catch(error){
       box.innerHTML=(error.status===401||error.status===403)?lockedPanel('Class editing is locked','Cloudflare Access must authorise this HQ session.'):setupPanel('Classes unavailable',error.message);
     }
+  }
+  function anniversaryCategory(value){return ({VENDOR:'Vendor',ARTIST_PERFORMER:'Artist/Performer',FRIEND_GUEST:'Friend/Guest',COMPLIMENTARY:'Complimentary',OTHER:'Other'})[value]||value;}
+  function renderAnniversary(data){
+    const summary=$('#anniversarySummary'),releases=$('#anniversaryReleases'),guests=$('#anniversaryGuests'),adjustments=$('#anniversaryAdjustments'),picker=$('#anniversaryReleasePicker');if(!summary)return;
+    summary.innerHTML=`<article><span>Total</span><strong>${Number(data.event?.total_capacity||0)}</strong></article><article><span>Paid / recorded</span><strong>${Number(data.paid||0)}</strong></article><article><span>Guest list</span><strong>${Number(data.guest_list||0)}</strong></article><article><span>Held</span><strong>${Number(data.held||0)}</strong></article><article><span>Remaining</span><strong>${Number(data.remaining||0)}</strong></article>`;
+    releases.innerHTML=(data.releases||[]).map(r=>`<article><span>${esc(r.name)}</span><strong>${money(r.price_pence)}</strong><small>${r.allocation==null?'Uses remaining event capacity':`${Number(r.sold||0)} sold/recorded · ${Number(r.remaining||0)} of ${Number(r.allocation)} remaining`}</small></article>`).join('');
+    if(picker)picker.innerHTML=(data.releases||[]).map(r=>`<option value="${esc(r.id)}">${esc(r.name)} — ${money(r.price_pence)}</option>`).join('');
+    guests.innerHTML=(data.guests||[]).length?(data.guests||[]).map(g=>`<article class="ranch-list-row"><div><strong>${esc(g.guest_name)}</strong><small>${Number(g.places)} place${Number(g.places)===1?'':'s'} · ${esc(anniversaryCategory(g.category))} · ${esc(g.status)}</small>${g.notes?`<p>${esc(g.notes)}</p>`:''}</div>${g.status==='ACTIVE'?`<button class="button secondary compact" data-cancel-anniversary-guest="${esc(g.id)}">Cancel allocation</button>`:''}</article>`).join(''):emptyPanel('No guest-list allocations recorded.');
+    adjustments.innerHTML=(data.adjustments||[]).length?(data.adjustments||[]).map(a=>`<article class="ranch-list-row"><div><strong>${esc(a.release_name)} · ${Number(a.places)} place${Number(a.places)===1?'':'s'}</strong><small>${esc(a.source)} · ${esc(a.external_reference)} · ${esc(a.status)}</small>${a.notes?`<p>${esc(a.notes)}</p>`:''}</div>${a.status==='ACTIVE'?`<button class="button secondary compact" data-cancel-anniversary-ticket="${esc(a.id)}">Cancel record</button>`:''}</article>`).join(''):emptyPanel('No Eventbrite/manual ticket sales recorded.');
+  }
+  async function loadAnniversary(){
+    const summary=$('#anniversarySummary');if(!summary)return;
+    try{state.anniversary=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{cache:'no-store'});renderAnniversary(state.anniversary);}
+    catch(error){summary.innerHTML=lockedPanel('Anniversary inventory unavailable',error.message);}
+  }
+  async function submitAnniversary(form,action){
+    const message=$('#anniversaryMessage'),button=form.querySelector('button[type="submit"]'),payload=Object.fromEntries(new FormData(form));payload.action=action;payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
+    button.disabled=true;if(message)message.textContent='Saving…';
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify(payload)});state.anniversary=result.inventory;renderAnniversary(result.inventory);form.reset();if(form.elements.places)form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';toast('Anniversary inventory updated.','success');}
+    catch(error){if(message)message.textContent=error.message;toast(error.message,'error');}
+    finally{button.disabled=false;}
+  }
+  async function cancelAnniversary(action,id,label){
+    const reason=window.prompt(`Why is this ${label} being cancelled?`);if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify({action,id,reason:reason.trim(),operation_id:crypto.randomUUID()})});state.anniversary=result.inventory;renderAnniversary(result.inventory);toast('Cancellation recorded; capacity returned.','success');}
+    catch(error){toast(error.message,'error');}
   }
   function renderClassRegister(){
     const panel=$('#classRegisterPanel'),data=state.classRegister;
@@ -1737,6 +1764,11 @@ Type REFUNDED to continue.`);
   });
   $$('[data-open-class]').forEach(button=>button.dataset.classOpenHandled='1');
   $('#refreshRanch')?.addEventListener('click',loadClasses);
+  $('#refreshAnniversary')?.addEventListener('click',loadAnniversary);
+  $('#anniversaryGuestForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'ADD_GUEST');});
+  $('#anniversaryTicketForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'RECORD_TICKETS');});
+  $('#anniversaryGuests')?.addEventListener('click',event=>{const button=event.target.closest('[data-cancel-anniversary-guest]');if(button)cancelAnniversary('CANCEL_GUEST',button.dataset.cancelAnniversaryGuest,'guest allocation');});
+  $('#anniversaryAdjustments')?.addEventListener('click',event=>{const button=event.target.closest('[data-cancel-anniversary-ticket]');if(button)cancelAnniversary('CANCEL_TICKETS',button.dataset.cancelAnniversaryTicket,'recorded ticket allocation');});
   $('#classPosterFile')?.addEventListener('change',event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const wrap=$('#classPosterPreviewWrap'),img=$('#classPosterPreview'),remove=$('#removeClassPoster'),status=$('#classPosterStatus');if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent=`Selected: ${file.name}. It will upload when you save the class.`;});
   $('#removeClassPoster')?.addEventListener('click',()=>{const input=$('#classPosterFile');if(input)input.value='';setClassPosterPreview('');});
   $('#ranchClassFilter')?.addEventListener('change',renderClasses);
