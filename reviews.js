@@ -1,0 +1,16 @@
+(()=>{
+  const grid=document.getElementById('reviewsGrid'),sort=document.getElementById('reviewsSort'),average=document.getElementById('reviewsAverage'),count=document.getElementById('reviewsCount'),stars=document.getElementById('reviewsAverageStars'),breakdown=document.getElementById('reviewsBreakdown');
+  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const starText=value=>'★'.repeat(Math.max(0,Number(value)||0))+'☆'.repeat(Math.max(0,5-(Number(value)||0)));
+  const date=value=>{try{return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric'}).format(new Date(value));}catch{return '';}};
+  async function load(){
+    grid.setAttribute('aria-busy','true');grid.innerHTML='<p>Loading dancer reviews…</p>';
+    try{
+      const response=await fetch(`/api/reviews?sort=${encodeURIComponent(sort.value)}`,{headers:{Accept:'application/json'}}),type=response.headers.get('content-type')||'';if(!type.includes('application/json'))throw new Error('Live reviews require the Worker-enabled preview.');const data=await response.json();if(!response.ok)throw new Error(data.error||'Reviews could not be loaded.');
+      const summary=data.summary||{},total=Number(summary.published_review_count||0),avg=Number(summary.average_rating||0);average.textContent=total?avg.toFixed(1):'—';count.textContent=total?`Based on ${total} dancer review${total===1?'':'s'}`:'No published reviews yet';stars.textContent=total?starText(Math.round(avg)):'☆☆☆☆☆';stars.setAttribute('aria-label',total?`${avg.toFixed(1)} out of 5 stars`:'No published ratings');
+      breakdown.innerHTML=[5,4,3,2,1].map(rating=>{const amount=Number(summary.star_breakdown?.[rating]||0),percent=total?Math.round(amount/total*100):0;return `<div class="reviews-breakdown-row"><span>${rating} stars</span><i aria-hidden="true"><b style="width:${percent}%"></b></i><span aria-label="${amount} reviews, ${percent} percent">${amount}</span></div>`;}).join('');
+      grid.innerHTML=(data.reviews||[]).length?(data.reviews||[]).map(review=>{const context=[review.class_title,review.venue].filter(Boolean).join(' · ');return `<article class="review-card"><p class="review-card-stars" aria-label="${Number(review.rating)} out of 5 stars">${starText(review.rating)}</p><blockquote>“${esc(review.review_text)}”</blockquote><footer><strong>${esc(review.display_name)}</strong><div class="review-card-meta"><span>${esc(date(review.review_date))}</span>${context?`<span>${esc(context)}</span>`:''}</div>${review.verified_dancer?'<span class="verified-dancer" title="Verified through class attendance"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#boot"></use></svg>Verified Dancer</span>':''}</footer></article>`;}).join(''):'<div class="reviews-empty"><h2>Be the first dancer to share your Boot Scootin’ experience.</h2><p>Signed-in members can leave honest feedback from their Member Zone.</p><a class="button" href="member-hub.html#reviews">Leave a Review</a></div>';
+    }catch(error){grid.innerHTML=`<p class="review-error" role="alert">${esc(error.message)}</p>`;}finally{grid.removeAttribute('aria-busy');}
+  }
+  sort.addEventListener('change',load);load();
+})();

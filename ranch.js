@@ -4,6 +4,9 @@
     bootstrap:null,
     bootstrapVerified:false,
     classes:[],
+    classPasses:null,
+    reviews:null,
+    selectedReview:null,
     classRegister:null,
     bookings:null,
     customers:null,
@@ -278,7 +281,7 @@
   window.addEventListener('pagehide',clearLegacyScrollLocks);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!drawer?.classList.contains('open'))clearLegacyScrollLocks();});
 
-  const titles={overview:'HQ Home',classes:'Classes',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
+  const titles={overview:'HQ Home',classes:'Classes','class-passes':'Class Passes',reviews:'Reviews',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
     state.currentView=name;
     $$('.ranch-view').forEach(panel=>panel.classList.toggle('active',panel.dataset.viewPanel===name));
@@ -287,6 +290,8 @@
     setDrawer(false);
     window.scrollTo({top:0,behavior:'instant'});
     if(name==='classes')loadClasses();
+    if(name==='class-passes')loadClassPasses();
+    if(name==='reviews')loadReviews();
     if(name==='bookings')loadBookings();
     if(name==='customers')loadCustomers();
     if(name==='merch-orders')loadMerchOrders();
@@ -1139,6 +1144,71 @@ Type REFUNDED to continue.`);
   const CRM_TAGS=['Beginner','Improver','Advanced','Regular','VIP','Volunteer','Instructor','Loyalty Member','Inactive','Birthday Month'];
   function customerHealthBadge(status){const label=status==='ACTIVE'?'Active':status==='AT_RISK'?'At risk':'Inactive';return `<span class="crm-health crm-health-${String(status||'').toLowerCase()}">${label}</span>`;}
 
+  function passOperationId(){return crypto.randomUUID().replaceAll('-','');}
+  function renderClassPasses(){
+    const data=state.classPasses,box=$('#ranchClassPasses'),summary=$('#classPassAdminSummary');if(!data||!box||!summary)return;
+    const s=data.summary||{};
+    summary.innerHTML=`<article><span>Passes sold</span><strong>${Number(s.passes_sold||0)}</strong></article><article><span>Active passes</span><strong>${Number(s.active_passes||0)}</strong></article><article><span>Spendable credits</span><strong>${Number(s.outstanding_credits||0)}</strong></article><article><span>Pass revenue</span><strong>${money(s.revenue_pence||0)}</strong></article><article><span>Expiring in 7 days</span><strong>${Number(s.nearing_expiry||0)}</strong></article>`;
+    const products=$('#classPassAdminProduct');if(products&&products.options.length===1)(data.products||[]).forEach(p=>products.add(new Option(p.name,p.id)));
+    box.innerHTML=(data.passes||[]).length?(data.passes||[]).map(p=>`<article class="class-pass-admin-card" data-admin-pass="${esc(p.id)}"><header><div><h3>${esc(p.customer_name||'Member')}</h3><p>${esc(p.customer_email||'')}</p></div><span class="status-pill ${String(p.derived_status||'').toLowerCase()}">${esc(p.derived_status)}</span></header><div class="class-pass-admin-facts"><span><b>${esc(p.product_name)}</b>Product</span><span><b>${Number(p.remaining_credits||0)} / ${Number(p.original_credits||0)}</b>Credits</span><span><b>${esc(p.valid_through||'—')}</b>Valid through</span><span><b>${money(p.purchase_amount_pence||0)}</b>Purchase</span></div><button type="button" class="button secondary compact" data-open-admin-pass="${esc(p.id)}">View and manage</button><div class="class-pass-admin-detail" data-admin-pass-detail="${esc(p.id)}"></div></article>`).join(''):emptyPanel('No class passes match these filters.');
+  }
+  async function loadClassPasses(){
+    const box=$('#ranchClassPasses');if(!box)return;box.innerHTML='<div class="ranch91-loading">Loading class passes…</div>';
+    const q=new URLSearchParams();if($('#classPassAdminSearch')?.value.trim())q.set('search',$('#classPassAdminSearch').value.trim());if($('#classPassAdminStatus')?.value)q.set('status',$('#classPassAdminStatus').value);if($('#classPassAdminProduct')?.value)q.set('product',$('#classPassAdminProduct').value);if($('#classPassAdminNearing')?.checked)q.set('nearing_expiry','1');
+    try{state.classPasses=await jsonFetch(`${ADMIN_API_PREFIX}/class-passes?${q}`,{cache:'no-store'});renderClassPasses();await loadClassPassEligibility();}catch(error){box.innerHTML=lockedPanel('Class passes unavailable',error.message);}
+  }
+  function passHistoryRows(rows,kind){return rows.length?rows.map(row=>`<article><strong>${kind==='ledger'?(Number(row.amount)>0?'+':'')+Number(row.amount)+' credit'+(Math.abs(Number(row.amount))===1?'':'s'):esc(String(row.action||'').replaceAll('_',' '))}</strong><p>${esc(row.reason||row.class_title||'')}</p><small>${row.class_title?`${esc(row.class_title)} · `:''}${esc(fmt(row.created_at))}</small></article>`).join(''):emptyPanel(`No ${kind} history.`)}
+  async function openAdminPass(passId){
+    const target=document.querySelector(`[data-admin-pass-detail="${CSS.escape(passId)}"]`);if(!target)return;target.innerHTML='<div class="ranch91-loading">Loading pass history…</div>';
+    try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/class-passes?id=${encodeURIComponent(passId)}`,{cache:'no-store'}),p=data.pass;target.innerHTML=`<div class="class-pass-reconciliation"><span><b>${esc(fmt(p.purchased_at))}</b>Purchased</span><span><b>${esc(p.original_valid_through||'—')}</b>Original expiry</span><span><b>${esc(p.valid_through||'—')}</b>Current expiry</span><span><b>${esc(p.provider_transaction_id||'Not recorded')}</b>SumUp transaction</span></div><div class="class-pass-admin-actions"><form data-pass-adjust="${esc(p.id)}"><h4>Adjust credits</h4><label>Signed amount<input name="amount" type="number" min="-100" max="100" step="1" required placeholder="1 or -1"></label><label>Required reason<textarea name="reason" required rows="2"></textarea></label><button class="button compact">Record adjustment</button></form><form data-pass-expiry="${esc(p.id)}"><h4>Extend expiry</h4><p>Original: ${esc(p.original_valid_through||'—')} · Current: ${esc(p.valid_through||'—')}</p><label>New valid-through date<input name="valid_through" type="date" min="${esc(p.valid_through||'')}" required></label><label>Required reason<textarea name="reason" required rows="2"></textarea></label><button class="button compact">Extend pass</button></form><form data-pass-cancel="${esc(p.id)}"><h4>Cancel pass</h4><p>This prevents future spending. It does not issue a refund or delete history.</p><label>Required reason<textarea name="reason" required rows="2"></textarea></label><button class="button secondary compact" ${p.status==='CANCELLED'?'disabled':''}>Cancel without refund</button></form></div><div class="class-pass-history-grid"><section><h4>Credit ledger</h4>${passHistoryRows(p.ledger||[],'ledger')}</section><section><h4>Pass audit history</h4>${passHistoryRows(p.audit||[],'audit')}</section></div><section><h4>Associated bookings</h4>${(p.bookings||[]).length?p.bookings.map(b=>`<article><strong>${esc(b.title)}</strong><p>${esc(fmt(b.starts_at))} · ${esc(b.venue)} · ${esc(b.status)}</p></article>`).join(''):emptyPanel('No class bookings use this pass.')}</section>`;}catch(error){target.innerHTML=lockedPanel('Pass detail unavailable',error.message);}
+  }
+  async function classPassAdminAction(form,action){const passId=form.dataset.passAdjust||form.dataset.passExpiry||form.dataset.passCancel,fd=new FormData(form),reason=String(fd.get('reason')||'').trim();if(!reason)return toast('An audit reason is required.','error');const submit=form.querySelector('[type="submit"],button:not([type])');if(submit?.disabled)return;const operationId=form.dataset.operationId||passOperationId();form.dataset.operationId=operationId;const payload={action,pass_id:passId,reason,operation_id:operationId};if(action==='ADJUST_CREDIT')payload.amount=Number(fd.get('amount'));if(action==='EXTEND_EXPIRY')payload.valid_through=String(fd.get('valid_through')||'');if(action==='CANCEL_PASS'&&!confirm('Cancel this pass without issuing a refund? Existing bookings and all history will be preserved.'))return;if(submit)submit.disabled=true;try{await jsonFetch(`${ADMIN_API_PREFIX}/class-passes`,{method:'POST',body:JSON.stringify(payload)});toast('Class pass updated.','success');await loadClassPasses();}catch(error){if(submit)submit.disabled=false;toast(error.message,'error');}}
+  async function loadClassPassEligibility(){const box=$('#ranchClassPassEligibility');if(!box)return;try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/class-passes?mode=eligibility`,{cache:'no-store'});box.innerHTML=(data.classes||[]).map(c=>`<article class="class-pass-eligibility-row"><div><strong>${esc(c.title)}</strong><span>${esc(fmt(c.starts_at))} · ${esc(c.venue)} · ${esc(c.status)}</span></div><label><input type="checkbox" data-pass-eligibility="${esc(c.id)}" ${Number(c.eligible)?'checked':''}> Accept class-pass credits</label></article>`).join('')||emptyPanel('No classes found.');}catch(error){box.innerHTML=lockedPanel('Eligibility unavailable',error.message);}}
+
+  function reviewStatusLabel(value){return ({PENDING:'Pending',PUBLISHED:'Published',PRIVATE:'Private',REJECTED:'Rejected',ARCHIVED:'Archived'}[value]||value||'Unknown');}
+  function reviewStars(rating){return `<span class="review-admin-stars" aria-label="${Number(rating)} out of 5 stars">${'★'.repeat(Number(rating)||0)}${'☆'.repeat(Math.max(0,5-(Number(rating)||0)))}</span>`;}
+  function reviewOperationId(){return crypto.randomUUID().replaceAll('-','');}
+  function reviewHistoryChanges(row){
+    let before={},after={};try{before=JSON.parse(row.previous_json||'{}')||{};}catch(_){}try{after=JSON.parse(row.next_json||'{}')||{};}catch(_){}
+    const labels={rating:'Rating',review_text:'Review text',class_id:'Class',display_name:'Display name',first_name_only:'First-name preference',is_private:'Privacy',website_permission:'Website permission',social_permission:'Social permission',moderation_status:'Status',featured_homepage:'Homepage feature',archived_at:'Archive state'};
+    const changes=Object.keys(labels).filter(key=>JSON.stringify(before[key])!==JSON.stringify(after[key])).map(key=>labels[key]);
+    return changes.length?`Changed: ${changes.join(', ')}`:'No review content or state fields changed.';
+  }
+  function reviewHistoryAction(row){
+    let next={};try{next=JSON.parse(row.next_json||'{}')||{};}catch(_){}
+    const adminAction=next?._admin_intent?.action,labels={PUBLISH:'Published by HQ',REJECT:'Rejected by HQ',MARK_PRIVATE:'Marked Private by HQ',ARCHIVE:'Archived by HQ',FEATURE:'Featured by HQ',UNFEATURE:'Homepage Feature Removed'};
+    if(adminAction&&labels[adminAction])return labels[adminAction];
+    return row.actor_type==='MEMBER'?({CREATED:'Created by Member',UPDATED:'Edited by Member',ARCHIVED:'Archived by Member'}[row.event_type]||reviewStatusLabel(row.event_type)):reviewStatusLabel(row.event_type);
+  }
+  function filteredReviews(){
+    const data=state.reviews?.reviews||[],search=$('#reviewAdminSearch')?.value.trim().toLowerCase()||'',status=$('#reviewAdminStatus')?.value||'',rating=$('#reviewAdminRating')?.value||'',verified=$('#reviewAdminVerified')?.value||'',reuse=$('#reviewAdminReuse')?.value||'',oldest=$('#reviewAdminOrder')?.value==='oldest';
+    return data.filter(r=>(!search||`${r.reviewer_name} ${r.reviewer_email}`.toLowerCase().includes(search))&&(!status||r.moderation_status===status)&&(!rating||Number(r.rating)===Number(rating))&&(!verified||Number(Boolean(r.verified_dancer))===Number(verified))&&(!reuse||(reuse==='website'&&r.website_permission)||(reuse==='social'&&r.social_permission)||(reuse==='featured'&&r.featured_homepage))).sort((a,b)=>(oldest?1:-1)*(new Date(a.updated_at)-new Date(b.updated_at)));
+  }
+  function renderReviews(){
+    const box=$('#ranchReviews'),summary=$('#reviewAdminSummary'),data=state.reviews;if(!box||!summary||!data)return;const s=data.summary||{};
+    summary.innerHTML=`<article><span>Pending</span><strong>${Number(s.pending||0)}</strong></article><article><span>Published</span><strong>${Number(s.published||0)}</strong></article><article><span>Private</span><strong>${Number(s.private||0)}</strong></article><article><span>Published average</span><strong>${Number(s.average_published_rating||0).toFixed(1)}</strong></article><article><span>Featured</span><strong>${Number(s.featured||0)}</strong></article>`;
+    const rows=filteredReviews();box.innerHTML=rows.length?rows.map(r=>`<button type="button" class="review-admin-card ${state.selectedReview?.review?.id===r.id?'selected':''}" data-review-open="${esc(r.id)}"><span class="review-admin-card-top"><b>${esc(r.reviewer_name||'Member')}</b><span class="status-pill ${String(r.moderation_status||'').toLowerCase()}">${esc(reviewStatusLabel(r.moderation_status))}</span></span>${reviewStars(r.rating)}<span>${esc((r.review_text||'').slice(0,150))}${(r.review_text||'').length>150?'…':''}</span><small>${r.verified_dancer?'Verified Dancer · ':''}${esc(fmt(r.updated_at))}${r.featured_homepage?' · Homepage featured':''}</small></button>`).join(''):emptyPanel('No reviews match these filters.');
+  }
+  function renderReviewDetail(){
+    const box=$('#ranchReviewDetail'),data=state.selectedReview;if(!box||!data?.review)return;const r=data.review,publicEligible=r.moderation_status==='PUBLISHED'&&!r.is_private&&!r.archived_at,featureEligible=publicEligible&&r.website_permission;
+    const actions=r.archived_at||r.moderation_status==='ARCHIVED'?'':`<div class="review-admin-actions" aria-label="Moderation actions">${!r.is_private&&r.moderation_status!=='PRIVATE'&&r.moderation_status!=='PUBLISHED'?`<button class="button compact" data-review-action="PUBLISH">Publish</button>`:''}${r.moderation_status!=='REJECTED'?`<button class="button secondary compact" data-review-action="REJECT">Reject</button>`:''}${!r.is_private&&r.moderation_status!=='PRIVATE'?`<button class="button secondary compact" data-review-action="MARK_PRIVATE">Mark Private</button>`:''}${r.featured_homepage?`<button class="button secondary compact" data-review-action="UNFEATURE">Remove Homepage Feature</button>`:`<button class="button secondary compact" data-review-action="FEATURE" ${featureEligible?'':`disabled title="Only published public reviews with website permission can be featured."`}>Feature on Homepage</button>`}<button class="button secondary compact" data-review-action="ARCHIVE">Archive</button></div>`;
+    const history=(data.history||[]).map(h=>`<article class="review-admin-history"><header><b>${esc(reviewHistoryAction(h))}</b><time>${esc(fmt(h.created_at))}</time></header><p>${esc(reviewHistoryChanges(h))}</p>${h.moderation_note?`<blockquote>${esc(h.moderation_note)}</blockquote>`:''}<small>${h.actor_type==='ADMIN'?`HQ moderator · ${esc(h.actor_id)}`:'Member action'} · Version ${Number(h.review_version)}</small></article>`).join('')||emptyPanel('No history recorded.');
+    box.innerHTML=`<article class="review-admin-full"><header><div><p class="kicker red">Review detail</p><h3>${esc(r.reviewer_name||'Member')}</h3><a href="mailto:${esc(r.reviewer_email)}">${esc(r.reviewer_email)}</a></div><span class="status-pill ${String(r.moderation_status||'').toLowerCase()}">${esc(reviewStatusLabel(r.moderation_status))}</span></header>${reviewStars(r.rating)}<blockquote class="review-admin-copy">${esc(r.review_text)}</blockquote><dl class="review-admin-facts"><div><dt>Submitted</dt><dd>${esc(fmt(r.created_at))}</dd></div><div><dt>Last updated</dt><dd>${esc(fmt(r.updated_at))}</dd></div><div><dt>Class context</dt><dd>${esc(r.class_title?r.class_title+(r.venue?` · ${r.venue}`:''):'Not selected')}</dd></div><div><dt>Verified Dancer</dt><dd>${r.verified_dancer?'Yes — derived from attendance':'No'}</dd></div><div><dt>Public name</dt><dd>${esc(r.display_name||r.reviewer_name||'Member')}${r.first_name_only?' · first name only':''}</dd></div><div><dt>Private</dt><dd>${r.is_private?'Yes':'No'}</dd></div><div><dt>Website permission</dt><dd>${r.website_permission?'Yes':'No'}</dd></div><div><dt>Social media permission</dt><dd>${r.social_permission?'Yes':'No'}</dd></div><div><dt>Homepage featured</dt><dd>${r.featured_homepage?'Yes':'No'}</dd></div></dl>${!featureEligible&&!r.featured_homepage?'<p class="review-admin-guidance">Homepage feature requires Published status, public visibility and website permission. Social permission does not affect website eligibility.</p>':''}${actions}<section class="review-admin-history-list"><h4>Immutable review history</h4>${history}</section></article>`;
+  }
+  async function loadReviews(){
+    const box=$('#ranchReviews');if(!box)return;box.innerHTML='<div class="ranch91-loading">Loading reviews…</div>';
+    try{state.reviews=await jsonFetch(`${ADMIN_API_PREFIX}/reviews`,{cache:'no-store'});renderReviews();if(state.selectedReview?.review?.id)await openReview(state.selectedReview.review.id);}catch(error){box.innerHTML=lockedPanel('Reviews unavailable',error.message);}
+  }
+  async function openReview(id){const box=$('#ranchReviewDetail');if(!box)return;box.innerHTML='<div class="ranch91-loading">Loading review history…</div>';try{state.selectedReview=await jsonFetch(`${ADMIN_API_PREFIX}/reviews?id=${encodeURIComponent(id)}`,{cache:'no-store'});renderReviews();renderReviewDetail();}catch(error){box.innerHTML=lockedPanel('Review detail unavailable',error.message);}}
+  async function moderateReview(action){
+    const review=state.selectedReview?.review;if(!review)return;const labels={PUBLISH:'publish this review exactly as written',REJECT:'reject this review',MARK_PRIVATE:'mark this review private',ARCHIVE:'archive this review',FEATURE:'feature this review on the homepage',UNFEATURE:'remove this review from the homepage'};
+    if(!confirm(`Confirm: ${labels[action]}?`))return;let note='';if(['REJECT','MARK_PRIVATE','ARCHIVE'].includes(action)){const entered=prompt(action==='REJECT'?'Enter a moderation reason (for example: spam, offensive content, personal information, unrelated content, or other):':'Enter the required audit reason:');if(entered===null)return;note=entered;if(!note.trim())return toast('A moderation reason is required.','error');}else if(action==='PUBLISH'){const entered=prompt('Optional moderation note (leave blank for none):');if(entered===null)return;note=entered;}
+    const operationId=reviewOperationId();try{await jsonFetch(`${ADMIN_API_PREFIX}/reviews`,{method:'POST',body:JSON.stringify({id:review.id,version:review.version,action,note:note.trim(),operation_id:operationId})});toast('Review moderation recorded.','success');await loadReviews();await openReview(review.id);}catch(error){toast(error.message,'error');if(error.status===409){await loadReviews();await openReview(review.id);}}
+  }
+  $('#refreshReviews')?.addEventListener('click',loadReviews);
+  ['#reviewAdminSearch','#reviewAdminStatus','#reviewAdminRating','#reviewAdminVerified','#reviewAdminReuse','#reviewAdminOrder'].forEach(selector=>{$(selector)?.addEventListener(selector==='#reviewAdminSearch'?'input':'change',renderReviews);});
+  document.addEventListener('click',event=>{const open=event.target.closest('[data-review-open]');if(open)openReview(open.dataset.reviewOpen);const action=event.target.closest('[data-review-action]');if(action&&!action.disabled)moderateReview(action.dataset.reviewAction);});
+
   async function loadPromotions(){
     const box=$('#promotionList');if(!box)return;box.innerHTML='<div class="ranch-loading">Loading promotions…</div>';
     try{
@@ -1670,6 +1740,11 @@ Type REFUNDED to continue.`);
   $('#classPosterFile')?.addEventListener('change',event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const wrap=$('#classPosterPreviewWrap'),img=$('#classPosterPreview'),remove=$('#removeClassPoster'),status=$('#classPosterStatus');if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent=`Selected: ${file.name}. It will upload when you save the class.`;});
   $('#removeClassPoster')?.addEventListener('click',()=>{const input=$('#classPosterFile');if(input)input.value='';setClassPosterPreview('');});
   $('#ranchClassFilter')?.addEventListener('change',renderClasses);
+  $('#refreshClassPasses')?.addEventListener('click',loadClassPasses);
+  $('#classPassAdminSearch')?.addEventListener('input',()=>{clearTimeout(loadClassPasses.timer);loadClassPasses.timer=setTimeout(loadClassPasses,250);});
+  $('#classPassAdminStatus')?.addEventListener('change',loadClassPasses);
+  $('#classPassAdminProduct')?.addEventListener('change',loadClassPasses);
+  $('#classPassAdminNearing')?.addEventListener('change',loadClassPasses);
   $('#classEditorForm')?.addEventListener('submit',saveClass);
   $$('[data-class-template]').forEach(node=>node.addEventListener('click',()=>applyClassTemplate(node.dataset.classTemplate)));
   $('#classEditorForm')?.elements?.starts_at?.addEventListener('change',event=>{if(activeClassTemplate)applyTemplateTimes(event.currentTarget.form,activeClassTemplate);});
@@ -1696,6 +1771,8 @@ Type REFUNDED to continue.`);
     const cancel=event.target.closest?.('[data-cancel-campaign]');if(cancel&&confirm('Cancel this scheduled email?')){try{await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'CANCEL_CAMPAIGN',id:cancel.dataset.cancelCampaign})});loadEmailCentre();}catch(error){toast(error.message,'error');}}
   });
   document.addEventListener('submit',event=>{if(event.target?.id==='crmLoyaltyTransactionForm'){event.preventDefault();addManualLoyaltyTransaction(event.target);}});
+  document.addEventListener('submit',event=>{const form=event.target;if(form.matches?.('[data-pass-adjust]')){event.preventDefault();classPassAdminAction(form,'ADJUST_CREDIT');}else if(form.matches?.('[data-pass-expiry]')){event.preventDefault();classPassAdminAction(form,'EXTEND_EXPIRY');}else if(form.matches?.('[data-pass-cancel]')){event.preventDefault();classPassAdminAction(form,'CANCEL_PASS');}});
+  document.addEventListener('click',async event=>{const open=event.target.closest?.('[data-open-admin-pass]');if(open){event.preventDefault();await openAdminPass(open.dataset.openAdminPass);return;}const eligibility=event.target.closest?.('[data-pass-eligibility]');if(eligibility){const desired=eligibility.checked,reason=window.prompt(`Reason for marking this class ${desired?'eligible':'ineligible'} for class passes:`);if(!reason?.trim()){eligibility.checked=!desired;return toast('An audit reason is required.','error');}const operationId=eligibility.dataset.operationId||passOperationId();eligibility.dataset.operationId=operationId;eligibility.disabled=true;try{await jsonFetch(`${ADMIN_API_PREFIX}/class-passes`,{method:'POST',body:JSON.stringify({action:'SET_ELIGIBILITY',class_id:eligibility.dataset.passEligibility,eligible:desired,reason:reason.trim(),operation_id:operationId})});delete eligibility.dataset.operationId;toast('Class eligibility updated.','success');}catch(error){eligibility.checked=!desired;toast(error.message,'error');}finally{eligibility.disabled=false;}}});
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('#classEditorModal')?.hidden)closeClassEditor();});
   window.addEventListener('afterprint',()=>document.body.classList.remove('printing-class-register'));
 

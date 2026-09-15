@@ -291,7 +291,7 @@ async function attendanceLoyaltyCredit(env,{booking,attendance,createdBy,reason=
     LIMIT 1
   `).bind(booking.id).first();
   if(existingPayment)return {credited:false,reconciled_to:'EXISTING_BOOKING_CREDIT'};
-  if(booking.status!=='PAID' || Number(booking.amount_pence||0)<=0 || booking.refund_status==='REFUNDED'){
+  if(booking.status!=='PAID' || (Number(booking.amount_pence||0)<=0 && booking.payment_provider!=='CLASS_PASS') || booking.refund_status==='REFUNDED'){
     return {credited:false,reconciled_to:'NOT_QUALIFYING_BOOKING'};
   }
   const attendanceBalance=await env.BOOKINGS_DB.prepare(`
@@ -355,6 +355,474 @@ async function loyaltySummary(env,email,customerId=null){
   return {total_stamps:total,progress,goal:9,free_class_milestones:completed,reward_ready:total>=9};
 }
 
+function londonCalendarDate(value=new Date()){
+  const date=value instanceof Date?value:new Date(value);
+  if(Number.isNaN(date.getTime()))return '';
+  const parts=new Intl.DateTimeFormat('en-GB',{
+    timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(date).reduce((out,part)=>{out[part.type]=part.value;return out;},{});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function addCalendarDays(isoDate,days){
+  const match=String(isoDate||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!match)return '';
+  const date=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));
+  if(date.getUTCFullYear()!==Number(match[1])||date.getUTCMonth()!==Number(match[2])-1||date.getUTCDate()!==Number(match[3]))return '';
+  date.setUTCDate(date.getUTCDate()+Number(days||0));
+  return date.toISOString().slice(0,10);
+}
+
+function classPassValidThrough(purchasedAt,validityDays){
+  const purchaseDate=londonCalendarDate(purchasedAt);
+  const days=Number(validityDays);
+  if(!purchaseDate||!Number.isInteger(days)||days<=0)return '';
+  return addCalendarDays(purchaseDate,days-1);
+}
+
+function classPassDerivedStatus(pass,balance,onDate=londonCalendarDate()){
+  if(!pass)return 'UNAVAILABLE';
+  if(pass.status==='CANCELLED')return 'CANCELLED';
+  if(pass.status!=='ACTIVE')return 'PENDING';
+  if(!pass.valid_through||String(pass.valid_through)<String(onDate))return 'EXPIRED';
+  if(Number(balance||0)<=0)return 'USED';
+  return 'ACTIVE';
+}
+
+async function activeClassPassProducts(env){
+  const result=await env.BOOKINGS_DB.prepare(`
+    SELECT id,code,name,price_pence,original_credits,validity_days,display_order
+    FROM class_pass_products WHERE active=1
+    ORDER BY display_order,name
+  `).all();
+  return result.results||[];
+}
+
+async function memberClassPasses(env,memberId){
+  const result=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.code product_code,p.name product_name,p.validity_days,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+    WHERE mp.member_id=?
+    ORDER BY mp.valid_through,mp.created_at,mp.id
+  `).bind(memberId).all();
+  const today=londonCalendarDate();
+  return (result.results||[]).map(pass=>({...pass,
+    remaining_credits:Number(pass.remaining_credits||0),
+    derived_status:classPassDerivedStatus(pass,pass.remaining_credits,today)
+  }));
+}
+
+async function memberClassPassList(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to view your class passes.'},401);
+  const passes=await memberClassPasses(env,session.member_id);
+  const bookingsResult=await env.BOOKINGS_DB.prepare(`
+    SELECT b.class_pass_id,b.status,c.title,c.starts_at,c.venue,
+      EXISTS(SELECT 1 FROM class_pass_credit_ledger returned
+        WHERE returned.booking_id=b.id AND returned.pass_id=b.class_pass_id
+          AND returned.member_id=? AND returned.event_type='CLASS_CREDIT_RETURN' AND returned.amount>0) credit_returned
+    FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
+    LEFT JOIN classes c ON c.id=b.class_id
+    WHERE mp.member_id=? AND b.customer_id=? AND b.payment_provider='CLASS_PASS'
+    ORDER BY c.starts_at DESC,b.created_at DESC
+  `).bind(session.member_id,session.member_id,session.customer_id).all();
+  const bookingsByPass=new Map();
+  for(const booking of bookingsResult.results||[]){
+    const rows=bookingsByPass.get(booking.class_pass_id)||[];
+    rows.push({title:booking.title||'Boot Scootin’ class',starts_at:booking.starts_at||null,
+      venue:booking.venue||'',status:booking.status,credit_returned:Boolean(booking.credit_returned)});
+    bookingsByPass.set(booking.class_pass_id,rows);
+  }
+  const products=(await activeClassPassProducts(env)).map(product=>({id:product.id,name:product.name,
+    price_pence:Number(product.price_pence),original_credits:Number(product.original_credits),validity_days:Number(product.validity_days)}));
+  return json({ok:true,passes:passes.map(pass=>({id:pass.id,product_name:pass.product_name,
+    purchased_at:pass.purchased_at||null,valid_through:pass.valid_through||null,
+    original_credits:Number(pass.original_credits),remaining_credits:Number(pass.remaining_credits),
+    status:pass.derived_status,bookings:bookingsByPass.get(pass.id)||[]})),products});
+}
+
+async function classPassBalance(env,passId,memberId){
+  const row=await env.BOOKINGS_DB.prepare(`
+    SELECT COALESCE(SUM(l.amount),0) balance
+    FROM member_passes p LEFT JOIN class_pass_credit_ledger l ON l.pass_id=p.id
+    WHERE p.id=? AND p.member_id=?
+  `).bind(passId,memberId).first();
+  return row?Number(row.balance||0):null;
+}
+
+async function appendClassPassLedgerEvent(env,{
+  passId,memberId,bookingId=null,amount,eventType,reason,actorType,actorId=null,idempotencyKey
+}){
+  const delta=Number(amount);
+  if(!passId||!memberId||!Number.isInteger(delta)||delta===0||!eventType||!reason||!actorType||!idempotencyKey){
+    return {ok:false,code:'INVALID_LEDGER_EVENT'};
+  }
+  const result=await env.BOOKINGS_DB.prepare(`
+    INSERT OR IGNORE INTO class_pass_credit_ledger(
+      id,pass_id,member_id,booking_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
+    )
+    SELECT ?,p.id,p.member_id,?,?,?,?,?,?,?
+    FROM member_passes p
+    WHERE p.id=? AND p.member_id=?
+      AND (? > 0 OR COALESCE((
+        SELECT SUM(existing.amount) FROM class_pass_credit_ledger existing WHERE existing.pass_id=p.id
+      ),0) + ? >= 0)
+  `).bind(
+    crypto.randomUUID(),bookingId,delta,eventType,reason,actorType,actorId,idempotencyKey,
+    passId,memberId,delta,delta
+  ).run();
+  const event=await env.BOOKINGS_DB.prepare(`
+    SELECT * FROM class_pass_credit_ledger WHERE idempotency_key=?
+  `).bind(idempotencyKey).first();
+  if(event){
+    const same=event.pass_id===passId&&event.member_id===memberId&&Number(event.amount)===delta&&event.event_type===eventType;
+    return same
+      ?{ok:true,created:Number(result?.meta?.changes||0)>0,event,balance:await classPassBalance(env,passId,memberId)}
+      :{ok:false,code:'IDEMPOTENCY_KEY_CONFLICT'};
+  }
+  const owned=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_passes WHERE id=? AND member_id=?`).bind(passId,memberId).first();
+  return {ok:false,code:owned?'INSUFFICIENT_CREDITS':'PASS_NOT_FOUND'};
+}
+
+async function earliestExpiringEligiblePass(env,{memberId,classId}){
+  const klass=await env.BOOKINGS_DB.prepare(`
+    SELECT c.id,c.starts_at,COALESCE(e.eligible,0) pass_eligible
+    FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id
+    WHERE c.id=?
+  `).bind(classId).first();
+  if(!klass||Number(klass.pass_eligible)!==1)return null;
+  const classDate=londonCalendarDate(klass.starts_at);
+  if(!classDate)return null;
+  const pass=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.code product_code,p.name product_name,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+    WHERE mp.member_id=? AND mp.status='ACTIVE'
+      AND mp.valid_through>=?
+      AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+    ORDER BY mp.valid_through,COALESCE(mp.purchased_at,mp.created_at),mp.id
+    LIMIT 1
+  `).bind(memberId,classDate).first();
+  return pass?{...pass,remaining_credits:Number(pass.remaining_credits||0),class_date:classDate}:null;
+}
+
+function safeClassPass(pass){
+  if(!pass)return null;
+  return {
+    id:pass.id,
+    product_id:pass.product_id,
+    product_name:pass.product_name||null,
+    status:pass.status,
+    purchased_at:pass.purchased_at||null,
+    valid_through:pass.valid_through||null,
+    original_credits:Number(pass.original_credits||0),
+    remaining_credits:Number(pass.remaining_credits||0),
+    purchase_amount_pence:Number(pass.purchase_amount_pence||0),
+    currency:pass.currency||'GBP',
+    created_at:pass.created_at||null
+  };
+}
+
+async function classPassForMember(env,passId,memberId){
+  return env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.name product_name,p.validity_days,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+    WHERE mp.id=? AND mp.member_id=?
+  `).bind(passId,memberId).first();
+}
+
+async function appendClassPassAudit(env,{passId,action,actorType,actorId=null,reason,previous=null,next=null,idempotencyKey}){
+  return env.BOOKINGS_DB.prepare(`
+    INSERT OR IGNORE INTO class_pass_audit_log(
+      id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key
+    ) VALUES(?,?,?,?,?,?,?,?,?)
+  `).bind(
+    crypto.randomUUID(),passId,action,actorType,actorId,reason,
+    previous===null?null:JSON.stringify(previous),next===null?null:JSON.stringify(next),idempotencyKey
+  ).run();
+}
+
+async function applySumUpClassPassState(env,pass,checkout,actor='SUMUP_RECONCILIATION'){
+  if(!pass||!checkout)return pass;
+  const checkoutStatus=String(checkout.status||'').toUpperCase();
+  const transactionId=clean(checkoutTransactionId(checkout),180)||null;
+
+  if(checkoutStatus==='PAID'){
+    const purchasedAt=pass.purchased_at||new Date().toISOString();
+    const validThrough=pass.valid_through||classPassValidThrough(purchasedAt,Number(pass.validity_days));
+    if(!validThrough)throw new Error('CLASS_PASS_VALIDITY_INVALID');
+    try{
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`
+          UPDATE member_passes
+          SET status='ACTIVE',purchased_at=COALESCE(purchased_at,?),
+              original_valid_through=COALESCE(original_valid_through,?),valid_through=COALESCE(valid_through,?),
+              provider_transaction_id=COALESCE(provider_transaction_id,?),updated_at=CURRENT_TIMESTAMP
+          WHERE id=? AND provider_checkout_id=? AND status IN ('PENDING','ACTIVE')
+            AND (provider_transaction_id IS NULL OR provider_transaction_id=?)
+        `).bind(purchasedAt,validThrough,validThrough,transactionId,pass.id,pass.provider_checkout_id,transactionId),
+        env.BOOKINGS_DB.prepare(`
+          INSERT OR IGNORE INTO class_pass_credit_ledger(
+            id,pass_id,member_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
+          )
+          SELECT ?,mp.id,mp.member_id,mp.original_credits,'PASS_PURCHASE',?,'SYSTEM',?,?
+          FROM member_passes mp
+          WHERE mp.id=? AND mp.member_id=? AND mp.status='ACTIVE'
+            AND mp.provider_checkout_id=? AND (mp.provider_transaction_id IS ? OR mp.provider_transaction_id=?)
+        `).bind(crypto.randomUUID(),`Paid ${pass.product_name||'class pass'} purchase`,actor,
+          `class-pass-purchase:${pass.id}`,pass.id,pass.member_id,pass.provider_checkout_id,transactionId,transactionId),
+        env.BOOKINGS_DB.prepare(`
+          INSERT OR IGNORE INTO class_pass_audit_log(
+            id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key
+          )
+          SELECT ?,mp.id,'PASS_ACTIVATED','SYSTEM',?,'SumUp payment confirmed',?,?,?
+          FROM member_passes mp
+          WHERE mp.id=? AND mp.member_id=? AND mp.status='ACTIVE'
+            AND mp.provider_checkout_id=? AND (mp.provider_transaction_id IS ? OR mp.provider_transaction_id=?)
+        `).bind(crypto.randomUUID(),actor,JSON.stringify({status:pass.status}),
+          JSON.stringify({status:'ACTIVE',purchased_at:purchasedAt,valid_through:validThrough}),
+          `class-pass-activated:${pass.id}`,pass.id,pass.member_id,pass.provider_checkout_id,transactionId,transactionId)
+      ]);
+    }catch(error){
+      if(String(error?.message||error).toLowerCase().includes('unique'))throw new Error('CLASS_PASS_TRANSACTION_ALREADY_USED');
+      throw error;
+    }
+    const activated=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_passes WHERE id=?`).bind(pass.id).first();
+    if(!activated||activated.status!=='ACTIVE'||(transactionId&&activated.provider_transaction_id!==transactionId)){
+      throw new Error('CLASS_PASS_PAYMENT_MISMATCH');
+    }
+    await sendClassPassEmailOnce(env,{key:`CLASS_PASS_PURCHASED:${pass.id}`,type:'CLASS_PASS_PURCHASED',passId:pass.id}).catch(()=>{});
+  }else if(['FAILED','CANCELLED','EXPIRED'].includes(checkoutStatus)&&pass.status==='PENDING'){
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`
+        UPDATE member_passes SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND provider_checkout_id=? AND status='PENDING'
+      `).bind(pass.id,pass.provider_checkout_id),
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO class_pass_audit_log(
+          id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key
+        )
+        SELECT ?,mp.id,?,'SYSTEM',?,?,?, ?,?
+        FROM member_passes mp WHERE mp.id=? AND mp.status='CANCELLED' AND mp.provider_checkout_id=?
+      `).bind(crypto.randomUUID(),`PAYMENT_${checkoutStatus}`,actor,`SumUp checkout ${checkoutStatus.toLowerCase()}`,
+        JSON.stringify({status:'PENDING'}),JSON.stringify({status:'CANCELLED'}),
+        `class-pass-payment-${checkoutStatus.toLowerCase()}:${pass.id}`,pass.id,pass.provider_checkout_id)
+    ]);
+  }
+  return env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.name product_name,p.validity_days,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id WHERE mp.id=?
+  `).bind(pass.id).first();
+}
+
+async function syncSumUpClassPass(env,pass,actor='SUMUP_STATUS_CHECK'){
+  if(!pass?.provider_checkout_id||!sumUpConfigured(env))return pass;
+  const checkout=await retrieveSumUpCheckout(env,pass.provider_checkout_id);
+  return checkout?applySumUpClassPassState(env,pass,checkout,actor):pass;
+}
+
+async function createClassPassCheckout(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to purchase a class pass.'},401);
+  if(!sameOriginWrite(request))return json({error:'This purchase request could not be verified.'},403);
+  if(!sumUpConfigured(env))return json({error:'Secure SumUp payment is not available right now. No payment has been taken.'},503);
+  const body=await request.json().catch(()=>null);
+  const productId=clean(body?.product_id,80);
+  const product=productId?await env.BOOKINGS_DB.prepare(`
+    SELECT id,code,name,price_pence,original_credits,validity_days
+    FROM class_pass_products WHERE id=? AND active=1
+  `).bind(productId).first():null;
+  if(!product)return json({error:'Choose an available class pass.'},400);
+
+  const id=crypto.randomUUID();
+  const reference=`BSP-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,8).toUpperCase()}`;
+  await env.BOOKINGS_DB.prepare(`
+    INSERT INTO member_passes(
+      id,member_id,customer_id,product_id,status,original_credits,purchase_amount_pence,currency,payment_provider
+    ) VALUES(?,?,?,?, 'PENDING',?,?,'GBP','SUMUP')
+  `).bind(id,session.member_id,session.customer_id,product.id,Number(product.original_credits),Number(product.price_pence)).run();
+  await appendClassPassAudit(env,{
+    passId:id,action:'PURCHASE_STARTED',actorType:'MEMBER',actorId:session.member_id,
+    reason:'Member started secure SumUp checkout',next:{product_id:product.id,status:'PENDING'},
+    idempotencyKey:`class-pass-purchase-started:${id}`
+  });
+
+  try{
+    const origin=new URL(request.url).origin;
+    const response=await sumUpFetch(env,'/v0.1/checkouts',{
+      method:'POST',body:JSON.stringify({
+        checkout_reference:reference,
+        amount:Number((Number(product.price_pence)/100).toFixed(2)),currency:'GBP',
+        merchant_code:String(env.SUMUP_MERCHANT_CODE),description:`Boot Scootin’ ${product.name}`,
+        redirect_url:`${origin}/member-hub.html?class_pass_purchase=${encodeURIComponent(id)}`,
+        return_url:`${origin}/api/sumup-webhook`,hosted_checkout:{enabled:true}
+      })
+    });
+    const checkout=await response.json().catch(()=>({}));
+    const rawUrl=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||'';
+    let checkoutUrl='';
+    try{const parsed=new URL(rawUrl);if(parsed.protocol==='https:')checkoutUrl=parsed.toString();}catch(_){}
+    if(!response.ok||!checkout.id||!checkoutUrl)throw new Error(clean(checkout?.message||checkout?.error_message||checkout?.error||'SUMUP_CHECKOUT_FAILED',180));
+    await env.BOOKINGS_DB.prepare(`UPDATE member_passes SET provider_checkout_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`)
+      .bind(clean(checkout.id,180),id).run();
+    return json({ok:true,purchase_id:id,status:'PENDING',checkout_url:checkoutUrl,product:{id:product.id,name:product.name}},201);
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`UPDATE member_passes SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`).bind(id).run();
+    await appendClassPassAudit(env,{
+      passId:id,action:'CHECKOUT_CREATION_FAILED',actorType:'SYSTEM',actorId:'SUMUP_CHECKOUT',
+      reason:'SumUp checkout could not be created',previous:{status:'PENDING'},next:{status:'CANCELLED'},
+      idempotencyKey:`class-pass-checkout-failed:${id}`
+    });
+    return json({error:'SumUp could not open the secure payment page. No payment has been taken.'},502);
+  }
+}
+
+async function classPassPurchaseStatus(request,env,url){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to view this purchase.'},401);
+  const purchaseId=clean(url.searchParams.get('purchase_id'),80);
+  if(!purchaseId)return json({error:'Purchase reference is missing.'},400);
+  let pass=await classPassForMember(env,purchaseId,session.member_id);
+  if(!pass)return json({error:'Class-pass purchase not found.'},404);
+  if(['PENDING','ACTIVE'].includes(pass.status)&&pass.provider_checkout_id){
+    pass=await syncSumUpClassPass(env,pass,'MEMBER_STATUS_CHECK');
+  }
+  return json({ok:true,pass:safeClassPass(pass)});
+}
+
+function classCreditOperationId(value){
+  const id=String(value||'').trim();
+  return /^[A-Za-z0-9_-]{12,100}$/.test(id)?id:'';
+}
+
+async function classCreditOptions(request,env,url){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({authenticated:false,can_use_credit:false},401);
+  const classId=clean(url.searchParams.get('class_id'),120);
+  const klass=classId?await env.BOOKINGS_DB.prepare(`
+    SELECT c.id,c.status,c.starts_at,c.capacity,COALESCE(e.eligible,0) pass_eligible,
+      c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+      -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>CURRENT_TIMESTAMP),0) spaces_remaining
+    FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id WHERE c.id=?
+  `).bind(classId).first():null;
+  if(!klass||klass.status!=='open'||new Date(klass.starts_at).getTime()<=Date.now())return json({authenticated:true,can_use_credit:false});
+  const pass=Number(klass.pass_eligible)===1?await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId}):null;
+  return json({
+    authenticated:true,can_use_credit:Boolean(pass),class_full:Number(klass.spaces_remaining||0)<1,
+    pass:pass?{product_name:pass.product_name,remaining_credits:Number(pass.remaining_credits),valid_through:pass.valid_through}:null
+  });
+}
+
+async function createClassCreditBooking(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to use a class credit.'},401);
+  if(!sameOriginWrite(request))return json({error:'This booking request could not be verified.'},403);
+  const body=await request.json().catch(()=>null);
+  const classId=clean(body?.class_id,120),operationId=classCreditOperationId(body?.operation_id);
+  if(!classId||!operationId)return json({error:'Choose a class and retry the booking.'},400);
+  const operationKey=`class-pass-booking:${session.member_id}:${operationId}`;
+  const bookingId=`cpb-${await memberSha256Hex(operationKey)}`;
+  const existing=await env.BOOKINGS_DB.prepare(`
+    SELECT b.* FROM bookings b LEFT JOIN class_pass_credit_ledger l ON l.id=b.class_pass_ledger_id
+    WHERE b.id=? AND b.customer_id=? AND (l.idempotency_key=? OR b.payment_provider='CLASS_PASS')
+  `).bind(bookingId,session.customer_id,operationKey).first();
+  if(existing)return json({ok:true,idempotent:true,reference:existing.reference,status:existing.status,secure_token:existing.secure_token,customer_token:existing.customer_token,total_pence:0,payment_enabled:false},200);
+  const waitingId=`cpw-${await memberSha256Hex(operationKey)}`;
+  const existingWait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE id=? AND lower(customer_email)=lower(?)`).bind(waitingId,session.email).first();
+  if(existingWait)return json({ok:true,idempotent:true,waitlisted:true,status:'WAITLISTED',secure_token:existingWait.secure_token,message:'You are on the waiting list. No class credit has been used.'},200);
+
+  const klass=await env.BOOKINGS_DB.prepare(`
+    SELECT c.*,COALESCE(e.eligible,0) pass_eligible
+    FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id
+    WHERE c.id=? AND c.status='open' AND c.starts_at>?
+  `).bind(classId,new Date().toISOString()).first();
+  if(!klass)return json({error:'This class is no longer open for booking.'},404);
+  if(Number(klass.pass_eligible)!==1)return json({error:'Class credits are not available for this class.'},409);
+  const pass=await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId});
+  if(!pass)return json({error:'You do not have an active class pass that can be used for this class.'},409);
+
+  const holdId=crypto.randomUUID(),holdExpiry=new Date(Date.now()+15*60*1000).toISOString(),now=new Date().toISOString();
+  const held=await env.BOOKINGS_DB.prepare(`
+    INSERT INTO booking_holds(id,class_id,quantity,expires_at)
+    SELECT ?,c.id,1,? FROM classes c
+    WHERE c.id=? AND c.status='open' AND c.starts_at>?
+      AND 1<=c.capacity
+        -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
+  `).bind(holdId,holdExpiry,classId,now,now).run();
+  if(Number(held?.meta?.changes||0)===0){
+    const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+    await env.BOOKINGS_DB.prepare(`
+      INSERT OR IGNORE INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token)
+      VALUES(?,?,?,?,1,'WAITING',?)
+    `).bind(waitingId,classId,session.name,session.email,secureToken).run();
+    const wait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE id=?`).bind(waitingId).first();
+    return json({ok:true,waitlisted:true,status:'WAITLISTED',secure_token:wait?.secure_token||secureToken,message:'The class is full, so you have been added to the waiting list. No class credit has been used.'},201);
+  }
+
+  const ledgerId=crypto.randomUUID(),secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const reference=`BC-${(await memberSha256Hex(operationKey)).slice(0,12).toUpperCase()}`;
+  try{
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO bookings(
+          id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,quantity,
+          amount_pence,original_amount_pence,discount_pence,status,payment_provider,secure_token,customer_token,
+          terms_accepted_at,paid_at,retention_delete_after,class_pass_id
+        )
+        SELECT ?,?,?,?,mp.customer_id,?,?,?,1,0,0,0,'PAID','CLASS_PASS',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,datetime('now','+24 months'),mp.id
+        FROM member_passes mp
+        WHERE mp.id=? AND mp.member_id=? AND mp.customer_id=? AND mp.status='ACTIVE' AND mp.valid_through>=?
+          AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+          AND EXISTS(SELECT 1 FROM class_pass_class_eligibility e WHERE e.class_id=? AND e.eligible=1)
+          AND EXISTS(SELECT 1 FROM booking_holds h WHERE h.id=? AND h.class_id=? AND h.expires_at>CURRENT_TIMESTAMP)
+      `).bind(bookingId,reference,classId,holdId,session.name,session.email,session.phone||'',secureToken,customerToken,
+        pass.id,session.member_id,session.customer_id,pass.class_date,classId,holdId,classId),
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO class_pass_credit_ledger(
+          id,pass_id,member_id,booking_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
+        )
+        SELECT ?,mp.id,mp.member_id,b.id,-1,'CLASS_BOOKING','One class credit used','MEMBER',mp.member_id,?
+        FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
+        WHERE b.id=? AND b.customer_id=? AND b.payment_provider='CLASS_PASS' AND b.status='PAID'
+          AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+      `).bind(ledgerId,operationKey,bookingId,session.customer_id),
+      env.BOOKINGS_DB.prepare(`
+        UPDATE bookings SET class_pass_ledger_id=(SELECT id FROM class_pass_credit_ledger WHERE idempotency_key=?)
+        WHERE id=? AND customer_id=? AND class_pass_ledger_id IS NULL
+      `).bind(operationKey,bookingId,session.customer_id),
+      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
+    ]);
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId).run().catch(()=>{});
+    throw error;
+  }
+  const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=? AND customer_id=?`).bind(bookingId,session.customer_id).first();
+  if(!booking?.class_pass_ledger_id){
+    if(booking)await env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=? AND class_pass_ledger_id IS NULL`).bind(bookingId).run().catch(()=>{});
+    await reconcileClassSold(env,classId);
+    return json({error:'That class place or class credit was just taken. Please refresh and try again.'},409);
+  }
+  await reconcileClassSold(env,classId);
+  const confirmed=await bookingWithClass(env,booking.id);
+  if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED').catch(()=>{});
+  await sendClassPassBalanceEmail(env,pass.id,booking.id,booking.class_pass_ledger_id).catch(()=>{});
+  return json({ok:true,reference:booking.reference,status:'PAID',secure_token:booking.secure_token,customer_token:booking.customer_token,total_pence:0,payment_enabled:false,class_credit_used:true},201);
+}
+
 
 function repairMemberNavigationHtml(html){
   const desired = `<details class="menu45-section">
@@ -362,6 +830,7 @@ function repairMemberNavigationHtml(html){
 <div class="menu45-submenu">
 <a href="member-hub.html"><span>Member Login &amp; Registration</span><b aria-hidden="true">›</b></a>
 <a href="member-hub.html"><span>Membership &amp; Benefits</span><b aria-hidden="true">›</b></a>
+<a href="reviews.html"><span>Reviews &amp; Feedback</span><b aria-hidden="true">›</b></a>
 </div>
 </details>`;
   return String(html||'').replace(
@@ -441,6 +910,8 @@ async function ensureBookingSchema(env) {
       provider_checkout_id TEXT,
       provider_transaction_id TEXT,
       provider_transaction_code TEXT,
+      class_pass_id TEXT REFERENCES member_passes(id),
+      class_pass_ledger_id TEXT REFERENCES class_pass_credit_ledger(id),
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       paid_at TEXT,
       retention_delete_after TEXT
@@ -718,6 +1189,108 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_loyalty_transactions_booking ON loyalty_transactions(booking_id,created_at)`,
     `CREATE TRIGGER IF NOT EXISTS loyalty_transactions_no_update BEFORE UPDATE ON loyalty_transactions BEGIN SELECT RAISE(ABORT,'loyalty transactions are immutable'); END`,
     `CREATE TRIGGER IF NOT EXISTS loyalty_transactions_no_delete BEFORE DELETE ON loyalty_transactions BEGIN SELECT RAISE(ABORT,'loyalty transactions are immutable'); END`,
+    `CREATE TABLE IF NOT EXISTS class_pass_products (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      price_pence INTEGER NOT NULL CHECK(price_pence >= 0),
+      original_credits INTEGER NOT NULL CHECK(original_credits > 0),
+      validity_days INTEGER NOT NULL CHECK(validity_days > 0),
+      active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS member_passes (
+      id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL REFERENCES member_accounts(id),
+      customer_id TEXT NOT NULL REFERENCES customers(id),
+      product_id TEXT NOT NULL REFERENCES class_pass_products(id),
+      status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','ACTIVE','CANCELLED')),
+      purchased_at TEXT,
+      original_valid_through TEXT,
+      valid_through TEXT,
+      original_credits INTEGER NOT NULL CHECK(original_credits > 0),
+      purchase_amount_pence INTEGER NOT NULL CHECK(purchase_amount_pence >= 0),
+      currency TEXT NOT NULL DEFAULT 'GBP',
+      payment_provider TEXT NOT NULL DEFAULT 'SUMUP',
+      provider_checkout_id TEXT UNIQUE,
+      provider_transaction_id TEXT UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS class_pass_credit_ledger (
+      id TEXT PRIMARY KEY,
+      pass_id TEXT NOT NULL REFERENCES member_passes(id),
+      member_id TEXT NOT NULL REFERENCES member_accounts(id),
+      booking_id TEXT REFERENCES bookings(id),
+      amount INTEGER NOT NULL CHECK(amount <> 0),
+      event_type TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      actor_type TEXT NOT NULL,
+      actor_id TEXT,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS class_pass_class_eligibility (
+      class_id TEXT PRIMARY KEY REFERENCES classes(id) ON DELETE CASCADE,
+      eligible INTEGER NOT NULL DEFAULT 0 CHECK(eligible IN (0,1)),
+      reason TEXT,
+      updated_by TEXT,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS class_pass_audit_log (
+      id TEXT PRIMARY KEY,
+      pass_id TEXT NOT NULL REFERENCES member_passes(id),
+      action TEXT NOT NULL,
+      actor_type TEXT NOT NULL,
+      actor_id TEXT,
+      reason TEXT NOT NULL,
+      previous_json TEXT,
+      next_json TEXT,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS class_pass_admin_operations (
+      idempotency_key TEXT PRIMARY KEY,action TEXT NOT NULL,target_type TEXT NOT NULL,target_id TEXT NOT NULL,
+      actor TEXT NOT NULL,reason TEXT NOT NULL,previous_json TEXT,next_json TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS reviews (
+      id TEXT PRIMARY KEY,member_account_id TEXT NOT NULL REFERENCES member_accounts(id),customer_id TEXT NOT NULL REFERENCES customers(id),
+      review_type TEXT NOT NULL DEFAULT 'GENERAL' CHECK(review_type IN ('GENERAL')),rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+      review_text TEXT NOT NULL,class_id TEXT REFERENCES classes(id) ON DELETE SET NULL,display_name TEXT,
+      first_name_only INTEGER NOT NULL DEFAULT 1 CHECK(first_name_only IN (0,1)),is_private INTEGER NOT NULL DEFAULT 0 CHECK(is_private IN (0,1)),
+      website_permission INTEGER NOT NULL DEFAULT 0 CHECK(website_permission IN (0,1)),social_permission INTEGER NOT NULL DEFAULT 0 CHECK(social_permission IN (0,1)),
+      moderation_status TEXT NOT NULL DEFAULT 'PENDING' CHECK(moderation_status IN ('PENDING','PUBLISHED','PRIVATE','REJECTED','ARCHIVED')),
+      featured_homepage INTEGER NOT NULL DEFAULT 0 CHECK(featured_homepage IN (0,1)),version INTEGER NOT NULL DEFAULT 1 CHECK(version>0),moderation_operation_id TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,archived_at TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS review_history (
+      id TEXT PRIMARY KEY,review_id TEXT NOT NULL REFERENCES reviews(id),event_type TEXT NOT NULL CHECK(event_type IN ('CREATED','UPDATED','ARCHIVED')),review_version INTEGER NOT NULL CHECK(review_version>0),
+      operation_id TEXT NOT NULL UNIQUE,actor_type TEXT NOT NULL,actor_id TEXT NOT NULL,previous_json TEXT,next_json TEXT NOT NULL,moderation_note TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_member_passes_member ON member_passes(member_id,status,valid_through)`,
+    `CREATE INDEX IF NOT EXISTS idx_member_passes_customer ON member_passes(customer_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_pass ON class_pass_credit_ledger(pass_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_member ON class_pass_credit_ledger(member_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_booking ON class_pass_credit_ledger(booking_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_audit_pass ON class_pass_audit_log(pass_id,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_class_pass_admin_operations_target ON class_pass_admin_operations(target_type,target_id,created_at)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_one_active_general_member ON reviews(member_account_id,review_type) WHERE archived_at IS NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_reviews_moderation ON reviews(moderation_status,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_reviews_public ON reviews(moderation_status,is_private,archived_at,created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_reviews_featured ON reviews(featured_homepage,moderation_status,website_permission,created_at)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_moderation_operation ON reviews(moderation_operation_id) WHERE moderation_operation_id IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_review_history_review ON review_history(review_id,created_at)`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_update BEFORE UPDATE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_delete BEFORE DELETE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_audit_no_update BEFORE UPDATE ON class_pass_audit_log BEGIN SELECT RAISE(ABORT,'class pass audit log is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_audit_no_delete BEFORE DELETE ON class_pass_audit_log BEGIN SELECT RAISE(ABORT,'class pass audit log is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_admin_operations_no_update BEFORE UPDATE ON class_pass_admin_operations BEGIN SELECT RAISE(ABORT,'class pass admin operations are immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS class_pass_admin_operations_no_delete BEFORE DELETE ON class_pass_admin_operations BEGIN SELECT RAISE(ABORT,'class pass admin operations are immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS review_history_no_update BEFORE UPDATE ON review_history BEGIN SELECT RAISE(ABORT,'review history is immutable'); END`,
+    `CREATE TRIGGER IF NOT EXISTS review_history_no_delete BEFORE DELETE ON review_history BEGIN SELECT RAISE(ABORT,'review history is immutable'); END`,
     `CREATE TABLE IF NOT EXISTS customer_crm_profiles (
       customer_key TEXT PRIMARY KEY,
       birthday TEXT,
@@ -768,6 +1341,8 @@ async function ensureBookingSchema(env) {
     `ALTER TABLE bookings ADD COLUMN original_amount_pence INTEGER`,
     `ALTER TABLE bookings ADD COLUMN discount_pence INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE bookings ADD COLUMN promo_code TEXT`,
+    `ALTER TABLE bookings ADD COLUMN class_pass_id TEXT REFERENCES member_passes(id)`,
+    `ALTER TABLE bookings ADD COLUMN class_pass_ledger_id TEXT REFERENCES class_pass_credit_ledger(id)`,
     `ALTER TABLE waiting_list ADD COLUMN secure_token TEXT`,
     `ALTER TABLE merch_orders ADD COLUMN fulfilment_method TEXT NOT NULL DEFAULT 'collection'`,
     `ALTER TABLE merch_orders ADD COLUMN delivery_address TEXT`,
@@ -785,6 +1360,10 @@ async function ensureBookingSchema(env) {
   try { await env.BOOKINGS_DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_secure_token ON bookings(secure_token)`).run(); } catch (_) {}
   try { await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_booking_customer_token ON bookings(customer_token)`).run(); } catch (_) {}
   try { await env.BOOKINGS_DB.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_secure_token ON waiting_list(secure_token)`).run(); } catch (_) {}
+  try { await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_bookings_class_pass ON bookings(class_pass_id)`).run(); } catch (_) {}
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_products(id,code,name,price_pence,original_credits,validity_days,active,display_order) VALUES
+    ('class-pass-4','CLASS_PASS_4','4-Class Pass',2200,4,42,1,10),
+    ('class-pass-6','CLASS_PASS_6','6-Class Pass',3200,6,56,1,20)`).run();
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO venues(id,name,location,capacity) VALUES
     ('ecc','Edgbaston Community Centre','Birmingham',20),
     ('low-places','Low Places','Birmingham',50)`).run();
@@ -1385,7 +1964,8 @@ async function sendTransactionalEmail(env, to, subject, html, text, senderType='
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.7.0'
+        'User-Agent': 'Boot-Scootin-Cloudflare-Worker/93.7.0',
+        ...(options.idempotencyKey ? {'Idempotency-Key': clean(options.idempotencyKey, 180)} : {})
       },
       body: JSON.stringify(payload)
     });
@@ -1996,15 +2576,28 @@ async function sumUpWebhook(request, env) {
     return new Response(null, { status: 204 });
   }
 
-  const booking = await env.BOOKINGS_DB.prepare(
-    `SELECT * FROM bookings WHERE provider_checkout_id=?`
-  ).bind(checkoutId).first();
+  const [booking,classPass,order,privatePayment]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE provider_checkout_id=?`).bind(checkoutId).first(),
+    env.BOOKINGS_DB.prepare(`
+      SELECT mp.*,p.name product_name,p.validity_days
+      FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+      WHERE mp.provider_checkout_id=?
+    `).bind(checkoutId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE provider_checkout_id=?`).bind(checkoutId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first()
+  ]);
+  if([booking,classPass,order,privatePayment].filter(Boolean).length>1){
+    throw new Error('SUMUP_CHECKOUT_REFERENCE_COLLISION');
+  }
   const checkout = await retrieveSumUpCheckout(env, checkoutId);
   if (booking) {
     if (checkout) await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
     return new Response(null, { status: 204 });
   }
-  const order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE provider_checkout_id=?`).bind(checkoutId).first();
+  if(classPass){
+    if(checkout)await applySumUpClassPassState(env,classPass,checkout,'SUMUP_WEBHOOK');
+    return new Response(null,{status:204});
+  }
   if(order&&checkout){
     const cs=String(checkout?.status||'').toUpperCase();
     if(cs==='PAID'){
@@ -2014,7 +2607,6 @@ async function sumUpWebhook(request, env) {
     } else if(['FAILED','EXPIRED'].includes(cs)) await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run();
     return new Response(null, { status: 204 });
   }
-  const privatePayment=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first();
   if(privatePayment&&checkout){
     const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE id=?`).bind(privatePayment.inquiry_id).first();
     const quote=privatePayment.quote_id?await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_quotes WHERE id=?`).bind(privatePayment.quote_id).first():null;
@@ -2060,9 +2652,40 @@ async function cancelBooking(request,env){
     await env.BOOKINGS_DB.prepare(`UPDATE waiting_list SET status='CANCELLED' WHERE id=?`).bind(wait.id).run();
     return json({ok:true,message:'You have been removed from the waiting list. No payment was taken.'});
   }
+  if(booking.payment_provider==='CLASS_PASS'&&booking.status==='CANCELLED'){
+    const returned=await env.BOOKINGS_DB.prepare(`SELECT id FROM class_pass_credit_ledger WHERE idempotency_key=?`).bind(`class-pass-credit-return:${booking.id}`).first();
+    return json({ok:true,idempotent:true,band:booking.cancellation_band||'',credit_returned:Boolean(returned),message:returned?'This booking was already cancelled and its class credit was returned once.':'This booking was already cancelled. No additional class credit was returned.'});
+  }
   if(!['PENDING','PAID'].includes(booking.status))return json({error:'This booking can no longer be cancelled online.'},409);
 
   const hours=(new Date(booking.starts_at)-new Date())/3600000;
+  if(booking.payment_provider==='CLASS_PASS'){
+    const returnCredit=hours>=24;
+    const band=returnCredit?'CLASS_CREDIT_RETURN':'LATE_CANCELLATION';
+    const refundStatus=returnCredit?'CLASS_CREDIT_RETURNED':'NO_CREDIT_RETURN';
+    const returnKey=`class-pass-credit-return:${booking.id}`;
+    const returnLedgerId=crypto.randomUUID();
+    const cancellationResults=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=CURRENT_TIMESTAMP,cancellation_band=?,refund_status=? WHERE id=? AND status='PAID' AND payment_provider='CLASS_PASS'`).bind(band,refundStatus,booking.id),
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO class_pass_credit_ledger(
+          id,pass_id,member_id,booking_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
+        )
+        SELECT ?,mp.id,mp.member_id,b.id,1,'CLASS_CREDIT_RETURN','Class credit returned for cancellation at least 24 hours before class','CUSTOMER',mp.member_id,?
+        FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
+        WHERE b.id=? AND b.status='CANCELLED' AND b.payment_provider='CLASS_PASS' AND ?=1
+      `).bind(returnLedgerId,returnKey,booking.id,returnCredit?1:0),
+      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(booking.customer_email,'CUSTOMER_CANCELLED_CLASS_PASS','booking',booking.id,JSON.stringify({band,refundStatus,credit_returned:returnCredit}))
+    ]);
+    await reconcileClassSold(env,booking.class_id);
+    const returnInserted=returnCredit&&Number(cancellationResults?.[1]?.meta?.changes||0)===1;
+    if(returnInserted){
+      const klass=londonDateParts(booking.starts_at);
+      await sendClassPassEmailOnce(env,{key:`CLASS_PASS_CREDIT_RETURNED:${returnLedgerId}`,type:'CLASS_PASS_CREDIT_RETURNED',passId:booking.class_pass_id,bookingId:booking.id,details:{classSummary:`Your cancellation for ${klass.date} at ${klass.time} has been recorded.`}}).catch(()=>{});
+    }
+    return json({ok:true,band,refund_status:refundStatus,credit_returned:returnCredit,message:returnCredit?'Your booking is cancelled and one class credit has been returned to the original pass. Its expiry date has not changed.':'Your late cancellation is recorded. The class credit has not been returned.'});
+  }
   const band=hours>=48?'FULL_REFUND':hours>=24?'CLASS_CREDIT':'LATE_CANCELLATION';
   const refundStatus=booking.status==='PAID'?(band==='FULL_REFUND'?'REFUND_DUE':band==='CLASS_CREDIT'?'CREDIT_DUE':'REVIEW_IF_RESOLD'):'NO_PAYMENT_TAKEN';
 
@@ -2945,6 +3568,327 @@ function parseClassDateTime(value,label){
   return explicitClassDate(text,label);
 }
 
+function adminPassOperationId(value){
+  const id=String(value||'').trim();
+  return /^[A-Za-z0-9_-]{12,100}$/.test(id)?id:'';
+}
+
+async function adminClassPassDetail(env,passId){
+  const pass=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.name product_name,p.code product_code,c.name customer_name,c.email customer_email,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
+    JOIN customers c ON c.id=mp.customer_id WHERE mp.id=?
+  `).bind(passId).first();
+  if(!pass)return null;
+  const [ledger,bookings,audit]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT l.id,l.amount,l.event_type,l.reason,l.actor_type,l.actor_id,l.created_at,l.booking_id,c.title class_title,c.starts_at,c.venue FROM class_pass_credit_ledger l LEFT JOIN bookings b ON b.id=l.booking_id LEFT JOIN classes c ON c.id=b.class_id WHERE l.pass_id=? ORDER BY l.created_at DESC,l.id`).bind(passId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.status,b.amount_pence,b.created_at,c.title,c.starts_at,c.venue FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.class_pass_id=? ORDER BY c.starts_at DESC`).bind(passId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT action,actor_type,actor_id,reason,previous_json,next_json,created_at FROM class_pass_audit_log WHERE pass_id=? ORDER BY created_at DESC,id`).bind(passId).all()
+  ]);
+  return {...pass,remaining_credits:Number(pass.remaining_credits||0),derived_status:classPassDerivedStatus(pass,pass.remaining_credits),ledger:ledger.results||[],bookings:bookings.results||[],audit:audit.results||[]};
+}
+
+function safeAdminClassPass(pass,withHistory=false){
+  const safe={id:pass.id,product_id:pass.product_id,product_name:pass.product_name,product_code:pass.product_code,
+    customer_name:pass.customer_name,customer_email:pass.customer_email,status:pass.status,derived_status:pass.derived_status,
+    purchased_at:pass.purchased_at,original_valid_through:pass.original_valid_through,valid_through:pass.valid_through,
+    original_credits:Number(pass.original_credits||0),remaining_credits:Number(pass.remaining_credits||0),
+    purchase_amount_pence:Number(pass.purchase_amount_pence||0),currency:pass.currency||'GBP',payment_provider:pass.payment_provider,
+    provider_transaction_id:pass.provider_transaction_id||null,created_at:pass.created_at,updated_at:pass.updated_at};
+  if(withHistory)Object.assign(safe,{ledger:pass.ledger||[],bookings:pass.bookings||[],audit:pass.audit||[]});
+  return safe;
+}
+
+async function adminClassPasses(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env);
+  const url=new URL(request.url);
+  if(request.method==='GET'&&url.searchParams.get('mode')==='eligibility'){
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT c.id,c.title,c.venue,c.starts_at,c.status,COALESCE(e.eligible,0) eligible,e.reason,e.updated_by,e.updated_at FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id ORDER BY c.starts_at DESC LIMIT 300`).all();
+    return json({classes:rows.results||[]});
+  }
+  if(request.method==='GET'&&url.searchParams.get('id')){
+    const detail=await adminClassPassDetail(env,clean(url.searchParams.get('id'),120));
+    return detail?json({pass:safeAdminClassPass(detail,true)}):json({error:'Class pass not found.'},404);
+  }
+  if(request.method==='GET'){
+    const result=await env.BOOKINGS_DB.prepare(`
+      SELECT mp.*,p.name product_name,p.code product_code,c.name customer_name,c.email customer_email,
+        COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+      FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id JOIN customers c ON c.id=mp.customer_id
+      ORDER BY COALESCE(mp.purchased_at,mp.created_at) DESC LIMIT 500
+    `).all();
+    const today=londonCalendarDate(),near=addCalendarDays(today,7);
+    let passes=(result.results||[]).map(pass=>({...pass,remaining_credits:Number(pass.remaining_credits||0),derived_status:classPassDerivedStatus(pass,pass.remaining_credits,today)}));
+    const all=passes;
+    const search=clean(url.searchParams.get('search'),160).toLowerCase(),status=clean(url.searchParams.get('status'),20).toUpperCase(),product=clean(url.searchParams.get('product'),80),nearing=url.searchParams.get('nearing_expiry')==='1';
+    passes=passes.filter(pass=>(!search||`${pass.customer_name} ${pass.customer_email}`.toLowerCase().includes(search))&&(!status||pass.derived_status===status)&&(!product||pass.product_id===product)&&(!nearing||(pass.derived_status==='ACTIVE'&&pass.remaining_credits>0&&pass.valid_through>=today&&pass.valid_through<=near)));
+    const products=await activeClassPassProducts(env);
+    return json({passes:passes.map(pass=>safeAdminClassPass(pass)),products,summary:{
+      passes_sold:all.filter(p=>p.status==='ACTIVE'||Boolean(p.purchased_at)).length,
+      active_passes:all.filter(p=>p.derived_status==='ACTIVE').length,
+      outstanding_credits:all.filter(p=>p.derived_status==='ACTIVE').reduce((n,p)=>n+p.remaining_credits,0),
+      revenue_pence:all.filter(p=>p.status==='ACTIVE').reduce((n,p)=>n+Number(p.purchase_amount_pence||0),0),
+      nearing_expiry:all.filter(p=>p.derived_status==='ACTIVE'&&p.remaining_credits>0&&p.valid_through>=today&&p.valid_through<=near).length
+    }});
+  }
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),action=clean(body?.action,40),operationId=adminPassOperationId(body?.operation_id),reason=clean(body?.reason,500);
+  if(!body||!operationId||!reason)return json({error:'A valid operation reference and audit reason are required.'},400);
+  if(action==='SET_ELIGIBILITY'){
+    const classId=clean(body.class_id,120),eligible=body.eligible===true||body.eligible===1?1:0;
+    const klass=await env.BOOKINGS_DB.prepare(`SELECT id FROM classes WHERE id=?`).bind(classId).first();if(!klass)return json({error:'Class not found.'},404);
+    const key=`admin-pass-eligibility:${classId}:${operationId}`;
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT reason,next_json FROM class_pass_admin_operations WHERE idempotency_key=?`).bind(key).first();
+    if(existing){const prior=JSON.parse(existing.next_json||'{}');if(Number(prior.eligible)!==eligible||existing.reason!==reason)return json({error:'Operation reference conflicts with an earlier eligibility change.'},409);return json({ok:true,idempotent:true,eligible:Boolean(prior.eligible)});}
+    const previous=await env.BOOKINGS_DB.prepare(`SELECT eligible,reason,updated_by,updated_at FROM class_pass_class_eligibility WHERE class_id=?`).bind(classId).first();
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_admin_operations(idempotency_key,action,target_type,target_id,actor,reason,previous_json,next_json) VALUES(?,'ELIGIBILITY_CHANGED','class',?,?,?,?,?)`).bind(key,classId,check.state.email,reason,JSON.stringify(previous||{eligible:0}),JSON.stringify({eligible})),
+      env.BOOKINGS_DB.prepare(`INSERT INTO class_pass_class_eligibility(class_id,eligible,reason,updated_by,updated_at) SELECT ?,?,?,?,CURRENT_TIMESTAMP WHERE EXISTS(SELECT 1 FROM class_pass_admin_operations WHERE idempotency_key=? AND reason=? AND next_json=?) ON CONFLICT(class_id) DO UPDATE SET eligible=excluded.eligible,reason=excluded.reason,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP`).bind(classId,eligible,reason,check.state.email,key,reason,JSON.stringify({eligible}))
+    ]);
+    const recorded=await env.BOOKINGS_DB.prepare(`SELECT reason,next_json FROM class_pass_admin_operations WHERE idempotency_key=?`).bind(key).first(),recordedNext=JSON.parse(recorded?.next_json||'{}');
+    if(!recorded||recorded.reason!==reason||Number(recordedNext.eligible)!==eligible)return json({error:'Operation reference conflicts with an earlier eligibility change.'},409);
+    return json({ok:true,eligible:Boolean(eligible)});
+  }
+  const passId=clean(body.pass_id,120),pass=await adminClassPassDetail(env,passId);if(!pass)return json({error:'Class pass not found.'},404);
+  if(action==='ADJUST_CREDIT'){
+    const amount=Number(body.amount);if(!Number.isInteger(amount)||amount===0||Math.abs(amount)>100)return json({error:'Adjustment must be a non-zero whole number between -100 and 100.'},400);
+    if(pass.status!=='ACTIVE')return json({error:'Credits can be adjusted only on an activated, non-cancelled pass.'},409);
+    const key=`admin-pass-adjust:${passId}:${operationId}`;
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_pass_credit_ledger WHERE idempotency_key=?`).bind(key).first();
+    if(existing){if(existing.pass_id!==passId||Number(existing.amount)!==amount||existing.reason!==reason)return json({error:'Operation reference conflicts with an earlier adjustment.'},409);return json({ok:true,idempotent:true,balance:await classPassBalance(env,passId,pass.member_id)});}
+    const ledgerId=crypto.randomUUID();
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_credit_ledger(id,pass_id,member_id,amount,event_type,reason,actor_type,actor_id,idempotency_key) SELECT ?,p.id,p.member_id,?,'ADMIN_ADJUSTMENT',?,'ADMIN',?,? FROM member_passes p WHERE p.id=? AND (? > 0 OR COALESCE((SELECT SUM(amount) FROM class_pass_credit_ledger WHERE pass_id=p.id),0)+?>=0)`).bind(ledgerId,amount,reason,check.state.email,key,passId,amount,amount),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_audit_log(id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key) SELECT ?,p.id,'CREDIT_ADJUSTED','ADMIN',?,?,?, ?,? FROM member_passes p WHERE p.id=? AND EXISTS(SELECT 1 FROM class_pass_credit_ledger WHERE idempotency_key=?)`).bind(crypto.randomUUID(),check.state.email,reason,JSON.stringify({balance:pass.remaining_credits}),JSON.stringify({balance:pass.remaining_credits+amount,amount}),`admin-pass-adjust-audit:${passId}:${operationId}`,passId,key)
+    ]);
+    if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'This adjustment would make the authoritative balance negative.'},409);
+    return json({ok:true,balance:await classPassBalance(env,passId,pass.member_id)});
+  }
+  if(action==='EXTEND_EXPIRY'){
+    const nextDate=clean(body.valid_through,10),key=`admin-pass-expiry:${passId}:${operationId}`;
+    if(!dateOk(nextDate)||addCalendarDays(nextDate,0)!==nextDate)return json({error:'New expiry must be a valid calendar date.'},400);
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT reason,next_json FROM class_pass_audit_log WHERE idempotency_key=?`).bind(key).first();if(existing){const prior=JSON.parse(existing.next_json||'{}');if(prior.valid_through!==nextDate||existing.reason!==reason)return json({error:'Operation reference conflicts with an earlier expiry change.'},409);return json({ok:true,idempotent:true,valid_through:prior.valid_through});}
+    if(!pass.valid_through||nextDate<=pass.valid_through)return json({error:'New expiry must be later than the current expiry.'},400);
+    if(pass.status==='CANCELLED')return json({error:'A cancelled pass cannot be extended or reactivated.'},409);
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE member_passes SET valid_through=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'CANCELLED' AND valid_through=?`).bind(nextDate,passId,pass.valid_through),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_audit_log(id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key) VALUES(?,?,'EXPIRY_EXTENDED','ADMIN',?,?,?,?,?)`).bind(crypto.randomUUID(),passId,check.state.email,reason,JSON.stringify({valid_through:pass.valid_through}),JSON.stringify({valid_through:nextDate}),key)
+    ]);
+    return json({ok:true,valid_through:nextDate,derived_status:classPassDerivedStatus({...pass,valid_through:nextDate},pass.remaining_credits)});
+  }
+  if(action==='CANCEL_PASS'){
+    const key=`admin-pass-cancel:${passId}:${operationId}`,existing=await env.BOOKINGS_DB.prepare(`SELECT id FROM class_pass_audit_log WHERE idempotency_key=?`).bind(key).first();if(existing)return json({ok:true,idempotent:true,status:'CANCELLED'});
+    if(pass.status==='CANCELLED')return json({ok:true,idempotent:true,status:'CANCELLED'});
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE member_passes SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status<>'CANCELLED'`).bind(passId),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_pass_audit_log(id,pass_id,action,actor_type,actor_id,reason,previous_json,next_json,idempotency_key) VALUES(?,?,'PASS_CANCELLED','ADMIN',?,?,?,?,?)`).bind(crypto.randomUUID(),passId,check.state.email,reason,JSON.stringify({status:pass.status}),JSON.stringify({status:'CANCELLED',refund:'NOT_AUTOMATIC'}),key)
+    ]);
+    return json({ok:true,status:'CANCELLED',refund_issued:false});
+  }
+  return json({error:'Unsupported class-pass action.'},400);
+}
+
+function reviewOperationId(value){
+  const id=String(value||'').trim();
+  return /^[A-Za-z0-9_-]{12,100}$/.test(id)?id:'';
+}
+
+function reviewSnapshot(row){
+  return {rating:Number(row.rating),review_text:String(row.review_text||''),class_id:row.class_id||null,
+    display_name:row.display_name||null,first_name_only:Boolean(Number(row.first_name_only)),is_private:Boolean(Number(row.is_private)),
+    website_permission:Boolean(Number(row.website_permission)),social_permission:Boolean(Number(row.social_permission)),
+    moderation_status:String(row.moderation_status||''),featured_homepage:Boolean(Number(row.featured_homepage)),archived_at:row.archived_at||null};
+}
+
+function sameReviewSnapshot(left,right){return JSON.stringify(left)===JSON.stringify(right);}
+
+function safeMemberReview(row){
+  if(!row)return null;
+  return {rating:Number(row.rating),review_text:row.review_text,class_id:row.class_id||null,class_title:row.class_title||null,
+    venue:row.venue||null,display_name:row.display_name||'',first_name_only:Boolean(Number(row.first_name_only)),
+    is_private:Boolean(Number(row.is_private)),website_permission:Boolean(Number(row.website_permission)),
+    social_permission:Boolean(Number(row.social_permission)),moderation_status:row.moderation_status,
+    featured_homepage:Boolean(Number(row.featured_homepage)&&row.moderation_status==='PUBLISHED'&&!Number(row.is_private)&&!row.archived_at&&Number(row.website_permission)),
+    version:Number(row.version||0),created_at:row.created_at,updated_at:row.updated_at,archived_at:row.archived_at||null};
+}
+
+function publicReviewName(row){
+  const preferred=String(row.display_name||'').trim(),account=String(row.customer_name||'').trim();
+  if(Number(row.first_name_only))return (preferred||account).split(/\s+/)[0]||'Boot Scootin’ Dancer';
+  return preferred||account||'Boot Scootin’ Dancer';
+}
+
+async function memberReviewRow(env,memberId){
+  return env.BOOKINGS_DB.prepare(`SELECT r.*,c.title class_title,c.venue FROM reviews r LEFT JOIN classes c ON c.id=r.class_id WHERE r.member_account_id=? AND r.review_type='GENERAL' AND r.archived_at IS NULL LIMIT 1`).bind(memberId).first();
+}
+
+async function memberReviewById(env,reviewId,memberId){
+  return env.BOOKINGS_DB.prepare(`SELECT r.*,c.title class_title,c.venue FROM reviews r LEFT JOIN classes c ON c.id=r.class_id WHERE r.id=? AND r.member_account_id=? LIMIT 1`).bind(reviewId,memberId).first();
+}
+
+function reviewInput(body,current=null){
+  const protectedFields=['id','member_id','member_account_id','customer_id','moderation_status','featured_homepage','verified_dancer','created_at','updated_at','archived_at'];
+  if(protectedFields.some(key=>Object.prototype.hasOwnProperty.call(body||{},key)))return {error:'Review moderation and ownership fields cannot be set by members.'};
+  const rawText=String(body?.review_text??'').trim(),rawName=String(body?.display_name??'').trim(),rawClass=String(body?.class_id??'').trim();
+  const rating=Number(body?.rating),reviewText=rawText,displayName=rawName,classId=rawClass||null;
+  if(!Number.isInteger(rating)||rating<1||rating>5)return {error:'Choose a rating from 1 to 5.'};
+  if(reviewText.length<10)return {error:'Please write at least 10 characters in your review.'};
+  if(reviewText.length>2000)return {error:'Review text must be 2,000 characters or fewer.'};
+  if(displayName.length>60)return {error:'Public display name must be 60 characters or fewer.'};
+  if(rawClass.length>120)return {error:'The selected class reference is invalid.'};
+  if(/[<>\r\n]/.test(displayName)||/@/.test(displayName))return {error:'Use a short public display name without contact details.'};
+  for(const key of ['first_name_only','is_private','website_permission','social_permission'])if(body?.[key]!==undefined&&typeof body[key]!=='boolean')return {error:'Review privacy and permission choices must be true or false.'};
+  const firstNameOnly=body?.first_name_only===undefined?(current?Boolean(Number(current.first_name_only)):true):body.first_name_only===true;
+  const isPrivate=body?.is_private===undefined?(current?Boolean(Number(current.is_private)):false):body.is_private===true;
+  const websitePermission=body?.website_permission===undefined?(current?Boolean(Number(current.website_permission)):false):body.website_permission===true;
+  const socialPermission=body?.social_permission===undefined?(current?Boolean(Number(current.social_permission)):false):body.social_permission===true;
+  return {rating,review_text:reviewText,class_id:classId,display_name:displayName||null,first_name_only:firstNameOnly?1:0,
+    is_private:isPrivate?1:0,website_permission:websitePermission?1:0,social_permission:socialPermission?1:0};
+}
+
+async function memberReview(request,env){
+  await ensureBookingSchema(env);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to manage your review.'},401);
+  if(request.method==='GET'){
+    const review=await memberReviewRow(env,session.member_id);
+    const history=review?await env.BOOKINGS_DB.prepare(`SELECT event_type,review_version,previous_json,next_json,created_at FROM review_history WHERE review_id=? ORDER BY review_version DESC`).bind(review.id).all():{results:[]};
+    const archived=await env.BOOKINGS_DB.prepare(`SELECT rating,review_text,display_name,moderation_status,created_at,updated_at,archived_at FROM reviews WHERE member_account_id=? AND archived_at IS NOT NULL ORDER BY archived_at DESC LIMIT 20`).bind(session.member_id).all();
+    return json({review:safeMemberReview(review),history:history.results||[],archived_reviews:archived.results||[]});
+  }
+  if(!['POST','PATCH'].includes(request.method))return json({error:'Method not allowed.'},405);
+  if(!sameOriginWrite(request))return json({error:'This review request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),rawOperation=reviewOperationId(body?.operation_id);
+  if(!body||!rawOperation)return json({error:'A valid operation reference is required.'},400);
+  const operationId=`member-review:${session.member_id}:${rawOperation}`;
+  const replay=await env.BOOKINGS_DB.prepare(`SELECT review_id,next_json FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,session.member_id).first();
+  const current=await memberReviewRow(env,session.member_id),replaySnapshot=replay?JSON.parse(replay.next_json):null;
+  const input=reviewInput(body,request.method==='POST'?null:(current||replaySnapshot));if(input.error)return json({error:input.error},400);
+  if(input.class_id){const klass=await env.BOOKINGS_DB.prepare(`SELECT id FROM classes WHERE id=?`).bind(input.class_id).first();if(!klass)return json({error:'That class is not available as review context.'},400);}
+  if(request.method==='POST'){
+    const status=input.is_private?'PRIVATE':'PENDING',next={...input,first_name_only:Boolean(input.first_name_only),is_private:Boolean(input.is_private),website_permission:Boolean(input.website_permission),social_permission:Boolean(input.social_permission),moderation_status:status,featured_homepage:false,archived_at:null};
+    if(replay){if(!sameReviewSnapshot(replaySnapshot,next))return json({error:'Operation reference conflicts with an earlier review request.'},409);const row=await memberReviewById(env,replay.review_id,session.member_id);return json({ok:true,idempotent:true,review:safeMemberReview(row)});}
+    if(current)return json({error:'Archive your current review before creating another one.'},409);
+    const reviewId=crypto.randomUUID();
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO reviews(id,member_account_id,customer_id,rating,review_text,class_id,display_name,first_name_only,is_private,website_permission,social_permission,moderation_status,featured_homepage) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,0)`).bind(reviewId,session.member_id,session.customer_id,input.rating,input.review_text,input.class_id,input.display_name,input.first_name_only,input.is_private,input.website_permission,input.social_permission,status),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO review_history(id,review_id,event_type,review_version,operation_id,actor_type,actor_id,previous_json,next_json) SELECT ?,id,'CREATED',1,?,'MEMBER',?,NULL,? FROM reviews WHERE id=?`).bind(crypto.randomUUID(),operationId,session.member_id,JSON.stringify(next),reviewId)
+    ]);
+    const recorded=await env.BOOKINGS_DB.prepare(`SELECT review_id,next_json FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,session.member_id).first();
+    if(!recorded)return json({error:'You already have an active general review.'},409);
+    if(!sameReviewSnapshot(JSON.parse(recorded.next_json),next))return json({error:'Operation reference conflicts with an earlier review request.'},409);
+    return json({ok:true,review:safeMemberReview(await memberReviewRow(env,session.member_id))},201);
+  }
+  const statusSource=current||replaySnapshot;
+  let status=input.is_private?'PRIVATE':(statusSource?.moderation_status==='PUBLISHED'||statusSource?.moderation_status==='PRIVATE'||statusSource?.moderation_status==='REJECTED'?'PENDING':statusSource?.moderation_status);
+  if(!['PENDING','PRIVATE'].includes(status))status='PENDING';
+  const next={...input,first_name_only:Boolean(input.first_name_only),is_private:Boolean(input.is_private),website_permission:Boolean(input.website_permission),social_permission:Boolean(input.social_permission),moderation_status:status,featured_homepage:false,archived_at:null};
+  if(replay){if(!sameReviewSnapshot(replaySnapshot,next))return json({error:'Operation reference conflicts with an earlier review request.'},409);return json({ok:true,idempotent:true,review:safeMemberReview(await memberReviewById(env,replay.review_id,session.member_id))});}
+  if(!current)return json({error:'No active review was found to update.'},404);
+  const expectedVersion=Number(body.version);if(!Number.isInteger(expectedVersion)||expectedVersion<1)return json({error:'Review version is required. Refresh and try again.'},400);
+  if(expectedVersion!==Number(current.version))return json({error:'Your review changed in another session. Refresh and try again.'},409);
+  const previous=reviewSnapshot(current);
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE reviews SET rating=?,review_text=?,class_id=?,display_name=?,first_name_only=?,is_private=?,website_permission=?,social_permission=?,moderation_status=?,featured_homepage=0,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND member_account_id=? AND version=?`).bind(input.rating,input.review_text,input.class_id,input.display_name,input.first_name_only,input.is_private,input.website_permission,input.social_permission,status,current.id,session.member_id,current.version),
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO review_history(id,review_id,event_type,review_version,operation_id,actor_type,actor_id,previous_json,next_json) SELECT ?,r.id,'UPDATED',r.version,?,'MEMBER',?,?,? FROM reviews r WHERE r.id=? AND r.member_account_id=? AND r.version=? AND r.rating=? AND r.review_text=? AND r.class_id IS ? AND r.display_name IS ? AND r.first_name_only=? AND r.is_private=? AND r.website_permission=? AND r.social_permission=? AND r.moderation_status=? AND r.featured_homepage=0`).bind(crypto.randomUUID(),operationId,session.member_id,JSON.stringify(previous),JSON.stringify(next),current.id,session.member_id,Number(current.version)+1,input.rating,input.review_text,input.class_id,input.display_name,input.first_name_only,input.is_private,input.website_permission,input.social_permission,status)
+  ]);
+  const recorded=await env.BOOKINGS_DB.prepare(`SELECT review_id,next_json FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,session.member_id).first();
+  if(!recorded)return json({error:'Your review changed in another session. Refresh and try again.'},409);
+  return json({ok:true,review:safeMemberReview(await memberReviewRow(env,session.member_id))});
+}
+
+async function archiveMemberReview(request,env){
+  await ensureBookingSchema(env);const session=await memberSession(request,env);if(!session)return json({error:'Please log in to manage your review.'},401);
+  if(!sameOriginWrite(request))return json({error:'This review request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),rawOperation=reviewOperationId(body?.operation_id);if(!body||!rawOperation)return json({error:'A valid operation reference is required.'},400);
+  const operationId=`member-review-archive:${session.member_id}:${rawOperation}`,replay=await env.BOOKINGS_DB.prepare(`SELECT review_id FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,session.member_id).first();
+  if(replay)return json({ok:true,idempotent:true,archived:true});
+  const current=await memberReviewRow(env,session.member_id);if(!current)return json({error:'No active review was found to archive.'},404);
+  const expectedVersion=Number(body.version);if(!Number.isInteger(expectedVersion)||expectedVersion<1)return json({error:'Review version is required. Refresh and try again.'},400);
+  if(expectedVersion!==Number(current.version))return json({error:'Your review changed in another session. Refresh and try again.'},409);
+  const previous=reviewSnapshot(current),next={...previous,moderation_status:'ARCHIVED',featured_homepage:false,archived_at:'RECORDED_AT_OPERATION'};
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE reviews SET moderation_status='ARCHIVED',is_private=1,featured_homepage=0,archived_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=? AND member_account_id=? AND version=?`).bind(current.id,session.member_id,current.version),
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO review_history(id,review_id,event_type,review_version,operation_id,actor_type,actor_id,previous_json,next_json) SELECT ?,r.id,'ARCHIVED',r.version,?,'MEMBER',?,?,? FROM reviews r WHERE r.id=? AND r.member_account_id=? AND r.version=? AND r.archived_at IS NOT NULL`).bind(crypto.randomUUID(),operationId,session.member_id,JSON.stringify(previous),JSON.stringify(next),current.id,session.member_id,Number(current.version)+1)
+  ]);
+  const recorded=await env.BOOKINGS_DB.prepare(`SELECT review_id FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,session.member_id).first();
+  if(!recorded)return json({error:'Your review changed in another session. Refresh and try again.'},409);
+  return json({ok:true,archived:true});
+}
+
+function safeAdminReview(row){
+  if(!row)return null;
+  return {...safeMemberReview(row),id:row.id,reviewer_name:row.customer_name||'',reviewer_email:row.customer_email||'',verified_dancer:Boolean(row.verified_dancer)};
+}
+
+async function adminReviewRow(env,id){
+  return env.BOOKINGS_DB.prepare(`SELECT r.*,cu.name customer_name,cu.email customer_email,c.title class_title,c.venue,
+    EXISTS(SELECT 1 FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=r.customer_id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) verified_dancer
+    FROM reviews r JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id WHERE r.id=? LIMIT 1`).bind(id).first();
+}
+
+async function adminReviews(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env);const url=new URL(request.url);
+  if(request.method==='GET'){
+    const id=clean(url.searchParams.get('id'),120);
+    if(id){
+      const row=await adminReviewRow(env,id);if(!row)return json({error:'Review not found.'},404);
+      const history=await env.BOOKINGS_DB.prepare(`SELECT event_type,review_version,actor_type,actor_id,previous_json,next_json,moderation_note,created_at FROM review_history WHERE review_id=? ORDER BY created_at DESC,id DESC`).bind(id).all();
+      return json({review:safeAdminReview(row),history:history.results||[]});
+    }
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT r.*,cu.name customer_name,cu.email customer_email,c.title class_title,c.venue,
+      EXISTS(SELECT 1 FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=r.customer_id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) verified_dancer
+      FROM reviews r JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id ORDER BY r.updated_at DESC,r.id DESC LIMIT 500`).all();
+    const all=(rows.results||[]).map(safeAdminReview),published=all.filter(r=>r.moderation_status==='PUBLISHED'&&!r.is_private&&!r.archived_at);
+    return json({reviews:all,summary:{pending:all.filter(r=>r.moderation_status==='PENDING'&&!r.archived_at).length,published:published.length,
+      private:all.filter(r=>r.moderation_status==='PRIVATE'&&!r.archived_at).length,featured:published.filter(r=>r.featured_homepage&&r.website_permission).length,
+      average_published_rating:published.length?Number((published.reduce((sum,r)=>sum+r.rating,0)/published.length).toFixed(2)):0}});
+  }
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!sameOriginWrite(request))return json({error:'This HQ review request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),id=clean(body?.id,120),action=clean(body?.action,30).toUpperCase(),rawOperation=reviewOperationId(body?.operation_id),note=clean(body?.note,1000),expectedVersion=Number(body?.version);
+  if(!body||!id||!rawOperation||!Number.isInteger(expectedVersion)||expectedVersion<1)return json({error:'Review, version and operation reference are required.'},400);
+  const allowed=['PUBLISH','REJECT','MARK_PRIVATE','ARCHIVE','FEATURE','UNFEATURE'];if(!allowed.includes(action))return json({error:'Unsupported review action.'},400);
+  if(['REJECT','MARK_PRIVATE','ARCHIVE'].includes(action)&&!note)return json({error:'A moderation reason is required for this action.'},400);
+  const operationId=`admin-review:${check.state.email}:${rawOperation}`,intent={action,note,version:expectedVersion};
+  const replay=await env.BOOKINGS_DB.prepare(`SELECT review_id,next_json FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,check.state.email).first();
+  if(replay){const saved=JSON.parse(replay.next_json||'{}')._admin_intent;if(JSON.stringify(saved)!==JSON.stringify(intent)||replay.review_id!==id)return json({error:'Operation reference conflicts with an earlier moderation action.'},409);return json({ok:true,idempotent:true,review:safeAdminReview(await adminReviewRow(env,id))});}
+  const current=await adminReviewRow(env,id);if(!current)return json({error:'Review not found.'},404);
+  if(expectedVersion!==Number(current.version))return json({error:'This review changed since it was opened. Refresh and try again.'},409);
+  if(current.archived_at||current.moderation_status==='ARCHIVED')return json({error:'Archived reviews cannot be moderated.'},409);
+  let status=current.moderation_status,isPrivate=Number(current.is_private),featured=Number(current.featured_homepage),archive=false;
+  if(action==='PUBLISH'){if(isPrivate||status==='PRIVATE')return json({error:'A member-private review cannot be published by HQ.'},409);status='PUBLISHED';}
+  else if(action==='REJECT'){status='REJECTED';featured=0;}
+  else if(action==='MARK_PRIVATE'){status='PRIVATE';isPrivate=1;featured=0;}
+  else if(action==='ARCHIVE'){status='ARCHIVED';isPrivate=1;featured=0;archive=true;}
+  else if(action==='FEATURE'){if(status!=='PUBLISHED'||isPrivate||!Number(current.website_permission))return json({error:'Only a published, public review with website permission can be featured.'},409);featured=1;}
+  else if(action==='UNFEATURE'){featured=0;}
+  const previous=reviewSnapshot(current),next={...previous,is_private:Boolean(isPrivate),moderation_status:status,featured_homepage:Boolean(featured),archived_at:archive?'RECORDED_AT_OPERATION':null,_admin_intent:intent},eventType=archive?'ARCHIVED':'UPDATED';
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE reviews SET moderation_status=?,is_private=?,featured_homepage=?,archived_at=CASE WHEN ?=1 THEN CURRENT_TIMESTAMP ELSE archived_at END,updated_at=CURRENT_TIMESTAMP,version=version+1,moderation_operation_id=? WHERE id=? AND version=? AND archived_at IS NULL`).bind(status,isPrivate,featured,archive?1:0,operationId,id,current.version),
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO review_history(id,review_id,event_type,review_version,operation_id,actor_type,actor_id,previous_json,next_json,moderation_note) SELECT ?,r.id,?,r.version,?,'ADMIN',?,?,?,? FROM reviews r WHERE r.id=? AND r.version=? AND r.moderation_operation_id=?`).bind(crypto.randomUUID(),eventType,operationId,check.state.email,JSON.stringify(previous),JSON.stringify(next),note||null,id,Number(current.version)+1,operationId)
+  ]);
+  const recorded=await env.BOOKINGS_DB.prepare(`SELECT review_id FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,check.state.email).first();
+  if(!recorded)return json({error:'This review changed since it was opened. Refresh and try again.'},409);
+  return json({ok:true,review:safeAdminReview(await adminReviewRow(env,id))});
+}
+
+async function publicReviews(request,env){
+  await ensureBookingSchema(env);const url=new URL(request.url),sort=clean(url.searchParams.get('sort'),20).toLowerCase();
+  const featuredOnly=url.searchParams.get('featured')==='1',order=sort==='highest'?'r.rating DESC,r.created_at DESC':sort==='lowest'?'r.rating ASC,r.created_at DESC':'r.created_at DESC';
+  const [rows,summaryRows]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT r.rating,r.review_text,r.display_name,r.first_name_only,r.website_permission,r.featured_homepage,r.created_at,r.updated_at,cu.name customer_name,c.title class_title,c.venue,EXISTS(SELECT 1 FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=r.customer_id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) verified_dancer FROM reviews r JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id WHERE r.moderation_status='PUBLISHED' AND r.is_private=0 AND r.archived_at IS NULL ${featuredOnly?'AND r.website_permission=1 AND r.featured_homepage=1':''} ORDER BY ${order} LIMIT ${featuredOnly?3:200}`).all(),
+    env.BOOKINGS_DB.prepare(`SELECT rating,COUNT(*) count FROM reviews WHERE moderation_status='PUBLISHED' AND is_private=0 AND archived_at IS NULL GROUP BY rating`).all()
+  ]);
+  const reviews=(rows.results||[]).map(row=>({rating:Number(row.rating),review_text:row.review_text,display_name:publicReviewName(row),review_date:row.updated_at||row.created_at,class_title:row.class_title||null,venue:row.venue||null,verified_dancer:Boolean(row.verified_dancer),featured:Boolean(Number(row.featured_homepage)&&Number(row.website_permission))}));
+  const breakdown={1:0,2:0,3:0,4:0,5:0};let count=0,total=0;for(const row of summaryRows.results||[]){breakdown[Number(row.rating)]=Number(row.count);count+=Number(row.count);total+=Number(row.rating)*Number(row.count);}
+  return json({reviews,summary:{published_review_count:count,average_rating:count?Number((total/count).toFixed(2)):0,star_breakdown:breakdown}});
+}
+
 async function adminClasses(request, env) {
   const check=requireAccessAdmin(request,env);
   if(check.response)return check.response;
@@ -3529,6 +4473,138 @@ async function recordAutomation(env,key,type,email,meta={},result=null,error=nul
   await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_automation_log(automation_key,automation_type,email,class_id,booking_id,provider_id,status,error_message,created_at) VALUES(?,?,?,?,?,?,?, ?,CURRENT_TIMESTAMP)`)
     .bind(key,type,String(email||'').toLowerCase(),meta.class_id||null,meta.booking_id||null,result?.id||null,error?'FAILED':'SENT',error?clean(error?.message||error,400):null).run();
 }
+
+function classPassEmailDate(value){
+  const match=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!match)return '';
+  const date=new Date(Date.UTC(Number(match[1]),Number(match[2])-1,Number(match[3])));
+  return new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).format(date);
+}
+
+async function classPassEmailContext(env,passId){
+  const pass=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.*,p.name product_name,a.email member_email,c.email customer_email,c.name customer_name,
+      COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0) remaining_credits
+    FROM member_passes mp
+    JOIN class_pass_products p ON p.id=mp.product_id
+    JOIN member_accounts a ON a.id=mp.member_id
+    LEFT JOIN customers c ON c.id=mp.customer_id
+    WHERE mp.id=?
+  `).bind(passId).first();
+  if(!pass)return null;
+  const email=emailOk(pass.member_email)?String(pass.member_email).trim().toLowerCase():
+    (emailOk(pass.customer_email)?String(pass.customer_email).trim().toLowerCase():'');
+  return {...pass,email,remaining_credits:Number(pass.remaining_credits||0)};
+}
+
+function classPassEmailCopy(type,pass,details={}){
+  const remaining=Number(pass.remaining_credits||0);
+  const validDate=classPassEmailDate(pass.valid_through);
+  const common=`${pass.product_name}. Valid until ${validDate}. ${remaining} class credit${remaining===1?'':'s'} remaining.`;
+  if(type==='CLASS_PASS_PURCHASED')return {subject:`Your ${pass.product_name} is ready`,heading:'Your class pass is ready',paragraphs:['Your secure one-off payment has been confirmed. This class pass is not a subscription.',common]};
+  if(type==='CLASS_PASS_ONE_REMAINING')return {subject:'You have one class credit remaining',heading:'One class credit remaining',paragraphs:[common,'Book your next class whenever you are ready.']};
+  if(type==='CLASS_PASS_FINAL_USED')return {subject:'Your final class-pass credit has been used',heading:'Your final credit has been used',paragraphs:[common,'Your existing class bookings remain safely confirmed.']};
+  if(type==='CLASS_PASS_CREDIT_RETURNED')return {subject:'Your class credit has been returned',heading:'Class credit returned',paragraphs:[details.classSummary||'Your eligible cancellation has been recorded.',common,'The original pass expiry date has not changed.']};
+  if(type==='CLASS_PASS_EXPIRY_7_DAYS')return {subject:`Your ${pass.product_name} expires in 7 days`,heading:'Seven days left on your class pass',paragraphs:[common,'Unused credits cannot be used after the valid-until date, so book soon if you would like to use them.']};
+  return {subject:`Your ${pass.product_name} has expired`,heading:'Your class pass has expired',paragraphs:[`${pass.product_name} expired on ${validDate}.`,`${remaining} unused class credit${remaining===1?' was':'s were'} remaining when the pass expired. These credits are no longer spendable.`]};
+}
+
+async function sendClassPassEmailOnce(env,{key,type,passId,bookingId=null,details={}}){
+  await ensureEmailCentreSchema(env);
+  const pass=await classPassEmailContext(env,passId);
+  if(!pass)return {skipped:true,reason:'Class pass not found.'};
+  const existing=await env.BOOKINGS_DB.prepare(`SELECT status,created_at FROM email_automation_log WHERE automation_key=?`).bind(key).first();
+  if(existing?.status==='SENT'||existing?.status==='SKIPPED')return {skipped:true,reason:'Already processed.'};
+  const today=londonCalendarDate();
+  const stillRelevant=type==='CLASS_PASS_PURCHASED'?pass.status==='ACTIVE':
+    type==='CLASS_PASS_ONE_REMAINING'?pass.status==='ACTIVE'&&pass.remaining_credits===1:
+    type==='CLASS_PASS_FINAL_USED'?pass.status==='ACTIVE'&&pass.remaining_credits===0:
+    type==='CLASS_PASS_EXPIRY_7_DAYS'?pass.status==='ACTIVE'&&pass.remaining_credits>0&&pass.valid_through===addCalendarDays(today,7):
+    type==='CLASS_PASS_EXPIRED'?pass.status==='ACTIVE'&&String(pass.valid_through||'')<today:true;
+  if(!stillRelevant){
+    if(existing)await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET status='SKIPPED',error_message='Lifecycle event is no longer current.' WHERE automation_key=? AND status IN ('FAILED','PROCESSING')`).bind(key).run();
+    return {skipped:true,reason:'Lifecycle event is no longer current.'};
+  }
+  if(!pass.email){
+    await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_automation_log(automation_key,automation_type,email,booking_id,status,error_message,created_at) VALUES(?,?,?,?,'SKIPPED','Member email is unavailable.',CURRENT_TIMESTAMP)`).bind(key,type,'',bookingId).run();
+    return {skipped:true,reason:'Member email is unavailable.'};
+  }
+  let claimed;
+  if(existing?.status==='FAILED'){
+    claimed=await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET status='PROCESSING',error_message=NULL,created_at=CURRENT_TIMESTAMP WHERE automation_key=? AND status='FAILED'`).bind(key).run();
+  }else if(existing?.status==='PROCESSING'&&Date.now()-new Date(`${String(existing.created_at||'').replace(' ','T')}Z`).getTime()>15*60*1000){
+    claimed=await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET created_at=CURRENT_TIMESTAMP WHERE automation_key=? AND status='PROCESSING' AND created_at=?`).bind(key,existing.created_at).run();
+  }else{
+    claimed=await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_automation_log(automation_key,automation_type,email,booking_id,status,created_at) VALUES(?,?,?,?, 'PROCESSING',CURRENT_TIMESTAMP)`).bind(key,type,pass.email,bookingId).run();
+  }
+  if(Number(claimed?.meta?.changes||0)!==1)return {skipped:true,reason:'Already processing.'};
+  const copy=classPassEmailCopy(type,pass,details);
+  const html=brandedEmailHtml({heading:copy.heading,greeting:`Hi ${String(pass.customer_name||'there').trim().split(/\s+/)[0]||'there'},`,paragraphs:copy.paragraphs,buttons:[{label:'View my class passes',href:`${SITE_ORIGIN}/member-hub.html#class-passes`},{label:'Book a class',href:`${SITE_ORIGIN}/bookings.html`,secondary:true}]});
+  const text=[copy.heading,...copy.paragraphs,`View my class passes: ${SITE_ORIGIN}/member-hub.html#class-passes`,`Book a class: ${SITE_ORIGIN}/bookings.html`].join('\n\n');
+  try{
+    const result=await sendTransactionalEmail(env,pass.email,copy.subject,html,text,'members',{idempotencyKey:key});
+    if(result?.skipped)throw new Error(result.reason||'Email provider is not configured.');
+    await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET status='SENT',provider_id=?,error_message=NULL WHERE automation_key=? AND status='PROCESSING'`).bind(result.id||null,key).run();
+    return {sent:true,id:result.id||null};
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`UPDATE email_automation_log SET status='FAILED',error_message=? WHERE automation_key=? AND status='PROCESSING'`).bind(clean(error?.message||error,400),key).run();
+    return {sent:false,error:clean(error?.message||error,400)};
+  }
+}
+
+async function retryClassPassEmails(env){
+  const rows=await env.BOOKINGS_DB.prepare(`
+    SELECT automation_key,automation_type,booking_id FROM email_automation_log
+    WHERE automation_type IN ('CLASS_PASS_PURCHASED','CLASS_PASS_ONE_REMAINING','CLASS_PASS_FINAL_USED','CLASS_PASS_CREDIT_RETURNED','CLASS_PASS_EXPIRY_7_DAYS','CLASS_PASS_EXPIRED')
+      AND (status='FAILED' OR (status='PROCESSING' AND created_at<datetime('now','-15 minutes')))
+    ORDER BY created_at LIMIT 100
+  `).all();
+  let sent=0,failed=0,skipped=0;
+  for(const row of rows.results||[]){
+    let passId=String(row.automation_key||'').slice(String(row.automation_type||'').length+1);
+    if(row.automation_type==='CLASS_PASS_CREDIT_RETURNED'){
+      const ledger=await env.BOOKINGS_DB.prepare(`SELECT pass_id,booking_id FROM class_pass_credit_ledger WHERE id=? AND event_type='CLASS_CREDIT_RETURN' AND amount>0`).bind(passId).first();
+      passId=ledger?.pass_id||'';
+      if(ledger?.booking_id)row.booking_id=ledger.booking_id;
+    }
+    const result=passId?await sendClassPassEmailOnce(env,{key:row.automation_key,type:row.automation_type,passId,bookingId:row.booking_id||null}):{skipped:true};
+    if(result.sent)sent++;else if(result.error)failed++;else skipped++;
+  }
+  return {sent,failed,skipped,candidates:(rows.results||[]).length};
+}
+
+async function sendClassPassBalanceEmail(env,passId,bookingId,ledgerId){
+  const pass=await classPassEmailContext(env,passId);
+  if(!pass)return {skipped:true};
+  if(pass.remaining_credits===1)return sendClassPassEmailOnce(env,{key:`CLASS_PASS_ONE_REMAINING:${passId}`,type:'CLASS_PASS_ONE_REMAINING',passId,bookingId});
+  if(pass.remaining_credits===0)return sendClassPassEmailOnce(env,{key:`CLASS_PASS_FINAL_USED:${passId}`,type:'CLASS_PASS_FINAL_USED',passId,bookingId,details:{ledgerId}});
+  return {skipped:true};
+}
+
+async function processClassPassAutomation(env){
+  const retries=await retryClassPassEmails(env);
+  const today=londonCalendarDate();
+  const expiryTarget=addCalendarDays(today,7);
+  const expiring=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.id FROM member_passes mp
+    WHERE mp.status='ACTIVE' AND mp.valid_through=?
+      AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+    LIMIT 250
+  `).bind(expiryTarget).all();
+  const expired=await env.BOOKINGS_DB.prepare(`
+    SELECT mp.id FROM member_passes mp WHERE mp.status='ACTIVE' AND mp.valid_through<? LIMIT 250
+  `).bind(today).all();
+  let sent=0,failed=0,skipped=0;
+  for(const row of expiring.results||[]){
+    const result=await sendClassPassEmailOnce(env,{key:`CLASS_PASS_EXPIRY_7_DAYS:${row.id}`,type:'CLASS_PASS_EXPIRY_7_DAYS',passId:row.id});
+    if(result.sent)sent++;else if(result.error)failed++;else skipped++;
+  }
+  for(const row of expired.results||[]){
+    const result=await sendClassPassEmailOnce(env,{key:`CLASS_PASS_EXPIRED:${row.id}`,type:'CLASS_PASS_EXPIRED',passId:row.id});
+    if(result.sent)sent++;else if(result.error)failed++;else skipped++;
+  }
+  return {sent,failed,skipped,retries,expiring_candidates:(expiring.results||[]).length,expired_candidates:(expired.results||[]).length};
+}
 async function sendMarketingAutomation(env,{key,type,email,name,subject,text,senderType='general',klass=null,meta={}}){
   if(!email || await automationAlreadySent(env,key)) return {skipped:true,reason:'Already sent or missing email.'};
   const unsub=await env.BOOKINGS_DB.prepare(`SELECT email FROM mailing_unsubscribes WHERE lower(email)=lower(?)`).bind(email).first();
@@ -3679,7 +4755,8 @@ async function processAutomaticBookingNotifications(env){
     for(const booking of attended.results||[]){await deliverBookingNotification(env,booking,'THANK_YOU_AFTER_CLASS');processed++;}
   }
   const birthdays=await processBirthdayEmails(env);
-  return {processed,birthdays:birthdays.processed||0};
+  const classPasses=await processClassPassAutomation(env);
+  return {processed,birthdays:birthdays.processed||0,class_passes:classPasses};
 }
 
 async function processDueCampaigns(env){
@@ -4884,6 +5961,7 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
+      if (path === '/api/reviews' && request.method === 'GET') return publicReviews(request, env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
       if (path === '/api/promotions/validate' && request.method === 'POST') return publicPromoValidate(request, env);
       if (path === '/api/merch-orders' && request.method === 'POST') return createMerchOrder(request, env);
@@ -4907,6 +5985,13 @@ export default {
       if (path === '/api/member/forgot' && request.method === 'POST') return memberForgot(request, env);
       if (path === '/api/member/reset' && request.method === 'POST') return memberReset(request, env);
       if (path === '/api/member/me' && request.method === 'GET') return memberMe(request, env);
+      if (path === '/api/member/review' && ['GET','POST','PATCH'].includes(request.method)) return memberReview(request, env);
+      if (path === '/api/member/review/archive' && request.method === 'POST') return archiveMemberReview(request, env);
+      if (path === '/api/member/class-passes' && request.method === 'GET') return memberClassPassList(request, env);
+      if (path === '/api/member/class-pass-checkout' && request.method === 'POST') return createClassPassCheckout(request, env);
+      if (path === '/api/member/class-pass-purchase-status' && request.method === 'GET') return classPassPurchaseStatus(request, env, url);
+      if (path === '/api/member/class-credit-options' && request.method === 'GET') return classCreditOptions(request, env, url);
+      if (path === '/api/member/class-credit-booking' && request.method === 'POST') return createClassCreditBooking(request, env);
       if (path === '/api/member/profile' && request.method === 'POST') return memberProfileUpdate(request, env);
       if (path === '/api/member/export' && request.method === 'GET') return memberExport(request, env);
       if (path === '/api/member/pause' && request.method === 'POST') return memberPause(request, env);
@@ -4921,6 +6006,8 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
+      if (path === '/api/admin/reviews') return adminReviews(request, env);
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env, ctx);

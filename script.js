@@ -17,7 +17,7 @@
       const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
       const navItems = [
         ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],
-        ['private-events.html','Private Events'],['gallery.html','Gallery'],['ask-nora.html','Contact']
+        ['private-events.html','Private Events'],['gallery.html','Gallery'],['reviews.html','Reviews'],['ask-nora.html','Contact']
       ];
       const links = navItems.map(([href,label]) => {
         const active = page === href || (href === 'index.html' && (page === '' || page === '/'));
