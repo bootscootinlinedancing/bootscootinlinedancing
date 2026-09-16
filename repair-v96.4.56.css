@@ -243,3 +243,168 @@ body.ranch-v91 .email-centre-card label{color:#f7eee7!important}
 
 /* V96.4.67 — do not disable touch gestures on the drawer's body ancestor */
 @media(max-width:999px){body.ranch91-drawer-open{position:static!important;top:auto!important;touch-action:auto!important;}}
+
+/* HQ brand consistency: the approved public brick environment, tuned for dense admin work. */
+body.ranch-v91{
+  --hq-brand-cream:#f7ede4;
+  --hq-brand-copy:#d3c0b3;
+  --hq-brand-muted:#b7a196;
+  --hq-brand-red:#d72b35;
+  --hq-brand-border:#713137;
+  --hq-brand-panel:rgba(15,7,8,.94);
+  min-height:100vh!important;
+  background-color:#080405!important;
+  background-image:
+    linear-gradient(180deg,rgba(3,1,2,.34),rgba(7,2,4,.62)),
+    radial-gradient(ellipse at 55% 4%,rgba(166,15,27,.14),transparent 46%),
+    url('boot-scootin-entrance-brick-floor.webp')!important;
+  background-position:center,center,center top!important;
+  background-size:auto,auto,cover!important;
+  background-repeat:no-repeat!important;
+  background-attachment:fixed!important;
+  color:var(--hq-brand-cream)!important;
+}
+body.ranch-v91 .ranch91-app,
+body.ranch-v91 .ranch91-main,
+body.ranch-v91 .ranch-view{background:transparent!important}
+
+body.ranch-v91 .ranch91-topbar{
+  background:rgba(5,3,3,.94)!important;
+  border-bottom:1px solid rgba(215,43,53,.48)!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.42)!important;
+  backdrop-filter:blur(10px)!important;
+}
+body.ranch-v91 .ranch91-title h1,
+body.ranch-v91 .ranch-panel-head h2,
+body.ranch-v91 .ranch-section-head h2{
+  color:#fff4e9!important;
+  text-shadow:0 0 9px rgba(215,43,53,.2)!important;
+}
+body.ranch-v91 .ranch91-title p,
+body.ranch-v91 .kicker.red{color:#ef4b53!important}
+body.ranch-v91 .ranch91-release,
+body.ranch-v91 .hq-connection-indicator{
+  border-color:#713137!important;
+  background:#12090a!important;
+  color:#ead8cc!important;
+}
+body.ranch-v91 .ranch91-welcome{color:#fff1e6!important}
+
+body.ranch-v91 .ranch91-drawer{
+  background:
+    linear-gradient(180deg,rgba(6,3,3,.96),rgba(17,7,8,.98)),
+    url('boot-scootin-entrance-brick-floor.webp') center top/auto 100% no-repeat!important;
+  border-right:1px solid rgba(215,43,53,.44)!important;
+  box-shadow:12px 0 34px rgba(0,0,0,.38)!important;
+}
+body.ranch-v91 .ranch91-brand img{
+  border:1px solid rgba(215,43,53,.66)!important;
+  box-shadow:0 0 18px rgba(215,43,53,.26)!important;
+}
+body.ranch-v91 .ranch91-brand strong{color:#ff4a53!important;text-shadow:0 0 8px rgba(215,43,53,.34)!important}
+body.ranch-v91 .ranch91-brand span{color:#f4e7dc!important}
+body.ranch-v91 .ranch91-nav button{
+  border-color:#4f2428!important;
+  background:rgba(24,11,12,.92)!important;
+  color:#f4e7dc!important;
+}
+body.ranch-v91 .ranch91-nav button:hover,
+body.ranch-v91 .ranch91-nav button:focus-visible{
+  border-color:#c83942!important;
+  background:#281013!important;
+  outline:2px solid #f2d9ce!important;
+  outline-offset:2px!important;
+}
+body.ranch-v91 .ranch91-nav button.active{
+  border-color:#df3f48!important;
+  background:linear-gradient(90deg,#7b1c23,#451116)!important;
+  box-shadow:inset 3px 0 #ff5a62,0 0 16px rgba(215,43,53,.14)!important;
+}
+
+body.ranch-v91 :is(
+  .ranch-panel,.ranch91-card,.ranch91-summary article,.ranch-stats article,
+  .ranch91-list-card,.ranch92-state,.ranch92-connection,.ranch91-health-row,
+  .ranch91-attention-item,.hq-health-card,.hq-modal-dialog,.crm-dialog-shell,
+  .email-centre-card,.email-template-item,.email-campaign-row,.email-subscriber-row,
+  .class-pass-admin-summary article,.review-admin-summary article,.review-admin-detail,
+  .anniversary-summary article,.anniversary-release-grid article,
+  .anniversary-admin-grid>form,.anniversary-admin-grid>section
+){
+  background:var(--hq-brand-panel)!important;
+  color:var(--hq-brand-cream)!important;
+  border-color:var(--hq-brand-border)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.28),inset 0 1px rgba(255,244,233,.025)!important;
+}
+body.ranch-v91 :is(.ranch-panel,.ranch91-card,.hq-modal-dialog,.crm-dialog-shell) :is(h1,h2,h3,h4,strong,label,legend){color:var(--hq-brand-cream)!important}
+body.ranch-v91 :is(.ranch-panel,.ranch91-card,.hq-modal-dialog,.crm-dialog-shell) :is(p,small,dt){color:var(--hq-brand-copy)!important}
+
+body.ranch-v91 :is(.ranch-table-head,table thead){
+  background:#080405!important;
+  color:#fff3e8!important;
+  border-color:#7a3339!important;
+}
+body.ranch-v91 :is(.ranch-class-row,.ranch-booking-row,table tbody tr){
+  background:rgba(10,5,6,.94)!important;
+  color:#f3e6dc!important;
+  border-color:#4f2529!important;
+}
+body.ranch-v91 :is(.ranch-class-row,.ranch-booking-row,table tbody tr):hover{background:#1b0b0d!important}
+body.ranch-v91 table :is(th,td){border-color:#4f2529!important;color:inherit!important}
+body.ranch-v91 .status-pill{border:1px solid #754047!important;background:#2a1719!important;color:#f7ede4!important}
+body.ranch-v91 .status-pill.open{border-color:#3d7754!important;background:#102419!important;color:#c8ead3!important}
+body.ranch-v91 .status-pill.cancelled{border-color:#8b353b!important;background:#2b1114!important;color:#ffc7ca!important}
+
+body.ranch-v91 :is(input,select,textarea){
+  border-color:#78353b!important;
+  background:#080405!important;
+  color:#fff8f0!important;
+  caret-color:#fff8f0!important;
+}
+body.ranch-v91 :is(input,textarea)::placeholder{color:#aa9287!important;opacity:1!important}
+body.ranch-v91 :is(input,select,textarea,button,a):focus-visible{
+  outline:2px solid #f4ded2!important;
+  outline-offset:2px!important;
+}
+body.ranch-v91 :is(input,select,textarea):focus{
+  border-color:#e1454e!important;
+  box-shadow:0 0 0 3px rgba(215,43,53,.2)!important;
+}
+body.ranch-v91 :is(input,select,textarea,button):disabled{opacity:.55!important;cursor:not-allowed!important}
+body.ranch-v91 :is(.button,.ranch-button,.ranch-actions button){border-color:#a9363e!important}
+body.ranch-v91 :is(.button:not(.secondary),.ranch-button){background:#9f2028!important;color:#fff8f0!important}
+body.ranch-v91 :is(.button:not(.secondary),.ranch-button):hover{background:#c52a33!important;box-shadow:0 0 16px rgba(215,43,53,.24)!important}
+
+/* Public navigation: retain the existing control and icon while making its purpose explicit. */
+.honky-header #menuButton.honky-menu-button{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:.45rem!important;
+  width:auto!important;
+  min-width:82px!important;
+  padding:0 .65rem!important;
+}
+.honky-header #menuButton.honky-menu-button::before{
+  content:'MENU'!important;
+  color:#f3e7dc!important;
+  font:700 .72rem/1 Oswald,sans-serif!important;
+  letter-spacing:.1em!important;
+  text-transform:uppercase!important;
+}
+.honky-header #menuButton.honky-menu-button span{
+  display:block!important;
+  width:4px!important;
+  height:4px!important;
+  border-radius:50%!important;
+  background:#e14a52!important;
+}
+
+@media(max-width:760px){
+  body.ranch-v91{background-attachment:scroll!important;background-size:auto,auto,auto 100svh!important}
+  body.ranch-v91 .ranch91-main{padding-inline:1rem!important}
+  body.ranch-v91 :is(.ranch-panel,.ranch91-card,.hq-modal-dialog){max-width:100%!important}
+  body.ranch-v91 :is(input,select,textarea){max-width:100%!important}
+}
+@media(max-width:420px){
+  .honky-header #menuButton.honky-menu-button{min-width:86px!important;height:48px!important}
+}
