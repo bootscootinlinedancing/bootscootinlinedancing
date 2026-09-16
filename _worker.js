@@ -4160,10 +4160,13 @@ async function adminClasses(request, env) {
   const status=clean(b.status,20)||'draft';
   if(!['draft','open','closed','cancelled'].includes(status))return json({error:'Invalid class status.'},400);
 
+  const publicNotes=String(b.public_notes??'');
+  if(publicNotes.length>50000)return json({error:'The class description must be 50,000 characters or fewer.'},400);
+
   const vals=[
     title,venue,location,starts.toISOString(),ends?ends.toISOString():null,
     Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),
-    status,clean(b.level,80)||'Beginner friendly',clean(b.public_notes,50000),clean(b.poster_url,500)
+    status,clean(b.level,80)||'Beginner friendly',clean(publicNotes,50000),clean(b.poster_url,500)
   ];
 
   if(request.method==='POST'){
