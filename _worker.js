@@ -1512,7 +1512,7 @@ async function publicClasses(env) {
         WHERE b.class_id=c.id
           AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
       ),0) AS sold,
-      c.status,c.level,c.public_notes,c.poster_url,
+      c.status,c.level,c.public_notes,c.poster_url,COALESCE(pe.eligible,0) AS class_pass_eligible,
       MAX(
         0,
         c.capacity
@@ -1528,7 +1528,8 @@ async function publicClasses(env) {
             WHERE h.class_id=c.id AND h.expires_at>?
           ),0)
       ) AS spaces_remaining
-      FROM classes c WHERE c.status='open' AND c.starts_at>? ORDER BY c.starts_at
+      FROM classes c LEFT JOIN class_pass_class_eligibility pe ON pe.class_id=c.id
+      WHERE c.status='open' AND c.starts_at>? ORDER BY c.starts_at
     `).bind(now,now).all();
     const anniversary=await anniversaryInventory(env).catch(()=>null);
     return json(results.map(row => {
@@ -4162,7 +4163,7 @@ async function adminClasses(request, env) {
   const vals=[
     title,venue,location,starts.toISOString(),ends?ends.toISOString():null,
     Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),
-    status,clean(b.level,80)||'Beginner friendly',clean(b.public_notes,4000),clean(b.poster_url,500)
+    status,clean(b.level,80)||'Beginner friendly',clean(b.public_notes,50000),clean(b.poster_url,500)
   ];
 
   if(request.method==='POST'){

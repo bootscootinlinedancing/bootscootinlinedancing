@@ -12,6 +12,8 @@
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(n)||0);
   const dateFmt=s=>new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(s));
+  const dayFmt=s=>new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date(s));
+  const timeFmt=s=>new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(s));
   const venueLabel=venue=>/^(low places bar|low places bar birmingham)$/i.test(String(venue||'').trim())?'Low Places Bar Birmingham':String(venue||'').trim();
   const venueKey=venue=>venueLabel(venue).toLowerCase();
 
@@ -20,6 +22,9 @@
     if(!clean)return '';
     const sentence=clean.match(/^(.{1,170}?[.!?])(?:\s|$)/)?.[1];
     return sentence||`${clean.slice(0,150)}${clean.length>150?'…':''}`;
+  }
+  function descriptionHtml(text){
+    return String(text||'').trim().split(/\n\s*\n/).filter(Boolean).map(paragraph=>`<p>${esc(paragraph).replace(/\n/g,'<br>')}</p>`).join('');
   }
   function eventUrl(c){return `${location.origin}${location.pathname}?event=${encodeURIComponent(c.id)}`;}
   async function loadClassCreditOption(c){
@@ -59,7 +64,9 @@
     const d=document.getElementById('eventDetailsDialog'),box=document.getElementById('eventDetailsContent'); if(!d||!box)return;
     const full=Number(c.spaces_remaining)<1; const url=eventUrl(c);
     const availability=c.event_type==='ANNIVERSARY'?(full?'Event full':`${esc(c.spaces_remaining)} tickets available in the current release`):(full?'Class full':`${esc(c.spaces_remaining)} spaces left`);
-    box.innerHTML=`<p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2>${c.poster_url?`<img class="event-detail-poster" src="${esc(c.poster_url)}" alt="${esc(c.title)} poster">`:''}<p class="event-detail-meta"><strong>${esc(dateFmt(c.starts_at))}</strong><br>${esc(c.location)}<br>${money(c.price)} per person · ${availability}</p>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<div class="anniversary-public-release"><strong>Current release: ${esc(c.ticket_release.name)}</strong><span>${money(c.ticket_release.price_pence/100)} per ticket · ${esc(c.ticket_release.remaining)} tickets remain in this release</span></div>`:''}${c.public_notes?`<div class="event-full-description">${esc(c.public_notes).replace(/\n/g,'<br>')}</div>`:''}<div class="event-detail-actions"><button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button><button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p>`;
+    const overall=c.event_type==='ANNIVERSARY'?(c.releases||[]).find(release=>release.allocation==null)?.remaining:null;
+    const schedule=`${dayFmt(c.starts_at)} · ${timeFmt(c.starts_at)}${c.ends_at?`–${timeFmt(c.ends_at)}`:''}`;
+    box.innerHTML=`<p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2><div class="event-detail-body ${c.poster_url?'has-poster':''}">${c.poster_url?`<figure class="event-detail-poster-shell"><img class="event-detail-poster" src="${esc(c.poster_url)}" alt="${esc(c.title)} poster"></figure>`:''}<div class="event-detail-copy"><p class="event-detail-meta"><strong>${esc(schedule)}</strong><br>${esc(venueLabel(c.venue))}${c.location?` · ${esc(c.location)}`:''}<br>${money(c.price)} per person · ${availability}${overall!=null?` · ${esc(overall)} event places overall`:''}</p>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<div class="anniversary-public-release"><strong>Current release: ${esc(c.ticket_release.name)}</strong><span>${money(c.ticket_release.price_pence/100)} per ticket · ${esc(c.ticket_release.remaining)} tickets remain in this release</span></div>`:''}${Number(c.class_pass_eligible)===1?`<p class="event-class-pass-note"><strong>Class Pass eligible.</strong> Signed-in members can use one available class credit for one place.</p>`:''}${c.public_notes?`<div class="event-full-description">${descriptionHtml(c.public_notes)}</div>`:''}<div class="event-detail-actions"><button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button><button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p></div></div>`;
     if(typeof d.showModal==='function')d.showModal();
   }
 
