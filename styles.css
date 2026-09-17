@@ -10084,9 +10084,12 @@ body.legal-page{
 /* Public menu label: keep the existing trigger and add its familiar three-dot cue. */
 .header #menuButton.menu{gap:.48rem!important}
 .header #menuButton.menu::after{
-  content:'\2022\2022\2022';
+  content:'\2022\2022\2022' / '';
   color:#e14a52;
   font:700 .72rem/1 Arial,sans-serif;
   letter-spacing:.12em;
 }
-@media(max-width:420px){.header #menuButton.menu{min-width:88px!important;padding-inline:.7rem!important}}
+@media(max-width:420px){
+  .header{gap:.75rem!important}
+  .header #menuButton.menu{min-width:88px!important;padding-inline:.7rem!important}
+}

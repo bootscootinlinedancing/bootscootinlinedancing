@@ -379,32 +379,44 @@ body.ranch-v91 :is(.button:not(.secondary),.ranch-button):hover{background:#c52a
   display:inline-flex!important;
   align-items:center!important;
   justify-content:center!important;
-  gap:.45rem!important;
-  width:auto!important;
-  min-width:82px!important;
-  padding:0 .65rem!important;
+  gap:.3rem!important;
+  width:78px!important;
+  min-width:78px!important;
+  padding:0 .35rem!important;
 }
 .honky-header #menuButton.honky-menu-button::before{
-  content:'MENU'!important;
+  content:'MENU' / ''!important;
   color:#f3e7dc!important;
-  font:700 .72rem/1 Oswald,sans-serif!important;
-  letter-spacing:.1em!important;
+  font:700 .64rem/1 Oswald,sans-serif!important;
+  letter-spacing:.07em!important;
   text-transform:uppercase!important;
 }
 .honky-header #menuButton.honky-menu-button span{
-  display:block!important;
-  width:4px!important;
-  height:4px!important;
-  border-radius:50%!important;
-  background:#e14a52!important;
+  display:none!important;
+}
+.honky-header #menuButton.honky-menu-button::after{
+  content:'\2022\2022\2022' / ''!important;
+  color:#e14a52!important;
+  font:700 .62rem/1 Arial,sans-serif!important;
+  letter-spacing:.04em!important;
 }
 
 @media(max-width:760px){
-  body.ranch-v91{background-attachment:scroll!important;background-size:auto,auto,auto 100svh!important}
+  body.ranch-v91{background-attachment:scroll!important;background-size:auto,auto,cover!important}
   body.ranch-v91 .ranch91-main{padding-inline:1rem!important}
   body.ranch-v91 :is(.ranch-panel,.ranch91-card,.hq-modal-dialog){max-width:100%!important}
   body.ranch-v91 :is(input,select,textarea){max-width:100%!important}
 }
-@media(max-width:420px){
+@media(min-width:768px) and (max-width:980px){
+  .honky-header #menuButton.honky-menu-button{
+    width:68px!important;
+    min-width:68px!important;
+    padding-inline:.2rem!important;
+    gap:.2rem!important;
+  }
+  .honky-header #menuButton.honky-menu-button::before{font-size:.56rem!important;letter-spacing:.04em!important}
+  .honky-header #menuButton.honky-menu-button::after{font-size:.55rem!important}
+}
+@media(max-width:767px){
   .honky-header #menuButton.honky-menu-button{min-width:86px!important;height:48px!important}
 }
