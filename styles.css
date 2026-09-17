@@ -10069,6 +10069,7 @@ body.legal-page{
 .home-featured-review-card footer strong{overflow-wrap:anywhere}
 @media(max-width:620px){.home-featured-reviews{padding-inline:16px}.home-featured-reviews-head{align-items:flex-start;flex-direction:column}.home-featured-reviews-head>.paper-link{display:none}.home-featured-review-grid{grid-template-columns:1fr}.home-featured-review-card:last-child:nth-child(odd){grid-column:auto}.home-featured-review-actions{display:grid}.home-featured-review-actions .button{width:100%;box-sizing:border-box}}
 /* Anniversary inventory stays within the existing HQ/class visual system. */
+.class-guest-list-panel{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(191,31,31,.55);scroll-margin-top:1rem}
 .anniversary-admin{margin-top:2rem;padding-top:2rem;border-top:1px solid rgba(191,31,31,.55)}
 .anniversary-summary,.anniversary-release-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.75rem;margin:1rem 0}
 .anniversary-release-grid{grid-template-columns:repeat(3,minmax(0,1fr))}

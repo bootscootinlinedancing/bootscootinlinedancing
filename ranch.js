@@ -625,6 +625,7 @@
         :`<b>${remaining} place${remaining===1?'':'s'} remaining</b><small>${esc(c.status)}</small>`}</div>
       <div class="ranch-class-actions">
         <button type="button" class="button compact" data-class-register="${esc(c.id)}">Register</button>
+        <button type="button" class="button secondary compact" data-class-guests="${esc(c.id)}">Guest List</button>
         <button type="button" class="button secondary compact" data-edit-class="${esc(c.id)}">Edit</button>
         <button type="button" class="button secondary compact" data-duplicate-class="${esc(c.id)}">Duplicate</button>
         ${c.status==='open'?`<button type="button" class="button secondary compact" data-class-status="closed" data-class-id="${esc(c.id)}">Close</button>`:`<button type="button" class="button secondary compact" data-class-status="open" data-class-id="${esc(c.id)}">Open</button>`}
@@ -633,6 +634,7 @@
     </article>`}).join(''):emptyPanel('No classes match this filter.');
     box.querySelectorAll('[data-edit-class]').forEach(btn=>btn.addEventListener('click',()=>openClassEditor(state.classes.find(c=>c.id===btn.dataset.editClass))));
     box.querySelectorAll('[data-class-register]').forEach(btn=>btn.addEventListener('click',()=>loadClassRegister(btn.dataset.classRegister)));
+    box.querySelectorAll('[data-class-guests]').forEach(btn=>btn.addEventListener('click',()=>openClassGuestList(btn.dataset.classGuests)));
     box.querySelectorAll('[data-duplicate-class]').forEach(btn=>btn.addEventListener('click',()=>duplicateClass(btn.dataset.duplicateClass)));
     box.querySelectorAll('[data-class-status]').forEach(btn=>btn.addEventListener('click',()=>changeClassStatus(btn.dataset.classId,btn.dataset.classStatus)));
     box.querySelectorAll('[data-delete-class]').forEach(btn=>btn.addEventListener('click',()=>deleteClass(btn.dataset.deleteClass)));
@@ -647,7 +649,6 @@
     try{
       state.classes=await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{cache:'no-store'});
       renderClasses();
-      await loadAnniversary();
     }catch(error){
       box.innerHTML=(error.status===401||error.status===403)?lockedPanel('Class editing is locked','Cloudflare Access must authorise this HQ session.'):setupPanel('Classes unavailable',error.message);
     }
@@ -667,15 +668,52 @@
     catch(error){summary.innerHTML=lockedPanel('Anniversary inventory unavailable',error.message);}
   }
   async function submitAnniversary(form,action){
-    const message=$('#anniversaryMessage'),button=form.querySelector('button[type="submit"]'),payload=Object.fromEntries(new FormData(form));payload.action=action;payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
-    button.disabled=true;if(message)message.textContent='Saving…';
+    const message=$('#anniversaryMessage'),button=form.querySelector('button[type="submit"],button:not([type])'),payload=Object.fromEntries(new FormData(form));payload.action=action;payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
+    if(button)button.disabled=true;if(message)message.textContent='Saving…';
     try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify(payload)});state.anniversary=result.inventory;renderAnniversary(result.inventory);form.reset();if(form.elements.places)form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';toast('Anniversary inventory updated.','success');}
     catch(error){if(message)message.textContent=error.message;toast(error.message,'error');}
-    finally{button.disabled=false;}
+    finally{if(button)button.disabled=false;}
   }
   async function cancelAnniversary(action,id,label){
     const reason=window.prompt(`Why is this ${label} being cancelled?`);if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
     try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify({action,id,reason:reason.trim(),operation_id:crypto.randomUUID()})});state.anniversary=result.inventory;renderAnniversary(result.inventory);toast('Cancellation recorded; capacity returned.','success');}
+    catch(error){toast(error.message,'error');}
+  }
+  function classGuestCategory(value){return ({GUEST:'Guest',COMPLIMENTARY:'Complimentary',INSTRUCTOR_STAFF:'Instructor/Staff',VENDOR:'Vendor',ARTIST_PERFORMER:'Artist/Performer',OTHER:'Other'})[value]||value;}
+  function renderClassGuests(data){
+    const summary=$('#classGuestSummary'),guests=$('#classGuests'),s=data.summary||{};
+    if(summary)summary.innerHTML=`<article><span>Active entries</span><strong>${Number(s.guest_entries||0)}</strong></article><article><span>Guest places</span><strong>${Number(s.guest_places||0)}</strong></article><article><span>Booked</span><strong>${Number(s.booked||0)}</strong></article><article><span>Capacity</span><strong>${Number(s.capacity||0)}</strong></article><article><span>Remaining</span><strong>${Number(s.remaining||0)}</strong></article>`;
+    if(guests)guests.innerHTML=(data.guests||[]).length?(data.guests||[]).map(g=>`<article class="ranch-list-row"><div><strong>${esc(g.guest_name)}</strong><small>${Number(g.places)} place${Number(g.places)===1?'':'s'} · ${esc(classGuestCategory(g.category))} · ${esc(g.status)}</small>${g.notes?`<p>${esc(g.notes)}</p>`:''}</div>${g.status==='ACTIVE'?`<button type="button" class="button secondary compact" data-cancel-class-guest="${esc(g.id)}">Cancel</button>`:''}</article>`).join(''):emptyPanel('No guest-list entries for this class.');
+  }
+  async function openClassGuestList(classId){
+    const panel=$('#classGuestListPanel'),item=state.classes.find(c=>c.id===classId);if(!panel||!item)return;
+    state.guestListClass=item;panel.hidden=false;$('#classGuestListTitle').textContent=item.title||'Class';$('#classGuestListContext').textContent=`${fmt(item.starts_at)} · ${item.venue||'Venue not supplied'}`;
+    panel.scrollIntoView({behavior:'smooth',block:'start'});await loadClassGuestList();
+  }
+  async function loadClassGuestList(){
+    const item=state.guestListClass;if(!item)return;
+    const ordinary=$('#ordinaryGuestList'),anniversary=$('#anniversaryAdmin');
+    try{
+      if(item.event_type==='ANNIVERSARY'){
+        if(ordinary)ordinary.hidden=true;if(anniversary)anniversary.hidden=false;await loadAnniversary();
+      }else{
+        if(anniversary)anniversary.hidden=true;if(ordinary)ordinary.hidden=false;
+        const data=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{cache:'no-store'});state.classGuestList=data;renderClassGuests(data);
+      }
+    }catch(error){toast(error.message,'error');}
+  }
+  async function submitClassGuest(event){
+    event.preventDefault();const form=event.currentTarget,button=form.querySelector('button[type="submit"],button:not([type])'),message=$('#classGuestMessage'),item=state.guestListClass;if(!item)return;
+    const payload=Object.fromEntries(new FormData(form));payload.action='ADD_GUEST';payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
+    if(button)button.disabled=true;if(message)message.textContent='Saving…';
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify(payload)});state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);form.reset();form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';toast('Guest list updated.','success');await loadClasses();}
+    catch(error){if(message)message.textContent=error.message;toast(error.message,'error');}
+    finally{if(button)button.disabled=false;}
+  }
+  async function cancelClassGuest(id){
+    const reason=window.prompt('Why is this guest entry being cancelled?');if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
+    const item=state.guestListClass;if(!item)return;
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'CANCEL_GUEST',id,reason:reason.trim(),operation_id:crypto.randomUUID()})});state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);toast('Guest entry cancelled; capacity returned.','success');await loadClasses();}
     catch(error){toast(error.message,'error');}
   }
   function renderClassRegister(){
@@ -1764,7 +1802,10 @@ Type REFUNDED to continue.`);
   });
   $$('[data-open-class]').forEach(button=>button.dataset.classOpenHandled='1');
   $('#refreshRanch')?.addEventListener('click',loadClasses);
-  $('#refreshAnniversary')?.addEventListener('click',loadAnniversary);
+  $('#refreshGuestList')?.addEventListener('click',loadClassGuestList);
+  $('#closeGuestList')?.addEventListener('click',()=>{const panel=$('#classGuestListPanel');if(panel)panel.hidden=true;state.guestListClass=null;});
+  $('#classGuestForm')?.addEventListener('submit',submitClassGuest);
+  $('#classGuests')?.addEventListener('click',event=>{const button=event.target.closest('[data-cancel-class-guest]');if(button)cancelClassGuest(button.dataset.cancelClassGuest);});
   $('#anniversaryGuestForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'ADD_GUEST');});
   $('#anniversaryTicketForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'RECORD_TICKETS');});
   $('#anniversaryGuests')?.addEventListener('click',event=>{const button=event.target.closest('[data-cancel-anniversary-guest]');if(button)cancelAnniversary('CANCEL_GUEST',button.dataset.cancelAnniversaryGuest,'guest allocation');});

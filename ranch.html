@@ -282,8 +282,25 @@
           <section id="classRegisterPanel" class="class-register-panel" hidden aria-live="polite">
             <div class="class-register-loading">Choose Register on a class to load its attendee list.</div>
           </section>
-          <section class="anniversary-admin" id="anniversaryAdmin">
-            <div class="ranch-panel-head"><div><p class="kicker red">6 November 2026</p><h3>Anniversary Tickets &amp; Guest List</h3><p>One controlled 100-place inventory across website tickets, recorded Eventbrite sales and complimentary guests.</p></div><button class="button secondary compact" id="refreshAnniversary" type="button">Refresh</button></div>
+          <section class="class-guest-list-panel" id="classGuestListPanel" hidden aria-live="polite">
+            <div class="ranch-panel-head"><div><p class="kicker red">Guest List</p><h3 id="classGuestListTitle">Selected class</h3><p id="classGuestListContext"></p></div><div class="class-register-tools"><button class="button secondary compact" id="refreshGuestList" type="button">Refresh</button><button class="button secondary compact" id="closeGuestList" type="button">Close</button></div></div>
+            <div id="ordinaryGuestList" hidden>
+              <div class="anniversary-summary" id="classGuestSummary"></div>
+              <div class="anniversary-admin-grid">
+                <form id="classGuestForm" class="ranch-form-grid"><h4 class="wide">Add Guest</h4>
+                  <label>Guest / name<input name="guest_name" required maxlength="140"></label>
+                  <label>Places<input name="places" type="number" min="1" max="100" value="1" required></label>
+                  <label>Category<select name="category"><option value="GUEST">Guest</option><option value="COMPLIMENTARY">Complimentary</option><option value="INSTRUCTOR_STAFF">Instructor/Staff</option><option value="VENDOR">Vendor</option><option value="ARTIST_PERFORMER">Artist/Performer</option><option value="OTHER">Other</option></select></label>
+                  <label class="wide">Notes<textarea name="notes" rows="2" maxlength="600"></textarea></label>
+                  <label class="wide">Audit reason<input name="reason" required maxlength="500" placeholder="Why this guest is being added"></label>
+                  <div class="wide"><button class="button" type="submit">Save</button></div>
+                </form>
+                <section><h4>Guest List</h4><div id="classGuests" class="ranch-list"></div></section>
+              </div>
+              <p class="form-message" id="classGuestMessage" aria-live="polite"></p>
+            </div>
+            <div class="anniversary-admin" id="anniversaryAdmin" hidden>
+            <div class="ranch-panel-head"><div><p class="kicker red">6 November 2026</p><h3>Anniversary Tickets &amp; Guest List</h3><p>One controlled 100-place inventory across website tickets, recorded Eventbrite sales and complimentary guests.</p></div></div>
             <div class="anniversary-summary" id="anniversarySummary">Loading anniversary inventory…</div>
             <div class="anniversary-release-grid" id="anniversaryReleases"></div>
             <div class="anniversary-admin-grid">
@@ -293,7 +310,7 @@
                 <label>Category<select name="category"><option value="VENDOR">Vendor</option><option value="ARTIST_PERFORMER">Artist/Performer</option><option value="FRIEND_GUEST">Friend/Guest</option><option value="COMPLIMENTARY">Complimentary</option><option value="OTHER">Other</option></select></label>
                 <label class="wide">Notes<textarea name="notes" rows="2"></textarea></label>
                 <label class="wide">Audit reason<input name="reason" required placeholder="Why this allocation is being added"></label>
-                <div class="wide"><button class="button">Add to guest list</button></div>
+                <div class="wide"><button class="button" type="submit">Add to guest list</button></div>
               </form>
               <form id="anniversaryTicketForm" class="ranch-form-grid"><h4 class="wide">Record Eventbrite/manual tickets</h4>
                 <label>Release<select name="release_id" id="anniversaryReleasePicker" required></select></label>
@@ -302,11 +319,12 @@
                 <label>Unique reference<input name="external_reference" required maxlength="160" placeholder="Eventbrite order/reference"></label>
                 <label class="wide">Notes<textarea name="notes" rows="2"></textarea></label>
                 <label class="wide">Audit reason<input name="reason" required placeholder="Why these tickets are being recorded"></label>
-                <div class="wide"><button class="button">Record tickets</button></div>
+                <div class="wide"><button class="button" type="submit">Record tickets</button></div>
               </form>
             </div>
             <div class="anniversary-admin-grid"><section><h4>Guest list</h4><div id="anniversaryGuests" class="ranch-list"></div></section><section><h4>Recorded ticket sales</h4><div id="anniversaryAdjustments" class="ranch-list"></div></section></div>
             <p class="form-message" id="anniversaryMessage" aria-live="polite"></p>
+            </div>
           </section>
         </div>
       </section>
