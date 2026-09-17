@@ -430,12 +430,12 @@ body.ranch-v91 :is(.button:not(.secondary),.ranch-button):hover{background:#c52a
   .honky-header #menuButton.honky-menu-button::after{font-size:.55rem!important}
 }
 @media(max-width:767px){
-  body.honky-home .honky-header{
+  html body.honky-home header.honky-header{
     grid-template-columns:minmax(0,1fr) auto!important;
     gap:8px!important;
     padding-inline:10px!important;
   }
-  body.honky-home .honky-header .honky-logo{
+  html body.honky-home header.honky-header .honky-logo{
     width:min(220px,100%)!important;
     max-width:100%!important;
     min-width:0!important;
@@ -443,5 +443,5 @@ body.ranch-v91 :is(.button:not(.secondary),.ranch-button):hover{background:#c52a
   .honky-header #menuButton.honky-menu-button{min-width:86px!important;height:48px!important}
 }
 @media(max-width:340px){
-  body.honky-home .honky-header .honky-logo{width:190px!important}
+  html body.honky-home header.honky-header .honky-logo{width:190px!important}
 }
