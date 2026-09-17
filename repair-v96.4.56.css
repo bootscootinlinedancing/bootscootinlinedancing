@@ -401,6 +401,18 @@ body.ranch-v91 :is(.button:not(.secondary),.ranch-button):hover{background:#c52a
   letter-spacing:.04em!important;
 }
 
+@media(min-width:768px){
+  html.desktop-mode .honky-header #menuButton.honky-menu-button{
+    grid-column:3!important;
+    grid-row:1!important;
+    align-self:center!important;
+  }
+  html.desktop-mode .honky-header .honky-book{
+    grid-column:4!important;
+    grid-row:1!important;
+  }
+}
+
 @media(max-width:760px){
   body.ranch-v91{background-attachment:scroll!important;background-size:auto,auto,cover!important}
   body.ranch-v91 .ranch91-main{padding-inline:1rem!important}
@@ -418,5 +430,18 @@ body.ranch-v91 :is(.button:not(.secondary),.ranch-button):hover{background:#c52a
   .honky-header #menuButton.honky-menu-button::after{font-size:.55rem!important}
 }
 @media(max-width:767px){
+  body.honky-home .honky-header{
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:8px!important;
+    padding-inline:10px!important;
+  }
+  body.honky-home .honky-header .honky-logo{
+    width:min(220px,100%)!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
   .honky-header #menuButton.honky-menu-button{min-width:86px!important;height:48px!important}
+}
+@media(max-width:340px){
+  body.honky-home .honky-header .honky-logo{width:190px!important}
 }
