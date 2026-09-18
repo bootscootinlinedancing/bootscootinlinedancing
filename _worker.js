@@ -4058,22 +4058,44 @@ async function adminClassGuests(request,env){
     const categories=['GUEST','COMPLIMENTARY','INSTRUCTOR_STAFF','VENDOR','ARTIST_PERFORMER','OTHER'];
     if(!name||!Number.isInteger(places)||places<1||places>100||!categories.includes(category))return json({error:'Enter a guest, valid number of places and category.'},400);
     const results=await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list(id,class_id,guest_name,places,category,notes,created_by,updated_by)
-        SELECT ?,c.id,?,?,?,?,?,? FROM classes c WHERE c.id=? AND ?>0 AND ?<=c.capacity
+      env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list(id,class_id,guest_name,places,category,notes,created_by,updated_by,last_operation_id)
+        SELECT ?,c.id,?,?,?,?,?,?,? FROM classes c WHERE c.id=? AND ?>0 AND ?<=c.capacity
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
-          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,classId,places,places),
+          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,operationId,classId,places,places),
       env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,next_json,operation_id)
-        SELECT ?,?,?,'GUEST_ADDED',?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:name,places,category}),operationId,id)
+        SELECT ?,?,?,'GUEST_ADDED',?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:name,places,category}),operationId,id,operationId)
     ]);
     if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'Not enough class capacity remains for this guest allocation.'},409);
+  }else if(action==='UPDATE_GUEST'){
+    const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_guest_list WHERE id=? AND class_id=?`).bind(id,classId).first();
+    if(!row)return json({error:'Guest entry not found.'},404);
+    if(row.status!=='ACTIVE')return json({error:'Cancelled guest entries cannot be edited.'},409);
+    const name=clean(body.guest_name,140),places=Math.floor(Number(body.places)),category=clean(body.category,40),notes=clean(body.notes,600);
+    const categories=['GUEST','COMPLIMENTARY','INSTRUCTOR_STAFF','VENDOR','ARTIST_PERFORMER','OTHER'];
+    if(!name||!Number.isInteger(places)||places<1||places>100||!categories.includes(category))return json({error:'Enter a guest, valid number of places and category.'},400);
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET guest_name=?,places=?,category=?,notes=?,updated_by=?,last_operation_id=?,updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=? AND ?<=(SELECT c.capacity
+          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
+          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE' AND g.id<>?),0)
+          FROM classes c WHERE c.id=?)`).bind(name,places,category,notes||null,actor,operationId,id,classId,row.last_operation_id,places,id,classId),
+      env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
+        SELECT ?,?,?,'GUEST_UPDATED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:row.guest_name,places:row.places,category:row.category,notes:row.notes}),JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
+    ]);
+    if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'The guest entry changed, or not enough class capacity remains. Refresh and try again.'},409);
   }else if(action==='CANCEL_GUEST'){
     const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_guest_list WHERE id=? AND class_id=?`).bind(id,classId).first();
     if(!row)return json({error:'Guest entry not found.'},404);
-    if(row.status==='ACTIVE')await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET status='CANCELLED',updated_by=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND class_id=? AND status='ACTIVE'`).bind(actor,id,classId),
-      env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id) VALUES(?,?,?,'GUEST_CANCELLED',?,?,?,?,?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({status:'ACTIVE',places:row.places}),JSON.stringify({status:'CANCELLED',places:row.places}),operationId)
-    ]);
+    if(row.status==='ACTIVE'){
+      const results=await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET status='CANCELLED',updated_by=?,last_operation_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=?`).bind(actor,operationId,id,classId,row.last_operation_id),
+        env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
+          SELECT ?,?,?,'GUEST_CANCELLED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({status:'ACTIVE',places:row.places}),JSON.stringify({status:'CANCELLED',places:row.places}),operationId,id,operationId)
+      ]);
+      if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'The guest entry changed. Refresh and try again.'},409);
+    }
   }else return json({error:'Unsupported guest-list action.'},400);
   return json({ok:true,guest_list:await classGuestListState(env,classId)});
 }
@@ -4117,7 +4139,8 @@ async function adminClasses(request, env) {
         SELECT
           c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
           c.status,c.level,c.public_notes,c.poster_url,c.created_at,c.updated_at,
-          COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS sold,
+          COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) AS sold,
+          COALESCE((SELECT SUM(quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) AS held,
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
           COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count,
           COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) AS guest_places,
@@ -4131,7 +4154,7 @@ async function adminClasses(request, env) {
         ...row,
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
-          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.guest_places||0))
+          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
       })),200);
     } catch (error) {
       return json({
@@ -4193,10 +4216,11 @@ async function adminClasses(request, env) {
     const linked=await env.BOOKINGS_DB.prepare(`
       SELECT
         (SELECT COUNT(*) FROM bookings WHERE class_id=?) +
-        (SELECT COUNT(*) FROM waiting_list WHERE class_id=?) AS linked
-    `).bind(id,id).first();
+        (SELECT COUNT(*) FROM waiting_list WHERE class_id=?) +
+        (SELECT COUNT(*) FROM class_guest_list WHERE class_id=?) AS linked
+    `).bind(id,id,id).first();
     if(Number(linked?.linked||0)>0){
-      return json({error:'This class already has bookings or waiting-list entries. Cancel it instead of deleting it.'},409);
+      return json({error:'This class already has bookings, waiting-list or guest-list entries. Cancel it instead of deleting it.'},409);
     }
     await env.BOOKINGS_DB.prepare(`DELETE FROM classes WHERE id=?`).bind(id).run();
     return json({ok:true});
@@ -4246,12 +4270,12 @@ async function adminClasses(request, env) {
   if(request.method==='PATCH'){
     const existing=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(id).first();
     if(!existing)return json({error:'The class could not be found.'},404);
-    const occupied=await env.BOOKINGS_DB.prepare(`
-      SELECT COALESCE(SUM(quantity),0) total FROM bookings
-      WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))
-    `).bind(id).first();
+    const occupied=await env.BOOKINGS_DB.prepare(`SELECT
+      COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0)
+      +COALESCE((SELECT SUM(quantity) FROM booking_holds WHERE class_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
+      +COALESCE((SELECT SUM(places) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) total`).bind(id,id,id).first();
     if(Number(b.capacity)<Number(occupied?.total||0)){
-      return json({error:`Capacity cannot be lower than the ${occupied.total} places already booked.`},409);
+      return json({error:`Capacity cannot be lower than the ${occupied.total} occupied or held places.`},409);
     }
     await env.BOOKINGS_DB.prepare(`
       UPDATE classes
@@ -4349,15 +4373,23 @@ async function adminBootstrap(request, env) {
           COALESCE((
             SELECT SUM(b.quantity)
             FROM bookings b
-            WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
+            WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
           ),0) AS sold,
+          COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0) AS held,
+          COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) AS guest_places,
           c.status,c.level,c.public_notes
         FROM classes c
         WHERE c.starts_at >= ? AND c.status IN ('open','draft')
         ORDER BY starts_at
         LIMIT 20
-      `).bind(now).all();
-      result.classes = Array.isArray(classesResult?.results) ? classesResult.results : [];
+      `).bind(now,now).all();
+      const anniversary=await anniversaryInventory(env).catch(()=>null);
+      result.classes = (Array.isArray(classesResult?.results) ? classesResult.results : []).map(row=>({
+        ...row,
+        spaces_remaining:anniversary?.event?.class_id===row.id
+          ? Number(anniversary.remaining||0)
+          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
+      }));
       result.summary.upcoming_classes = result.classes.filter(row => row.status === 'open').length;
     } catch (error) {
       result.warnings.push(`Upcoming classes: ${String(error?.message || error)}`);

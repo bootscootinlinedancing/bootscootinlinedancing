@@ -417,7 +417,7 @@
 
     const upcoming=$('#ranchUpcoming');
     upcoming.innerHTML=b.classes.length
-      ?b.classes.slice(0,6).map(c=>`<article><div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div><b>${Math.max(0,Number(c.capacity)-Number(c.sold||0))} left</b></article>`).join('')
+      ?b.classes.slice(0,6).map(c=>`<article><div><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)}</span></div><b>${Math.max(0,Number(c.spaces_remaining??(Number(c.capacity)-Number(c.sold||0))))} left</b></article>`).join('')
       :(b.configured.database?emptyPanel('No upcoming classes yet.'):setupPanel('Database not connected','Bind D1 as BOOKINGS_DB to display and manage classes.'));
 
     const recent=$('#ranchRecent');
@@ -662,28 +662,29 @@
     guests.innerHTML=(data.guests||[]).length?(data.guests||[]).map(g=>`<article class="ranch-list-row"><div><strong>${esc(g.guest_name)}</strong><small>${Number(g.places)} place${Number(g.places)===1?'':'s'} · ${esc(anniversaryCategory(g.category))} · ${esc(g.status)}</small>${g.notes?`<p>${esc(g.notes)}</p>`:''}</div>${g.status==='ACTIVE'?`<button class="button secondary compact" data-cancel-anniversary-guest="${esc(g.id)}">Cancel allocation</button>`:''}</article>`).join(''):emptyPanel('No guest-list allocations recorded.');
     adjustments.innerHTML=(data.adjustments||[]).length?(data.adjustments||[]).map(a=>`<article class="ranch-list-row"><div><strong>${esc(a.release_name)} · ${Number(a.places)} place${Number(a.places)===1?'':'s'}</strong><small>${esc(a.source)} · ${esc(a.external_reference)} · ${esc(a.status)}</small>${a.notes?`<p>${esc(a.notes)}</p>`:''}</div>${a.status==='ACTIVE'?`<button class="button secondary compact" data-cancel-anniversary-ticket="${esc(a.id)}">Cancel record</button>`:''}</article>`).join(''):emptyPanel('No Eventbrite/manual ticket sales recorded.');
   }
-  async function loadAnniversary(){
+  async function loadAnniversary(expectedClassId=''){
     const summary=$('#anniversarySummary');if(!summary)return;
-    try{state.anniversary=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{cache:'no-store'});renderAnniversary(state.anniversary);}
+    try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{cache:'no-store'});if(expectedClassId&&state.guestListClass?.id!==expectedClassId)return;state.anniversary=data;renderAnniversary(data);}
     catch(error){summary.innerHTML=lockedPanel('Anniversary inventory unavailable',error.message);}
   }
   async function submitAnniversary(form,action){
-    const message=$('#anniversaryMessage'),button=form.querySelector('button[type="submit"],button:not([type])'),payload=Object.fromEntries(new FormData(form));payload.action=action;payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
+    const message=$('#anniversaryMessage'),button=form.querySelector('button[type="submit"],button:not([type])'),selectedClassId=state.guestListClass?.id||'',payload=Object.fromEntries(new FormData(form));payload.action=action;payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
     if(button)button.disabled=true;if(message)message.textContent='Saving…';
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify(payload)});state.anniversary=result.inventory;renderAnniversary(result.inventory);form.reset();if(form.elements.places)form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';toast('Anniversary inventory updated.','success');}
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify(payload)});if(state.guestListClass?.id===selectedClassId){state.anniversary=result.inventory;renderAnniversary(result.inventory);form.reset();if(form.elements.places)form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';}toast('Anniversary inventory updated.','success');}
     catch(error){if(message)message.textContent=error.message;toast(error.message,'error');}
     finally{if(button)button.disabled=false;}
   }
   async function cancelAnniversary(action,id,label){
     const reason=window.prompt(`Why is this ${label} being cancelled?`);if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify({action,id,reason:reason.trim(),operation_id:crypto.randomUUID()})});state.anniversary=result.inventory;renderAnniversary(result.inventory);toast('Cancellation recorded; capacity returned.','success');}
+    const selectedClassId=state.guestListClass?.id||'';
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify({action,id,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(state.guestListClass?.id===selectedClassId){state.anniversary=result.inventory;renderAnniversary(result.inventory);}toast('Cancellation recorded; capacity returned.','success');}
     catch(error){toast(error.message,'error');}
   }
   function classGuestCategory(value){return ({GUEST:'Guest',COMPLIMENTARY:'Complimentary',INSTRUCTOR_STAFF:'Instructor/Staff',VENDOR:'Vendor',ARTIST_PERFORMER:'Artist/Performer',OTHER:'Other'})[value]||value;}
   function renderClassGuests(data){
     const summary=$('#classGuestSummary'),guests=$('#classGuests'),s=data.summary||{};
     if(summary)summary.innerHTML=`<article><span>Active entries</span><strong>${Number(s.guest_entries||0)}</strong></article><article><span>Guest places</span><strong>${Number(s.guest_places||0)}</strong></article><article><span>Booked</span><strong>${Number(s.booked||0)}</strong></article><article><span>Capacity</span><strong>${Number(s.capacity||0)}</strong></article><article><span>Remaining</span><strong>${Number(s.remaining||0)}</strong></article>`;
-    if(guests)guests.innerHTML=(data.guests||[]).length?(data.guests||[]).map(g=>`<article class="ranch-list-row"><div><strong>${esc(g.guest_name)}</strong><small>${Number(g.places)} place${Number(g.places)===1?'':'s'} · ${esc(classGuestCategory(g.category))} · ${esc(g.status)}</small>${g.notes?`<p>${esc(g.notes)}</p>`:''}</div>${g.status==='ACTIVE'?`<button type="button" class="button secondary compact" data-cancel-class-guest="${esc(g.id)}">Cancel</button>`:''}</article>`).join(''):emptyPanel('No guest-list entries for this class.');
+    if(guests)guests.innerHTML=(data.guests||[]).length?(data.guests||[]).map(g=>`<article class="ranch-list-row"><div><strong>${esc(g.guest_name)}</strong><small>${Number(g.places)} place${Number(g.places)===1?'':'s'} · ${esc(classGuestCategory(g.category))} · ${esc(g.status)}</small>${g.notes?`<p>${esc(g.notes)}</p>`:''}</div>${g.status==='ACTIVE'?`<div class="ranch-actions"><button type="button" class="button secondary compact" data-edit-class-guest="${esc(g.id)}">Edit</button><button type="button" class="button secondary compact" data-cancel-class-guest="${esc(g.id)}">Cancel</button></div>`:''}</article>`).join(''):emptyPanel('No guest-list entries for this class.');
   }
   async function openClassGuestList(classId){
     const panel=$('#classGuestListPanel'),item=state.classes.find(c=>c.id===classId);if(!panel||!item)return;
@@ -692,13 +693,14 @@
   }
   async function loadClassGuestList(){
     const item=state.guestListClass;if(!item)return;
+    const requestedClassId=item.id;
     const ordinary=$('#ordinaryGuestList'),anniversary=$('#anniversaryAdmin');
     try{
       if(item.event_type==='ANNIVERSARY'){
-        if(ordinary)ordinary.hidden=true;if(anniversary)anniversary.hidden=false;await loadAnniversary();
+        if(ordinary)ordinary.hidden=true;if(anniversary)anniversary.hidden=false;await loadAnniversary(requestedClassId);
       }else{
         if(anniversary)anniversary.hidden=true;if(ordinary)ordinary.hidden=false;
-        const data=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{cache:'no-store'});state.classGuestList=data;renderClassGuests(data);
+        const data=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{cache:'no-store'});if(state.guestListClass?.id!==requestedClassId)return;state.classGuestList=data;renderClassGuests(data);
       }
     }catch(error){toast(error.message,'error');}
   }
@@ -706,14 +708,24 @@
     event.preventDefault();const form=event.currentTarget,button=form.querySelector('button[type="submit"],button:not([type])'),message=$('#classGuestMessage'),item=state.guestListClass;if(!item)return;
     const payload=Object.fromEntries(new FormData(form));payload.action='ADD_GUEST';payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
     if(button)button.disabled=true;if(message)message.textContent='Saving…';
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify(payload)});state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);form.reset();form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';toast('Guest list updated.','success');await loadClasses();}
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify(payload)});if(state.guestListClass?.id===item.id){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);form.reset();form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';}toast('Guest list updated.','success');await loadClasses();}
     catch(error){if(message)message.textContent=error.message;toast(error.message,'error');}
     finally{if(button)button.disabled=false;}
+  }
+  async function editClassGuest(id){
+    const item=state.guestListClass,guest=state.classGuestList?.guests?.find(row=>row.id===id);if(!item||!guest)return;
+    const guestName=window.prompt('Guest / name',guest.guest_name);if(guestName===null)return;
+    const placesText=window.prompt('Number of places',String(guest.places));if(placesText===null)return;
+    const category=window.prompt('Category: GUEST, COMPLIMENTARY, INSTRUCTOR_STAFF, VENDOR, ARTIST_PERFORMER or OTHER',guest.category);if(category===null)return;
+    const notes=window.prompt('Notes (optional)',guest.notes||'');if(notes===null)return;
+    const reason=window.prompt('Audit reason for this change');if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'UPDATE_GUEST',id,guest_name:guestName.trim(),places:Number(placesText),category:category.trim().toUpperCase(),notes,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(state.guestListClass?.id===item.id){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);}toast('Guest entry updated.','success');await loadClasses();}
+    catch(error){toast(error.message,'error');}
   }
   async function cancelClassGuest(id){
     const reason=window.prompt('Why is this guest entry being cancelled?');if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
     const item=state.guestListClass;if(!item)return;
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'CANCEL_GUEST',id,reason:reason.trim(),operation_id:crypto.randomUUID()})});state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);toast('Guest entry cancelled; capacity returned.','success');await loadClasses();}
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'CANCEL_GUEST',id,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(state.guestListClass?.id===item.id){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);}toast('Guest entry cancelled; capacity returned.','success');await loadClasses();}
     catch(error){toast(error.message,'error');}
   }
   function renderClassRegister(){
@@ -1805,7 +1817,7 @@ Type REFUNDED to continue.`);
   $('#refreshGuestList')?.addEventListener('click',loadClassGuestList);
   $('#closeGuestList')?.addEventListener('click',()=>{const panel=$('#classGuestListPanel');if(panel)panel.hidden=true;state.guestListClass=null;});
   $('#classGuestForm')?.addEventListener('submit',submitClassGuest);
-  $('#classGuests')?.addEventListener('click',event=>{const button=event.target.closest('[data-cancel-class-guest]');if(button)cancelClassGuest(button.dataset.cancelClassGuest);});
+  $('#classGuests')?.addEventListener('click',event=>{const edit=event.target.closest('[data-edit-class-guest]'),cancel=event.target.closest('[data-cancel-class-guest]');if(edit)editClassGuest(edit.dataset.editClassGuest);else if(cancel)cancelClassGuest(cancel.dataset.cancelClassGuest);});
   $('#anniversaryGuestForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'ADD_GUEST');});
   $('#anniversaryTicketForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'RECORD_TICKETS');});
   $('#anniversaryGuests')?.addEventListener('click',event=>{const button=event.target.closest('[data-cancel-anniversary-guest]');if(button)cancelAnniversary('CANCEL_GUEST',button.dataset.cancelAnniversaryGuest,'guest allocation');});

@@ -8,6 +8,7 @@ CREATE TABLE class_guest_list (
   status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','CANCELLED')),
   created_by TEXT NOT NULL,
   updated_by TEXT NOT NULL,
+  last_operation_id TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -16,7 +17,7 @@ CREATE TABLE class_guest_list_audit (
   id TEXT PRIMARY KEY,
   class_id TEXT NOT NULL REFERENCES classes(id),
   guest_id TEXT NOT NULL REFERENCES class_guest_list(id),
-  action TEXT NOT NULL CHECK(action IN ('GUEST_ADDED','GUEST_CANCELLED')),
+  action TEXT NOT NULL CHECK(action IN ('GUEST_ADDED','GUEST_UPDATED','GUEST_CANCELLED')),
   actor TEXT NOT NULL,
   reason TEXT NOT NULL,
   previous_json TEXT,
