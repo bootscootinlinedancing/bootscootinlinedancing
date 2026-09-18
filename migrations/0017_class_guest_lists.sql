@@ -32,6 +32,10 @@ CREATE INDEX idx_class_guest_audit_class_created ON class_guest_list_audit(class
 CREATE TRIGGER class_guest_list_no_delete BEFORE DELETE ON class_guest_list
 BEGIN SELECT RAISE(ABORT,'class guest records must be cancelled, not deleted'); END;
 
+CREATE TRIGGER class_guest_list_no_reactivate BEFORE UPDATE OF status ON class_guest_list
+WHEN OLD.status='CANCELLED' AND NEW.status<>'CANCELLED'
+BEGIN SELECT RAISE(ABORT,'cancelled class guests cannot be reactivated'); END;
+
 CREATE TRIGGER class_guest_audit_no_update BEFORE UPDATE ON class_guest_list_audit
 BEGIN SELECT RAISE(ABORT,'class guest audit history is immutable'); END;
 

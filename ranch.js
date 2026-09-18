@@ -663,6 +663,13 @@
     guests.innerHTML=(data.guests||[]).length?(data.guests||[]).map(g=>`<article class="ranch-list-row"><div><strong>${esc(g.guest_name)}</strong><small>${Number(g.places)} place${Number(g.places)===1?'':'s'} · ${esc(anniversaryCategory(g.category))} · ${esc(g.status)}</small>${g.notes?`<p>${esc(g.notes)}</p>`:''}</div>${g.status==='ACTIVE'?`<button class="button secondary compact" data-cancel-anniversary-guest="${esc(g.id)}">Cancel allocation</button>`:''}</article>`).join(''):emptyPanel('No guest-list allocations recorded.');
     adjustments.innerHTML=(data.adjustments||[]).length?(data.adjustments||[]).map(a=>`<article class="ranch-list-row"><div><strong>${esc(a.release_name)} · ${Number(a.places)} place${Number(a.places)===1?'':'s'}</strong><small>${esc(a.source)} · ${esc(a.external_reference)} · ${esc(a.status)}</small>${a.notes?`<p>${esc(a.notes)}</p>`:''}</div>${a.status==='ACTIVE'?`<button class="button secondary compact" data-cancel-anniversary-ticket="${esc(a.id)}">Cancel record</button>`:''}</article>`).join(''):emptyPanel('No Eventbrite/manual ticket sales recorded.');
   }
+  const currentGuestContext=(classId,requestSequence)=>requestSequence===state.guestListRequestSequence&&state.guestListClass?.id===classId;
+  function resetGuestListControls(){
+    $$('#classGuestForm button[type="submit"],#anniversaryGuestForm button[type="submit"],#anniversaryTicketForm button[type="submit"]').forEach(button=>{delete button.dataset.guestRequest;button.disabled=false;});
+    const classMessage=$('#classGuestMessage'),anniversaryMessage=$('#anniversaryMessage');if(classMessage)classMessage.textContent='';if(anniversaryMessage)anniversaryMessage.textContent='';
+  }
+  function beginGuestSubmit(button){const token=crypto.randomUUID();if(button){button.dataset.guestRequest=token;button.disabled=true;}return token;}
+  function finishGuestSubmit(button,token){if(button?.dataset.guestRequest===token){delete button.dataset.guestRequest;button.disabled=false;}}
   async function loadAnniversary(expectedClassId='',expectedRequestSequence=state.guestListRequestSequence){
     const summary=$('#anniversarySummary');if(!summary)return;
     try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{cache:'no-store'});if(expectedRequestSequence!==state.guestListRequestSequence||(expectedClassId&&state.guestListClass?.id!==expectedClassId))return;state.anniversary=data;renderAnniversary(data);}
@@ -670,16 +677,16 @@
   }
   async function submitAnniversary(form,action){
     const message=$('#anniversaryMessage'),button=form.querySelector('button[type="submit"],button:not([type])'),selectedClassId=state.guestListClass?.id||'',requestSequence=state.guestListRequestSequence,payload=Object.fromEntries(new FormData(form));payload.action=action;payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
-    if(button)button.disabled=true;if(message)message.textContent='Saving…';
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify(payload)});if(requestSequence===state.guestListRequestSequence&&state.guestListClass?.id===selectedClassId){state.anniversary=result.inventory;renderAnniversary(result.inventory);form.reset();if(form.elements.places)form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';}toast('Anniversary inventory updated.','success');}
-    catch(error){if(message)message.textContent=error.message;toast(error.message,'error');}
-    finally{if(button)button.disabled=false;}
+    const submitToken=beginGuestSubmit(button);if(message)message.textContent='Saving…';
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify(payload)});if(currentGuestContext(selectedClassId,requestSequence)){state.anniversary=result.inventory;renderAnniversary(result.inventory);form.reset();if(form.elements.places)form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';toast('Anniversary inventory updated.','success');}}
+    catch(error){if(currentGuestContext(selectedClassId,requestSequence)){if(message)message.textContent=error.message;toast(error.message,'error');}}
+    finally{finishGuestSubmit(button,submitToken);}
   }
   async function cancelAnniversary(action,id,label){
     const reason=window.prompt(`Why is this ${label} being cancelled?`);if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
     const selectedClassId=state.guestListClass?.id||'',requestSequence=state.guestListRequestSequence;
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify({action,id,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(requestSequence===state.guestListRequestSequence&&state.guestListClass?.id===selectedClassId){state.anniversary=result.inventory;renderAnniversary(result.inventory);}toast('Cancellation recorded; capacity returned.','success');}
-    catch(error){toast(error.message,'error');}
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/anniversary`,{method:'POST',body:JSON.stringify({action,id,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(currentGuestContext(selectedClassId,requestSequence)){state.anniversary=result.inventory;renderAnniversary(result.inventory);toast('Cancellation recorded; capacity returned.','success');}}
+    catch(error){if(currentGuestContext(selectedClassId,requestSequence))toast(error.message,'error');}
   }
   function classGuestCategory(value){return ({GUEST:'Guest',COMPLIMENTARY:'Complimentary',INSTRUCTOR_STAFF:'Instructor/Staff',VENDOR:'Vendor',ARTIST_PERFORMER:'Artist/Performer',OTHER:'Other'})[value]||value;}
   function renderClassGuests(data){
@@ -689,7 +696,7 @@
   }
   async function openClassGuestList(classId){
     const panel=$('#classGuestListPanel'),item=state.classes.find(c=>c.id===classId);if(!panel||!item)return;
-    state.guestListClass=item;panel.hidden=false;$('#classGuestListTitle').textContent=item.title||'Class';$('#classGuestListContext').textContent=`${fmt(item.starts_at)} · ${item.venue||'Venue not supplied'}`;
+    resetGuestListControls();state.guestListClass=item;panel.hidden=false;$('#classGuestListTitle').textContent=item.title||'Class';$('#classGuestListContext').textContent=`${fmt(item.starts_at)} · ${item.venue||'Venue not supplied'}`;
     panel.scrollIntoView({behavior:'smooth',block:'start'});await loadClassGuestList();
   }
   async function loadClassGuestList(){
@@ -708,10 +715,10 @@
   async function submitClassGuest(event){
     event.preventDefault();const form=event.currentTarget,button=form.querySelector('button[type="submit"],button:not([type])'),message=$('#classGuestMessage'),item=state.guestListClass,requestSequence=state.guestListRequestSequence;if(!item)return;
     const payload=Object.fromEntries(new FormData(form));payload.action='ADD_GUEST';payload.operation_id=crypto.randomUUID();payload.places=Number(payload.places||0);
-    if(button)button.disabled=true;if(message)message.textContent='Saving…';
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify(payload)});if(requestSequence===state.guestListRequestSequence&&state.guestListClass?.id===item.id){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);form.reset();form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';}toast('Guest list updated.','success');await loadClasses();}
-    catch(error){if(message)message.textContent=error.message;toast(error.message,'error');}
-    finally{if(button)button.disabled=false;}
+    const submitToken=beginGuestSubmit(button);if(message)message.textContent='Saving…';
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify(payload)});if(currentGuestContext(item.id,requestSequence)){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);form.reset();form.elements.places.value=1;if(message)message.textContent='Saved with an immutable audit record.';toast('Guest list updated.','success');}await loadClasses();}
+    catch(error){if(currentGuestContext(item.id,requestSequence)){if(message)message.textContent=error.message;toast(error.message,'error');}}
+    finally{finishGuestSubmit(button,submitToken);}
   }
   async function editClassGuest(id){
     const item=state.guestListClass,requestSequence=state.guestListRequestSequence,guest=state.classGuestList?.guests?.find(row=>row.id===id);if(!item||!guest)return;
@@ -720,14 +727,14 @@
     const category=window.prompt('Category: GUEST, COMPLIMENTARY, INSTRUCTOR_STAFF, VENDOR, ARTIST_PERFORMER or OTHER',guest.category);if(category===null)return;
     const notes=window.prompt('Notes (optional)',guest.notes||'');if(notes===null)return;
     const reason=window.prompt('Audit reason for this change');if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'UPDATE_GUEST',id,guest_name:guestName.trim(),places:Number(placesText),category:category.trim().toUpperCase(),notes,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(requestSequence===state.guestListRequestSequence&&state.guestListClass?.id===item.id){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);}toast('Guest entry updated.','success');await loadClasses();}
-    catch(error){toast(error.message,'error');}
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'UPDATE_GUEST',id,guest_name:guestName.trim(),places:Number(placesText),category:category.trim().toUpperCase(),notes,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(currentGuestContext(item.id,requestSequence)){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);toast('Guest entry updated.','success');}await loadClasses();}
+    catch(error){if(currentGuestContext(item.id,requestSequence))toast(error.message,'error');}
   }
   async function cancelClassGuest(id){
     const reason=window.prompt('Why is this guest entry being cancelled?');if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
     const item=state.guestListClass,requestSequence=state.guestListRequestSequence;if(!item)return;
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'CANCEL_GUEST',id,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(requestSequence===state.guestListRequestSequence&&state.guestListClass?.id===item.id){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);}toast('Guest entry cancelled; capacity returned.','success');await loadClasses();}
-    catch(error){toast(error.message,'error');}
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'CANCEL_GUEST',id,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(currentGuestContext(item.id,requestSequence)){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);toast('Guest entry cancelled; capacity returned.','success');}await loadClasses();}
+    catch(error){if(currentGuestContext(item.id,requestSequence))toast(error.message,'error');}
   }
   function renderClassRegister(){
     const panel=$('#classRegisterPanel'),data=state.classRegister;
@@ -1816,7 +1823,7 @@ Type REFUNDED to continue.`);
   $$('[data-open-class]').forEach(button=>button.dataset.classOpenHandled='1');
   $('#refreshRanch')?.addEventListener('click',loadClasses);
   $('#refreshGuestList')?.addEventListener('click',loadClassGuestList);
-  $('#closeGuestList')?.addEventListener('click',()=>{const panel=$('#classGuestListPanel');if(panel)panel.hidden=true;state.guestListClass=null;state.guestListRequestSequence++;});
+  $('#closeGuestList')?.addEventListener('click',()=>{const panel=$('#classGuestListPanel');if(panel)panel.hidden=true;state.guestListClass=null;state.guestListRequestSequence++;resetGuestListControls();});
   $('#classGuestForm')?.addEventListener('submit',submitClassGuest);
   $('#classGuests')?.addEventListener('click',event=>{const edit=event.target.closest('[data-edit-class-guest]'),cancel=event.target.closest('[data-cancel-class-guest]');if(edit)editClassGuest(edit.dataset.editClassGuest);else if(cancel)cancelClassGuest(cancel.dataset.cancelClassGuest);});
   $('#anniversaryGuestForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'ADD_GUEST');});
