@@ -4051,22 +4051,44 @@ async function adminClassGuests(request,env){
   if(!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
   const body=await request.json().catch(()=>null),action=clean(body?.action,30),reason=clean(body?.reason,500),operationId=clean(body?.operation_id,100),actor=check.state.email;
   if(!body||!reason||!/^[A-Za-z0-9_-]{12,100}$/.test(operationId))return json({error:'An audit reason and valid operation reference are required.'},400);
-  const prior=await env.BOOKINGS_DB.prepare(`SELECT id FROM class_guest_list_audit WHERE operation_id=?`).bind(operationId).first();
-  if(prior)return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+  const operationMatches=prior=>{
+    const expectedAction={ADD_GUEST:'GUEST_ADDED',UPDATE_GUEST:'GUEST_UPDATED',CANCEL_GUEST:'GUEST_CANCELLED'}[action];
+    let next={};try{next=JSON.parse(prior.next_json||'{}');}catch{}
+    const sameBase=prior.class_id===classId&&prior.action===expectedAction&&prior.reason===reason;
+    const sameTarget=action==='ADD_GUEST'||prior.guest_id===clean(body.id,120);
+    const samePayload=action==='CANCEL_GUEST'||(
+      next.guest_name===clean(body.guest_name,140)&&
+      Number(next.places)===Math.floor(Number(body.places))&&
+      next.category===(clean(body.category,40)||(action==='ADD_GUEST'?'GUEST':''))&&
+      String(next.notes||'')===clean(body.notes,600)
+    );
+    return sameBase&&sameTarget&&samePayload;
+  };
+  const completedOperation=()=>env.BOOKINGS_DB.prepare(`SELECT class_id,guest_id,action,reason,next_json FROM class_guest_list_audit WHERE operation_id=?`).bind(operationId).first();
+  const prior=await completedOperation();
+  if(prior){
+    if(!operationMatches(prior))return json({error:'This operation reference conflicts with an earlier guest-list change.'},409);
+    return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+  }
   if(action==='ADD_GUEST'){
     const name=clean(body.guest_name,140),places=Math.floor(Number(body.places)),category=clean(body.category,40)||'GUEST',notes=clean(body.notes,600),id=crypto.randomUUID();
     const categories=['GUEST','COMPLIMENTARY','INSTRUCTOR_STAFF','VENDOR','ARTIST_PERFORMER','OTHER'];
     if(!name||!Number.isInteger(places)||places<1||places>100||!categories.includes(category))return json({error:'Enter a guest, valid number of places and category.'},400);
     const results=await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list(id,class_id,guest_name,places,category,notes,created_by,updated_by,last_operation_id)
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list(id,class_id,guest_name,places,category,notes,created_by,updated_by,last_operation_id)
         SELECT ?,c.id,?,?,?,?,?,?,? FROM classes c WHERE c.id=? AND ?>0 AND ?<=c.capacity
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
           -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,operationId,classId,places,places),
-      env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,next_json,operation_id)
-        SELECT ?,?,?,'GUEST_ADDED',?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:name,places,category}),operationId,id,operationId)
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,next_json,operation_id)
+        SELECT ?,?,?,'GUEST_ADDED',?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
     ]);
-    if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'Not enough class capacity remains for this guest allocation.'},409);
+    if(Number(results?.[0]?.meta?.changes||0)!==1){
+      const completed=await completedOperation();
+      if(completed&&operationMatches(completed))return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+      if(completed)return json({error:'This operation reference conflicts with an earlier guest-list change.'},409);
+      return json({error:'Not enough class capacity remains for this guest allocation.'},409);
+    }
   }else if(action==='UPDATE_GUEST'){
     const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_guest_list WHERE id=? AND class_id=?`).bind(id,classId).first();
     if(!row)return json({error:'Guest entry not found.'},404);
@@ -4081,20 +4103,28 @@ async function adminClassGuests(request,env){
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
           -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE' AND g.id<>?),0)
           FROM classes c WHERE c.id=?)`).bind(name,places,category,notes||null,actor,operationId,id,classId,row.last_operation_id,places,id,classId),
-      env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
         SELECT ?,?,?,'GUEST_UPDATED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:row.guest_name,places:row.places,category:row.category,notes:row.notes}),JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
     ]);
-    if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'The guest entry changed, or not enough class capacity remains. Refresh and try again.'},409);
+    if(Number(results?.[0]?.meta?.changes||0)!==1){
+      const completed=await completedOperation();
+      if(completed&&operationMatches(completed))return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+      return json({error:'The guest entry changed, or not enough class capacity remains. Refresh and try again.'},409);
+    }
   }else if(action==='CANCEL_GUEST'){
     const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_guest_list WHERE id=? AND class_id=?`).bind(id,classId).first();
     if(!row)return json({error:'Guest entry not found.'},404);
     if(row.status==='ACTIVE'){
       const results=await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET status='CANCELLED',updated_by=?,last_operation_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=?`).bind(actor,operationId,id,classId,row.last_operation_id),
-        env.BOOKINGS_DB.prepare(`INSERT INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
+        env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
           SELECT ?,?,?,'GUEST_CANCELLED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({status:'ACTIVE',places:row.places}),JSON.stringify({status:'CANCELLED',places:row.places}),operationId,id,operationId)
       ]);
-      if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'The guest entry changed. Refresh and try again.'},409);
+      if(Number(results?.[0]?.meta?.changes||0)!==1){
+        const completed=await completedOperation();
+        if(completed&&operationMatches(completed))return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+        return json({error:'The guest entry changed. Refresh and try again.'},409);
+      }
     }
   }else return json({error:'Unsupported guest-list action.'},400);
   return json({ok:true,guest_list:await classGuestListState(env,classId)});
