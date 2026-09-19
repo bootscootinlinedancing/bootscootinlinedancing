@@ -45,6 +45,7 @@
     const rows=classes.filter(c=>venue==='all'||venueKey(c.venue)===venue);
     grid.innerHTML=rows.length?rows.map(c=>{
       const full=Number(c.spaces_remaining)<1;
+      const closed=c.booking_open===false;
       const nearly=Number(c.spaces_remaining)>0&&Number(c.spaces_remaining)<5;
       return `<article class="class-card" id="event-${esc(c.id)}">
         ${c.poster_url?`<div class="class-poster"><img src="${esc(c.poster_url)}" alt="${esc(c.title)} poster" loading="lazy"></div>`:''}
@@ -53,8 +54,8 @@
           <p class="class-venue">${esc(venueLabel(c.venue))}</p><h3>${esc(c.title)}</h3>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<p class="anniversary-ticket-release"><strong>${esc(c.ticket_release.name)}</strong> · ${money(c.ticket_release.price_pence/100)} · ${esc(c.ticket_release.remaining)} release tickets available</p>`:''}
           <p>${esc(dateFmt(c.starts_at))}</p><p>${esc(c.location)}</p>
           <div class="class-footer"><span><b>${money(c.price)}</b> per person</span>
-          <span class="spaces ${nearly?'low':''} ${full?'full':''}">${full?'Class full':`${c.spaces_remaining} spaces left`}</span></div>
-          <div class="class-card-actions"><button type="button" class="button secondary view-event" data-id="${esc(c.id)}">View details</button><button class="button book-class" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button></div>
+          <span class="spaces ${nearly?'low':''} ${full?'full':''}">${closed?'Booking closed':full?'Class full':`${c.spaces_remaining} spaces left`}</span></div>
+          <div class="class-card-actions"><button type="button" class="button secondary view-event" data-id="${esc(c.id)}">View details</button><button class="button book-class" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}" ${closed?'disabled aria-disabled="true"':''}>${closed?'Booking closed':full?'Join waiting list':'Book now'}</button></div>
         </div>
       </article>`;
     }).join(''):'<p class="booking-empty">There are no published classes matching this filter yet.</p>';
@@ -62,11 +63,11 @@
 
   function openEventDetails(c){
     const d=document.getElementById('eventDetailsDialog'),box=document.getElementById('eventDetailsContent'); if(!d||!box)return;
-    const full=Number(c.spaces_remaining)<1; const url=eventUrl(c);
-    const availability=c.event_type==='ANNIVERSARY'?(full?'Event full':`${esc(c.spaces_remaining)} tickets available in the current release`):(full?'Class full':`${esc(c.spaces_remaining)} spaces left`);
+    const full=Number(c.spaces_remaining)<1; const closed=c.booking_open===false; const url=eventUrl(c);
+    const availability=closed?'Booking closed':c.event_type==='ANNIVERSARY'?(full?'Event full':`${esc(c.spaces_remaining)} tickets available in the current release`):(full?'Class full':`${esc(c.spaces_remaining)} spaces left`);
     const overall=c.event_type==='ANNIVERSARY'?(c.releases||[]).find(release=>release.allocation==null)?.remaining:null;
     const schedule=`${dayFmt(c.starts_at)} · ${timeFmt(c.starts_at)}${c.ends_at?`–${timeFmt(c.ends_at)}`:''}`;
-    box.innerHTML=`<p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2><div class="event-detail-body ${c.poster_url?'has-poster':''}">${c.poster_url?`<figure class="event-detail-poster-shell"><img class="event-detail-poster" src="${esc(c.poster_url)}" alt="${esc(c.title)} poster"></figure>`:''}<div class="event-detail-copy"><p class="event-detail-meta"><strong>${esc(schedule)}</strong><br>${esc(venueLabel(c.venue))}${c.location?` · ${esc(c.location)}`:''}<br>${money(c.price)} per person · ${availability}${overall!=null?` · ${esc(overall)} event places overall`:''}</p>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<div class="anniversary-public-release"><strong>Current release: ${esc(c.ticket_release.name)}</strong><span>${money(c.ticket_release.price_pence/100)} per ticket · ${esc(c.ticket_release.remaining)} tickets remain in this release</span></div>`:''}${Number(c.class_pass_eligible)===1?`<p class="event-class-pass-note"><strong>Class Pass eligible.</strong> Signed-in members can use one available class credit for one place.</p>`:''}${c.public_notes?`<div class="event-full-description">${descriptionHtml(c.public_notes)}</div>`:''}<div class="event-detail-actions"><button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button><button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p></div></div>`;
+    box.innerHTML=`<p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2><div class="event-detail-body ${c.poster_url?'has-poster':''}">${c.poster_url?`<figure class="event-detail-poster-shell"><img class="event-detail-poster" src="${esc(c.poster_url)}" alt="${esc(c.title)} poster"></figure>`:''}<div class="event-detail-copy"><p class="event-detail-meta"><strong>${esc(schedule)}</strong><br>${esc(venueLabel(c.venue))}${c.location?` · ${esc(c.location)}`:''}<br>${money(c.price)} per person · ${availability}${overall!=null?` · ${esc(overall)} event places overall`:''}</p>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<div class="anniversary-public-release"><strong>Current release: ${esc(c.ticket_release.name)}</strong><span>${money(c.ticket_release.price_pence/100)} per ticket · ${esc(c.ticket_release.remaining)} tickets remain in this release</span></div>`:''}${Number(c.class_pass_eligible)===1?`<p class="event-class-pass-note"><strong>Class Pass eligible.</strong> Signed-in members can use one available class credit for one place.</p>`:''}${c.public_notes?`<div class="event-full-description">${descriptionHtml(c.public_notes)}</div>`:''}<div class="event-detail-actions">${closed?'':`<button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button>`}<button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p></div></div>`;
     if(typeof d.showModal==='function')d.showModal();
   }
 
@@ -95,6 +96,7 @@
     if(detail){const c=classes.find(item=>item.id===detail.dataset.id);if(c)openEventDetails(c);return;}
     const button=event.target.closest('.book-class');if(!button)return;
     const c=classes.find(item=>item.id===button.dataset.id);if(!c)return;
+    if(c.booking_open===false)return;
     selectedClass=c;appliedPromo=null;
     const waitlist=button.dataset.mode==='waitlist';
     document.getElementById('classId').value=c.id;

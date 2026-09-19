@@ -364,6 +364,28 @@ function londonCalendarDate(value=new Date()){
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+function classCalendarStatus(startsAt,now=new Date()){
+  const classLocalDate=startsAt?londonCalendarDate(startsAt):'';
+  const todayLocalDate=londonCalendarDate(now);
+  const startTime=new Date(startsAt).getTime();
+  return {
+    class_local_date:classLocalDate,
+    is_past:Boolean(classLocalDate&&todayLocalDate&&classLocalDate<todayLocalDate),
+    is_today:Boolean(classLocalDate&&classLocalDate===todayLocalDate),
+    booking_open:Number.isFinite(startTime)&&startTime>now.getTime()
+  };
+}
+
+function withClassCalendarStatus(row,now=new Date()){
+  return {...row,...classCalendarStatus(row?.starts_at,now)};
+}
+
+function londonTodayStartIso(now=new Date()){
+  const localDate=londonCalendarDate(now);
+  if(!localDate)return now.toISOString();
+  return londonLocalClassDate(`${localDate}T00:00:00`,'London day boundary').toISOString();
+}
+
 function addCalendarDays(isoDate,days){
   const match=String(isoDate||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(!match)return '';
@@ -1505,7 +1527,9 @@ async function publicClasses(env) {
   if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
   try {
     await ensureBookingSchema(env);
-    const now = new Date().toISOString();
+    const currentInstant = new Date();
+    const now = currentInstant.toISOString();
+    const todayStart = londonTodayStartIso(currentInstant);
     const { results } = await env.BOOKINGS_DB.prepare(`
       SELECT c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
       COALESCE((
@@ -1532,15 +1556,15 @@ async function publicClasses(env) {
         - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
       ) AS spaces_remaining
       FROM classes c LEFT JOIN class_pass_class_eligibility pe ON pe.class_id=c.id
-      WHERE c.status='open' AND c.starts_at>? ORDER BY c.starts_at
-    `).bind(now,now).all();
+      WHERE c.status='open' AND c.starts_at>=? ORDER BY c.starts_at
+    `).bind(now,todayStart).all();
     const anniversary=await anniversaryInventory(env).catch(()=>null);
     return json(results.map(row => {
       if(anniversary&&row.id===anniversary.event.class_id){
         const price=anniversary.current_release?.price_pence??row.price_pence;
-        return {...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))};
+        return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant);
       }
-      return { ...row, price: row.price_pence / 100 };
+      return withClassCalendarStatus({ ...row, price: row.price_pence / 100 },currentInstant);
     }));
   } catch (error) {
     return json({ error: 'The booking database could not be prepared.', detail: error.message }, 500);
@@ -3221,12 +3245,13 @@ async function memberMe(request,env){
     WHERE customer_id=?
   `).bind(rank,bootPoints,classesAttended,session.customer_id).run().catch(()=>{});
 
+  const currentInstant=new Date();
   return json({authenticated:true,member:{
     id:session.member_id,email:session.email,name:session.name,display_name:session.display_name||String(session.name||'').split(/\s+/)[0],
     phone:session.phone||'',birthday:crm?.birthday||'',birthday_visible:Boolean(session.birthday_visible),marketing_consent:Boolean(session.marketing_consent),
     trail_identity:['cowgirl','cowboy','trail_rider'].includes(session.trail_identity)?session.trail_identity:'trail_rider',
     trail_rank:rank,boot_points:bootPoints,classes_attended:classesAttended,current_streak:0,dances_learned:0,is_paused:Boolean(session.is_paused)
-  },loyalty,bookings:bookings.results||[],orders:orders.results||[]});
+  },loyalty,bookings:(bookings.results||[]).map(row=>withClassCalendarStatus(row,currentInstant)),orders:orders.results||[]});
 }
 async function memberProfileUpdate(request,env){
   await ensureMemberSchema(env);
@@ -3321,17 +3346,18 @@ async function customerPortal(request,env,url){
     ORDER BY c.starts_at DESC
   `).bind(owner.customer_email).all();
 
-  const now=Date.now();
+  const currentInstant=new Date();
+  const now=currentInstant.getTime();
   const decorate=b=>{
     const hours=(new Date(b.starts_at)-new Date())/3600000;
     return {
-      ...b,
+      ...withClassCalendarStatus(b,currentInstant),
       can_cancel:['PENDING','PAID'].includes(b.status)&&new Date(b.starts_at).getTime()>now,
       payment_label:b.status==='PAID'?'Paid':b.status==='REFUNDED'?'Refunded':b.payment_provider==='MANUAL'?'To be confirmed':b.status,
       cancellation_guidance:hours>=48?'Full refund or class credit available.':hours>=24?'Transfer or class credit available.':'Late-cancellation terms apply.'
     };
   };
-  const upcoming=results.filter(b=>new Date(b.starts_at).getTime()>now&&!['CANCELLED','REFUNDED','FAILED'].includes(b.status)).map(decorate);
+  const upcoming=results.filter(b=>!classCalendarStatus(b.starts_at,currentInstant).is_past&&!['CANCELLED','REFUNDED','FAILED'].includes(b.status)).map(decorate);
   const history=results.filter(b=>!upcoming.some(u=>u.id===b.id)).map(decorate);
   const attendedRows=results.filter(b=>Number(b.attended)===1);
   const attended=attendedRows.length;
@@ -4180,12 +4206,13 @@ async function adminClasses(request, env) {
       `).all();
       const rows=Array.isArray(response?.results)?response.results:[];
       const anniversary=await anniversaryInventory(env).catch(()=>null);
-      return json(rows.map(row=>({
+      const currentInstant=new Date();
+      return json(rows.map(row=>withClassCalendarStatus({
         ...row,
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
           : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
-      })),200);
+      },currentInstant)),200);
     } catch (error) {
       return json({
         error:'Classes could not be loaded from the booking database.',
@@ -4394,7 +4421,9 @@ async function adminBootstrap(request, env) {
       result.warnings.push(`Payment reconciliation: ${String(error?.message || error || 'temporarily unavailable')}`);
     }
 
-    const now = new Date().toISOString();
+    const currentInstant = new Date();
+    const now = currentInstant.toISOString();
+    const todayStart = londonTodayStartIso(currentInstant);
 
     try {
       const classesResult = await env.BOOKINGS_DB.prepare(`
@@ -4412,14 +4441,14 @@ async function adminBootstrap(request, env) {
         WHERE c.starts_at >= ? AND c.status IN ('open','draft')
         ORDER BY starts_at
         LIMIT 20
-      `).bind(now,now).all();
+      `).bind(now,todayStart).all();
       const anniversary=await anniversaryInventory(env).catch(()=>null);
-      result.classes = (Array.isArray(classesResult?.results) ? classesResult.results : []).map(row=>({
+      result.classes = (Array.isArray(classesResult?.results) ? classesResult.results : []).map(row=>withClassCalendarStatus({
         ...row,
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
           : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
-      }));
+      },currentInstant));
       result.summary.upcoming_classes = result.classes.filter(row => row.status === 'open').length;
     } catch (error) {
       result.warnings.push(`Upcoming classes: ${String(error?.message || error)}`);
@@ -5209,15 +5238,17 @@ async function adminOperations(request, env) {
   if (check.response) return check.response;
   await ensureBookingSchema(env);
 
+  const currentInstant=new Date();
+  const todayStart=londonTodayStartIso(currentInstant);
   const [classesResult, bookingsResult, waitingResult, activityResult] = await Promise.all([
     env.BOOKINGS_DB.prepare(`
       SELECT c.*,
         COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) waiting
       FROM classes c
-      WHERE c.starts_at >= datetime('now','-1 day')
+      WHERE c.starts_at >= ?
       ORDER BY c.starts_at
       LIMIT 12
-    `).all(),
+    `).bind(todayStart).all(),
     env.BOOKINGS_DB.prepare(`
       SELECT b.*,c.title class_title,c.starts_at,c.venue
       FROM bookings b
@@ -5241,11 +5272,11 @@ async function adminOperations(request, env) {
     `).all()
   ]);
 
-  const classes = classesResult.results || [];
+  const classes = (classesResult.results || []).map(row=>withClassCalendarStatus(row,currentInstant));
   const bookings = bookingsResult.results || [];
   const waiting = waitingResult.results || [];
-  const today = new Date().toISOString().slice(0,10);
-  const todayClasses = classes.filter(c => String(c.starts_at || '').slice(0,10) === today);
+  const today = londonCalendarDate(currentInstant);
+  const todayClasses = classes.filter(c => c.class_local_date === today);
   const todayIds = new Set(todayClasses.map(c => c.id));
   const active = bookings.filter(b => ['PENDING','PAID'].includes(b.status));
 
@@ -5380,6 +5411,7 @@ async function adminCustomers(request, env) {
 
   if (request.method !== 'GET') return json({error:'Method not allowed.'},405);
 
+  const todayStart=londonTodayStartIso();
   const customerMetricsSql = `
     SELECT
       cu.id customer_id,
@@ -5400,7 +5432,7 @@ async function adminCustomers(request, env) {
       CASE WHEN cu.marketing_consent=1 OR COALESCE((SELECT MAX(b.marketing_consent) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email)),0)=1 THEN 1 ELSE 0 END marketing_consent,
       cu.created_at customer_since,
       COALESCE((SELECT MAX(b.created_at) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email)),cu.created_at) last_booking_at,
-      (SELECT COUNT(*) FROM bookings b JOIN classes cl ON cl.id=b.class_id WHERE lower(b.customer_email)=lower(cu.email) AND b.status IN ('PAID','PENDING') AND cl.starts_at>=CURRENT_TIMESTAMP) upcoming_bookings
+      (SELECT COUNT(*) FROM bookings b JOIN classes cl ON cl.id=b.class_id WHERE lower(b.customer_email)=lower(cu.email) AND b.status IN ('PAID','PENDING') AND cl.starts_at>='${todayStart}') upcoming_bookings
     FROM customers cu
   `;
 
@@ -5441,9 +5473,10 @@ async function adminCustomers(request, env) {
     ...(attendanceHistory.results||[]).map(a=>({type:'ATTENDANCE',title:`Attended: ${a.class_title||'Class'}`,detail:a.venue||'',created_at:a.recorded_at||a.checked_in_at})),
     ...(loyaltyHistory.results||[]).map(l=>({type:'LOYALTY',title:`${Number(l.amount)>0?'+':''}${Number(l.amount)||0} stamp${Math.abs(Number(l.amount)||0)===1?'':'s'}`,detail:l.reason||l.source_type,created_at:l.created_at}))
   ].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,100);
+  const currentInstant=new Date();
   return json({
     customer:{...customer,health_status,lifetime_spend_pence:Math.max(0,Number(customer.gross_paid_pence||0)-Number(customer.refunded_pence||0)),loyalty_balance:loyaltyBalance,loyalty_progress:loyaltyBalance===0?0:(loyaltyBalance%9===0?9:loyaltyBalance%9),reward_ready:loyaltyBalance>=9},
-    profile:profile||{customer_key:email,loyalty_adjustment:0}, tags:(tags.results||[]).map(r=>r.tag), notes:notes.results||[], bookings:bookings.results||[], attendance:attendanceHistory.results||[], loyalty_history:loyaltyHistory.results||[], waiting:waiting.results||[], communications:[...(notifications.results||[]),...(campaigns.results||[])], timeline
+    profile:profile||{customer_key:email,loyalty_adjustment:0}, tags:(tags.results||[]).map(r=>r.tag), notes:notes.results||[], bookings:(bookings.results||[]).map(row=>withClassCalendarStatus(row,currentInstant)), attendance:attendanceHistory.results||[], loyalty_history:loyaltyHistory.results||[], waiting:waiting.results||[], communications:[...(notifications.results||[]),...(campaigns.results||[])], timeline
   });
 }
 
