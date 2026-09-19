@@ -713,7 +713,8 @@ async function classCreditOptions(request,env,url){
   const klass=classId?await env.BOOKINGS_DB.prepare(`
     SELECT c.id,c.status,c.starts_at,c.capacity,COALESCE(e.eligible,0) pass_eligible,
       c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
-      -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>CURRENT_TIMESTAMP),0) spaces_remaining
+      -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>CURRENT_TIMESTAMP),0)
+      -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) spaces_remaining
     FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id WHERE c.id=?
   `).bind(classId).first():null;
   if(!klass||klass.status!=='open'||new Date(klass.starts_at).getTime()<=Date.now())return json({authenticated:true,can_use_credit:false});
@@ -766,6 +767,7 @@ async function createClassCreditBooking(request,env){
       AND 1<=c.capacity
         -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
+        -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
   `).bind(holdId,holdExpiry,classId,now,now).run();
   if(Number(held?.meta?.changes||0)===0){
     const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
@@ -1527,6 +1529,7 @@ async function publicClasses(env) {
             FROM booking_holds h
             WHERE h.class_id=c.id AND h.expires_at>?
           ),0)
+        - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
       ) AS spaces_remaining
       FROM classes c LEFT JOIN class_pass_class_eligibility pe ON pe.class_id=c.id
       WHERE c.status='open' AND c.starts_at>? ORDER BY c.starts_at
@@ -2369,12 +2372,13 @@ async function createClassReservation(request, env) {
       COALESCE((
         SELECT SUM(h.quantity) FROM booking_holds h
         WHERE h.class_id=? AND h.expires_at>?
-      ),0) held
-  `).bind(classId,classId,new Date().toISOString()).first();
+      ),0) held,
+      COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=? AND g.status='ACTIVE'),0) guests
+  `).bind(classId,classId,new Date().toISOString(),classId).first();
 
   const spaces = anniversaryRelease ? Number(anniversaryRelease.remaining) : Math.max(
     0,
-    Number(classRow.capacity || 0) - Number(occupancy?.booked || 0) - Number(occupancy?.held || 0)
+    Number(classRow.capacity || 0) - Number(occupancy?.booked || 0) - Number(occupancy?.held || 0) - Number(occupancy?.guests || 0)
   );
 
   const id = crypto.randomUUID();
@@ -2433,8 +2437,9 @@ async function createClassReservation(request, env) {
       FROM classes c
       WHERE c.id=? AND c.status='open' AND c.starts_at>?
         AND ?<=c.capacity
-          - COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
-          - COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
+        - COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        - COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
+        - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
     `).bind(holdId,classId,quantity,holdExpiry,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
 
   if(Number(holdResult?.meta?.changes||0)===0){
@@ -4016,6 +4021,115 @@ async function publicReviews(request,env){
   return json({reviews,summary:{published_review_count:count,average_rating:count?Number((total/count).toFixed(2)):0,star_breakdown:breakdown}});
 }
 
+async function classGuestListState(env,classId){
+  const klass=await env.BOOKINGS_DB.prepare(`SELECT id,title,venue,starts_at,capacity FROM classes WHERE id=?`).bind(classId).first();
+  if(!klass)return null;
+  const anniversary=await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_events WHERE class_id=? AND active=1`).bind(classId).first().catch(()=>null);
+  if(anniversary)return {anniversary:true,class:klass};
+  const [rows,usage]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT id,guest_name,places,category,notes,status,created_by,updated_by,created_at,updated_at FROM class_guest_list WHERE class_id=? ORDER BY status,created_at DESC`).bind(classId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT
+      COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0) booked,
+      COALESCE((SELECT SUM(quantity) FROM booking_holds WHERE class_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) held,
+      COALESCE((SELECT SUM(places) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) guest_places,
+      COALESCE((SELECT COUNT(*) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) guest_entries`).bind(classId,classId,classId,classId).first()
+  ]);
+  const occupied=Number(usage?.booked||0)+Number(usage?.held||0)+Number(usage?.guest_places||0);
+  return {anniversary:false,class:klass,guests:rows.results||[],summary:{booked:Number(usage?.booked||0),held:Number(usage?.held||0),guest_places:Number(usage?.guest_places||0),guest_entries:Number(usage?.guest_entries||0),capacity:Number(klass.capacity||0),remaining:Math.max(0,Number(klass.capacity||0)-occupied)}};
+}
+
+async function adminClassGuests(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env);
+  const url=new URL(request.url),classId=clean(url.searchParams.get('class_id'),120);
+  if(!classId)return json({error:'Choose a class.'},400);
+  const current=await classGuestListState(env,classId);
+  if(!current)return json({error:'Class not found.'},404);
+  if(current.anniversary)return json({anniversary:true,class:current.class},200);
+  if(request.method==='GET')return json(current);
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),action=clean(body?.action,30),reason=clean(body?.reason,500),operationId=clean(body?.operation_id,100),actor=check.state.email;
+  if(!body||!reason||!/^[A-Za-z0-9_-]{12,100}$/.test(operationId))return json({error:'An audit reason and valid operation reference are required.'},400);
+  const operationMatches=prior=>{
+    const expectedAction={ADD_GUEST:'GUEST_ADDED',UPDATE_GUEST:'GUEST_UPDATED',CANCEL_GUEST:'GUEST_CANCELLED'}[action];
+    let next={};try{next=JSON.parse(prior.next_json||'{}');}catch{}
+    const sameBase=prior.class_id===classId&&prior.action===expectedAction&&prior.reason===reason;
+    const sameTarget=action==='ADD_GUEST'||prior.guest_id===clean(body.id,120);
+    const samePayload=action==='CANCEL_GUEST'||(
+      next.guest_name===clean(body.guest_name,140)&&
+      Number(next.places)===Math.floor(Number(body.places))&&
+      next.category===(clean(body.category,40)||(action==='ADD_GUEST'?'GUEST':''))&&
+      String(next.notes||'')===clean(body.notes,600)
+    );
+    return sameBase&&sameTarget&&samePayload;
+  };
+  const completedOperation=()=>env.BOOKINGS_DB.prepare(`SELECT class_id,guest_id,action,reason,next_json FROM class_guest_list_audit WHERE operation_id=?`).bind(operationId).first();
+  const prior=await completedOperation();
+  if(prior){
+    if(!operationMatches(prior))return json({error:'This operation reference conflicts with an earlier guest-list change.'},409);
+    return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+  }
+  if(action==='ADD_GUEST'){
+    const name=clean(body.guest_name,140),places=Math.floor(Number(body.places)),category=clean(body.category,40)||'GUEST',notes=clean(body.notes,600),id=crypto.randomUUID();
+    const categories=['GUEST','COMPLIMENTARY','INSTRUCTOR_STAFF','VENDOR','ARTIST_PERFORMER','OTHER'];
+    if(!name||!Number.isInteger(places)||places<1||places>100||!categories.includes(category))return json({error:'Enter a guest, valid number of places and category.'},400);
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list(id,class_id,guest_name,places,category,notes,created_by,updated_by,last_operation_id)
+        SELECT ?,c.id,?,?,?,?,?,?,? FROM classes c WHERE c.id=? AND ?>0 AND ?<=c.capacity
+          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
+          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,operationId,classId,places,places),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,next_json,operation_id)
+        SELECT ?,?,?,'GUEST_ADDED',?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
+    ]);
+    if(Number(results?.[0]?.meta?.changes||0)!==1){
+      const completed=await completedOperation();
+      if(completed&&operationMatches(completed))return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+      if(completed)return json({error:'This operation reference conflicts with an earlier guest-list change.'},409);
+      return json({error:'Not enough class capacity remains for this guest allocation.'},409);
+    }
+  }else if(action==='UPDATE_GUEST'){
+    const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_guest_list WHERE id=? AND class_id=?`).bind(id,classId).first();
+    if(!row)return json({error:'Guest entry not found.'},404);
+    if(row.status!=='ACTIVE')return json({error:'Cancelled guest entries cannot be edited.'},409);
+    const name=clean(body.guest_name,140),places=Math.floor(Number(body.places)),category=clean(body.category,40),notes=clean(body.notes,600);
+    const categories=['GUEST','COMPLIMENTARY','INSTRUCTOR_STAFF','VENDOR','ARTIST_PERFORMER','OTHER'];
+    if(!name||!Number.isInteger(places)||places<1||places>100||!categories.includes(category))return json({error:'Enter a guest, valid number of places and category.'},400);
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET guest_name=?,places=?,category=?,notes=?,updated_by=?,last_operation_id=?,updated_at=CURRENT_TIMESTAMP
+        WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=? AND ?<=(SELECT c.capacity
+          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
+          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE' AND g.id<>?),0)
+          FROM classes c WHERE c.id=?)`).bind(name,places,category,notes||null,actor,operationId,id,classId,row.last_operation_id,places,id,classId),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
+        SELECT ?,?,?,'GUEST_UPDATED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:row.guest_name,places:row.places,category:row.category,notes:row.notes}),JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
+    ]);
+    if(Number(results?.[0]?.meta?.changes||0)!==1){
+      const completed=await completedOperation();
+      if(completed&&operationMatches(completed))return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+      return json({error:'The guest entry changed, or not enough class capacity remains. Refresh and try again.'},409);
+    }
+  }else if(action==='CANCEL_GUEST'){
+    const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_guest_list WHERE id=? AND class_id=?`).bind(id,classId).first();
+    if(!row)return json({error:'Guest entry not found.'},404);
+    if(row.status==='ACTIVE'){
+      const results=await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET status='CANCELLED',updated_by=?,last_operation_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=?`).bind(actor,operationId,id,classId,row.last_operation_id),
+        env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
+          SELECT ?,?,?,'GUEST_CANCELLED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({status:'ACTIVE',places:row.places}),JSON.stringify({status:'CANCELLED',places:row.places}),operationId,id,operationId)
+      ]);
+      if(Number(results?.[0]?.meta?.changes||0)!==1){
+        const completed=await completedOperation();
+        if(completed&&operationMatches(completed))return json({ok:true,idempotent:true,guest_list:await classGuestListState(env,classId)});
+        return json({error:'The guest entry changed. Refresh and try again.'},409);
+      }
+    }
+  }else return json({error:'Unsupported guest-list action.'},400);
+  return json({ok:true,guest_list:await classGuestListState(env,classId)});
+}
+
 async function adminClasses(request, env) {
   const check=requireAccessAdmin(request,env);
   if(check.response)return check.response;
@@ -4055,9 +4169,12 @@ async function adminClasses(request, env) {
         SELECT
           c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
           c.status,c.level,c.public_notes,c.poster_url,c.created_at,c.updated_at,
-          COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS sold,
+          COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) AS sold,
+          COALESCE((SELECT SUM(quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) AS held,
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
-          COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count
+          COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count,
+          COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) AS guest_places,
+          CASE WHEN EXISTS(SELECT 1 FROM anniversary_events e WHERE e.class_id=c.id AND e.active=1) THEN 'ANNIVERSARY' ELSE 'CLASS' END AS event_type
         FROM classes c
         ORDER BY c.starts_at
       `).all();
@@ -4067,7 +4184,7 @@ async function adminClasses(request, env) {
         ...row,
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
-          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0))
+          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
       })),200);
     } catch (error) {
       return json({
@@ -4129,10 +4246,11 @@ async function adminClasses(request, env) {
     const linked=await env.BOOKINGS_DB.prepare(`
       SELECT
         (SELECT COUNT(*) FROM bookings WHERE class_id=?) +
-        (SELECT COUNT(*) FROM waiting_list WHERE class_id=?) AS linked
-    `).bind(id,id).first();
+        (SELECT COUNT(*) FROM waiting_list WHERE class_id=?) +
+        (SELECT COUNT(*) FROM class_guest_list WHERE class_id=?) AS linked
+    `).bind(id,id,id).first();
     if(Number(linked?.linked||0)>0){
-      return json({error:'This class already has bookings or waiting-list entries. Cancel it instead of deleting it.'},409);
+      return json({error:'This class already has bookings, waiting-list or guest-list entries. Cancel it instead of deleting it.'},409);
     }
     await env.BOOKINGS_DB.prepare(`DELETE FROM classes WHERE id=?`).bind(id).run();
     return json({ok:true});
@@ -4182,12 +4300,12 @@ async function adminClasses(request, env) {
   if(request.method==='PATCH'){
     const existing=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(id).first();
     if(!existing)return json({error:'The class could not be found.'},404);
-    const occupied=await env.BOOKINGS_DB.prepare(`
-      SELECT COALESCE(SUM(quantity),0) total FROM bookings
-      WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))
-    `).bind(id).first();
+    const occupied=await env.BOOKINGS_DB.prepare(`SELECT
+      COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0)
+      +COALESCE((SELECT SUM(quantity) FROM booking_holds WHERE class_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
+      +COALESCE((SELECT SUM(places) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) total`).bind(id,id,id).first();
     if(Number(b.capacity)<Number(occupied?.total||0)){
-      return json({error:`Capacity cannot be lower than the ${occupied.total} places already booked.`},409);
+      return json({error:`Capacity cannot be lower than the ${occupied.total} occupied or held places.`},409);
     }
     await env.BOOKINGS_DB.prepare(`
       UPDATE classes
@@ -4285,15 +4403,23 @@ async function adminBootstrap(request, env) {
           COALESCE((
             SELECT SUM(b.quantity)
             FROM bookings b
-            WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')
+            WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
           ),0) AS sold,
+          COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0) AS held,
+          COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) AS guest_places,
           c.status,c.level,c.public_notes
         FROM classes c
         WHERE c.starts_at >= ? AND c.status IN ('open','draft')
         ORDER BY starts_at
         LIMIT 20
-      `).bind(now).all();
-      result.classes = Array.isArray(classesResult?.results) ? classesResult.results : [];
+      `).bind(now,now).all();
+      const anniversary=await anniversaryInventory(env).catch(()=>null);
+      result.classes = (Array.isArray(classesResult?.results) ? classesResult.results : []).map(row=>({
+        ...row,
+        spaces_remaining:anniversary?.event?.class_id===row.id
+          ? Number(anniversary.remaining||0)
+          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
+      }));
       result.summary.upcoming_classes = result.classes.filter(row => row.status === 'open').length;
     } catch (error) {
       result.warnings.push(`Upcoming classes: ${String(error?.message || error)}`);
@@ -6145,6 +6271,7 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/class-guests') return adminClassGuests(request, env);
       if (path === '/api/admin/anniversary') return adminAnniversary(request, env);
       if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
       if (path === '/api/admin/reviews') return adminReviews(request, env);
