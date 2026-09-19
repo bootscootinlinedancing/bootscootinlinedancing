@@ -357,7 +357,7 @@
     set('journeyRank',rank);
     set('journeyStamps',`${progress}/9`);
     const bookings=Array.isArray(data.bookings)?data.bookings:[];
-    const upcoming=bookings.filter(b=>b.starts_at && b.booking_open===true && !['CANCELLED','REFUNDED'].includes(String(b.status||'').toUpperCase())).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
+    const upcoming=bookings.filter(b=>b.starts_at && b.starts_in_future===true && !['CANCELLED','REFUNDED'].includes(String(b.status||'').toUpperCase())).sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
     if(upcoming[0]){
       set('journeyNextClass',upcoming[0].title||'Boot Scootin’ class');
       const d=new Date(upcoming[0].starts_at);

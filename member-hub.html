@@ -676,7 +676,7 @@ body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:
 
       const bookings=Array.isArray(data.bookings)?data.bookings:[];
       const future=bookings
-        .filter(b=>b.starts_at && b.booking_open===true && !['CANCELLED','REFUNDED'].includes(String(b.status||'').toUpperCase()))
+        .filter(b=>b.starts_at && b.starts_in_future===true && !['CANCELLED','REFUNDED'].includes(String(b.status||'').toUpperCase()))
         .sort((a,b)=>new Date(a.starts_at)-new Date(b.starts_at));
       const next=future[0];
       document.getElementById('memberNextBookingTitle').textContent=next?.title||'Nothing booked yet';

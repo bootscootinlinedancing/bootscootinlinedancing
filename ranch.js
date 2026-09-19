@@ -1321,7 +1321,7 @@ Type REFUNDED to continue.`);
   function renderCrmProfile(data){
     const c=data.customer||{},p=data.profile||{},tags=data.tags||[],notes=data.notes||[],bookings=data.bookings||[],timeline=data.timeline||[],attendance=data.attendance||[],loyaltyHistory=data.loyalty_history||[];
     const attended=Number(c.attended_classes||0), total=Number(c.total_bookings||0), attendanceRate=total?Math.round(attended/total*100):0;
-    const upcoming=bookings.filter(b=>['PAID','PENDING'].includes(b.status)&&b.starts_at&&b.booking_open===true);
+    const upcoming=bookings.filter(b=>['PAID','PENDING'].includes(b.status)&&b.starts_at&&b.starts_in_future===true);
     return `<div class="crm-profile" data-customer-key="${esc(c.customer_email)}">
       <header class="crm-profile-header"><div><p class="kicker red">Customer profile</p><h2>${esc(c.customer_name||'Customer')}</h2><p>${esc(c.customer_email)}${c.customer_phone?` · ${esc(c.customer_phone)}`:''}</p></div>${customerHealthBadge(c.health_status)}</header>
       <div class="crm-metrics"><article><span>Lifetime spend</span><strong>${money(c.lifetime_spend_pence)}</strong></article><article><span>Classes attended</span><strong>${attended}</strong></article><article><span>Attendance rate</span><strong>${attendanceRate}%</strong></article><article><span>Upcoming</span><strong>${upcoming.length}</strong></article><article><span>Loyalty balance</span><strong>${esc(c.loyalty_balance||0)} stamp${Number(c.loyalty_balance||0)===1?'':'s'}</strong></article><article><span>Customer since</span><strong>${esc(fmt(c.customer_since))}</strong></article></div>

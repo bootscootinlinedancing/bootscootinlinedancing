@@ -372,12 +372,16 @@ function classCalendarStatus(startsAt,now=new Date()){
     class_local_date:classLocalDate,
     is_past:Boolean(classLocalDate&&todayLocalDate&&classLocalDate<todayLocalDate),
     is_today:Boolean(classLocalDate&&classLocalDate===todayLocalDate),
-    booking_open:Number.isFinite(startTime)&&startTime>now.getTime()
+    starts_in_future:Number.isFinite(startTime)&&startTime>now.getTime()
   };
 }
 
-function withClassCalendarStatus(row,now=new Date()){
-  return {...row,...classCalendarStatus(row?.starts_at,now)};
+function withClassCalendarStatus(row,now=new Date(),includeAvailability=false){
+  const timing=classCalendarStatus(row?.starts_at,now);
+  if(!includeAvailability)return {...row,...timing};
+  const classOpen=row?.status==='open'&&timing.starts_in_future;
+  const full=Number(row?.spaces_remaining||0)<1;
+  return {...row,...timing,booking_open:classOpen&&!full,waiting_list_open:classOpen&&full};
 }
 
 function londonTodayStartIso(now=new Date()){
@@ -1562,9 +1566,9 @@ async function publicClasses(env) {
     return json(results.map(row => {
       if(anniversary&&row.id===anniversary.event.class_id){
         const price=anniversary.current_release?.price_pence??row.price_pence;
-        return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant);
+        return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant,true);
       }
-      return withClassCalendarStatus({ ...row, price: row.price_pence / 100 },currentInstant);
+      return withClassCalendarStatus({ ...row, price: row.price_pence / 100 },currentInstant,true);
     }));
   } catch (error) {
     return json({ error: 'The booking database could not be prepared.', detail: error.message }, 500);
@@ -4212,7 +4216,7 @@ async function adminClasses(request, env) {
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
           : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
-      },currentInstant)),200);
+      },currentInstant,true)),200);
     } catch (error) {
       return json({
         error:'Classes could not be loaded from the booking database.',
@@ -4448,7 +4452,7 @@ async function adminBootstrap(request, env) {
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
           : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
-      },currentInstant));
+      },currentInstant,true));
       result.summary.upcoming_classes = result.classes.filter(row => row.status === 'open').length;
     } catch (error) {
       result.warnings.push(`Upcoming classes: ${String(error?.message || error)}`);

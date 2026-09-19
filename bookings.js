@@ -45,7 +45,7 @@
     const rows=classes.filter(c=>venue==='all'||venueKey(c.venue)===venue);
     grid.innerHTML=rows.length?rows.map(c=>{
       const full=Number(c.spaces_remaining)<1;
-      const closed=c.booking_open===false;
+      const closed=c.booking_open!==true&&c.waiting_list_open!==true;
       const nearly=Number(c.spaces_remaining)>0&&Number(c.spaces_remaining)<5;
       return `<article class="class-card" id="event-${esc(c.id)}">
         ${c.poster_url?`<div class="class-poster"><img src="${esc(c.poster_url)}" alt="${esc(c.title)} poster" loading="lazy"></div>`:''}
@@ -63,7 +63,7 @@
 
   function openEventDetails(c){
     const d=document.getElementById('eventDetailsDialog'),box=document.getElementById('eventDetailsContent'); if(!d||!box)return;
-    const full=Number(c.spaces_remaining)<1; const closed=c.booking_open===false; const url=eventUrl(c);
+    const full=Number(c.spaces_remaining)<1; const closed=c.booking_open!==true&&c.waiting_list_open!==true; const url=eventUrl(c);
     const availability=closed?'Booking closed':c.event_type==='ANNIVERSARY'?(full?'Event full':`${esc(c.spaces_remaining)} tickets available in the current release`):(full?'Class full':`${esc(c.spaces_remaining)} spaces left`);
     const overall=c.event_type==='ANNIVERSARY'?(c.releases||[]).find(release=>release.allocation==null)?.remaining:null;
     const schedule=`${dayFmt(c.starts_at)} · ${timeFmt(c.starts_at)}${c.ends_at?`–${timeFmt(c.ends_at)}`:''}`;
@@ -96,7 +96,7 @@
     if(detail){const c=classes.find(item=>item.id===detail.dataset.id);if(c)openEventDetails(c);return;}
     const button=event.target.closest('.book-class');if(!button)return;
     const c=classes.find(item=>item.id===button.dataset.id);if(!c)return;
-    if(c.booking_open===false)return;
+    if(c.booking_open!==true&&c.waiting_list_open!==true)return;
     selectedClass=c;appliedPromo=null;
     const waitlist=button.dataset.mode==='waitlist';
     document.getElementById('classId').value=c.id;

@@ -29,7 +29,7 @@
   const renderCard = classItem => {
     const remaining = Number(classItem.spaces_remaining || 0);
     const full = remaining < 1;
-    const closed = classItem.booking_open === false;
+    const closed = classItem.booking_open !== true && classItem.waiting_list_open !== true;
     const bookingUrl = 'bookings.html';
     const availability = closed ? 'Booking closed' : full ? 'Class full · waiting list available' : `${remaining} ${remaining === 1 ? 'space' : 'spaces'} left`;
     return `<article class="home-class-card">
