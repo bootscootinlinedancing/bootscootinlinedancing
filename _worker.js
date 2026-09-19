@@ -5411,7 +5411,6 @@ async function adminCustomers(request, env) {
 
   if (request.method !== 'GET') return json({error:'Method not allowed.'},405);
 
-  const todayStart=londonTodayStartIso();
   const customerMetricsSql = `
     SELECT
       cu.id customer_id,
@@ -5432,7 +5431,7 @@ async function adminCustomers(request, env) {
       CASE WHEN cu.marketing_consent=1 OR COALESCE((SELECT MAX(b.marketing_consent) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email)),0)=1 THEN 1 ELSE 0 END marketing_consent,
       cu.created_at customer_since,
       COALESCE((SELECT MAX(b.created_at) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email)),cu.created_at) last_booking_at,
-      (SELECT COUNT(*) FROM bookings b JOIN classes cl ON cl.id=b.class_id WHERE lower(b.customer_email)=lower(cu.email) AND b.status IN ('PAID','PENDING') AND cl.starts_at>='${todayStart}') upcoming_bookings
+      (SELECT COUNT(*) FROM bookings b JOIN classes cl ON cl.id=b.class_id WHERE lower(b.customer_email)=lower(cu.email) AND b.status IN ('PAID','PENDING') AND cl.starts_at>=CURRENT_TIMESTAMP) upcoming_bookings
     FROM customers cu
   `;
 
