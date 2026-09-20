@@ -76,6 +76,45 @@ function requireAdmin(request, env) {
 
 const MEMBER_COOKIE = 'bs_member_session';
 
+const normalizedCustomerEmail = value => String(value||'').trim().toLowerCase();
+
+async function deterministicCustomerId(email){
+  return `customer-${(await memberSha256Hex(normalizedCustomerEmail(email))).slice(0,32)}`;
+}
+
+async function resolveCustomerIdentity(env,{email,name='',phone='',marketingConsent=0,source='BOOKING',verified=false}){
+  const normalized=normalizedCustomerEmail(email);
+  if(!emailOk(normalized))throw new Error('CUSTOMER_EMAIL_INVALID');
+  const identity=await env.BOOKINGS_DB.prepare(`
+    SELECT i.customer_id,c.name,c.email,c.phone
+    FROM customer_email_identities i JOIN customers c ON c.id=i.customer_id
+    WHERE i.normalized_email=? AND i.status='ACTIVE' LIMIT 1
+  `).bind(normalized).first();
+  if(identity)return {...identity,id:identity.customer_id,normalized_email:normalized};
+
+  const matches=await env.BOOKINGS_DB.prepare(`SELECT id,name,email,phone FROM customers WHERE lower(trim(email))=? ORDER BY id LIMIT 2`).bind(normalized).all();
+  if((matches.results||[]).length>1){const error=new Error('CUSTOMER_IDENTITY_AMBIGUOUS');error.code='CUSTOMER_IDENTITY_AMBIGUOUS';throw error;}
+  let customer=(matches.results||[])[0]||null;
+  if(!customer){
+    const id=await deterministicCustomerId(normalized);
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO customers(id,name,email,phone,marketing_consent) VALUES(?,?,?,?,?)`)
+      .bind(id,clean(name,120)||'Customer',normalized,clean(phone,30)||null,marketingConsent?1:0).run();
+    customer=await env.BOOKINGS_DB.prepare(`SELECT id,name,email,phone FROM customers WHERE id=? OR lower(trim(email))=? ORDER BY CASE WHEN id=? THEN 0 ELSE 1 END LIMIT 1`).bind(id,normalized,id).first();
+  }
+  const identityId=crypto.randomUUID();
+  const identityInsert=await env.BOOKINGS_DB.prepare(`
+    INSERT OR IGNORE INTO customer_email_identities(id,customer_id,normalized_email,status,verified_at,source)
+    VALUES(?,?,?,'ACTIVE',CASE WHEN ?=1 THEN CURRENT_TIMESTAMP ELSE NULL END,?)
+  `).bind(identityId,customer.id,normalized,verified?1:0,source).run();
+  const owner=await env.BOOKINGS_DB.prepare(`SELECT customer_id FROM customer_email_identities WHERE normalized_email=? AND status='ACTIVE'`).bind(normalized).first();
+  if(!owner||owner.customer_id!==customer.id){const error=new Error('CUSTOMER_IDENTITY_CONFLICT');error.code='CUSTOMER_IDENTITY_CONFLICT';throw error;}
+  if(Number(identityInsert?.meta?.changes||0)>0){
+    await env.BOOKINGS_DB.prepare(`INSERT INTO customer_identity_audit(id,customer_id,action,normalized_email,actor,reason,metadata_json) VALUES(?,?,'IDENTITY_LINKED',?,?,?,?)`)
+      .bind(crypto.randomUUID(),customer.id,normalized,source,source==='BOOKING'?'Exact normalized email used for customer booking identity.':'Exact normalized email used for verified member registration.',JSON.stringify({verified:Boolean(verified)})).run();
+  }
+  return {...customer,customer_id:customer.id,normalized_email:normalized};
+}
+
 function bytesToHex(bytes){
   return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
 }
@@ -255,6 +294,15 @@ async function uniqueAttendanceCountForEmail(env,email,since=null){
     :await statement.bind(normalized).first();
   return Math.max(0,Number(row?.total||0));
 }
+async function uniqueAttendanceCountForCustomer(env,customerId,email){
+  const normalized=normalizedCustomerEmail(email);
+  const row=await env.BOOKINGS_DB.prepare(`
+    SELECT COUNT(DISTINCT a.booking_id) total
+    FROM attendance a JOIN bookings b ON b.id=a.booking_id
+    WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?)
+  `).bind(customerId,normalized).first();
+  return Math.max(0,Number(row?.total||0));
+}
 async function attendanceForClass(env,classId){
   const result=await env.BOOKINGS_DB.prepare(`
     SELECT a.id,a.booking_id,a.checked_in_at,a.recorded_at,a.checked_in_by
@@ -300,8 +348,8 @@ async function attendanceLoyaltyCredit(env,{booking,attendance,createdBy,reason=
   `).bind(booking.id).first();
   if(Number(attendanceBalance?.total||0)>0)return {credited:false,reconciled_to:'ATTENDANCE_ALREADY_CREDITED'};
   const originalCredit=await env.BOOKINGS_DB.prepare(`SELECT id FROM loyalty_transactions WHERE source_type='ATTENDANCE' AND source_id=? LIMIT 1`).bind(booking.id).first();
-  const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(booking.customer_email).first();
   const customerId=booking.stable_customer_id||booking.customer_id||(await env.BOOKINGS_DB.prepare(`SELECT id FROM customers WHERE lower(email)=lower(?)`).bind(booking.customer_email).first())?.id||null;
+  const member=customerId?await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE customer_id=?`).bind(customerId).first():null;
   const sourceType=originalCredit?'ATTENDANCE_RESTORED':'ATTENDANCE';
   const sourceId=originalCredit?attendance.id:booking.id;
   const result=await env.BOOKINGS_DB.prepare(`
@@ -2431,6 +2479,16 @@ async function createClassReservation(request, env) {
     }, 201);
   }
 
+  let customer;
+  try{
+    customer=await resolveCustomerIdentity(env,{email,name,phone,marketingConsent:Boolean(body.marketing_consent),source:'BOOKING'});
+  }catch(error){
+    if(['CUSTOMER_IDENTITY_AMBIGUOUS','CUSTOMER_IDENTITY_CONFLICT'].includes(error?.code||error?.message)){
+      return json({error:'This email matches conflicting customer records. Please contact Boot Scootin’ before booking so we can resolve it safely.'},409);
+    }
+    throw error;
+  }
+
   const unitPrice = anniversaryRelease ? Number(anniversaryRelease.price_pence) : Number(classRow.price_pence || 0);
   const originalAmount = unitPrice * quantity;
   let promotion = null;
@@ -2486,12 +2544,12 @@ async function createClassReservation(request, env) {
   try {
     await env.BOOKINGS_DB.prepare(
       `INSERT INTO bookings(
-        id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,
+        id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,customer_token,
         terms_accepted_at,marketing_consent,retention_delete_after,anniversary_release_id
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?)`
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?)`
     ).bind(
-      id, reference, classId, holdId, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
+      id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken, customerToken,
       Number(Boolean(body.marketing_consent)),anniversaryRelease?.id||null
     ).run();
@@ -2499,12 +2557,12 @@ async function createClassReservation(request, env) {
     if(anniversaryRelease)throw error;
     await env.BOOKINGS_DB.prepare(
       `INSERT INTO bookings(
-        id,reference,class_id,hold_id,customer_name,customer_email,customer_phone,
+        id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,
         terms_accepted_at,marketing_consent,retention_delete_after
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
     ).bind(
-      id, reference, classId, holdId, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
+      id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken,
       Number(Boolean(body.marketing_consent))
     ).run();
@@ -3057,19 +3115,11 @@ async function memberRegister(request,env){
     if(existing?.verified_at) return json({error:'An account already exists for this email. Please log in instead, or use Forgotten your password.'},409);
 
     stage='LOOKUP_CUSTOMER';
-    let customer=await env.BOOKINGS_DB.prepare(`SELECT * FROM customers WHERE lower(email)=lower(?)`).bind(email).first();
-    if(!customer){
-      customer={id:crypto.randomUUID()};
-      await env.BOOKINGS_DB.prepare(`INSERT INTO customers(id,name,email,phone,marketing_consent) VALUES(?,?,?,?,?)`)
-        .bind(customer.id,name,email,phone,marketing).run();
-    }else{
-      await env.BOOKINGS_DB.prepare(`UPDATE customers
-        SET name=?,
-            phone=CASE WHEN ?<>'' THEN ? ELSE phone END,
-            marketing_consent=CASE WHEN marketing_consent=1 OR ?=1 THEN 1 ELSE 0 END,
-            updated_at=CURRENT_TIMESTAMP
-        WHERE id=?`)
-        .bind(name,phone,phone,marketing,customer.id).run();
+    let customer;
+    try{customer=await resolveCustomerIdentity(env,{email,name,phone,marketingConsent:marketing,source:'MEMBER_VERIFICATION'});}
+    catch(error){
+      if(['CUSTOMER_IDENTITY_AMBIGUOUS','CUSTOMER_IDENTITY_CONFLICT'].includes(error?.code||error?.message))return json({error:'This email matches conflicting customer records. We cannot safely link an account automatically; please contact Boot Scootin’.',code:'MEMBER_IDENTITY_REVIEW_REQUIRED'},409);
+      throw error;
     }
 
     stage='PASSWORD_SALT';
@@ -3093,19 +3143,6 @@ async function memberRegister(request,env){
     await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,trail_identity=?,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`)
       .bind(first,trailIdentity,customer.id).run();
 
-    // A genuinely new account always starts at zero. Historical customer activity is not
-    // converted into member progress, points, streaks or achievements.
-    if(!existing){
-      const profile=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_profiles WHERE customer_id=?`).bind(customer.id).first();
-      await env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET trail_rank='First Steps',boot_points=0,classes_attended=0,current_streak=0,updated_at=CURRENT_TIMESTAMP WHERE customer_id=?`).bind(customer.id).run().catch(()=>{});
-      if(profile?.id){
-        await env.BOOKINGS_DB.prepare(`DELETE FROM points_ledger WHERE member_id=?`).bind(profile.id).run().catch(()=>{});
-        await env.BOOKINGS_DB.prepare(`DELETE FROM member_achievements WHERE member_id=?`).bind(profile.id).run().catch(()=>{});
-      }
-    }
-
-    // Future qualifying payments/attendance build progress from the account creation point.
-
     stage='VERIFY_TOKEN';
     const token=await createMemberEmailToken(env,memberId,'VERIFY',24);
     const verifyUrl=`${new URL(request.url).origin}/member-hub.html?verify=${encodeURIComponent(token)}`;
@@ -3124,8 +3161,8 @@ async function memberRegister(request,env){
     // HQ copy: every new member registration is surfaced to Nora as well.
     const adminEmail=clean(env.ADMIN_EMAIL || env.MEMBERS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
     if(emailOk(adminEmail)){
-      const adminText=`New Boot Scootin’ member registration.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nTrail identity: ${trailIdentity}\n\nThe new account starts with 0 points, 0 classes, 0 dances, 0 streak and 0 rewards.`;
-      const adminHtml=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New member registration</h2><p><strong>${name}</strong><br>${email}<br>${phone||'No phone supplied'}</p><p>Starting member progress: <strong>zero</strong>.</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html">Open HQ</a></p></div>`;
+      const adminText=`New Boot Scootin’ member registration.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nTrail identity: ${trailIdentity}\n\nAny safely linked customer history and loyalty will remain attached after verification.`;
+      const adminHtml=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New member registration</h2><p><strong>${name}</strong><br>${email}<br>${phone||'No phone supplied'}</p><p>Any safely linked customer history and loyalty remains attached after verification.</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html">Open HQ</a></p></div>`;
       await sendTransactionalEmail(env,adminEmail,`New member registration — ${name}`,adminHtml,adminText,'members').catch(()=>null);
     }
 
@@ -3155,6 +3192,11 @@ async function memberVerify(request,env){
     env.BOOKINGS_DB.prepare(`UPDATE member_email_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.id),
     env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET verified_at=COALESCE(verified_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.member_id)
   ]);
+  await env.BOOKINGS_DB.prepare(`
+    UPDATE customer_email_identities SET verified_at=COALESCE(verified_at,CURRENT_TIMESTAMP)
+    WHERE normalized_email=(SELECT lower(trim(email)) FROM member_accounts WHERE id=?)
+      AND customer_id=(SELECT customer_id FROM member_accounts WHERE id=?) AND status='ACTIVE'
+  `).bind(row.member_id,row.member_id).run().catch(()=>{});
   return json({ok:true,message:'Email verified. You can now log in.'});
 }
 async function memberLogin(request,env){
@@ -3222,8 +3264,9 @@ async function memberMe(request,env){
   const bookings=await env.BOOKINGS_DB.prepare(`
     SELECT b.reference,b.status,b.amount_pence,b.paid_at,c.title,c.starts_at,c.venue
     FROM bookings b LEFT JOIN classes c ON c.id=b.class_id
-    WHERE lower(b.customer_email)=lower(?) ORDER BY b.created_at DESC LIMIT 12
-  `).bind(session.email).all();
+    WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?)
+    ORDER BY b.created_at DESC LIMIT 12
+  `).bind(session.customer_id,normalizedCustomerEmail(session.email)).all();
   const orders=await env.BOOKINGS_DB.prepare(`
     SELECT reference,design,fit,size,quantity,amount_pence,status,fulfilment_method,fulfilment_status,created_at
     FROM merch_orders WHERE lower(customer_email)=lower(?) ORDER BY created_at DESC LIMIT 12
@@ -3231,9 +3274,7 @@ async function memberMe(request,env){
   const crm=await env.BOOKINGS_DB.prepare(`SELECT birthday FROM customer_crm_profiles WHERE lower(customer_key)=lower(?)`).bind(session.email).first().catch(()=>null);
 
   // Member totals are derived from genuine live activity, never preview/demo figures.
-  const classesAttended=await uniqueAttendanceCountForEmail(
-    env,session.email,session.member_created_at||'1970-01-01T00:00:00Z'
-  ).catch(()=>0);
+  const classesAttended=await uniqueAttendanceCountForCustomer(env,session.customer_id,session.email).catch(()=>0);
   const bootPoints=classesAttended*10;
   const rank=classesAttended>=100?'Boot Scootin’ Legend':
              classesAttended>=75?'Dance Floor Favourite':
@@ -3269,22 +3310,14 @@ async function memberProfileUpdate(request,env){
   if(!name||!emailOk(email)) return json({error:'Enter your name and a valid email address.'},400);
   if(birthday && !dateOk(birthday)) return json({error:'Enter a valid birthday.'},400);
   if(email!==String(session.email||'').toLowerCase()){
-    const existing=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?) AND id<>?`).bind(email,session.member_id).first();
-    if(existing) return json({error:'That email address is already linked to another member account.'},409);
+    return json({error:'Email changes require verified identity confirmation. Contact Boot Scootin’ to change your login email safely; historical booking details will remain unchanged.'},409);
   }
-  const oldEmail=String(session.email||'').toLowerCase();
   await env.BOOKINGS_DB.batch([
     env.BOOKINGS_DB.prepare(`UPDATE customers SET name=?,email=?,phone=?,marketing_consent=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(name,email,phone,marketing,session.customer_id),
     env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET email=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(email,session.member_id),
     env.BOOKINGS_DB.prepare(`UPDATE member_profiles SET display_name=?,birthday_visible=?,trail_identity=? WHERE customer_id=?`).bind(name.split(/\s+/)[0]||name,birthdayVisible,trailIdentity,session.customer_id),
-    env.BOOKINGS_DB.prepare(`INSERT INTO customer_crm_profiles(customer_key,birthday) VALUES(?,?) ON CONFLICT(customer_key) DO UPDATE SET birthday=excluded.birthday,updated_at=CURRENT_TIMESTAMP`).bind(email,birthday||null),
-    env.BOOKINGS_DB.prepare(`UPDATE bookings SET customer_name=?,customer_email=?,customer_phone=?,marketing_consent=? WHERE lower(customer_email)=lower(?)`).bind(name,email,phone,marketing,oldEmail),
-    env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET customer_name=?,customer_email=? WHERE lower(customer_email)=lower(?)`).bind(name,email,oldEmail)
+    env.BOOKINGS_DB.prepare(`INSERT INTO customer_crm_profiles(customer_key,birthday) VALUES(?,?) ON CONFLICT(customer_key) DO UPDATE SET birthday=excluded.birthday,updated_at=CURRENT_TIMESTAMP`).bind(email,birthday||null)
   ]);
-  if(oldEmail!==email){
-    await env.BOOKINGS_DB.prepare(`DELETE FROM customer_crm_profiles WHERE lower(customer_key)=lower(?) AND lower(customer_key)<>lower(?)`).bind(oldEmail,email).run().catch(()=>{});
-    await env.BOOKINGS_DB.prepare(`UPDATE loyalty_stamp_ledger SET customer_email=? WHERE lower(customer_email)=lower(?)`).bind(email,oldEmail).run().catch(()=>{});
-  }
   return json({ok:true,message:'Your member profile has been updated.'});
 }
 
@@ -5422,11 +5455,14 @@ async function adminCustomers(request, env) {
       cu.name customer_name,
       lower(cu.email) customer_email,
       NULLIF(cu.phone,'') customer_phone,
-      (SELECT COUNT(*) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email)) total_bookings,
-      (SELECT COUNT(*) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='PAID') paid_bookings,
+      CASE WHEN EXISTS(SELECT 1 FROM member_accounts ma WHERE ma.customer_id=cu.id AND ma.verified_at IS NOT NULL) THEN 1 ELSE 0 END is_member,
+      (SELECT COUNT(*) FROM bookings b WHERE b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) total_bookings,
+      (SELECT COUNT(*) FROM bookings b WHERE (b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) AND b.status='PAID') paid_bookings,
       (SELECT COUNT(*) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='CANCELLED') cancelled_bookings,
       (SELECT COUNT(*) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='REFUNDED') refunded_bookings,
-      (SELECT COUNT(DISTINCT a.booking_id) FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE lower(b.customer_email)=lower(cu.email)) attended_classes,
+      (SELECT COUNT(DISTINCT a.booking_id) FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) attended_classes,
+      (SELECT MAX(a.checked_in_at) FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) last_attendance,
+      CASE WHEN EXISTS(SELECT 1 FROM member_passes mp WHERE mp.customer_id=cu.id AND mp.status='ACTIVE' AND mp.valid_through>=date('now') AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0) THEN 1 ELSE 0 END has_active_class_pass,
       COALESCE((SELECT SUM(l.stamp_delta) FROM loyalty_stamp_ledger l WHERE lower(l.customer_email)=lower(cu.email)),0)
         + COALESCE((SELECT SUM(t.amount) FROM loyalty_transactions t WHERE t.customer_id=cu.id OR (t.customer_id IS NULL AND lower(t.customer_email)=lower(cu.email))),0)
         + COALESCE((SELECT p.loyalty_adjustment FROM customer_crm_profiles p WHERE lower(p.customer_key)=lower(cu.email)),0) loyalty_balance,
@@ -5435,7 +5471,7 @@ async function adminCustomers(request, env) {
       CASE WHEN cu.marketing_consent=1 OR COALESCE((SELECT MAX(b.marketing_consent) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email)),0)=1 THEN 1 ELSE 0 END marketing_consent,
       cu.created_at customer_since,
       COALESCE((SELECT MAX(b.created_at) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email)),cu.created_at) last_booking_at,
-      (SELECT COUNT(*) FROM bookings b JOIN classes cl ON cl.id=b.class_id WHERE lower(b.customer_email)=lower(cu.email) AND b.status IN ('PAID','PENDING') AND cl.starts_at>=CURRENT_TIMESTAMP) upcoming_bookings
+      (SELECT COUNT(*) FROM bookings b JOIN classes cl ON cl.id=b.class_id WHERE (b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) AND b.status IN ('PAID','PENDING') AND cl.starts_at>=CURRENT_TIMESTAMP) upcoming_bookings
     FROM customers cu
   `;
 
