@@ -3111,7 +3111,7 @@ async function memberRegister(request,env){
     if(!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
 
     stage='LOOKUP_ACCOUNT';
-    const existing=await env.BOOKINGS_DB.prepare(`SELECT id,verified_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT id,customer_id,verified_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
     if(existing?.verified_at) return json({error:'An account already exists for this email. Please log in instead, or use Forgotten your password.'},409);
 
     stage='LOOKUP_CUSTOMER';
@@ -3120,6 +3120,13 @@ async function memberRegister(request,env){
     catch(error){
       if(['CUSTOMER_IDENTITY_AMBIGUOUS','CUSTOMER_IDENTITY_CONFLICT'].includes(error?.code||error?.message))return json({error:'This email matches conflicting customer records. We cannot safely link an account automatically; please contact Boot Scootin’.',code:'MEMBER_IDENTITY_REVIEW_REQUIRED'},409);
       throw error;
+    }
+    if(existing?.customer_id&&existing.customer_id!==customer.id){
+      return json({error:'This account and customer identity do not agree. We cannot relink them automatically; please contact Boot Scootin’.',code:'MEMBER_IDENTITY_REVIEW_REQUIRED'},409);
+    }
+    const customerAccount=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE customer_id=? LIMIT 1`).bind(customer.id).first();
+    if(customerAccount&&customerAccount.id!==existing?.id){
+      return json({error:'This customer is already linked to another member account. Please contact Boot Scootin’ rather than creating a second login.',code:'MEMBER_IDENTITY_REVIEW_REQUIRED'},409);
     }
 
     stage='PASSWORD_SALT';
