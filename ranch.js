@@ -603,12 +603,11 @@
   }
   function filteredClasses(){
     const filter=$('#ranchClassFilter')?.value||'upcoming';
-    const now=Date.now();
     if(filter==='all')return state.classes;
-    if(filter==='past')return state.classes.filter(c=>new Date(c.starts_at).getTime()<now);
+    if(filter==='past')return state.classes.filter(c=>c.is_past===true);
     if(filter==='draft')return state.classes.filter(c=>c.status==='draft');
     if(filter==='closed')return state.classes.filter(c=>['closed','cancelled'].includes(c.status));
-    return state.classes.filter(c=>new Date(c.starts_at).getTime()>=now && !['cancelled'].includes(c.status));
+    return state.classes.filter(c=>c.is_past!==true && !['cancelled'].includes(c.status));
   }
   function renderClasses(){
     const box=$('#ranchClasses');if(!box)return;
@@ -1322,7 +1321,7 @@ Type REFUNDED to continue.`);
   function renderCrmProfile(data){
     const c=data.customer||{},p=data.profile||{},tags=data.tags||[],notes=data.notes||[],bookings=data.bookings||[],timeline=data.timeline||[],attendance=data.attendance||[],loyaltyHistory=data.loyalty_history||[];
     const attended=Number(c.attended_classes||0), total=Number(c.total_bookings||0), attendanceRate=total?Math.round(attended/total*100):0;
-    const upcoming=bookings.filter(b=>['PAID','PENDING'].includes(b.status)&&b.starts_at&&new Date(b.starts_at)>new Date());
+    const upcoming=bookings.filter(b=>['PAID','PENDING'].includes(b.status)&&b.starts_at&&b.starts_in_future===true);
     return `<div class="crm-profile" data-customer-key="${esc(c.customer_email)}">
       <header class="crm-profile-header"><div><p class="kicker red">Customer profile</p><h2>${esc(c.customer_name||'Customer')}</h2><p>${esc(c.customer_email)}${c.customer_phone?` · ${esc(c.customer_phone)}`:''}</p></div>${customerHealthBadge(c.health_status)}</header>
       <div class="crm-metrics"><article><span>Lifetime spend</span><strong>${money(c.lifetime_spend_pence)}</strong></article><article><span>Classes attended</span><strong>${attended}</strong></article><article><span>Attendance rate</span><strong>${attendanceRate}%</strong></article><article><span>Upcoming</span><strong>${upcoming.length}</strong></article><article><span>Loyalty balance</span><strong>${esc(c.loyalty_balance||0)} stamp${Number(c.loyalty_balance||0)===1?'':'s'}</strong></article><article><span>Customer since</span><strong>${esc(fmt(c.customer_since))}</strong></article></div>
@@ -1334,7 +1333,7 @@ Type REFUNDED to continue.`);
         <div class="crm-actions"><button class="button" type="button" id="saveCrmOverview">Save profile</button><button class="button secondary" type="button" data-crm-email>Compose email</button></div>
       </section>
       <section class="crm-tab-panel" data-crm-panel="activity"><div class="crm-timeline">${timeline.length?timeline.map(t=>`<article><span>${esc(t.type)}</span><div><strong>${esc(t.title)}</strong><p>${esc(t.detail||'')}</p><small>${esc(fmt(t.created_at))}</small></div></article>`).join(''):emptyPanel('No activity yet.')}</div></section>
-      <section class="crm-tab-panel" data-crm-panel="bookings"><div class="crm-booking-list">${bookings.length?bookings.map(b=>{const historical=b.starts_at&&new Date(b.starts_at)<new Date(),eligible=historical&&['PAID','PENDING'].includes(b.status);return `<article><div><strong>${esc(b.class_title||'Class')}</strong><p>${esc(fmt(b.starts_at))} · ${esc(b.venue||'')}</p>${b.attended?`<small>Attendance date: ${esc(fmt(b.checked_in_at||b.starts_at))}</small>`:''}</div><div><b>${esc(b.status)}</b><span>${money(b.amount_pence)}</span>${b.attended?`<em>Attended</em><button type="button" class="button secondary compact" data-undo-retrospective-attendance="${esc(b.id)}">Undo attendance</button>`:eligible?`<button type="button" class="button compact" data-retrospective-attendance="${esc(b.id)}">Mark attended</button>`:''}</div></article>`;}).join(''):emptyPanel('No bookings found.')}</div></section>
+      <section class="crm-tab-panel" data-crm-panel="bookings"><div class="crm-booking-list">${bookings.length?bookings.map(b=>{const historical=b.is_past===true,eligible=historical&&['PAID','PENDING'].includes(b.status);return `<article><div><strong>${esc(b.class_title||'Class')}</strong><p>${esc(fmt(b.starts_at))} · ${esc(b.venue||'')}</p>${b.attended?`<small>Attendance date: ${esc(fmt(b.checked_in_at||b.starts_at))}</small>`:''}</div><div><b>${esc(b.status)}</b><span>${money(b.amount_pence)}</span>${b.attended?`<em>Attended</em><button type="button" class="button secondary compact" data-undo-retrospective-attendance="${esc(b.id)}">Undo attendance</button>`:eligible?`<button type="button" class="button compact" data-retrospective-attendance="${esc(b.id)}">Mark attended</button>`:''}</div></article>`;}).join(''):emptyPanel('No bookings found.')}</div></section>
       <section class="crm-tab-panel" data-crm-panel="loyalty">
         <div class="crm-two-col"><article class="crm-box"><h3>Historical attendance</h3><div class="crm-attendance-history">${attendance.length?attendance.map(a=>`<article><strong>${esc(a.class_title||'Class')}</strong><p>${esc(fmt(a.checked_in_at||a.starts_at))} · ${esc(a.venue||'')}</p><small>Recorded in HQ ${esc(fmt(a.recorded_at||a.checked_in_at))}</small></article>`).join(''):emptyPanel('No attendance recorded yet.')}</div></article>
         <article class="crm-box"><h3>Manual Stamp Me migration</h3><p>Use this only where no website booking represents the earned stamps. Every entry is permanent and audited.</p><form id="crmLoyaltyTransactionForm"><label>Stamp adjustment<input name="amount" type="number" min="-100" max="100" step="1" required placeholder="e.g. 3 or -1"></label><label>Reason<textarea name="reason" rows="3" required placeholder="Migrated from Stamp Me"></textarea></label><button class="button" type="submit">Record immutable adjustment</button></form>${Number(p.loyalty_adjustment||0)!==0?`<p class="crm-legacy-adjustment"><strong>Legacy profile adjustment:</strong> ${Number(p.loyalty_adjustment)>0?'+':''}${esc(p.loyalty_adjustment)}. This existing read-only value is already included in the displayed balance; do not enter it again as a Stamp Me migration.</p>`:''}</article></div>

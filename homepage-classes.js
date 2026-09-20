@@ -29,8 +29,9 @@
   const renderCard = classItem => {
     const remaining = Number(classItem.spaces_remaining || 0);
     const full = remaining < 1;
+    const closed = classItem.booking_open !== true && classItem.waiting_list_open !== true;
     const bookingUrl = 'bookings.html';
-    const availability = full ? 'Class full · waiting list available' : `${remaining} ${remaining === 1 ? 'space' : 'spaces'} left`;
+    const availability = closed ? 'Booking closed' : full ? 'Class full · waiting list available' : `${remaining} ${remaining === 1 ? 'space' : 'spaces'} left`;
     return `<article class="home-class-card">
       <img alt="${escapeHtml(classItem.title)}" src="${escapeHtml(safePoster(classItem.poster_url))}" loading="lazy"/>
       <div>
@@ -38,7 +39,7 @@
         <h3>${escapeHtml(classItem.title)}</h3>
         <p>${escapeHtml(venueLabel(classItem.venue))}</p>
         <p>${escapeHtml(timeLabel(classItem.starts_at))} · ${escapeHtml(money(classItem.price))} · ${escapeHtml(availability)}</p>
-        <a href="${escapeHtml(bookingUrl)}">${full ? 'Join waiting list' : 'Book now'}</a>
+        <a href="${escapeHtml(bookingUrl)}">${closed ? 'View class' : full ? 'Join waiting list' : 'Book now'}</a>
       </div>
     </article>`;
   };
@@ -55,7 +56,7 @@
       return Array.isArray(data) ? data : [];
     })
     .then(classes => classes
-      .filter(classItem => classItem && classItem.id && classItem.starts_at && new Date(classItem.starts_at).getTime() >= Date.now())
+      .filter(classItem => classItem && classItem.id && classItem.starts_at && classItem.is_past !== true)
       .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
       .slice(0, 2))
     .then(classes => {
