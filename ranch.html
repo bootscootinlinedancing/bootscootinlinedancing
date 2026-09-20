@@ -404,6 +404,12 @@
             <label>Search
               <input id="customerAdminSearch" type="search" placeholder="Name or email">
             </label>
+            <label>Customers
+              <select id="customerAdminFilter"><option value="all">All Customers</option><option value="members">Members</option><option value="no-account">No Account</option><option value="attended">Attended</option><option value="never-attended">Never Attended</option></select>
+            </label>
+            <label>Sort
+              <select id="customerAdminSort"><option value="recent-attendance">Most recently attended</option><option value="activity">Upcoming activity</option><option value="attendance">Most attendance</option><option value="bookings">Most bookings</option><option value="alphabetical">Alphabetical</option></select>
+            </label>
             <button class="button secondary compact" id="exportCustomersCsv" type="button">Export CSV</button>
           </div>
           <div id="ranchCustomers">Loading…</div>
