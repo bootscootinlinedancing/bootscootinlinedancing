@@ -3181,6 +3181,12 @@ async function memberRegister(request,env){
     },201);
   }catch(error){
     const detail=clean(error?.message||error,400);
+    if(stage==='SAVE_ACCOUNT'&&/(?:unique|constraint)/i.test(detail)){
+      return json({
+        error:'A member account was already linked while this registration was being processed. Please log in or use Forgotten your password.',
+        code:'MEMBER_ACCOUNT_ALREADY_LINKED'
+      },409);
+    }
     return json({
       error:'We could not create your member account yet. Please try again.',
       detail,
