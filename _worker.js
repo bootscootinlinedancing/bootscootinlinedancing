@@ -77,6 +77,15 @@ function requireAdmin(request, env) {
 const MEMBER_COOKIE = 'bs_member_session';
 
 const normalizedCustomerEmail = value => String(value||'').trim().toLowerCase();
+const APPROVED_HISTORICAL_BOOKING_LINK_IDS = new Set([
+  'ef21e3f4-fa1e-4775-99b7-d79c075e0f35','9350c7cb-9d56-42d5-a842-514c95ec67a7',
+  'cabc10ae-7263-4689-acd2-4b9f51a23f57','ebc1e959-8b4b-498e-90f6-244ac0a72e16',
+  'ffb42ee3-52f7-4c4b-b8b9-1d289f029806','20208370-bba0-4922-90b8-ad86f592dc84',
+  '98b4e5b2-077e-46fc-a6ce-bdcbb974a941','2c042b8a-8964-4335-9739-62d0ad43eb0c',
+  '805bf2ec-3ed2-40ce-9996-0d12134a1044','edb33137-cc8b-40d9-ba3d-7ff14380c9ae',
+  '0324c3e9-7892-40d6-9945-c1c5471cc44c','2d396821-c7d5-4498-866c-69ec580ef448',
+  '4f4adb11-2e90-4f6b-8ee2-6ec76451ffef','b5ad2b4a-87ff-43d4-9ada-b8aa867deaab'
+]);
 
 async function deterministicCustomerId(email){
   return `customer-${(await memberSha256Hex(normalizedCustomerEmail(email))).slice(0,32)}`;
@@ -5377,6 +5386,82 @@ async function adminCustomers(request, env) {
   if (request.method === 'POST') {
     const body = await request.json().catch(() => ({}));
     const action = String(body.action || '').toUpperCase();
+
+    if (action === 'HISTORICAL_BOOKING_LINK') {
+      const origin=request.headers.get('Origin');
+      if(!origin||!sameOriginWrite(request))return json({error:'This HQ request could not be verified. Please refresh and try again.'},403);
+      const bookingId=clean(body.booking_id||'',120),proposedCustomerId=clean(body.proposed_customer_id||'',120);
+      const operationId=clean(body.operation_id||'',120),reason=clean(body.reason||'',500);
+      if(!bookingId||!proposedCustomerId||!operationId)return json({error:'Booking, proposed customer and operation ID are required.'},400);
+      if(!reason)return json({error:'An audit reason is required.'},400);
+      if(!APPROVED_HISTORICAL_BOOKING_LINK_IDS.has(bookingId))return json({error:'This booking is not in the owner-approved historical reconciliation set.',code:'BOOKING_NOT_APPROVED_FOR_RECONCILIATION'},409);
+
+      const auditId=`historical-booking-link:${operationId}`;
+      const existingAudit=await env.BOOKINGS_DB.prepare(`SELECT * FROM customer_identity_audit WHERE id=?`).bind(auditId).first();
+      if(existingAudit){
+        let metadata={};try{metadata=JSON.parse(existingAudit.metadata_json||'{}');}catch(_){metadata={};}
+        const exact=existingAudit.action==='HISTORICAL_BOOKING_LINKED'&&existingAudit.customer_id===proposedCustomerId
+          &&existingAudit.reason===reason&&metadata.booking_id===bookingId&&metadata.operation_id===operationId
+          &&metadata.proposed_customer_id===proposedCustomerId;
+        if(!exact)return json({error:'That operation ID has already been used for a different reconciliation.',code:'OPERATION_ID_CONFLICT'},409);
+        const linked=await env.BOOKINGS_DB.prepare(`SELECT id,customer_id FROM bookings WHERE id=?`).bind(bookingId).first();
+        if(linked?.customer_id!==proposedCustomerId)return json({error:'The prior reconciliation audit does not match the current booking link. Stop and review.',code:'RECONCILIATION_STATE_MISMATCH'},409);
+        return json({ok:true,idempotent:true,booking_id:bookingId,customer_id:proposedCustomerId,audit_id:auditId});
+      }
+
+      const booking=await env.BOOKINGS_DB.prepare(`
+        SELECT b.id,b.customer_id,b.customer_name,b.customer_email,b.status,b.quantity,b.amount_pence,b.payment_provider,
+          b.class_pass_id,b.class_pass_ledger_id,b.anniversary_release_id,c.title class_title,c.starts_at,c.venue,
+          EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,
+          (SELECT COUNT(*) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_transaction_count
+        FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE b.id=?
+      `).bind(bookingId).first();
+      if(!booking)return json({error:'Booking not found.'},404);
+      if(booking.customer_id)return json({error:'That historical booking has already been linked.',code:'BOOKING_ALREADY_LINKED'},409);
+      const normalized=normalizedCustomerEmail(booking.customer_email);
+      if(!emailOk(normalized))return json({error:'The booking snapshot email is not valid enough for deterministic reconciliation.'},409);
+      const matches=await env.BOOKINGS_DB.prepare(`SELECT id,name,email FROM customers WHERE lower(trim(email))=? ORDER BY id LIMIT 2`).bind(normalized).all();
+      if((matches.results||[]).length!==1)return json({error:(matches.results||[]).length?'The booking email is ambiguous and cannot be linked automatically.':'No existing customer matches this booking email.',code:'CUSTOMER_MATCH_NOT_DETERMINISTIC'},409);
+      const customer=matches.results[0];
+      if(customer.id!==proposedCustomerId)return json({error:'The proposed customer does not match the deterministic email owner.',code:'PROPOSED_CUSTOMER_MISMATCH'},409);
+      const identityConflict=await env.BOOKINGS_DB.prepare(`SELECT customer_id FROM customer_email_identities WHERE normalized_email=? AND status='ACTIVE' AND customer_id<>? LIMIT 1`).bind(normalized,customer.id).first();
+      if(identityConflict)return json({error:'The booking email has a conflicting active customer identity.',code:'CUSTOMER_IDENTITY_CONFLICT'},409);
+      const memberConflict=await env.BOOKINGS_DB.prepare(`SELECT customer_id FROM member_accounts WHERE lower(trim(email))=? AND customer_id<>? LIMIT 1`).bind(normalized,customer.id).first();
+      if(memberConflict)return json({error:'The booking email has a conflicting member-account relationship.',code:'MEMBER_IDENTITY_CONFLICT'},409);
+
+      const metadata={booking_id:bookingId,operation_id:operationId,prior_customer_id:null,proposed_customer_id:customer.id,
+        evidence:{normalized_booking_email:normalized,customer_email_matches:1,conflicting_active_identities:0,conflicting_member_accounts:0},
+        preserved:{status:booking.status,quantity:booking.quantity,amount_pence:booking.amount_pence,payment_provider:booking.payment_provider,
+          class_pass_id:booking.class_pass_id,anniversary_release_id:booking.anniversary_release_id,attended:Boolean(booking.attended),loyalty_transaction_count:Number(booking.loyalty_transaction_count||0)}};
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`
+          INSERT OR IGNORE INTO customer_identity_audit(id,customer_id,action,normalized_email,actor,reason,metadata_json)
+          SELECT ?,?,'HISTORICAL_BOOKING_LINKED',?,?,?,?
+          WHERE EXISTS(SELECT 1 FROM bookings b WHERE b.id=? AND b.customer_id IS NULL AND lower(trim(b.customer_email))=?)
+            AND (SELECT COUNT(*) FROM customers c WHERE lower(trim(c.email))=?)=1
+            AND EXISTS(SELECT 1 FROM customers c WHERE c.id=? AND lower(trim(c.email))=?)
+            AND NOT EXISTS(SELECT 1 FROM customer_email_identities i WHERE i.normalized_email=? AND i.status='ACTIVE' AND i.customer_id<>?)
+            AND NOT EXISTS(SELECT 1 FROM member_accounts m WHERE lower(trim(m.email))=? AND m.customer_id<>?)
+        `).bind(auditId,customer.id,normalized,check.state.email||'hq',reason,JSON.stringify(metadata),bookingId,normalized,normalized,customer.id,normalized,normalized,customer.id,normalized,customer.id),
+        env.BOOKINGS_DB.prepare(`
+          UPDATE bookings SET customer_id=? WHERE id=? AND customer_id IS NULL
+            AND EXISTS(SELECT 1 FROM customer_identity_audit a WHERE a.id=? AND a.action='HISTORICAL_BOOKING_LINKED' AND a.customer_id=?)
+        `).bind(customer.id,bookingId,auditId,customer.id)
+      ]);
+      const [finalBooking,finalAudit]=await Promise.all([
+        env.BOOKINGS_DB.prepare(`SELECT id,customer_id FROM bookings WHERE id=?`).bind(bookingId).first(),
+        env.BOOKINGS_DB.prepare(`SELECT customer_id,action,reason,metadata_json FROM customer_identity_audit WHERE id=?`).bind(auditId).first()
+      ]);
+      if(finalAudit){
+        let finalMetadata={};try{finalMetadata=JSON.parse(finalAudit.metadata_json||'{}');}catch(_){finalMetadata={};}
+        if(finalAudit.customer_id!==customer.id||finalAudit.reason!==reason||finalMetadata.booking_id!==bookingId||finalMetadata.operation_id!==operationId){
+          return json({error:'That operation ID conflicts with another reconciliation.',code:'OPERATION_ID_CONFLICT'},409);
+        }
+      }
+      if(!finalAudit||finalBooking?.customer_id!==customer.id)return json({error:finalBooking?.customer_id?'That booking was linked by another operation.':'The booking no longer passes deterministic reconciliation checks.',code:'RECONCILIATION_CONFLICT'},409);
+      return json({ok:true,idempotent:false,booking_id:bookingId,customer_id:customer.id,audit_id:auditId});
+    }
+
     const customerKey = clean(body.customer_key || body.email || '', 320).toLowerCase();
     if (!customerKey || !customerKey.includes('@')) return json({ error: 'A valid customer email is required.' }, 400);
 
@@ -5503,7 +5588,7 @@ async function adminCustomers(request, env) {
   const customer = await env.BOOKINGS_DB.prepare(customerMetricsSql + ` WHERE lower(cu.email)=?`).bind(email).first();
   if (!customer) return json({error:'Customer not found.'},404);
   const [bookings, waiting, notes, tags, profile, notifications, campaigns, attendanceHistory, loyaltyHistory] = await Promise.all([
-    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE lower(b.customer_email)=? ORDER BY b.created_at DESC LIMIT 100`).bind(email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.customer_id,b.customer_name,b.customer_email,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at,(SELECT COUNT(*) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_transaction_count,(SELECT GROUP_CONCAT(DISTINCT t.source_type) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_sources FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?) ORDER BY b.created_at DESC LIMIT 100`).bind(customer.customer_id,email).all(),
     env.BOOKINGS_DB.prepare(`SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w LEFT JOIN classes c ON c.id=w.class_id WHERE lower(w.customer_email)=? ORDER BY w.created_at DESC LIMIT 50`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_notes WHERE customer_key=? ORDER BY created_at DESC LIMIT 100`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT tag FROM customer_crm_tags WHERE customer_key=? ORDER BY tag`).bind(email).all(),
@@ -5528,7 +5613,7 @@ async function adminCustomers(request, env) {
   const currentInstant=new Date();
   return json({
     customer:{...customer,health_status,lifetime_spend_pence:Math.max(0,Number(customer.gross_paid_pence||0)-Number(customer.refunded_pence||0)),loyalty_balance:loyaltyBalance,loyalty_progress:loyaltyBalance===0?0:(loyaltyBalance%9===0?9:loyaltyBalance%9),reward_ready:loyaltyBalance>=9},
-    profile:profile||{customer_key:email,loyalty_adjustment:0}, tags:(tags.results||[]).map(r=>r.tag), notes:notes.results||[], bookings:(bookings.results||[]).map(row=>withClassCalendarStatus(row,currentInstant)), attendance:attendanceHistory.results||[], loyalty_history:loyaltyHistory.results||[], waiting:waiting.results||[], communications:[...(notifications.results||[]),...(campaigns.results||[])], timeline
+    profile:profile||{customer_key:email,loyalty_adjustment:0}, tags:(tags.results||[]).map(r=>r.tag), notes:notes.results||[], bookings:(bookings.results||[]).map(row=>withClassCalendarStatus({...row,historical_reconciliation_approved:APPROVED_HISTORICAL_BOOKING_LINK_IDS.has(row.id)},currentInstant)), attendance:attendanceHistory.results||[], loyalty_history:loyaltyHistory.results||[], waiting:waiting.results||[], communications:[...(notifications.results||[]),...(campaigns.results||[])], timeline
   });
 }
 
