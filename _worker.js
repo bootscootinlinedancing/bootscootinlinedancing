@@ -5379,7 +5379,9 @@ async function adminOperations(request, env) {
 async function adminCustomers(request, env) {
   const check = requireAccessAdmin(request, env);
   if (check.response) return check.response;
-  await ensureBookingSchema(env);
+  // HQ setup and versioned migrations provision this schema. Re-running the
+  // full bootstrap here adds 120+ database calls (and seed writes) to every
+  // CRM read or audited action, exceeding the browser's request deadline.
   const url = new URL(request.url);
   const email = clean(url.searchParams.get('email') || '', 320).toLowerCase();
 
