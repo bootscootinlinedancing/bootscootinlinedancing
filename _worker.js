@@ -164,23 +164,24 @@ async function memberSession(request,env){
   const token=memberCookie(request); if(!token) return null;
   const hash=await memberSha256Hex(token);
   const row=await env.BOOKINGS_DB.prepare(`
-    SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,a.created_at member_created_at,
+    SELECT s.id session_id,s.expires_at,a.id member_id,a.email,a.customer_id,a.verified_at,a.auth_generation,a.created_at member_created_at,
            c.name,c.phone,c.marketing_consent,
            mp.display_name,mp.trail_rank,mp.boot_points,mp.classes_attended,mp.current_streak,mp.birthday_visible,mp.trail_identity,COALESCE(mp.is_paused,0) is_paused
     FROM member_sessions s
     JOIN member_accounts a ON a.id=s.member_id
     JOIN customers c ON c.id=a.customer_id
     LEFT JOIN member_profiles mp ON mp.customer_id=c.id
-    WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP
+    WHERE s.token_hash=? AND julianday(s.expires_at)>julianday('now') AND a.access_state='ACTIVE' AND s.auth_generation=a.auth_generation
     LIMIT 1
   `).bind(hash).first();
   return row||null;
 }
-async function createMemberSession(env,memberId){
-  const token=randomHex(32), hash=await memberSha256Hex(token);
-  const expires=new Date(Date.now()+30*86400000).toISOString();
-  await env.BOOKINGS_DB.prepare(`INSERT INTO member_sessions(id,member_id,token_hash,expires_at) VALUES(?,?,?,?)`)
-    .bind(crypto.randomUUID(),memberId,hash,expires).run();
+async function createMemberSession(env,memberId,generation){
+  const token=randomHex(32),hash=await memberSha256Hex(token),expires=new Date(Date.now()+30*86400000).toISOString();
+  const result=await env.BOOKINGS_DB.prepare(`INSERT INTO member_sessions(id,member_id,token_hash,expires_at,auth_generation)
+    SELECT ?,id,?,?,auth_generation FROM member_accounts WHERE id=? AND access_state='ACTIVE' AND verified_at IS NOT NULL AND auth_generation=?`)
+    .bind(crypto.randomUUID(),hash,expires,memberId,generation).run();
+  if(!Number(result.meta?.changes))throw new Error('Member access changed. Sign in again.');
   return token;
 }
 async function createMemberEmailToken(env,memberId,purpose,hours){
@@ -189,29 +190,16 @@ async function createMemberEmailToken(env,memberId,purpose,hours){
   try{ hash=await memberSha256Hex(token); }
   catch(e){ throw new Error('EMAIL_TOKEN_HASH'); }
 
-  // Self-heal older production D1 databases that pre-date member email tokens.
-  try{
-    await env.BOOKINGS_DB.prepare(`CREATE TABLE IF NOT EXISTS member_email_tokens (
-      id TEXT PRIMARY KEY,
-      member_id TEXT NOT NULL,
-      token_hash TEXT NOT NULL,
-      purpose TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      used_at TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )`).run();
-    await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_member_email_tokens_hash ON member_email_tokens(token_hash)`).run();
-    await env.BOOKINGS_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_member_email_tokens_member ON member_email_tokens(member_id,purpose)`).run();
-  }catch(e){ throw new Error('EMAIL_TOKEN_SCHEMA'); }
-
+  const account=await env.BOOKINGS_DB.prepare(`SELECT auth_generation FROM member_accounts WHERE id=? AND access_state='ACTIVE'`).bind(memberId).first();
+  if(!account)throw new Error('Member access unavailable.');
   const expires=new Date(Date.now()+hours*3600000).toISOString();
-  try{
-    await env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND purpose=? AND used_at IS NULL`).bind(memberId,purpose).run();
-  }catch(e){ throw new Error('EMAIL_TOKEN_DELETE'); }
-  try{
-    await env.BOOKINGS_DB.prepare(`INSERT INTO member_email_tokens(id,member_id,token_hash,purpose,expires_at) VALUES(?,?,?,?,?)`)
-      .bind(crypto.randomUUID(),memberId,hash,purpose,expires).run();
-  }catch(e){ throw new Error('EMAIL_TOKEN_INSERT'); }
+  const results=await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND purpose=? AND used_at IS NULL`).bind(memberId,purpose),
+    env.BOOKINGS_DB.prepare(`INSERT INTO member_email_tokens(id,member_id,token_hash,purpose,expires_at,auth_generation)
+      SELECT ?,id,?,?,?,auth_generation FROM member_accounts WHERE id=? AND access_state='ACTIVE' AND auth_generation=?`)
+      .bind(crypto.randomUUID(),hash,purpose,expires,memberId,account.auth_generation)
+  ]);
+  if(!Number(results[1].meta?.changes))throw new Error('Member access changed.');
   return token;
 }
 async function syncLoyaltyForEmail(env,email){
@@ -796,7 +784,7 @@ async function classCreditOptions(request,env,url){
   const klass=classId?await env.BOOKINGS_DB.prepare(`
     SELECT c.id,c.status,c.starts_at,c.capacity,COALESCE(e.eligible,0) pass_eligible,
       c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
-      -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>CURRENT_TIMESTAMP),0)
+      -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND julianday(h.expires_at)>julianday('now')),0)
       -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) spaces_remaining
     FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id WHERE c.id=?
   `).bind(classId).first():null;
@@ -877,7 +865,7 @@ async function createClassCreditBooking(request,env){
         WHERE mp.id=? AND mp.member_id=? AND mp.customer_id=? AND mp.status='ACTIVE' AND mp.valid_through>=?
           AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
           AND EXISTS(SELECT 1 FROM class_pass_class_eligibility e WHERE e.class_id=? AND e.eligible=1)
-          AND EXISTS(SELECT 1 FROM booking_holds h WHERE h.id=? AND h.class_id=? AND h.expires_at>CURRENT_TIMESTAMP)
+          AND EXISTS(SELECT 1 FROM booking_holds h WHERE h.id=? AND h.class_id=? AND julianday(h.expires_at)>julianday('now'))
       `).bind(bookingId,reference,classId,holdId,session.name,session.email,session.phone||'',secureToken,customerToken,
         pass.id,session.member_id,session.customer_id,pass.class_date,classId,holdId,classId),
       env.BOOKINGS_DB.prepare(`
@@ -893,10 +881,12 @@ async function createClassCreditBooking(request,env){
         UPDATE bookings SET class_pass_ledger_id=(SELECT id FROM class_pass_credit_ledger WHERE idempotency_key=?)
         WHERE id=? AND customer_id=? AND class_pass_ledger_id IS NULL
       `).bind(operationKey,bookingId,session.customer_id),
-      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
+      env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE id=? AND EXISTS(SELECT 1 FROM bookings WHERE id=? AND status='PAID' AND class_pass_ledger_id IS NOT NULL)`).bind(holdId,bookingId),
+      bookingConfirmationInsert(env,bookingId)
     ]);
   }catch(error){
-    await env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId).run().catch(()=>{});
+    await env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId).run().catch(()=>{});
     throw error;
   }
   const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=? AND customer_id=?`).bind(bookingId,session.customer_id).first();
@@ -2294,7 +2284,134 @@ async function sendAdminClassBookingAlert(env,booking,eventType){
   }catch(error){await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='FAILED',error_message=? WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(clean(error?.message||error,240),booking.id).run().catch(()=>{});return {failed:true};}
 }
 
+// A durable, bounded retry path. Old paid bookings are excluded by migration cutoff.
+function bookingConfirmationInsert(env,bookingId){
+  return env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO booking_confirmation_jobs(booking_id)
+    SELECT b.id FROM bookings b JOIN booking_confirmation_policy p ON p.id=1
+    WHERE b.id=? AND b.status='PAID' AND datetime(b.paid_at)>=datetime(p.eligible_paid_from)
+      AND NOT EXISTS(SELECT 1 FROM notification_log n WHERE n.booking_id=b.id AND n.channel='EMAIL'
+        AND n.event_type IN ('BOOKING_CONFIRMED','BOOKING_PAID') AND n.status='SENT')`).bind(bookingId);
+}
+async function enqueueBookingConfirmation(env,bookingId){
+  return bookingConfirmationInsert(env,bookingId).run();
+}
+async function recoverBookingConfirmations(env){
+  const rows=await env.BOOKINGS_DB.prepare(`SELECT b.id FROM bookings b JOIN booking_confirmation_policy p ON p.id=1
+    WHERE b.status='PAID' AND datetime(b.paid_at)>=datetime(p.eligible_paid_from)
+      AND NOT EXISTS(SELECT 1 FROM booking_confirmation_jobs j WHERE j.booking_id=b.id)
+      AND NOT EXISTS(SELECT 1 FROM notification_log n WHERE n.booking_id=b.id AND n.channel='EMAIL'
+        AND n.event_type IN ('BOOKING_CONFIRMED','BOOKING_PAID') AND n.status='SENT') LIMIT 100`).all();
+  for(const b of rows.results||[])await enqueueBookingConfirmation(env,b.id);
+}
+async function cleanupExpiredUnreferencedBookingHolds(env){
+  return env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds
+    WHERE julianday(expires_at)<=julianday('now')
+      AND NOT EXISTS(SELECT 1 FROM bookings b WHERE b.hold_id=booking_holds.id)`).run();
+}
+function bookingConfirmationPayload(env,booking){
+  const copy=notificationCopy('BOOKING_CONFIRMED',booking),links=bookingActionLinks(booking);
+  return {from:emailSender(env,'bookings'),to:[booking.customer_email],subject:copy.subject,text:copy.text,
+    html:brandedEmailHtml({heading:copy.heading,greeting:`Hi ${booking.customer_name},`,
+      paragraphs:[copy.text.replace(`Hi ${booking.customer_name}, `,'')],detail:copy.detail,
+      buttons:[{label:'Manage my booking',href:links.manage},{label:'Add to Google Calendar',href:links.google,secondary:true},
+        {label:'Add to Apple / Outlook Calendar',href:links.calendar,secondary:true}]})};
+}
+async function processBookingConfirmations(env){
+  await cleanupExpiredUnreferencedBookingHolds(env);
+  await recoverBookingConfirmations(env);
+  const policy=await env.BOOKINGS_DB.prepare(`SELECT delivery_enabled FROM booking_confirmation_policy WHERE id=1`).first();
+  if(!policy?.delivery_enabled)return {paused:true};
+  if(!String(env.RESEND_API_KEY||env.EMAIL_API_KEY||'').trim()||!emailSender(env,'bookings'))return {setup_required:true};
+  const rows=await env.BOOKINGS_DB.prepare(`SELECT * FROM booking_confirmation_jobs
+    WHERE (status IN ('PENDING','RETRY') AND next_attempt_at<=CURRENT_TIMESTAMP)
+      OR (status='PROCESSING' AND lease_until<=CURRENT_TIMESTAMP) ORDER BY created_at LIMIT 50`).all();
+  let sent=0,failed=0;
+  for(const job of rows.results||[]){
+    const claim=crypto.randomUUID();
+    const claimed=await env.BOOKINGS_DB.prepare(`UPDATE booking_confirmation_jobs SET status='PROCESSING',claim_id=?,
+      lease_until=datetime('now','+5 minutes'),attempts=attempts+1,first_attempt_at=COALESCE(first_attempt_at,CURRENT_TIMESTAMP)
+      WHERE booking_id=? AND ((status IN ('PENDING','RETRY') AND next_attempt_at<=CURRENT_TIMESTAMP)
+        OR (status='PROCESSING' AND lease_until<=CURRENT_TIMESTAMP))`).bind(claim,job.booking_id).run();
+    if(!Number(claimed.meta?.changes))continue;
+    const current=await env.BOOKINGS_DB.prepare(`SELECT * FROM booking_confirmation_jobs WHERE booking_id=?`).bind(job.booking_id).first();
+    // Resend retains deduplication keys for 24 hours. Never blindly resend beyond it.
+    if(Date.now()-Date.parse(current.first_attempt_at.replace(' ','T')+'Z')>=20*3600000){
+      await env.BOOKINGS_DB.prepare(`UPDATE booking_confirmation_jobs SET status='REVIEW',error_message='Delivery outcome needs manual review; retry window expired.' WHERE booking_id=? AND claim_id=?`).bind(job.booking_id,claim).run();continue;
+    }
+    const booking=await bookingWithClass(env,job.booking_id);
+    if(!booking||booking.status!=='PAID'){
+      await env.BOOKINGS_DB.prepare(`UPDATE booking_confirmation_jobs SET status='CANCELLED' WHERE booking_id=? AND claim_id=?`).bind(job.booking_id,claim).run();continue;
+    }
+    try{
+      const payload=current.payload_json?JSON.parse(current.payload_json):bookingConfirmationPayload(env,booking);
+      if(!emailOk(payload.to[0])||!payload.from)throw new Error('Invalid confirmation recipient or sender.');
+      if(!current.payload_json)await env.BOOKINGS_DB.prepare(`UPDATE booking_confirmation_jobs SET payload_json=? WHERE booking_id=? AND claim_id=?`).bind(JSON.stringify(payload),job.booking_id,claim).run();
+      const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{
+        Authorization:`Bearer ${String(env.RESEND_API_KEY||env.EMAIL_API_KEY).trim()}`,'Content-Type':'application/json',
+        'Idempotency-Key':`booking-confirmation:${job.booking_id}`},body:JSON.stringify(payload),signal:AbortSignal.timeout(15000)});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok||!data.id)throw new Error(`Confirmation provider HTTP ${response.status}: ${clean(data.message||'No acceptance ID',200)}`);
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE booking_confirmation_jobs SET status='SENT',provider_id=?,sent_at=CURRENT_TIMESTAMP,error_message=NULL,lease_until=NULL WHERE booking_id=? AND claim_id=?`).bind(data.id,job.booking_id,claim),
+        env.BOOKINGS_DB.prepare(`INSERT INTO notification_log(id,booking_id,class_id,event_type,channel,recipient,status,provider_id,sent_at)
+          VALUES(?,?,?,'BOOKING_CONFIRMED','EMAIL',?,'SENT',?,CURRENT_TIMESTAMP)
+          ON CONFLICT(booking_id,event_type,channel) DO UPDATE SET status='SENT',provider_id=excluded.provider_id,sent_at=excluded.sent_at,error_message=NULL`)
+          .bind(crypto.randomUUID(),booking.id,booking.class_id,payload.to[0],data.id)
+      ]);sent++;
+    }catch(error){
+      await env.BOOKINGS_DB.prepare(`UPDATE booking_confirmation_jobs SET status='RETRY',error_message=?,
+        next_attempt_at=datetime('now',?),lease_until=NULL WHERE booking_id=? AND claim_id=?`)
+        .bind(clean(error?.message||error,300),`+${Math.min(360,5*2**Math.min(current.attempts,6))} minutes`,job.booking_id,claim).run();failed++;
+    }
+  }
+  return {sent,failed};
+}
+async function adminBookingConfirmationDeliveryTest(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+  if(String(env.BOOKING_CONFIRMATION_TEST_ENABLED||'').toLowerCase()!=='true'){
+    return json({error:'Booking confirmation delivery tests are disabled.',code:'DELIVERY_TEST_DISABLED'},403);
+  }
+  const allowlist=String(env.BOOKING_CONFIRMATION_TEST_ALLOWLIST||'').split(',').map(normalizedCustomerEmail).filter(emailOk);
+  const body=await request.json().catch(()=>({})),recipient=normalizedCustomerEmail(body.recipient),bookingId=clean(body.booking_id||'',120);
+  const operationId=clean(body.operation_id||'',120);
+  if(!bookingId||!operationId||!recipient)return json({error:'Booking, operation ID and recipient are required.'},400);
+  if(!allowlist.includes(recipient))return json({error:'That recipient is not approved for delivery testing.',code:'TEST_RECIPIENT_NOT_ALLOWED'},403);
+  const existing=await env.BOOKINGS_DB.prepare(`SELECT * FROM booking_confirmation_delivery_tests WHERE operation_id=?`).bind(operationId).first();
+  if(existing){
+    if(existing.booking_id!==bookingId||existing.recipient!==recipient)return json({error:'That operation ID was used for a different delivery test.',code:'OPERATION_ID_CONFLICT'},409);
+    return json({ok:existing.status==='SENT',idempotent:true,status:existing.status,operation_id:operationId});
+  }
+  const booking=await bookingWithClass(env,bookingId);if(!booking)return json({error:'Booking not found.'},404);
+  await env.BOOKINGS_DB.prepare(`INSERT INTO booking_confirmation_delivery_tests(operation_id,booking_id,recipient,actor) VALUES(?,?,?,?)`)
+    .bind(operationId,bookingId,recipient,check.state.email||'hq').run();
+  const payload=bookingConfirmationPayload(env,{...booking,customer_email:recipient});
+  payload.subject=`TEST — ${payload.subject}`;
+  try{
+    const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{
+      Authorization:`Bearer ${String(env.RESEND_API_KEY||env.EMAIL_API_KEY||'').trim()}`,'Content-Type':'application/json',
+      'Idempotency-Key':`booking-confirmation-test:${operationId}`},body:JSON.stringify(payload),signal:AbortSignal.timeout(15000)});
+    const data=await response.json().catch(()=>({}));if(!response.ok||!data.id)throw new Error(`Test provider HTTP ${response.status}: ${clean(data.message||'No acceptance ID',200)}`);
+    await env.BOOKINGS_DB.prepare(`UPDATE booking_confirmation_delivery_tests SET status='SENT',provider_id=?,sent_at=CURRENT_TIMESTAMP WHERE operation_id=? AND status='PENDING'`)
+      .bind(data.id,operationId).run();
+    return json({ok:true,idempotent:false,status:'SENT',operation_id:operationId});
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`UPDATE booking_confirmation_delivery_tests SET status='FAILED',error_message=? WHERE operation_id=? AND status='PENDING'`)
+      .bind(clean(error?.message||error,300),operationId).run();
+    return json({error:'The allowlisted delivery test failed.',code:'DELIVERY_TEST_FAILED'},502);
+  }
+}
+async function safelyQueueBookingConfirmation(env,bookingId){
+  try{await enqueueBookingConfirmation(env,bookingId);}catch(error){
+    // Payment stays authoritative; the scheduled recovery scan repairs a failed enqueue.
+    console.error('BOOKING_CONFIRMATION_ENQUEUE_FAILED',bookingId,clean(error?.message||error,200));
+  }
+}
+
 async function deliverBookingNotification(env, booking, eventType) {
+  const confirmation=['BOOKING_CONFIRMED','BOOKING_PAID'].includes(eventType);
+  if(confirmation)await safelyQueueBookingConfirmation(env,booking.id);
   if (!env.BOOKINGS_DB || !booking?.id) return { email: 'skipped', sms: 'skipped' };
   const copy = notificationCopy(eventType, booking);
   const links = bookingActionLinks(booking);
@@ -2319,8 +2436,9 @@ async function deliverBookingNotification(env, booking, eventType) {
     { channel: 'EMAIL', recipient: clean(booking.customer_email, 160), send: () => sendTransactionalEmail(env, booking.customer_email, copy.subject, html, copy.text, 'bookings') },
     { channel: 'SMS', recipient: normaliseUkPhone(booking.customer_phone), send: () => sendTransactionalSms(env, booking.customer_phone, copy.text) }
   ];
-  const results = {};
+  const results = confirmation?{email:'queued'}:{};
   for (const item of channels) {
+    if(confirmation&&item.channel==='EMAIL')continue;
     if (!item.recipient) { results[item.channel.toLowerCase()] = 'skipped'; continue; }
     const existing = await env.BOOKINGS_DB.prepare(`SELECT status FROM notification_log WHERE booking_id=? AND event_type=? AND channel=?`).bind(booking.id,eventType,item.channel).first();
     if (existing?.status === 'SENT') { results[item.channel.toLowerCase()] = 'already_sent'; continue; }
@@ -2590,7 +2708,12 @@ async function createClassReservation(request, env) {
   ).run();
 
   if(amount===0){
-    await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP) WHERE id=? AND status='PENDING'`).bind(id),
+      env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE id=? AND EXISTS(SELECT 1 FROM bookings WHERE id=? AND status='PAID')`).bind(holdId,id),
+      bookingConfirmationInsert(env,id)
+    ]);
     await reconcileClassSold(env,classId);
     if(promotion)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotion_redemptions(id,promotion_code_id,booking_id,customer_email,discount_pence) VALUES(?,?,?,?,?)`).bind(crypto.randomUUID(),promotion.promotion_code_id,id,email,discountPence).run();
     const paidBooking=await bookingWithClass(env,id); if(paidBooking)await deliverBookingNotification(env,paidBooking,'BOOKING_PAID');
@@ -2644,7 +2767,7 @@ async function createClassReservation(request, env) {
 
       const providerMessage = clean(checkout?.message || checkout?.error_message || checkout?.error || '', 180);
       await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId),
+        env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId),
         env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
         env.BOOKINGS_DB.prepare(
           `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`
@@ -2656,7 +2779,7 @@ async function createClassReservation(request, env) {
       }, 502);
     } catch (error) {
       await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId),
+        env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId),
         env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id)
       ]);
       return json({
@@ -2673,7 +2796,7 @@ async function createClassReservation(request, env) {
        admin_notes='Online payment unavailable; manual confirmation required.'
        WHERE id=?`
     ).bind(id),
-    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(holdId)
+    env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId)
   ]);
   await reconcileClassSold(env,classId);
 
@@ -2709,28 +2832,31 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
   const transactionId = checkoutTransactionId(checkout);
   const transactionCode = checkoutTransactionCode(checkout);
 
-  if (checkoutStatus === 'PAID' && booking.status !== 'PAID') {
-    const paid = await env.BOOKINGS_DB.prepare(
-      `UPDATE bookings
-       SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),
-           provider_transaction_id=COALESCE(?,provider_transaction_id),
-           provider_transaction_code=COALESCE(?,provider_transaction_code)
-       WHERE id=? AND status!='PAID'`
-    ).bind(transactionId, transactionCode, booking.id).run();
-
+  if(checkoutStatus==='PAID' && booking.status==='PAID'){await safelyQueueBookingConfirmation(env,booking.id);return booking;}
+  if (checkoutStatus === 'PAID' && booking.status === 'PENDING') {
+    // The paid transition, retained-hold expiry, audit and durable outbox row are
+    // one D1 transaction. A crash can therefore leave either the original
+    // PENDING state or the complete PAID state, never a half-confirmed booking.
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(
+        `UPDATE bookings
+         SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),
+             provider_transaction_id=COALESCE(?,provider_transaction_id),
+             provider_transaction_code=COALESCE(?,provider_transaction_code)
+         WHERE id=? AND status='PENDING'`
+      ).bind(transactionId,transactionCode,booking.id),
+      env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+        WHERE id=? AND EXISTS(SELECT 1 FROM bookings WHERE id=? AND status='PAID')`).bind(booking.hold_id,booking.id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
+        SELECT ?, 'SUMUP_PAYMENT_CONFIRMED','booking',?,?
+        WHERE EXISTS(SELECT 1 FROM bookings WHERE id=? AND status='PAID')
+          AND NOT EXISTS(SELECT 1 FROM audit_log WHERE target_type='booking' AND target_id=? AND action='SUMUP_PAYMENT_CONFIRMED')`)
+        .bind(actor,booking.id,JSON.stringify({checkout_id:booking.provider_checkout_id,transaction_id:transactionId,
+          transaction_code:transactionCode,checkout_status:checkoutStatus}),booking.id,booking.id),
+      bookingConfirmationInsert(env,booking.id)
+    ]);
+    const paid=results[0];
     if (Number(paid?.meta?.changes || 0) > 0) {
-      await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
-        env.BOOKINGS_DB.prepare(
-          `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
-           VALUES(?,?,?,?,?)`
-        ).bind(actor, 'SUMUP_PAYMENT_CONFIRMED', 'booking', booking.id, JSON.stringify({
-          checkout_id: booking.provider_checkout_id,
-          transaction_id: transactionId,
-          transaction_code: transactionCode,
-          checkout_status: checkoutStatus
-        }))
-      ]);
       await reconcileClassSold(env,booking.class_id);
       const confirmedBooking = await bookingWithClass(env, booking.id);
       if (confirmedBooking) await deliverBookingNotification(env, confirmedBooking, 'BOOKING_CONFIRMED');
@@ -2749,7 +2875,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
     ).bind(checkoutStatus, booking.id).run();
     if (Number(failed?.meta?.changes || 0) > 0) {
       await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
+        env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(booking.hold_id),
         env.BOOKINGS_DB.prepare(
           `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json)
            VALUES(?,?,?,?,?)`
@@ -2816,6 +2942,7 @@ async function sumUpWebhook(request, env) {
   if([booking,classPass,order,privatePayment].filter(Boolean).length>1){
     throw new Error('SUMUP_CHECKOUT_REFERENCE_COLLISION');
   }
+  if(order&&(order.status==='CANCELLED'||order.cancelled_at))return new Response(null,{status:204});
   const checkout = await retrieveSumUpCheckout(env, checkoutId);
   if (booking) {
     if (checkout) await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
@@ -2826,12 +2953,13 @@ async function sumUpWebhook(request, env) {
     return new Response(null,{status:204});
   }
   if(order&&checkout){
+    if(order.status==='CANCELLED'||order.cancelled_at)return new Response(null,{status:204});
     const cs=String(checkout?.status||'').toUpperCase();
     if(cs==='PAID'){
       const tid=clean(checkoutTransactionId(checkout),180)||null;
-      await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_transaction_id=? WHERE id=?`).bind(tid,order.id).run();
+      await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_transaction_id=? WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(tid,order.id).run();
       try{await sendMerchConfirmation(env,{...order,status:'PAID',provider_transaction_id:tid});}catch(_){}
-    } else if(['FAILED','EXPIRED'].includes(cs)) await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run();
+    } else if(['FAILED','EXPIRED'].includes(cs)) await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(cs,order.id).run();
     return new Response(null, { status: 204 });
   }
   if(privatePayment&&checkout){
@@ -2902,7 +3030,7 @@ async function cancelBooking(request,env){
         FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
         WHERE b.id=? AND b.status='CANCELLED' AND b.payment_provider='CLASS_PASS' AND ?=1
       `).bind(returnLedgerId,returnKey,booking.id,returnCredit?1:0),
-      env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
+      env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(booking.hold_id),
       env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(booking.customer_email,'CUSTOMER_CANCELLED_CLASS_PASS','booking',booking.id,JSON.stringify({band,refundStatus,credit_returned:returnCredit}))
     ]);
     await reconcileClassSold(env,booking.class_id);
@@ -2918,7 +3046,7 @@ async function cancelBooking(request,env){
 
   await env.BOOKINGS_DB.batch([
     env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=CURRENT_TIMESTAMP,cancellation_band=?,refund_status=? WHERE id=?`).bind(band,refundStatus,booking.id),
-    env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=?`).bind(booking.hold_id),
+    env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(booking.hold_id),
     env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(booking.customer_email,'CUSTOMER_CANCELLED','booking',booking.id,JSON.stringify({band,refundStatus}))
   ]);
   await reconcileClassSold(env,booking.class_id);
@@ -3120,7 +3248,8 @@ async function memberRegister(request,env){
     if(!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
 
     stage='LOOKUP_ACCOUNT';
-    const existing=await env.BOOKINGS_DB.prepare(`SELECT id,customer_id,verified_at FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT id,customer_id,verified_at,access_state,auth_generation FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
+    if(existing?.access_state==='REVOKED')return json({error:'Login access is revoked. Contact Boot Scootin’ for an account review.'},403);
     if(existing?.verified_at) return json({error:'An account already exists for this email. Please log in instead, or use Forgotten your password.'},409);
 
     stage='LOOKUP_CUSTOMER';
@@ -3146,8 +3275,9 @@ async function memberRegister(request,env){
 
     stage='SAVE_ACCOUNT';
     if(existing){
-      await env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET customer_id=?,email=?,password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
-        .bind(customer.id,email,hash,salt,memberId).run();
+      const saved=await env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET customer_id=?,email=?,password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND access_state='ACTIVE' AND auth_generation=?`)
+        .bind(customer.id,email,hash,salt,memberId,existing.auth_generation).run();
+      if(!Number(saved.meta?.changes))return json({error:'Account access changed. Please contact Boot Scootin’.'},409);
     }else{
       await env.BOOKINGS_DB.prepare(`INSERT INTO member_accounts(id,customer_id,email,password_hash,password_salt) VALUES(?,?,?,?,?)`)
         .bind(memberId,customer.id,email,hash,salt).run();
@@ -3208,12 +3338,15 @@ async function memberVerify(request,env){
   const body=await request.json().catch(()=>null); const token=String(body?.token||'');
   if(!token) return json({error:'The verification link is incomplete.'},400);
   const hash=await memberSha256Hex(token);
-  const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_email_tokens WHERE token_hash=? AND purpose='VERIFY' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP`).bind(hash).first();
+  const row=await env.BOOKINGS_DB.prepare(`SELECT t.* FROM member_email_tokens t JOIN member_accounts a ON a.id=t.member_id AND a.access_state='ACTIVE' AND a.auth_generation=t.auth_generation WHERE t.token_hash=? AND purpose='VERIFY' AND used_at IS NULL AND julianday(expires_at)>julianday('now')`).bind(hash).first();
   if(!row) return json({error:'This verification link has expired or has already been used.'},400);
-  await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`UPDATE member_email_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.id),
-    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET verified_at=COALESCE(verified_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.member_id)
+  const verified=await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET verified_at=COALESCE(verified_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND access_state='ACTIVE' AND auth_generation=? AND EXISTS(SELECT 1 FROM member_email_tokens WHERE id=? AND used_at IS NULL AND julianday(expires_at)>julianday('now'))`)
+      .bind(row.member_id,row.auth_generation,row.id),
+    env.BOOKINGS_DB.prepare(`UPDATE member_email_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.id)
   ]);
+  if(!Number(verified[0].meta?.changes))return json({error:'Verification is no longer valid.'},409);
   await env.BOOKINGS_DB.prepare(`
     UPDATE customer_email_identities SET verified_at=COALESCE(verified_at,CURRENT_TIMESTAMP)
     WHERE normalized_email=(SELECT lower(trim(email)) FROM member_accounts WHERE id=?)
@@ -3227,12 +3360,12 @@ async function memberLogin(request,env){
   const body=await request.json().catch(()=>null); const email=clean(body?.email,160).toLowerCase(), password=String(body?.password||'');
   if(!emailOk(email)||!password) return json({error:'Enter your email and password.'},400);
   const account=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
-  if(!account) return json({error:'Email or password is incorrect.'},401);
+  if(!account||account.access_state!=='ACTIVE') return json({error:'Email or password is incorrect, or login access is unavailable.'},401);
   const hash=await passwordHash(password,account.password_salt);
   if(hash!==account.password_hash) return json({error:'Email or password is incorrect.'},401);
   if(!account.verified_at) return json({error:'Please verify your email before logging in.'},403);
   await env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE member_id=? OR expires_at<=CURRENT_TIMESTAMP`).bind(account.id).run().catch(()=>{});
-  const token=await createMemberSession(env,account.id);
+  const token=await createMemberSession(env,account.id,account.auth_generation);
   const response=json({ok:true,message:'Welcome back.'});
   response.headers.set('Set-Cookie',memberCookieHeader(token));
   return response;
@@ -3248,7 +3381,7 @@ async function memberForgot(request,env){
   const body=await request.json().catch(()=>null); const email=clean(body?.email,160).toLowerCase();
   const generic=json({ok:true,message:'If an account exists for that email, a reset link has been sent.'});
   if(!emailOk(email)) return generic;
-  const account=await env.BOOKINGS_DB.prepare(`SELECT a.id,c.name FROM member_accounts a JOIN customers c ON c.id=a.customer_id WHERE lower(a.email)=lower(?) AND a.verified_at IS NOT NULL`).bind(email).first();
+  const account=await env.BOOKINGS_DB.prepare(`SELECT a.id,c.name FROM member_accounts a JOIN customers c ON c.id=a.customer_id WHERE lower(a.email)=lower(?) AND a.verified_at IS NOT NULL AND a.access_state='ACTIVE'`).bind(email).first();
   if(!account) return generic;
   const token=await createMemberEmailToken(env,account.id,'RESET',2);
   const resetUrl=`${new URL(request.url).origin}/member-hub.html?reset=${encodeURIComponent(token)}`;
@@ -3267,14 +3400,17 @@ async function memberReset(request,env){
   const body=await request.json().catch(()=>null); const token=String(body?.token||''), password=String(body?.password||'');
   if(!token||!passwordValid(password)) return json({error:'Use a password of at least 10 characters containing letters and a number.'},400);
   const hash=await memberSha256Hex(token);
-  const row=await env.BOOKINGS_DB.prepare(`SELECT * FROM member_email_tokens WHERE token_hash=? AND purpose='RESET' AND used_at IS NULL AND expires_at>CURRENT_TIMESTAMP`).bind(hash).first();
+  const row=await env.BOOKINGS_DB.prepare(`SELECT t.* FROM member_email_tokens t JOIN member_accounts a ON a.id=t.member_id AND a.access_state='ACTIVE' AND a.auth_generation=t.auth_generation WHERE t.token_hash=? AND purpose='RESET' AND used_at IS NULL AND julianday(expires_at)>julianday('now')`).bind(hash).first();
   if(!row) return json({error:'This reset link has expired or has already been used.'},400);
   const salt=randomHex(16), passHash=await passwordHash(password,salt);
-  await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET password_hash=?,password_salt=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(passHash,salt,row.member_id),
+  const reset=await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET password_hash=?,password_salt=?,auth_generation=auth_generation+1,updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND access_state='ACTIVE' AND auth_generation=? AND EXISTS(SELECT 1 FROM member_email_tokens WHERE id=? AND used_at IS NULL AND julianday(expires_at)>julianday('now'))`)
+      .bind(passHash,salt,row.member_id,row.auth_generation,row.id),
     env.BOOKINGS_DB.prepare(`UPDATE member_email_tokens SET used_at=CURRENT_TIMESTAMP WHERE id=?`).bind(row.id),
-    env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE member_id=?`).bind(row.member_id)
+    env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE member_id=? AND auth_generation<=?`).bind(row.member_id,row.auth_generation)
   ]);
+  if(!Number(reset[0].meta?.changes))return json({error:'Reset is no longer valid.'},409);
   return json({ok:true,message:'Password updated. You can now log in.'});
 }
 async function memberMe(request,env){
@@ -4314,7 +4450,7 @@ async function adminClasses(request, env) {
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE classes SET status='cancelled',sold=0,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id),
         env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=COALESCE(cancellation_requested_at,CURRENT_TIMESTAMP),refund_status=CASE WHEN payment_provider='SUMUP' AND paid_at IS NOT NULL THEN COALESCE(refund_status,'REFUND_DUE') ELSE COALESCE(refund_status,'NO_PAYMENT_TAKEN') END WHERE class_id=? AND status IN ('PENDING','PAID')`).bind(id),
-        env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE class_id=?`).bind(id),
+        env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE class_id=?`).bind(id),
         env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email,'CLASS_CANCELLED','class',id,JSON.stringify({affected_bookings:active.length}))
       ]);
       for(const original of active){
@@ -4540,10 +4676,10 @@ async function adminBootstrap(request, env) {
             const status = String(checkout?.status || '').toUpperCase();
             if (status === 'PAID') {
               const transactionId = clean(checkoutTransactionId(checkout),180) || null;
-              await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_transaction_id=COALESCE(provider_transaction_id,?) WHERE id=?`).bind(transactionId,order.id).run();
+              await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_transaction_id=COALESCE(provider_transaction_id,?) WHERE id=? AND status='PENDING' AND cancelled_at IS NULL`).bind(transactionId,order.id).run();
               try { await sendMerchConfirmation(env,{...order,status:'PAID',provider_transaction_id:transactionId}); } catch (_) {}
             } else if (['FAILED','EXPIRED'].includes(status)) {
-              await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(status,order.id).run();
+              await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(status,order.id).run();
             }
           } catch (_) {}
         }
@@ -5083,6 +5219,7 @@ async function sendCampaign(env,campaignId){
 }
 
 async function processAutomaticBookingNotifications(env){
+  if(env.BOOKINGS_DB)await processBookingConfirmations(env);
   if(!env.BOOKINGS_DB || !notificationConfig(env).emailReady) return { skipped:true };
   await ensureBookingSchema(env); await ensureEmailCentreSchema(env);
   const now=Date.now(); let processed=0;
@@ -5376,6 +5513,64 @@ async function adminOperations(request, env) {
   });
 }
 
+async function priorLifecycleOperation(env,operationId,requestJson){
+  const prior=await env.BOOKINGS_DB.prepare(`SELECT request_json FROM admin_lifecycle_audit WHERE operation_id=?`).bind(operationId).first();
+  if(!prior)return null;
+  return prior.request_json===requestJson?json({ok:true,idempotent:true}):json({error:'Operation ID conflict.'},409);
+}
+async function adminMemberAccess(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'Origin check failed.'},403);
+  const body=await request.json().catch(()=>({}));
+  const action=String(body.action||''),customerId=clean(body.customer_id,120),memberId=clean(body.member_account_id,120),
+    reason=clean(body.reason,500),operationId=clean(body.operation_id,120);
+  if(!['REVOKE','RESTORE'].includes(action)||!customerId||!memberId||!reason||!operationId||body.confirmed!==true)return json({error:'Confirm the account action and supply a reason and operation ID.'},400);
+  const fingerprint=JSON.stringify({action,customerId,memberId,reason});
+  const prior=await priorLifecycleOperation(env,operationId,fingerprint);if(prior)return prior;
+  const member=await env.BOOKINGS_DB.prepare(`SELECT id,customer_id,access_state,auth_generation FROM member_accounts WHERE id=? AND customer_id=?`).bind(memberId,customerId).first();
+  if(!member)return json({error:'Member account not found for this customer.'},404);
+  const next=action==='REVOKE'?'REVOKED':'ACTIVE';
+  if(member.access_state===next)return json({error:'Account is already in that state. Refresh before continuing.'},409);
+  const after={...member,access_state:next,auth_generation:member.auth_generation+1};
+  try{await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`INSERT INTO admin_lifecycle_audit(operation_id,actor,action,customer_id,member_account_id,reason,request_json,previous_json,next_json)
+      SELECT ?,?,?,?,?,?,?,?,? FROM member_accounts WHERE id=? AND access_state=? AND auth_generation=?`)
+      .bind(operationId,check.state.email,'MEMBER_'+action,customerId,memberId,reason,fingerprint,JSON.stringify(member),JSON.stringify(after),memberId,member.access_state,member.auth_generation),
+    env.BOOKINGS_DB.prepare(`UPDATE member_accounts SET access_state=?,auth_generation=auth_generation+1,access_changed_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP
+      WHERE id=? AND auth_generation=? AND EXISTS(SELECT 1 FROM admin_lifecycle_audit WHERE operation_id=?)`).bind(next,memberId,member.auth_generation,operationId),
+    env.BOOKINGS_DB.prepare(`DELETE FROM member_sessions WHERE member_id=? AND EXISTS(SELECT 1 FROM admin_lifecycle_audit WHERE operation_id=?)`).bind(memberId,operationId),
+    env.BOOKINGS_DB.prepare(`DELETE FROM member_email_tokens WHERE member_id=? AND EXISTS(SELECT 1 FROM admin_lifecycle_audit WHERE operation_id=?)`).bind(memberId,operationId)
+  ]);}catch(error){const replay=await priorLifecycleOperation(env,operationId,fingerprint);if(replay)return replay;throw error;}
+  const committed=await priorLifecycleOperation(env,operationId,fingerprint);
+  return committed?json({ok:true,access_state:next}):json({error:'Account changed concurrently. Refresh and review.'},409);
+}
+async function cancelMerchExternallyRefunded(request,env,actor,body){
+  if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'Origin check failed.'},403);
+  const orderId=clean(body.id,120),reason=clean(body.reason,500),operationId=clean(body.operation_id,120),method=clean(body.refund_method,80),externalReference=clean(body.external_reference,160);
+  const amount=Number(body.refund_amount_pence),date=String(body.refunded_at||'');
+  if(!orderId||!reason||!operationId||!method||!Number.isSafeInteger(amount)||amount<=0||body.confirmed!==true||!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(date)||!Number.isFinite(Date.parse(date))||Date.parse(date)>Date.now())return json({error:'Confirm the cancellation, amount, actual refund date/time, method and reason.'},400);
+  const refundedAt=new Date(date).toISOString();
+  const fingerprint=JSON.stringify({action:'MERCH_CANCEL_EXTERNAL_REFUND',orderId,amount,refundedAt,method,externalReference,reason});
+  const prior=await priorLifecycleOperation(env,operationId,fingerprint);if(prior)return prior;
+  const order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE id=?`).bind(orderId).first();
+  if(!order)return json({error:'Order not found.'},404);
+  if(order.status!=='PAID'||!order.paid_at||amount>order.amount_pence||Date.parse(refundedAt)<Date.parse(order.paid_at.replace(' ','T')+'Z'))return json({error:'Review the paid order and refund amount/date before cancelling.'},409);
+  const after={status:'CANCELLED',fulfilment_status:'CANCELLED',external_refund_pence:amount,source:'EXTERNAL_MANUAL'};
+  try{await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`INSERT INTO admin_lifecycle_audit(operation_id,actor,action,order_id,reason,request_json,previous_json,next_json)
+      SELECT ?,?,'MERCH_CANCEL_EXTERNAL_REFUND',?,?,?,?,? FROM merch_orders WHERE id=? AND status='PAID'
+        AND NOT EXISTS(SELECT 1 FROM merch_external_refunds WHERE order_id=?)`)
+      .bind(operationId,actor,orderId,reason,fingerprint,JSON.stringify({status:order.status,fulfilment_status:order.fulfilment_status,amount_pence:order.amount_pence,paid_at:order.paid_at}),JSON.stringify(after),orderId,orderId),
+    env.BOOKINGS_DB.prepare(`INSERT INTO merch_external_refunds(operation_id,order_id,amount_pence,method,source,refunded_at,external_reference,reason,actor)
+      SELECT ?,?,?,?,'EXTERNAL_MANUAL',?,?,?,? WHERE EXISTS(SELECT 1 FROM admin_lifecycle_audit WHERE operation_id=?)`)
+      .bind(operationId,orderId,amount,method,refundedAt,externalReference||null,reason,actor,operationId),
+    env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='CANCELLED',fulfilment_status='CANCELLED',cancelled_at=CURRENT_TIMESTAMP
+      WHERE id=? AND EXISTS(SELECT 1 FROM merch_external_refunds WHERE operation_id=?)`).bind(orderId,operationId)
+  ]);}catch(error){const replay=await priorLifecycleOperation(env,operationId,fingerprint);if(replay)return replay;throw error;}
+  return await priorLifecycleOperation(env,operationId,fingerprint)||json({error:'Order changed concurrently; review before retrying.'},409);
+}
+
 async function adminCustomers(request, env) {
   const check = requireAccessAdmin(request, env);
   if (check.response) return check.response;
@@ -5555,7 +5750,9 @@ async function adminCustomers(request, env) {
       cu.name customer_name,
       lower(cu.email) customer_email,
       NULLIF(cu.phone,'') customer_phone,
-      CASE WHEN EXISTS(SELECT 1 FROM member_accounts ma WHERE ma.customer_id=cu.id AND ma.verified_at IS NOT NULL) THEN 1 ELSE 0 END is_member,
+      (SELECT id FROM member_accounts WHERE customer_id=cu.id) member_account_id,
+      (SELECT access_state FROM member_accounts WHERE customer_id=cu.id) member_access_state,
+      CASE WHEN EXISTS(SELECT 1 FROM member_accounts ma WHERE ma.customer_id=cu.id AND ma.verified_at IS NOT NULL AND ma.access_state='ACTIVE') THEN 1 ELSE 0 END is_member,
       (SELECT COUNT(*) FROM bookings b WHERE b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) total_bookings,
       (SELECT COUNT(*) FROM bookings b WHERE (b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) AND b.status='PAID') paid_bookings,
       (SELECT COUNT(*) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='CANCELLED') cancelled_bookings,
@@ -5589,7 +5786,7 @@ async function adminCustomers(request, env) {
 
   const customer = await env.BOOKINGS_DB.prepare(customerMetricsSql + ` WHERE lower(cu.email)=?`).bind(email).first();
   if (!customer) return json({error:'Customer not found.'},404);
-  const [bookings, waiting, notes, tags, profile, notifications, campaigns, attendanceHistory, loyaltyHistory] = await Promise.all([
+  const [bookings, waiting, notes, tags, profile, notifications, campaigns, attendanceHistory, loyaltyHistory, lifecycleHistory] = await Promise.all([
     env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.customer_id,b.customer_name,b.customer_email,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at,(SELECT COUNT(*) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_transaction_count,(SELECT GROUP_CONCAT(DISTINCT t.source_type) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_sources FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?) ORDER BY b.created_at DESC LIMIT 100`).bind(customer.customer_id,email).all(),
     env.BOOKINGS_DB.prepare(`SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w LEFT JOIN classes c ON c.id=w.class_id WHERE lower(w.customer_email)=? ORDER BY w.created_at DESC LIMIT 50`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_notes WHERE customer_key=? ORDER BY created_at DESC LIMIT 100`).bind(email).all(),
@@ -5598,7 +5795,8 @@ async function adminCustomers(request, env) {
     env.BOOKINGS_DB.prepare(`SELECT event_type,channel,status,created_at,sent_at,error_message FROM notification_log WHERE lower(recipient)=? ORDER BY created_at DESC LIMIT 50`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT ec.subject,ec.status,ec.sent_at,ec.created_at,ecr.status recipient_status FROM email_campaign_recipients ecr JOIN email_campaigns ec ON ec.id=ecr.campaign_id WHERE lower(ecr.email)=? ORDER BY ec.created_at DESC LIMIT 50`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT a.id,a.booking_id,a.checked_in_at,a.recorded_at,a.checked_in_by,b.reference,c.title class_title,c.starts_at,c.venue FROM attendance a JOIN bookings b ON b.id=a.booking_id LEFT JOIN classes c ON c.id=b.class_id WHERE lower(b.customer_email)=? ORDER BY a.checked_in_at DESC,a.id DESC LIMIT 100`).bind(email).all(),
-    env.BOOKINGS_DB.prepare(`SELECT id,booking_id,stamp_delta amount,reason,'LEGACY' source_type,event_key source_id,NULL created_by,created_at FROM loyalty_stamp_ledger WHERE lower(customer_email)=lower(?) UNION ALL SELECT id,booking_id,amount,reason,source_type,source_id,created_by,created_at FROM loyalty_transactions WHERE customer_id=? OR (customer_id IS NULL AND lower(customer_email)=lower(?)) ORDER BY created_at DESC LIMIT 200`).bind(email,customer.customer_id,email).all()
+    env.BOOKINGS_DB.prepare(`SELECT id,booking_id,stamp_delta amount,reason,'LEGACY' source_type,event_key source_id,NULL created_by,created_at FROM loyalty_stamp_ledger WHERE lower(customer_email)=lower(?) UNION ALL SELECT id,booking_id,amount,reason,source_type,source_id,created_by,created_at FROM loyalty_transactions WHERE customer_id=? OR (customer_id IS NULL AND lower(customer_email)=lower(?)) ORDER BY created_at DESC LIMIT 200`).bind(email,customer.customer_id,email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT action,reason,actor,created_at FROM admin_lifecycle_audit WHERE customer_id=? ORDER BY created_at DESC LIMIT 50`).bind(customer.customer_id).all()
   ]);
   const loyaltyBalance=Math.max(0,Number(customer.loyalty_balance||0));
   const last = customer.last_booking_at ? new Date(customer.last_booking_at).getTime() : 0;
@@ -5610,7 +5808,8 @@ async function adminCustomers(request, env) {
     ...(notifications.results||[]).map(n=>({type:'COMMUNICATION',title:`${n.event_type} · ${n.status}`,detail:n.channel,created_at:n.sent_at||n.created_at})),
     ...(campaigns.results||[]).map(c=>({type:'EMAIL',title:c.subject,detail:c.recipient_status||c.status,created_at:c.sent_at||c.created_at})),
     ...(attendanceHistory.results||[]).map(a=>({type:'ATTENDANCE',title:`Attended: ${a.class_title||'Class'}`,detail:a.venue||'',created_at:a.recorded_at||a.checked_in_at})),
-    ...(loyaltyHistory.results||[]).map(l=>({type:'LOYALTY',title:`${Number(l.amount)>0?'+':''}${Number(l.amount)||0} stamp${Math.abs(Number(l.amount)||0)===1?'':'s'}`,detail:l.reason||l.source_type,created_at:l.created_at}))
+    ...(loyaltyHistory.results||[]).map(l=>({type:'LOYALTY',title:`${Number(l.amount)>0?'+':''}${Number(l.amount)||0} stamp${Math.abs(Number(l.amount)||0)===1?'':'s'}`,detail:l.reason||l.source_type,created_at:l.created_at})),
+    ...(lifecycleHistory.results||[]).map(l=>({type:'ACCOUNT',title:l.action==='MEMBER_REVOKE'?'Website login revoked':'Website login restored',detail:`${l.reason} · ${l.actor}`,created_at:l.created_at}))
   ].sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))).slice(0,100);
   const currentInstant=new Date();
   return json({
@@ -5649,7 +5848,7 @@ async function deleteTestBooking(env, booking, actor) {
 
   if (holdId) {
     await env.BOOKINGS_DB.prepare(
-      `DELETE FROM booking_holds WHERE id=?`
+      `DELETE FROM booking_holds WHERE id=? AND NOT EXISTS(SELECT 1 FROM bookings WHERE hold_id=booking_holds.id)`
     ).bind(holdId).run();
   }
 
@@ -5757,12 +5956,19 @@ async function adminBookings(request, env, ctx) {
   }
 
   if(action==='MARK_PAID'){
+    if(!['PENDING','PAID'].includes(booking.status))return json({error:'Only pending bookings can be marked paid.'},409);
     if(booking.status!=='PAID'){
-      await env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=CURRENT_TIMESTAMP WHERE id=?`).bind(id).run();
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP) WHERE id=? AND status='PENDING'`).bind(id),
+        env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+          WHERE id=? AND EXISTS(SELECT 1 FROM bookings WHERE id=? AND status='PAID')`).bind(booking.hold_id,id),
+        bookingConfirmationInsert(env,id)
+      ]);
       await reconcileClassSold(env,booking.class_id);
       const confirmed=await bookingWithClass(env,id);if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED');
       await awardLoyaltyStampForBooking(env,id);
     }
+    await safelyQueueBookingConfirmation(env,id);
   }else if(action==='CANCEL'){
     if(['PENDING','PAID'].includes(booking.status)){
       const refundStatus = booking.status === 'PAID' && booking.payment_provider === 'SUMUP' ? 'REFUND_DUE' : 'NO_PAYMENT_TAKEN';
@@ -5901,6 +6107,8 @@ async function sendAdminMerchAlert(env,order){
 }
 
 async function sendMerchConfirmation(env,order){
+  const current=await env.BOOKINGS_DB.prepare(`SELECT status,cancelled_at FROM merch_orders WHERE id=?`).bind(order.id).first();
+  if(!current||current.status!=='PAID'||current.cancelled_at)return;
   if(order.confirmation_email_sent_at)return;
   const money=p=>`£${(Number(p||0)/100).toFixed(2)}`;
   const detail=`${order.design} · ${order.fit==='womens'?"Women’s premium":"Unisex"} · ${order.size} · Qty ${order.quantity} · ${merchDeliveryLabel(order)}${order.delivery_pence?` ${money(order.delivery_pence)}`:' FREE'} · Total ${money(order.amount_pence)}`;
@@ -5911,6 +6119,8 @@ async function sendMerchConfirmation(env,order){
   if(sent&&!sent.skipped)await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET confirmation_email_sent_at=CURRENT_TIMESTAMP WHERE id=?`).bind(order.id).run().catch(()=>{});
 }
 async function sendMerchFulfilmentEmail(env,order){
+  const current=await env.BOOKINGS_DB.prepare(`SELECT status,cancelled_at FROM merch_orders WHERE id=?`).bind(order.id).first();
+  if(!current||current.status!=='PAID'||current.cancelled_at)return;
   const delivery=order.fulfilment_method==='delivery';
   const heading=delivery?'Your Boot Scootin’ order is on its way!':'Your Boot Scootin’ order is ready!';
   const paragraphs=delivery
@@ -5998,20 +6208,20 @@ async function merchOrderStatus(request,env,url){
   if(!reference)return json({error:'Order reference required.'},400);
   let order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE reference=?`).bind(reference).first();
   if(!order)return json({error:'Order not found.'},404);
-  if(order.provider_checkout_id&&sumUpConfigured(env)&&order.status!=='PAID'){
+  if(order.provider_checkout_id&&sumUpConfigured(env)&&order.status!=='PAID'&&order.status!=='CANCELLED'&&!order.cancelled_at){
     try{
       const checkout=await retrieveSumUpCheckout(env,order.provider_checkout_id);
       const cs=String(checkout?.status||'').toUpperCase();
       if(cs==='PAID'){
         const tid=clean(checkoutTransactionId(checkout),180)||null;
-        await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=CURRENT_TIMESTAMP,provider_transaction_id=? WHERE id=?`).bind(tid,order.id).run();
+        await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=CURRENT_TIMESTAMP,provider_transaction_id=? WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(tid,order.id).run();
         await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(order.customer_email,'MERCH_ORDER_PAID','merch_order',order.id,JSON.stringify({reference,transaction_id:tid})).run().catch(()=>{});
         order.status='PAID';
         order.provider_transaction_id=tid;
         try{await sendMerchConfirmation(env,{...order,status:'PAID'});}catch(_){}
         try{await sendAdminMerchAlert(env,{...order,status:'PAID'});}catch(_){}
       } else if(['FAILED','EXPIRED'].includes(cs)) {
-        await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=?`).bind(cs,order.id).run(); order.status=cs;
+        await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status=? WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(cs,order.id).run(); order.status=cs;
       }
     }catch(_){}
   }
@@ -6021,15 +6231,14 @@ async function merchOrderStatus(request,env,url){
 
 async function adminMerchOrders(request,env){
   const check=requireAccessAdmin(request,env); if(check.response)return check.response;
-  await ensureBookingSchema(env);
   if(request.method==='GET'){
-    // Keep genuine paid orders; remove only historical pre-live test rows.
-    await env.BOOKINGS_DB.prepare(`DELETE FROM merch_orders WHERE status<>'PAID' AND datetime(created_at) < datetime('2026-08-10 00:00:00')`).run().catch(()=>{});
-    const rows=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders ORDER BY created_at DESC LIMIT 250`).all();
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT o.*,r.amount_pence external_refund_pence,r.refunded_at,r.method refund_method,r.source refund_source FROM merch_orders o LEFT JOIN merch_external_refunds r ON r.order_id=o.id ORDER BY o.created_at DESC LIMIT 250`).all();
     return json({items:rows.results||[]});
   }
   const body=await request.json().catch(()=>null); if(!body)return json({error:'Invalid merchandise order request.'},400);
 
+  if(body.action==='CANCEL_EXTERNAL_REFUND')return cancelMerchExternallyRefunded(request,env,check.state.email,body);
+  if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'Origin check failed.'},403);
   if(request.method==='POST' && clean(body.action,40)==='CREATE'){
     const customerName=clean(body.customer_name,120),email=clean(body.customer_email,254).toLowerCase(),phone=clean(body.customer_phone,60),design=clean(body.design,120),fit=clean(body.fit,20),size=clean(body.size,30),quantity=Math.max(1,Math.min(4,Number(body.quantity||1))),fulfilment=clean(body.fulfilment_method,20),address=clean(body.delivery_address,500),paymentOption=clean(body.payment_option,30)||'unpaid';
     if(!customerName||!emailOk(email)||!design||!['unisex','womens'].includes(fit)||!['collection','delivery'].includes(fulfilment)||!['sumup_link','sumup_card','cash','unpaid'].includes(paymentOption))return json({error:'Please complete all required order fields.'},400);
@@ -6067,22 +6276,23 @@ async function adminMerchOrders(request,env){
   const id=clean(body.id,120),action=clean(body.action,40);
   const order=await env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE id=?`).bind(id).first();
   if(!order)return json({error:'Merchandise order not found.'},404);
+  if(order.status==='CANCELLED'||order.cancelled_at)return json({error:'Cancelled orders are retained and cannot be fulfilled or marked paid.'},409);
   if(action==='READY'){
     if(order.fulfilment_method!=='collection')return json({error:'This order is set for delivery.'},409);
-    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='READY_FOR_COLLECTION' WHERE id=?`).bind(id).run();
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='READY_FOR_COLLECTION' WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(id).run();
     if(order.status==='PAID')await sendMerchFulfilmentEmail(env,{...order,fulfilment_status:'READY_FOR_COLLECTION'}).catch(()=>{});
   } else if(action==='DISPATCHED'){
     if(order.fulfilment_method!=='delivery')return json({error:'This order is set for collection.'},409);
-    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='DISPATCHED' WHERE id=?`).bind(id).run();
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='DISPATCHED' WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(id).run();
     if(order.status==='PAID')await sendMerchFulfilmentEmail(env,{...order,fulfilment_status:'DISPATCHED'}).catch(()=>{});
   } else if(action==='COMPLETE'){
-    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='COMPLETED' WHERE id=?`).bind(id).run();
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET fulfilment_status='COMPLETED' WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(id).run();
   } else if(action==='MARK_PAID_CASH'){
-    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),payment_method='CASH' WHERE id=?`).bind(id).run();
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),payment_method='CASH' WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(id).run();
   } else if(action==='MARK_PAID_SUMUP'){
-    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),payment_method='SUMUP_CARD' WHERE id=?`).bind(id).run();
+    await env.BOOKINGS_DB.prepare(`UPDATE merch_orders SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),payment_method='SUMUP_CARD' WHERE id=? AND status!='CANCELLED' AND cancelled_at IS NULL`).bind(id).run();
   } else if(action==='DELETE'){
-    if(order.status==='PAID')return json({error:'Paid orders are protected and cannot be deleted from HQ.'},409);
+    if(order.status==='PAID'||order.paid_at)return json({error:'Paid orders are protected and cannot be deleted from HQ.'},409);
     await env.BOOKINGS_DB.prepare(`DELETE FROM merch_orders WHERE id=?`).bind(id).run();
   } else return json({error:'Unknown merchandise action.'},400);
   await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email,`MERCH_${action}`,'merch_order',id,JSON.stringify({reference:order.reference})).run().catch(()=>{});
@@ -6450,6 +6660,8 @@ export default {
       if (path === '/api/admin/sumup-oauth/connect' && request.method === 'GET') return sumUpOAuthStart(request, env);
       if (path === '/api/admin/sumup-oauth') return sumUpOAuthAdmin(request, env);
       if (path === '/api/admin/bookings') return adminBookings(request, env, ctx);
+      if (path === '/api/admin/booking-confirmation-delivery-test') return adminBookingConfirmationDeliveryTest(request,env);
+      if (path === '/api/admin/member-access') return await adminMemberAccess(request,env);
       if (path === '/api/admin/customers') return await adminCustomers(request, env);
       if (path === '/api/admin/promotions') return adminPromotions(request, env);
       if (path === '/api/admin/emails') return adminEmailCentre(request, env, ctx);

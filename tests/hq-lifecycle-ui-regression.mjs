@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const js=readFileSync(new URL('../ranch.js',import.meta.url),'utf8');
+const worker=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
+for(const label of ['Active Member','Revoked Login','No Account'])assert(js.includes(label),`missing ${label}`);
+assert.match(js,/data-member-access=/);assert.match(js,/Reason to.*revoke.*restore/s);assert.match(js,/if\(!reason\?\.trim\(\)\)return/);assert.match(js,/Customer history, bookings, loyalty, passes and orders are preserved/);assert.match(js,/All existing sessions and authentication tokens will be invalidated/);assert.match(js,/confirmed:true,operation_id:crypto\.randomUUID\(\)/);
+assert.match(worker,/SELECT action,reason,actor,created_at FROM admin_lifecycle_audit WHERE customer_id=\?/);assert.match(worker,/Website login revoked/);assert.match(worker,/Website login restored/);
+assert.match(js,/Cancel order — refund already handled externally/);assert.match(js,/Amount already refunded externally in GBP \(no new refund will be issued\)/);assert.match(js,/This will NOT issue a payment-provider refund or email/);assert.match(js,/pence>order\.amount_pence/);assert.match(js,/button\.disabled=true/);assert.match(js,/button\.disabled=false/);
+assert.match(js,/data-merch-action="CANCEL_EXTERNAL_REFUND"/);assert.match(js,/paid&&!cancelled/);assert.match(js,/Externally refunded:/);assert.match(js,/Original payment retained/);
+assert(!/@hotmail\.co\.uk|MERCH-\d{6}-/.test(js),'real customer/order data must not be embedded in HQ JavaScript');
+console.log('PASS HQ lifecycle UI source: labels, required reasons, explicit confirmations, disabled-state recovery, £ amount validation, external/manual wording, and no embedded real customer data.');
