@@ -6,6 +6,7 @@ if(!sqlPath||!mappingPath)throw new Error('Usage: node tests/customer-crm-regres
 const source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
 const {default:worker}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const db=new DatabaseSync(':memory:'); db.exec('PRAGMA foreign_keys=OFF'); db.exec(readFileSync(sqlPath,'utf8')); db.exec('PRAGMA foreign_keys=ON');
+for(const file of ['0019_booking_confirmation_outbox.sql','0020_member_access_lifecycle.sql','0021_merch_external_refund.sql'])db.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
 let writes=0,calls=0;
 const prepare=(sql,params=[])=>({
  bind(...values){return prepare(sql,values)},
@@ -24,7 +25,7 @@ let response=await request('/ranch/api/admin/customers',{headers:{}});assert.equ
 response=await request('/ranch/api/admin/customers',{headers:{'Cf-Access-Authenticated-User-Email':'other@example.com'}});assert.equal(response.status,403);
 response=await request('/ranch/api/admin/customers');assert.equal(response.status,200);
 const {customers}=await response.json();assert(customers.length>0);
-for(const customer of customers){const start=calls;response=await request('/ranch/api/admin/customers?email='+encodeURIComponent(customer.customer_email));assert.equal(response.status,200);const data=await response.json();assert.equal(data.customer.customer_id,customer.customer_id);assert.equal(calls-start,10);}
+for(const customer of customers){const start=calls;response=await request('/ranch/api/admin/customers?email='+encodeURIComponent(customer.customer_email));assert.equal(response.status,200);const data=await response.json();assert.equal(data.customer.customer_id,customer.customer_id);assert.equal(calls-start,11);}
 assert.equal(writes,0,'CRM GET requests must not run setup or seed writes');assert.deepEqual(snapshot(),before);
 const mappings=JSON.parse(readFileSync(mappingPath,'utf8'));assert.equal(mappings.length,14);
 for(const [i,m] of mappings.entries()){
