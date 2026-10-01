@@ -2216,9 +2216,9 @@ function notificationCopy(eventType, booking) {
   const ticket = booking.ticket_type==='SOCIAL_ONLY' ? `Social Only${booking.ticket_entry_time?` · Entry from ${booking.ticket_entry_time}`:''}` : 'Class + Social';
   if (eventType === 'BOOKING_CONFIRMED') return {
     subject: `Booking confirmed — ${className}`,
-    text: `Hi ${booking.customer_name}, your booking ${booking.reference} is confirmed for ${className}${start ? ` on ${start}` : ''}${venue ? ` at ${venue}` : ''}. Ticket: ${ticket}. Places: ${booking.quantity}. We can’t wait to dance with you!`,
+    text: `Hi ${booking.customer_name}, your booking ${booking.reference} is confirmed for ${className}${start ? ` on ${start}` : ''}${venue ? ` at ${venue}` : ''}. Ticket: ${ticket}. Places: ${booking.quantity}. Total: ${amount}. We can’t wait to dance with you!`,
     heading: 'Your booking is confirmed',
-    detail: `Reference ${booking.reference} · ${ticket} · ${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
+    detail: `Reference ${booking.reference} · ${ticket} · ${amount} · ${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
   };
   if (eventType === 'CLASS_CANCELLED') return {
     subject: `Class cancelled — ${className}`,
@@ -2538,8 +2538,9 @@ async function publicPromoValidate(request,env){
   await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
   const classRow=await env.BOOKINGS_DB.prepare(`SELECT price_pence,social_only_enabled,social_only_price_pence FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
   const anniversary=await anniversaryInventory(env).catch(()=>null),classId=clean(body.classId,120);
+  const hasTicketType=Object.prototype.hasOwnProperty.call(body,'ticket_type');
   const requestedTicketType=clean(body.ticket_type,30);
-  if(requestedTicketType&&!['CLASS_SOCIAL','SOCIAL_ONLY'].includes(requestedTicketType))return json({error:'Unsupported ticket type.'},400);
+  if(hasTicketType&&!['CLASS_SOCIAL','SOCIAL_ONLY'].includes(requestedTicketType))return json({error:'Unsupported ticket type.'},400);
   const ticketType=requestedTicketType||'CLASS_SOCIAL';
   if(ticketType==='SOCIAL_ONLY'&&anniversary?.event?.class_id===classId)return json({error:'Social Only tickets are not available for the Anniversary event.'},409);
   if(ticketType==='SOCIAL_ONLY'&&(!Number(classRow.social_only_enabled)||!Number.isInteger(Number(classRow.social_only_price_pence))||Number(classRow.social_only_price_pence)<=0))return json({error:'Social Only tickets are not available for this class.'},409);
@@ -2563,8 +2564,9 @@ async function createClassReservation(request, env) {
   const quantity = Math.max(1, Math.min(4, Number(body.quantity) || 1));
   const requestedWaitlist = clean(body.bookingMode, 20) === 'waitlist';
   const requestedPromoCode = normalisePromoCode(body.promo_code || '');
+  const hasTicketType=Object.prototype.hasOwnProperty.call(body,'ticket_type');
   const requestedTicketType=clean(body.ticket_type,30);
-  if(requestedTicketType&&!['CLASS_SOCIAL','SOCIAL_ONLY'].includes(requestedTicketType))return json({error:'Unsupported ticket type.'},400);
+  if(hasTicketType&&!['CLASS_SOCIAL','SOCIAL_ONLY'].includes(requestedTicketType))return json({error:'Unsupported ticket type.'},400);
   const ticketType=requestedTicketType||'CLASS_SOCIAL';
 
   if (!name || !emailOk(email) || !classId) {
