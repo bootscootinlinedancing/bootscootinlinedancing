@@ -185,6 +185,7 @@
       </div>
       <dl>
         <div><dt>Reference</dt><dd>${esc(b.reference)}</dd></div>
+        <div><dt>Ticket</dt><dd>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</dd></div>
         <div><dt>Places</dt><dd>${esc(b.quantity)}</dd></div>
         <div><dt>Total</dt><dd>${esc(money(b.amount_pence))}</dd></div>
         <div><dt>Payment</dt><dd>${esc(b.payment_label||b.status)}</dd></div>

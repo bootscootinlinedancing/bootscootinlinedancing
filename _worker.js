@@ -807,6 +807,7 @@ async function createClassCreditBooking(request,env){
   const body=await request.json().catch(()=>null);
   const classId=clean(body?.class_id,120),operationId=classCreditOperationId(body?.operation_id);
   if(!classId||!operationId)return json({error:'Choose a class and retry the booking.'},400);
+  if(clean(body?.ticket_type,30)==='SOCIAL_ONLY')return json({error:'Class Pass credits can only book the Class + Social ticket.'},409);
   const operationKey=`class-pass-booking:${session.member_id}:${operationId}`;
   const bookingId=`cpb-${await memberSha256Hex(operationKey)}`;
   const existing=await env.BOOKINGS_DB.prepare(`
@@ -858,9 +859,9 @@ async function createClassCreditBooking(request,env){
         INSERT OR IGNORE INTO bookings(
           id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,quantity,
           amount_pence,original_amount_pence,discount_pence,status,payment_provider,secure_token,customer_token,
-          terms_accepted_at,paid_at,retention_delete_after,class_pass_id
+          terms_accepted_at,paid_at,retention_delete_after,class_pass_id,ticket_type
         )
-        SELECT ?,?,?,?,mp.customer_id,?,?,?,1,0,0,0,'PAID','CLASS_PASS',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,datetime('now','+24 months'),mp.id
+        SELECT ?,?,?,?,mp.customer_id,?,?,?,1,0,0,0,'PAID','CLASS_PASS',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,datetime('now','+24 months'),mp.id,'CLASS_SOCIAL'
         FROM member_passes mp
         WHERE mp.id=? AND mp.member_id=? AND mp.customer_id=? AND mp.status='ACTIVE' AND mp.valid_through>=?
           AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
@@ -1422,6 +1423,8 @@ async function ensureBookingSchema(env) {
     `ALTER TABLE bookings ADD COLUMN promo_code TEXT`,
     `ALTER TABLE bookings ADD COLUMN class_pass_id TEXT REFERENCES member_passes(id)`,
     `ALTER TABLE bookings ADD COLUMN class_pass_ledger_id TEXT REFERENCES class_pass_credit_ledger(id)`,
+    `ALTER TABLE bookings ADD COLUMN ticket_type TEXT`,
+    `ALTER TABLE bookings ADD COLUMN ticket_entry_time TEXT`,
     `ALTER TABLE waiting_list ADD COLUMN secure_token TEXT`,
     `ALTER TABLE merch_orders ADD COLUMN fulfilment_method TEXT NOT NULL DEFAULT 'collection'`,
     `ALTER TABLE merch_orders ADD COLUMN delivery_address TEXT`,
@@ -1431,7 +1434,10 @@ async function ensureBookingSchema(env) {
     `ALTER TABLE merch_orders ADD COLUMN fulfilment_email_sent_at TEXT`,
     `ALTER TABLE merch_orders ADD COLUMN payment_method TEXT`,
     `ALTER TABLE merch_orders ADD COLUMN payment_url TEXT`,
-    `ALTER TABLE classes ADD COLUMN poster_url TEXT`
+    `ALTER TABLE classes ADD COLUMN poster_url TEXT`,
+    `ALTER TABLE classes ADD COLUMN social_only_enabled INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE classes ADD COLUMN social_only_price_pence INTEGER`,
+    `ALTER TABLE classes ADD COLUMN social_only_entry_time TEXT`
   ];
   for (const migration of migrations) {
     try { await env.BOOKINGS_DB.prepare(migration).run(); } catch (_) {}
@@ -1589,7 +1595,7 @@ async function publicClasses(env) {
         WHERE b.class_id=c.id
           AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
       ),0) AS sold,
-      c.status,c.level,c.public_notes,c.poster_url,COALESCE(pe.eligible,0) AS class_pass_eligible,
+      c.status,c.level,c.public_notes,c.poster_url,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,COALESCE(pe.eligible,0) AS class_pass_eligible,
       MAX(
         0,
         c.capacity
@@ -2201,11 +2207,12 @@ function notificationCopy(eventType, booking) {
   const start = parts.date ? `${parts.date} at ${parts.time}` : '';
   const venue = booking.venue || booking.location || '';
   const amount = `£${(Number(booking.refund_amount_pence || booking.amount_pence || 0) / 100).toFixed(2)}`;
+  const ticket = booking.ticket_type==='SOCIAL_ONLY' ? `Social Only${booking.ticket_entry_time?` · Entry from ${booking.ticket_entry_time}`:''}` : 'Class + Social';
   if (eventType === 'BOOKING_CONFIRMED') return {
     subject: `Booking confirmed — ${className}`,
-    text: `Hi ${booking.customer_name}, your booking ${booking.reference} is confirmed for ${className}${start ? ` on ${start}` : ''}${venue ? ` at ${venue}` : ''}. Places: ${booking.quantity}. We can’t wait to dance with you!`,
+    text: `Hi ${booking.customer_name}, your booking ${booking.reference} is confirmed for ${className}${start ? ` on ${start}` : ''}${venue ? ` at ${venue}` : ''}. Ticket: ${ticket}. Places: ${booking.quantity}. We can’t wait to dance with you!`,
     heading: 'Your booking is confirmed',
-    detail: `Reference ${booking.reference} · ${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
+    detail: `Reference ${booking.reference} · ${ticket} · ${className}${start ? ` · ${start}` : ''}${venue ? ` · ${venue}` : ''}`
   };
   if (eventType === 'CLASS_CANCELLED') return {
     subject: `Class cancelled — ${className}`,
@@ -2522,9 +2529,12 @@ async function issuePersonalPromotion(env,{email,name,type='BIRTHDAY',percent=20
 }
 async function publicPromoValidate(request,env){
   await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
-  const classRow=await env.BOOKINGS_DB.prepare(`SELECT price_pence FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
+  const classRow=await env.BOOKINGS_DB.prepare(`SELECT price_pence,social_only_enabled,social_only_price_pence FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
   const anniversary=await anniversaryInventory(env).catch(()=>null),classId=clean(body.classId,120);
-  const unitPrice=anniversary?.event?.class_id===classId&&anniversary.current_release?anniversary.current_release.price_pence:Number(classRow.price_pence||0);
+  const ticketType=clean(body.ticket_type,30)==='SOCIAL_ONLY'?'SOCIAL_ONLY':'CLASS_SOCIAL';
+  if(ticketType==='SOCIAL_ONLY'&&anniversary?.event?.class_id===classId)return json({error:'Social Only tickets are not available for the Anniversary event.'},409);
+  if(ticketType==='SOCIAL_ONLY'&&(!Number(classRow.social_only_enabled)||classRow.social_only_price_pence==null))return json({error:'Social Only tickets are not available for this class.'},409);
+  const unitPrice=ticketType==='SOCIAL_ONLY'?Number(classRow.social_only_price_pence):anniversary?.event?.class_id===classId&&anniversary.current_release?anniversary.current_release.price_pence:Number(classRow.price_pence||0);
   const quantity=Math.max(1,Math.min(4,Number(body.quantity)||1)); const subtotal=unitPrice*quantity;
   const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId,subtotal});
   return result.valid?json({ok:true,...result,subtotal_pence:subtotal}):json({error:result.error},400);
@@ -2544,6 +2554,7 @@ async function createClassReservation(request, env) {
   const quantity = Math.max(1, Math.min(4, Number(body.quantity) || 1));
   const requestedWaitlist = clean(body.bookingMode, 20) === 'waitlist';
   const requestedPromoCode = normalisePromoCode(body.promo_code || '');
+  const ticketType = clean(body.ticket_type,30)==='SOCIAL_ONLY'?'SOCIAL_ONLY':'CLASS_SOCIAL';
 
   if (!name || !emailOk(email) || !classId) {
     return json({ error: 'Please enter your full name, a valid email address and choose a class.' }, 400);
@@ -2564,6 +2575,8 @@ async function createClassReservation(request, env) {
   const anniversary = await anniversaryInventory(env).catch(()=>null);
   const anniversaryRelease = anniversary?.event?.class_id===classId ? anniversary.current_release : null;
   if(anniversary?.event?.class_id===classId&&!anniversaryRelease)return json({error:'Anniversary tickets are currently sold out.'},409);
+  if(ticketType==='SOCIAL_ONLY'&&anniversary?.event?.class_id===classId)return json({error:'Social Only tickets are not available for the Anniversary event.'},409);
+  if(ticketType==='SOCIAL_ONLY'&&(!Number(classRow.social_only_enabled)||classRow.social_only_price_pence==null||!String(classRow.social_only_entry_time||'').trim()))return json({error:'Social Only tickets are not available for this class.'},409);
 
   const occupancy = await env.BOOKINGS_DB.prepare(`
     SELECT
@@ -2616,7 +2629,7 @@ async function createClassReservation(request, env) {
     throw error;
   }
 
-  const unitPrice = anniversaryRelease ? Number(anniversaryRelease.price_pence) : Number(classRow.price_pence || 0);
+  const unitPrice = ticketType==='SOCIAL_ONLY' ? Number(classRow.social_only_price_pence) : anniversaryRelease ? Number(anniversaryRelease.price_pence) : Number(classRow.price_pence || 0);
   const originalAmount = unitPrice * quantity;
   let promotion = null;
   if(requestedPromoCode){
@@ -2673,12 +2686,12 @@ async function createClassReservation(request, env) {
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,customer_token,
-        terms_accepted_at,marketing_consent,retention_delete_after,anniversary_release_id
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?)`
+        terms_accepted_at,marketing_consent,retention_delete_after,anniversary_release_id,ticket_type,ticket_entry_time
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?,?)`
     ).bind(
       id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken, customerToken,
-      Number(Boolean(body.marketing_consent)),anniversaryRelease?.id||null
+      Number(Boolean(body.marketing_consent)),anniversaryRelease?.id||null,ticketType,ticketType==='SOCIAL_ONLY'?classRow.social_only_entry_time:null
     ).run();
   } catch (error) {
     if(anniversaryRelease)throw error;
@@ -2686,12 +2699,12 @@ async function createClassReservation(request, env) {
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,
-        terms_accepted_at,marketing_consent,retention_delete_after
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'))`
+        terms_accepted_at,marketing_consent,retention_delete_after,ticket_type,ticket_entry_time
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?)`
     ).bind(
       id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken,
-      Number(Boolean(body.marketing_consent))
+      Number(Boolean(body.marketing_consent)),ticketType,ticketType==='SOCIAL_ONLY'?classRow.social_only_entry_time:null
     ).run();
   }
 
@@ -2704,7 +2717,7 @@ async function createClassReservation(request, env) {
      VALUES(?,?,?,?,?)`
   ).bind(
     email, 'BOOKING_CREATED', 'booking', id,
-    JSON.stringify({ reference, quantity, terms: true, paymentReady, promo_code:promotion?.code||null, discount_pence:discountPence })
+    JSON.stringify({ reference, quantity, ticket_type:ticketType, terms: true, paymentReady, promo_code:promotion?.code||null, discount_pence:discountPence })
   ).run();
 
   if(amount===0){
@@ -2728,7 +2741,7 @@ async function createClassReservation(request, env) {
         amount: Number((amount / 100).toFixed(2)),
         currency: 'GBP',
         merchant_code: String(env.SUMUP_MERCHANT_CODE),
-        description: `${classRow.title}${anniversaryRelease?` — ${anniversaryRelease.name}`:''} — ${quantity} place${quantity === 1 ? '' : 's'}`,
+        description: `${classRow.title}${anniversaryRelease?` — ${anniversaryRelease.name}`:ticketType==='SOCIAL_ONLY'?' — Social Only':' — Class + Social'} — ${quantity} place${quantity === 1 ? '' : 's'}`,
         redirect_url: `${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}&customer=${encodeURIComponent(customerToken)}`,
         return_url: `${origin}/api/sumup-webhook`,
         valid_until: holdExpiry,
@@ -3420,7 +3433,7 @@ async function memberMe(request,env){
 
   const loyalty=await loyaltySummary(env,session.email,session.customer_id);
   const bookings=await env.BOOKINGS_DB.prepare(`
-    SELECT b.reference,b.status,b.amount_pence,b.paid_at,c.title,c.starts_at,c.venue
+    SELECT b.reference,b.status,b.amount_pence,b.paid_at,b.ticket_type,b.ticket_entry_time,c.title,c.starts_at,c.venue
     FROM bookings b LEFT JOIN classes c ON c.id=b.class_id
     WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?)
     ORDER BY b.created_at DESC LIMIT 12
@@ -4362,7 +4375,7 @@ async function adminClasses(request, env) {
       const classItem=await env.BOOKINGS_DB.prepare(`SELECT id,title,venue,location,starts_at,ends_at,status,capacity FROM classes WHERE id=?`).bind(registerClassId).first();
       if(!classItem)return json({error:'Class not found.'},404);
       const response=await env.BOOKINGS_DB.prepare(`
-        SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,
+        SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,b.ticket_type,b.ticket_entry_time,
           CASE WHEN a.id IS NULL THEN 0 ELSE 1 END checked_in,a.checked_in_at,a.recorded_at
         FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id
         WHERE b.class_id=? AND b.status IN ('PAID','PENDING')
@@ -4373,7 +4386,9 @@ async function adminClasses(request, env) {
         checked_in_bookings:bookings.filter(b=>Number(b.checked_in)).length,
         total_bookings:bookings.length,
         checked_in_places:bookings.filter(b=>Number(b.checked_in)).reduce((n,b)=>n+Number(b.quantity||1),0),
-        total_places:bookings.reduce((n,b)=>n+Number(b.quantity||1),0)
+        total_places:bookings.reduce((n,b)=>n+Number(b.quantity||1),0),
+        class_social_places:bookings.filter(b=>b.ticket_type!=='SOCIAL_ONLY').reduce((n,b)=>n+Number(b.quantity||1),0),
+        social_only_places:bookings.filter(b=>b.ticket_type==='SOCIAL_ONLY').reduce((n,b)=>n+Number(b.quantity||1),0)
       }});
     }
     // Reconciliation is helpful, but a temporary SumUp/API problem must never
@@ -4389,7 +4404,7 @@ async function adminClasses(request, env) {
       const response=await env.BOOKINGS_DB.prepare(`
         SELECT
           c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
-          c.status,c.level,c.public_notes,c.poster_url,c.created_at,c.updated_at,
+          c.status,c.level,c.public_notes,c.poster_url,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,c.created_at,c.updated_at,
           COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) AS sold,
           COALESCE((SELECT SUM(quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) AS held,
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
@@ -4431,11 +4446,11 @@ async function adminClasses(request, env) {
     start.setDate(start.getDate()+7);
     if(end)end.setDate(end.getDate()+7);
     await env.BOOKINGS_DB.prepare(`
-      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,social_only_enabled,social_only_price_pence,social_only_entry_time)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       id,original.title,original.venue,original.location,start.toISOString(),end?end.toISOString():null,
-      original.price_pence,original.capacity,'draft',original.level,original.public_notes,original.poster_url||''
+      original.price_pence,original.capacity,'draft',original.level,original.public_notes,original.poster_url||'',original.social_only_enabled,original.social_only_price_pence,original.social_only_entry_time
     ).run();
     return json({ok:true,id},201);
   }
@@ -4503,16 +4518,23 @@ async function adminClasses(request, env) {
   const publicNotes=String(b.public_notes??'');
   if(publicNotes.length>50000)return json({error:'The class description must be 50,000 characters or fewer.'},400);
 
+  const socialOnlyEnabled=Number(Boolean(b.social_only_enabled));
+  const socialOnlyPrice=b.social_only_price_pence==null||b.social_only_price_pence===''?null:Number(b.social_only_price_pence);
+  const socialOnlyEntry=clean(b.social_only_entry_time,20);
+  if(socialOnlyEnabled&&(!Number.isInteger(socialOnlyPrice)||socialOnlyPrice<0||!/^([01]\d|2[0-3]):[0-5]\d$/.test(socialOnlyEntry)))return json({error:'Social Only requires a valid price and 24-hour entry time.'},400);
+  const anniversaryClass=id?await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_events WHERE class_id=? AND active=1`).bind(id).first().catch(()=>null):null;
+  if(socialOnlyEnabled&&anniversaryClass)return json({error:'Social Only cannot be enabled for the Anniversary event.'},409);
+
   const vals=[
     title,venue,location,starts.toISOString(),ends?ends.toISOString():null,
     Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),
-    status,clean(b.level,80)||'Beginner friendly',clean(publicNotes,50000),clean(b.poster_url,500)
+    status,clean(b.level,80)||'Beginner friendly',clean(publicNotes,50000),clean(b.poster_url,500),socialOnlyEnabled,socialOnlyEnabled?socialOnlyPrice:null,socialOnlyEnabled?socialOnlyEntry:null
   ];
 
   if(request.method==='POST'){
     await env.BOOKINGS_DB.prepare(`
-      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,social_only_enabled,social_only_price_pence,social_only_entry_time)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(id,...vals).run();
     const created=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(id).first();
     try{await createNewClassDraft(env,created,check.state.email||'hq');}catch(error){console.error('NEW_CLASS_DRAFT_FAILED',error?.message||error);}
@@ -4531,7 +4553,7 @@ async function adminClasses(request, env) {
     }
     await env.BOOKINGS_DB.prepare(`
       UPDATE classes
-      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,poster_url=?,updated_at=CURRENT_TIMESTAMP
+      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,poster_url=?,social_only_enabled=?,social_only_price_pence=?,social_only_entry_time=?,updated_at=CURRENT_TIMESTAMP
       WHERE id=?
     `).bind(...vals,id).run();
     await reconcileClassSold(env,id);
@@ -5787,7 +5809,7 @@ async function adminCustomers(request, env) {
   const customer = await env.BOOKINGS_DB.prepare(customerMetricsSql + ` WHERE lower(cu.email)=?`).bind(email).first();
   if (!customer) return json({error:'Customer not found.'},404);
   const [bookings, waiting, notes, tags, profile, notifications, campaigns, attendanceHistory, loyaltyHistory, lifecycleHistory] = await Promise.all([
-    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.customer_id,b.customer_name,b.customer_email,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at,(SELECT COUNT(*) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_transaction_count,(SELECT GROUP_CONCAT(DISTINCT t.source_type) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_sources FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?) ORDER BY b.created_at DESC LIMIT 100`).bind(customer.customer_id,email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.customer_id,b.customer_name,b.customer_email,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.ticket_type,b.ticket_entry_time,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at,(SELECT COUNT(*) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_transaction_count,(SELECT GROUP_CONCAT(DISTINCT t.source_type) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_sources FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?) ORDER BY b.created_at DESC LIMIT 100`).bind(customer.customer_id,email).all(),
     env.BOOKINGS_DB.prepare(`SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w LEFT JOIN classes c ON c.id=w.class_id WHERE lower(w.customer_email)=? ORDER BY w.created_at DESC LIMIT 50`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_notes WHERE customer_key=? ORDER BY created_at DESC LIMIT 100`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT tag FROM customer_crm_tags WHERE customer_key=? ORDER BY tag`).bind(email).all(),

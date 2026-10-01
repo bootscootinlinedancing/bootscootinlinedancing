@@ -760,6 +760,15 @@
           <label>Capacity<input name="capacity" type="number" min="1" step="1" value="20" required></label>
           <label>Status<select name="status"><option value="draft">Draft</option><option value="open">Open</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label>
         </div>
+        <fieldset class="hq-social-ticket-settings">
+          <legend>Social Only ticket</legend>
+          <label class="check-row"><input name="social_only_enabled" type="checkbox" value="1"><span>Offer a separate Social Only ticket for this class</span></label>
+          <div class="hq-form-grid">
+            <label>Social Only price (£)<input name="social_only_price_gbp" type="number" min="0" step="0.01" value="4.00"></label>
+            <label>Social entry time<input name="social_only_entry_time" type="time" value="20:30"></label>
+          </div>
+          <small>All ticket types share this class's single capacity. Anniversary release tickets remain separate and cannot enable Social Only.</small>
+        </fieldset>
         <label>Level<input name="level" type="text" maxlength="80" value="Beginner friendly"></label>
         <label class="hq-class-description-field">Full public class / event description<textarea name="public_notes" rows="18" maxlength="50000" placeholder="Add the complete customer-facing description. Paragraphs and line breaks will be preserved in the public details view."></textarea><small>Suitable for full event information, schedules, accessibility notes, parking details and several paragraphs of customer guidance.</small></label>
         <section class="hq-class-poster" aria-labelledby="classPosterHeading">

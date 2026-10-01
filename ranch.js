@@ -633,7 +633,7 @@
     updateClassSummary(state.classes);
     const rows=filteredClasses();
     box.innerHTML=rows.length?rows.map(c=>{const remaining=Math.max(0,Number(c.spaces_remaining??(Number(c.capacity||0)-Number(c.sold||0))));return `<article class="ranch-class-row" data-class-id="${esc(c.id)}">
-      <div class="ranch-class-main"><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)} · ${money(c.price_pence)}</span></div>
+      <div class="ranch-class-main"><strong>${esc(c.title)}</strong><span>${fmt(c.starts_at)} · ${esc(c.venue)} · ${money(c.price_pence)}</span>${Number(c.social_only_enabled)===1?`<small>Social Only ${money(c.social_only_price_pence)} · Entry ${esc(c.social_only_entry_time)}</small>`:''}</div>
       <div class="ranch-class-meta">${remaining===0
         ?`<b>FULL</b><small>Waiting list open</small>`
         :`<b>${remaining} place${remaining===1?'':'s'} remaining</b><small>${esc(c.status)}</small>`}</div>
@@ -758,10 +758,10 @@
       <div><p class="kicker red">Class register</p><h2>${esc(c.title||'Class')}</h2><p><strong>${esc(fmt(c.starts_at))}</strong> · ${esc(c.venue||'Venue not supplied')}</p></div>
       <div class="class-register-tools"><button type="button" class="button secondary compact" id="printClassRegister">Print</button><button type="button" class="button secondary compact" id="exportClassRegister">Export CSV</button><button type="button" class="button secondary compact" id="closeClassRegister">Close</button></div>
     </header>
-    <div class="class-register-summary"><article><span>Checked-in bookings</span><strong>${Number(stats.checked_in_bookings||0)} / ${Number(stats.total_bookings||0)}</strong></article><article><span>Checked-in places</span><strong>${Number(stats.checked_in_places||0)} / ${Number(stats.total_places||0)}</strong></article></div>
+    <div class="class-register-summary"><article><span>Checked-in bookings</span><strong>${Number(stats.checked_in_bookings||0)} / ${Number(stats.total_bookings||0)}</strong></article><article><span>Checked-in places</span><strong>${Number(stats.checked_in_places||0)} / ${Number(stats.total_places||0)}</strong></article><article><span>Class + Social</span><strong>${Number(stats.class_social_places||0)}</strong></article><article><span>Social Only</span><strong>${Number(stats.social_only_places||0)}</strong></article></div>
     <div class="class-register-list">${rows.length?rows.map(b=>`<article class="class-register-row ${Number(b.checked_in)?'is-checked-in':''}" data-register-booking="${esc(b.id)}">
       <div class="class-register-person"><strong>${esc(b.customer_name||'Name not supplied')}</strong><span class="class-register-email">${esc(b.customer_email||'Email not supplied')}</span><small>${esc(b.reference||'')} · ${Number(b.quantity||1)} place${Number(b.quantity||1)===1?'':'s'}</small></div>
-      <div class="class-register-payment"><span class="booking-status">${esc(b.status)}</span><small>${money(b.amount_pence)} · ${esc(b.payment_provider||'')}</small></div>
+      <div class="class-register-payment"><span class="booking-status">${esc(b.status)}</span><small>${money(b.amount_pence)} · ${esc(b.payment_provider||'')}</small><small>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</small></div>
       <div class="class-register-attendance">${Number(b.checked_in)?`<strong class="checked-in-label">✓ Checked in</strong><small>${esc(fmt(b.checked_in_at))}</small><button type="button" class="class-register-correct" data-register-undo="${esc(b.id)}">Correct</button>`:`<button type="button" class="button class-check-in-button" data-register-check-in="${esc(b.id)}">Check in</button><small>${b.status==='PENDING'?'Attendance only — no loyalty credit while pending':'Ready to check in'}</small>`}</div>
     </article>`).join(''):emptyPanel('No active paid or pending bookings are attached to this class.')}</div>`;
     panel.querySelectorAll('[data-register-check-in]').forEach(button=>button.addEventListener('click',()=>checkInFromRegister(button)));
@@ -798,8 +798,8 @@
     const data=state.classRegister,rows=data?.bookings||[];if(!data||!rows.length)return toast('There are no bookings to export.','error');
     const date=String(data.class?.starts_at||'class').slice(0,10),slug=String(data.class?.title||'class').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
     downloadCsv(`boot-scootin-register-${date}-${slug||'class'}.csv`,
-      ['Customer name','Email','Booking reference','Places','Booking/payment status','Amount GBP','Payment provider','Attendance status','Checked in at'],
-      rows.map(b=>[b.customer_name,b.customer_email,b.reference,b.quantity,b.status,(Number(b.amount_pence||0)/100).toFixed(2),b.payment_provider,Number(b.checked_in)?'Checked in':'Not checked in',b.checked_in_at||'']));
+      ['Customer name','Email','Booking reference','Ticket type','Entry time','Places','Booking/payment status','Amount GBP','Payment provider','Attendance status','Checked in at'],
+      rows.map(b=>[b.customer_name,b.customer_email,b.reference,b.ticket_type==='SOCIAL_ONLY'?'Social Only':'Class + Social',b.ticket_entry_time||'',b.quantity,b.status,(Number(b.amount_pence||0)/100).toFixed(2),b.payment_provider,Number(b.checked_in)?'Checked in':'Not checked in',b.checked_in_at||'']));
     toast('Class register CSV downloaded.');
   }
   const CLASS_VENUE_TEMPLATES={
@@ -896,6 +896,9 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     form.elements.status.value=item?.status||'draft';
     form.elements.level.value=item?.level||'Beginner friendly';
     form.elements.public_notes.value=item?.public_notes||'';
+    form.elements.social_only_enabled.checked=Number(item?.social_only_enabled)===1;
+    form.elements.social_only_price_gbp.value=((Number(item?.social_only_price_pence??400))/100).toFixed(2);
+    form.elements.social_only_entry_time.value=item?.social_only_entry_time||'20:30';
     if($('#classPosterFile'))$('#classPosterFile').value='';
     setClassPosterPreview(item?.poster_url||'');
     $('#classEditorTitle').textContent=item?'Edit class':'Create class';
@@ -922,7 +925,10 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
       id:id||undefined,title:form.elements.title.value.trim(),venue:form.elements.venue.value.trim(),location:form.elements.location.value.trim(),
       starts_at:startsAt,ends_at:endsAt,
       price_pence:Math.round(Number(form.elements.price_gbp.value||0)*100),capacity:Number(form.elements.capacity.value||0),
-      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl
+      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl,
+      social_only_enabled:form.elements.social_only_enabled.checked,
+      social_only_price_pence:Math.round(Number(form.elements.social_only_price_gbp.value||0)*100),
+      social_only_entry_time:form.elements.social_only_entry_time.value
     };
     button.disabled=true;button.textContent='Saving…';message.textContent='Saving class…';
     try{
@@ -1035,6 +1041,7 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
         <dl>
           <div><dt>Class</dt><dd>${esc(b.class_title)}</dd></div>
           <div><dt>Date</dt><dd>${fmt(b.starts_at)}</dd></div>
+          <div><dt>Ticket</dt><dd>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</dd></div>
           <div><dt>Places</dt><dd>${esc(b.quantity)}</dd></div>
           <div><dt>Reference</dt><dd>${esc(b.reference)}</dd></div>
           <div><dt>Payment status</dt><dd>${esc(b.status)}</dd></div>

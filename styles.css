@@ -10094,3 +10094,12 @@ body.legal-page{
   .header{gap:.75rem!important}
   .header #menuButton.menu{min-width:88px!important;padding-inline:.7rem!important}
 }
+/* Social Only and full tickets share one class capacity. */
+.ticket-type-picker{display:grid;gap:.65rem;margin:1rem 0;padding:1rem;border:1px solid rgba(198,35,44,.55)}
+.ticket-type-picker legend{padding:0 .35rem;font-weight:800}
+.ticket-type-picker label{display:flex;align-items:flex-start;gap:.7rem;padding:.75rem;border:1px solid rgba(255,255,255,.18);cursor:pointer}
+.ticket-type-picker label:has(input:checked){border-color:#d6333d;background:rgba(198,35,44,.12)}
+.ticket-type-picker span,.ticket-type-picker small{display:block}.ticket-type-picker small{margin-top:.2rem}
+.hq-social-ticket-settings{display:grid;gap:.8rem;padding:1rem;border:1px solid rgba(205,54,62,.45)}
+.hq-social-ticket-settings legend{padding:0 .4rem;font-weight:800;color:#fff1df}
+@media(max-width:390px){.ticket-type-picker{padding:.75rem}.ticket-type-picker label{min-width:0}.ticket-type-picker span{overflow-wrap:anywhere}}

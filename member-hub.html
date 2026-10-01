@@ -695,7 +695,7 @@ body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:
             <div class="member-booking-row">
               <strong>${String(b.title||'Boot Scootin’ class')}</strong>
               <span>${formatMemberDate(b.starts_at)}${b.venue?' · '+String(b.venue):''}</span>
-              <small>${String(b.status||'').replaceAll('_',' ')}</small>
+              <small>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${String(b.ticket_entry_time)}`:''}`:'Class + Social'} · ${String(b.status||'').replaceAll('_',' ')}</small>
             </div>`).join('');
         }
       }
