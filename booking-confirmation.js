@@ -52,6 +52,7 @@
       <dt>Class</dt><dd>${esc(b.class_title)}</dd>
       <dt>Date</dt><dd>${esc(date(b.starts_at))}</dd>
       <dt>Venue</dt><dd>${esc(b.venue)}</dd>
+      <dt>Ticket</dt><dd>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</dd>
       <dt>Places</dt><dd>${esc(b.quantity)}</dd>
       <dt>Total</dt><dd>${esc(money(b.amount_pence))}</dd>
       <dt>Status</dt><dd>${esc(String(b.status||'PENDING').replaceAll('_',' '))}</dd>
