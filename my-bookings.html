@@ -185,7 +185,7 @@
       </div>
       <dl>
         <div><dt>Reference</dt><dd>${esc(b.reference)}</dd></div>
-        <div><dt>Ticket</dt><dd>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</dd></div>
+        <div><dt>Ticket</dt><dd>${esc(b.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[b.ticket_product_code||b.ticket_type]||'Class + Social'))}</dd></div>
         <div><dt>Places</dt><dd>${esc(b.quantity)}</dd></div>
         <div><dt>Total</dt><dd>${esc(money(b.amount_pence))}</dd></div>
         <div><dt>Payment</dt><dd>${esc(b.payment_label||b.status)}</dd></div>

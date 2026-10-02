@@ -178,6 +178,13 @@
 </section>
 <section class="booking-shell booking-content">
 <div class="booking-alert" hidden="" id="bookingStatus"></div>
+<section class="class-pass-discovery" aria-labelledby="classPassDiscoveryTitle">
+<div><p class="kicker red">Dance more, save more</p><h2 id="classPassDiscoveryTitle">Class Pass</h2>
+<p>Buy class credits once and use them for eligible classes. Eligibility can vary by class and ticket; Social Only is never included.</p></div>
+<div id="classPassProducts" class="class-pass-discovery-products" aria-live="polite"><span>Loading current passes…</span></div>
+<a class="button" href="member-hub.html#class-passes">Buy Class Pass</a>
+<small>Sign in or create a Member Zone account to buy and manage a pass. Active passes and remaining credits appear in Member Zone.</small>
+</section>
 <div class="booking-toolbar">
 <div>
 <p class="kicker red">Upcoming classes</p>
@@ -200,10 +207,9 @@
 <p class="dialog-meta" id="selectedClassMeta"></p>
 <input id="classId" name="classId" type="hidden"/>
 <input id="bookingMode" name="bookingMode" type="hidden" value="booking"/>
-<fieldset class="ticket-type-picker" id="ticketTypePicker" hidden>
+<fieldset class="ticket-type-picker ticket-product-picker" id="ticketTypePicker" hidden>
 <legend>Choose your ticket</legend>
-<label><input type="radio" name="ticket_type" value="CLASS_SOCIAL" checked><span><strong>Class + Social</strong><small id="classSocialPrice"></small></span></label>
-<label><input type="radio" name="ticket_type" value="SOCIAL_ONLY"><span><strong>Social Only</strong><small id="socialOnlyDetails"></small></span></label>
+<div id="ticketProductChoices"></div>
 </fieldset>
 <div class="form-grid">
 <label>Full name <small>(first name and surname)</small><input autocomplete="name" maxlength="100" minlength="3" name="name" placeholder="e.g. Nora Godollei" required=""/></label>

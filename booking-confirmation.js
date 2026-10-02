@@ -18,6 +18,7 @@
     return Number.isNaN(parsed.getTime())?'Date to be confirmed':new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(parsed);
   };
   const money=pence=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(pence)||0)/100);
+  const ticket=b=>b.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[b.ticket_product_code||b.ticket_type]||'Class + Social');
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
   if(!ref&&!token){
@@ -52,7 +53,7 @@
       <dt>Class</dt><dd>${esc(b.class_title)}</dd>
       <dt>Date</dt><dd>${esc(date(b.starts_at))}</dd>
       <dt>Venue</dt><dd>${esc(b.venue)}</dd>
-      <dt>Ticket</dt><dd>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</dd>
+      <dt>Ticket</dt><dd>${esc(ticket(b))}</dd>
       <dt>Places</dt><dd>${esc(b.quantity)}</dd>
       <dt>Total</dt><dd>${esc(money(b.amount_pence))}</dd>
       <dt>Status</dt><dd>${esc(String(b.status||'PENDING').replaceAll('_',' '))}</dd>

@@ -27,6 +27,7 @@
   const $$=selector=>[...document.querySelectorAll(selector)];
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=pence=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(pence)||0)/100);
+  const ticketLabel=booking=>booking?.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[booking?.ticket_product_code||booking?.ticket_type]||'Class + Social');
   const fmt=value=>{
     if(!value)return '—';
     const d=new Date(value);
@@ -758,10 +759,10 @@
       <div><p class="kicker red">Class register</p><h2>${esc(c.title||'Class')}</h2><p><strong>${esc(fmt(c.starts_at))}</strong> · ${esc(c.venue||'Venue not supplied')}</p></div>
       <div class="class-register-tools"><button type="button" class="button secondary compact" id="printClassRegister">Print</button><button type="button" class="button secondary compact" id="exportClassRegister">Export CSV</button><button type="button" class="button secondary compact" id="closeClassRegister">Close</button></div>
     </header>
-    <div class="class-register-summary"><article><span>Checked-in bookings</span><strong>${Number(stats.checked_in_bookings||0)} / ${Number(stats.total_bookings||0)}</strong></article><article><span>Checked-in places</span><strong>${Number(stats.checked_in_places||0)} / ${Number(stats.total_places||0)}</strong></article><article><span>Class + Social</span><strong>${Number(stats.class_social_places||0)}</strong></article><article><span>Social Only</span><strong>${Number(stats.social_only_places||0)}</strong></article></div>
+    <div class="class-register-summary"><article><span>Checked-in bookings</span><strong>${Number(stats.checked_in_bookings||0)} / ${Number(stats.total_bookings||0)}</strong></article><article><span>Unique places</span><strong>${Number(stats.total_places||0)}</strong></article><article><span>Beginner participation</span><strong>${Number(stats.beginner_places||0)}</strong></article><article><span>Improver participation</span><strong>${Number(stats.improver_places||0)}</strong></article><article><span>Both classes</span><strong>${Number(stats.combined_places||0)}</strong></article><article><span>Social Only</span><strong>${Number(stats.social_only_places||0)}</strong></article></div>
     <div class="class-register-list">${rows.length?rows.map(b=>`<article class="class-register-row ${Number(b.checked_in)?'is-checked-in':''}" data-register-booking="${esc(b.id)}">
       <div class="class-register-person"><strong>${esc(b.customer_name||'Name not supplied')}</strong><span class="class-register-email">${esc(b.customer_email||'Email not supplied')}</span><small>${esc(b.reference||'')} · ${Number(b.quantity||1)} place${Number(b.quantity||1)===1?'':'s'}</small></div>
-      <div class="class-register-payment"><span class="booking-status">${esc(b.status)}</span><small>${money(b.amount_pence)} · ${esc(b.payment_provider||'')}</small><small>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</small></div>
+      <div class="class-register-payment"><span class="booking-status">${esc(b.status)}</span><small>${money(b.amount_pence)} · ${esc(b.payment_provider||'')}</small><small>${esc(ticketLabel(b))}</small></div>
       <div class="class-register-attendance">${Number(b.checked_in)?`<strong class="checked-in-label">✓ Checked in</strong><small>${esc(fmt(b.checked_in_at))}</small><button type="button" class="class-register-correct" data-register-undo="${esc(b.id)}">Correct</button>`:`<button type="button" class="button class-check-in-button" data-register-check-in="${esc(b.id)}">Check in</button><small>${b.status==='PENDING'?'Attendance only — no loyalty credit while pending':'Ready to check in'}</small>`}</div>
     </article>`).join(''):emptyPanel('No active paid or pending bookings are attached to this class.')}</div>`;
     panel.querySelectorAll('[data-register-check-in]').forEach(button=>button.addEventListener('click',()=>checkInFromRegister(button)));
@@ -799,7 +800,7 @@
     const date=String(data.class?.starts_at||'class').slice(0,10),slug=String(data.class?.title||'class').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
     downloadCsv(`boot-scootin-register-${date}-${slug||'class'}.csv`,
       ['Customer name','Email','Booking reference','Ticket type','Entry time','Places','Booking/payment status','Amount GBP','Payment provider','Attendance status','Checked in at'],
-      rows.map(b=>[b.customer_name,b.customer_email,b.reference,b.ticket_type==='SOCIAL_ONLY'?'Social Only':'Class + Social',b.ticket_entry_time||'',b.quantity,b.status,(Number(b.amount_pence||0)/100).toFixed(2),b.payment_provider,Number(b.checked_in)?'Checked in':'Not checked in',b.checked_in_at||'']));
+      rows.map(b=>[b.customer_name,b.customer_email,b.reference,ticketLabel(b),b.ticket_entry_at||b.ticket_starts_at||b.ticket_entry_time||'',b.quantity,b.status,(Number(b.amount_pence||0)/100).toFixed(2),b.payment_provider,Number(b.checked_in)?'Checked in':'Not checked in',b.checked_in_at||'']));
     toast('Class register CSV downloaded.');
   }
   const CLASS_VENUE_TEMPLATES={
@@ -899,10 +900,25 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     form.elements.social_only_enabled.checked=Number(item?.social_only_enabled)===1;
     form.elements.social_only_price_gbp.value=((Number(item?.social_only_price_pence??400))/100).toFixed(2);
     form.elements.social_only_entry_time.value=item?.social_only_entry_time||'20:30';
+    form.elements.booking_format.value=item?.booking_format||'STANDARD';
+    const configured=code=>(item?.ticket_products||[]).find(product=>(product.code||product.product_code)===code)||{};
+    const localTime=(value,fallback)=>value?classLocalValue(value).slice(11,16):fallback;
+    const beginner=configured('BEGINNER_SOCIAL'),improver=configured('IMPROVER_SOCIAL'),combined=configured('BEGINNER_IMPROVER_SOCIAL'),social=configured('SOCIAL_ONLY');
+    form.elements.beginner_enabled.checked=beginner.enabled===undefined?true:Number(beginner.enabled)===1;
+    form.elements.beginner_start.value=localTime(beginner.starts_at,'19:15');form.elements.beginner_end.value=localTime(beginner.ends_at,'20:15');form.elements.beginner_price.value=((Number(beginner.price_pence||600))/100).toFixed(2);
+    form.elements.improver_enabled.checked=improver.enabled===undefined?true:Number(improver.enabled)===1;
+    form.elements.improver_start.value=localTime(improver.starts_at,'20:15');form.elements.improver_end.value=localTime(improver.ends_at,'21:15');form.elements.improver_price.value=((Number(improver.price_pence||600))/100).toFixed(2);
+    form.elements.combined_enabled.checked=combined.enabled===undefined?true:Number(combined.enabled)===1;form.elements.combined_price.value=((Number(combined.price_pence||800))/100).toFixed(2);
+    form.elements.trial_social_enabled.checked=social.enabled===undefined?true:Number(social.enabled)===1;form.elements.trial_social_price.value=((Number(social.price_pence||400))/100).toFixed(2);form.elements.trial_social_entry.value=localTime(social.entry_at,'21:15');
+    form.elements.ticket_configuration_reason.value='';
+    updateTicketFormatFields(form);
     if($('#classPosterFile'))$('#classPosterFile').value='';
     setClassPosterPreview(item?.poster_url||'');
     $('#classEditorTitle').textContent=item?'Edit class':'Create class';
-    $('#classEditorMessage').textContent='';
+    const existingRecords=Number(item?.booking_count||item?.sold||0)+Number(item?.waiting||0);
+    $('#classEditorMessage').textContent=item&&existingRecords
+      ?`This class already has ${existingRecords} booking/waiting-list place${existingRecords===1?'':'s'}. Ticket price, time or availability changes require a reason and will be audited; existing snapshots remain unchanged.`
+      :'';
     modal.hidden=false;document.body.classList.add('hq-modal-open');
     setTimeout(()=>form.elements.title.focus(),0);
   }
@@ -921,6 +937,13 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     }catch(error){message.textContent=error.message;toast(error.message,'error');return;}
     let posterUrl=form.elements.poster_url.value||'';
     try{posterUrl=await uploadClassPosterIfNeeded();}catch(error){message.textContent=`Poster upload failed: ${error.message}`;toast(message.textContent,'error');return;}
+    const localProductInstant=time=>classLocalToUtc(`${form.elements.starts_at.value.slice(0,10)}T${time}`,'Ticket time');
+    const ticketProducts=form.elements.booking_format.value==='BEGINNER_IMPROVER'?[
+      {product_code:'BEGINNER_SOCIAL',enabled:form.elements.beginner_enabled.checked,price_pence:Math.round(Number(form.elements.beginner_price.value)*100),starts_at:localProductInstant(form.elements.beginner_start.value),ends_at:localProductInstant(form.elements.beginner_end.value)},
+      {product_code:'IMPROVER_SOCIAL',enabled:form.elements.improver_enabled.checked,price_pence:Math.round(Number(form.elements.improver_price.value)*100),starts_at:localProductInstant(form.elements.improver_start.value),ends_at:localProductInstant(form.elements.improver_end.value)},
+      {product_code:'BEGINNER_IMPROVER_SOCIAL',enabled:form.elements.combined_enabled.checked,price_pence:Math.round(Number(form.elements.combined_price.value)*100)},
+      {product_code:'SOCIAL_ONLY',enabled:form.elements.trial_social_enabled.checked,price_pence:Math.round(Number(form.elements.trial_social_price.value)*100),entry_at:localProductInstant(form.elements.trial_social_entry.value)}
+    ]:[];
     const payload={
       id:id||undefined,title:form.elements.title.value.trim(),venue:form.elements.venue.value.trim(),location:form.elements.location.value.trim(),
       starts_at:startsAt,ends_at:endsAt,
@@ -928,7 +951,9 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
       status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl,
       social_only_enabled:form.elements.social_only_enabled.checked,
       social_only_price_pence:Math.round(Number(form.elements.social_only_price_gbp.value||0)*100),
-      social_only_entry_time:form.elements.social_only_entry_time.value
+      social_only_entry_time:form.elements.social_only_entry_time.value,
+      booking_format:form.elements.booking_format.value,ticket_products:ticketProducts,
+      ticket_configuration_reason:form.elements.ticket_configuration_reason.value.trim(),ticket_configuration_operation_id:crypto.randomUUID()
     };
     button.disabled=true;button.textContent='Saving…';message.textContent='Saving class…';
     try{
@@ -939,6 +964,10 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
       toast(id?'Class updated.':'Class created.');
     }catch(error){message.textContent=error.message;toast(error.message,'error');}
     finally{button.disabled=false;button.textContent='Save class';}
+  }
+  function updateTicketFormatFields(form=$('#classEditorForm')){
+    const trial=form?.elements.booking_format?.value==='BEGINNER_IMPROVER';
+    const standard=$('#standardSocialSettings'),advanced=$('#beginnerImproverSettings');if(standard)standard.hidden=trial;if(advanced)advanced.hidden=!trial;
   }
   async function duplicateClass(id){
     try{await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{method:'POST',body:JSON.stringify({id,action:'DUPLICATE'})});await loadClasses();toast('Class duplicated as a draft one week later.');}
@@ -1041,7 +1070,7 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
         <dl>
           <div><dt>Class</dt><dd>${esc(b.class_title)}</dd></div>
           <div><dt>Date</dt><dd>${fmt(b.starts_at)}</dd></div>
-          <div><dt>Ticket</dt><dd>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</dd></div>
+          <div><dt>Ticket</dt><dd>${esc(ticketLabel(b))}</dd></div>
           <div><dt>Places</dt><dd>${esc(b.quantity)}</dd></div>
           <div><dt>Reference</dt><dd>${esc(b.reference)}</dd></div>
           <div><dt>Payment status</dt><dd>${esc(b.status)}</dd></div>
@@ -1100,7 +1129,7 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
 
     if(waiting){
       waiting.innerHTML=(data.waiting||[]).length
-        ?data.waiting.map(w=>`<article class="hq-waiting-row"><strong>${esc(w.customer_name)}</strong><span>${esc(w.class_title)} · ${fmt(w.starts_at)} · ${w.ticket_type==='SOCIAL_ONLY'?`Social Only${w.ticket_entry_time?` · Entry ${esc(w.ticket_entry_time)}`:''}`:'Class + Social'}</span><b>${esc(w.status)}</b></article>`).join('')
+        ?data.waiting.map(w=>`<article class="hq-waiting-row"><strong>${esc(w.customer_name)}</strong><span>${esc(w.class_title)} · ${fmt(w.starts_at)} · ${esc(ticketLabel(w))}</span><b>${esc(w.status)}</b></article>`).join('')
         :emptyPanel('No waiting-list entries.');
     }
   }
@@ -1356,7 +1385,7 @@ Type REFUNDED to continue.`);
         <div class="crm-actions"><button class="button" type="button" id="saveCrmOverview">Save profile</button><button class="button secondary" type="button" data-crm-email>Compose email</button></div>
       </section>
       <section class="crm-tab-panel" data-crm-panel="activity"><div class="crm-timeline">${timeline.length?timeline.map(t=>`<article><span>${esc(t.type)}</span><div><strong>${esc(t.title)}</strong><p>${esc(t.detail||'')}</p><small>${esc(fmt(t.created_at))}</small></div></article>`).join(''):emptyPanel('No activity yet.')}</div></section>
-      <section class="crm-tab-panel" data-crm-panel="bookings"><div class="crm-booking-list">${bookings.length?bookings.map(b=>{const historical=b.is_past===true,eligible=historical&&['PAID','PENDING'].includes(b.status),unlinked=!b.customer_id,approved=unlinked&&b.historical_reconciliation_approved===true;return `<article><div><strong>${esc(b.class_title||'Class')}</strong><p>${esc(fmt(b.starts_at))} · ${esc(b.venue||'')}</p><small>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</small><small>Booking ${esc(b.reference)} · Snapshot: ${esc(b.customer_name||c.customer_name||'Customer')} · ${esc(b.customer_email||c.customer_email||'')}</small>${b.attended?`<small>Attendance date: ${esc(fmt(b.checked_in_at||b.starts_at))}</small>`:''}<small>Loyalty: ${Number(b.loyalty_transaction_count||0)?`${Number(b.loyalty_transaction_count)} transaction(s) · ${esc(b.loyalty_sources||'recorded source')}`:'No booking-linked loyalty transaction'}</small>${approved?`<small>Proposed identity: ${esc(c.customer_name||'Customer')} · ${esc(c.customer_email||'')} · ${esc(c.customer_id||'')}</small>`:unlinked?'<small>Historical identity not linked; no approved deterministic reconciliation.</small>':'<small>Stable customer identity linked</small>'}</div><div><b>${esc(b.status)}</b><span>${money(b.amount_pence)}</span>${approved?`<button type="button" class="button secondary compact" data-reconcile-booking="${esc(b.id)}" data-proposed-customer="${esc(c.customer_id||'')}">Review identity link</button>`:''}${b.attended?`<em>Attended</em><button type="button" class="button secondary compact" data-undo-retrospective-attendance="${esc(b.id)}">Undo attendance</button>`:eligible?`<button type="button" class="button compact" data-retrospective-attendance="${esc(b.id)}">Mark attended</button>`:''}</div></article>`;}).join(''):emptyPanel('No bookings found.')}</div></section>
+      <section class="crm-tab-panel" data-crm-panel="bookings"><div class="crm-booking-list">${bookings.length?bookings.map(b=>{const historical=b.is_past===true,eligible=historical&&['PAID','PENDING'].includes(b.status),unlinked=!b.customer_id,approved=unlinked&&b.historical_reconciliation_approved===true;return `<article><div><strong>${esc(b.class_title||'Class')}</strong><p>${esc(fmt(b.starts_at))} · ${esc(b.venue||'')}</p><small>${esc(ticketLabel(b))}</small><small>Booking ${esc(b.reference)} · Snapshot: ${esc(b.customer_name||c.customer_name||'Customer')} · ${esc(b.customer_email||c.customer_email||'')}</small>${b.attended?`<small>Attendance date: ${esc(fmt(b.checked_in_at||b.starts_at))}</small>`:''}<small>Loyalty: ${Number(b.loyalty_transaction_count||0)?`${Number(b.loyalty_transaction_count)} transaction(s) · ${esc(b.loyalty_sources||'recorded source')}`:'No booking-linked loyalty transaction'}</small>${approved?`<small>Proposed identity: ${esc(c.customer_name||'Customer')} · ${esc(c.customer_email||'')} · ${esc(c.customer_id||'')}</small>`:unlinked?'<small>Historical identity not linked; no approved deterministic reconciliation.</small>':'<small>Stable customer identity linked</small>'}</div><div><b>${esc(b.status)}</b><span>${money(b.amount_pence)}</span>${approved?`<button type="button" class="button secondary compact" data-reconcile-booking="${esc(b.id)}" data-proposed-customer="${esc(c.customer_id||'')}">Review identity link</button>`:''}${b.attended?`<em>Attended</em><button type="button" class="button secondary compact" data-undo-retrospective-attendance="${esc(b.id)}">Undo attendance</button>`:eligible?`<button type="button" class="button compact" data-retrospective-attendance="${esc(b.id)}">Mark attended</button>`:''}</div></article>`;}).join(''):emptyPanel('No bookings found.')}</div></section>
       <section class="crm-tab-panel" data-crm-panel="loyalty">
         <div class="crm-two-col"><article class="crm-box"><h3>Historical attendance</h3><div class="crm-attendance-history">${attendance.length?attendance.map(a=>`<article><strong>${esc(a.class_title||'Class')}</strong><p>${esc(fmt(a.checked_in_at||a.starts_at))} · ${esc(a.venue||'')}</p><small>Recorded in HQ ${esc(fmt(a.recorded_at||a.checked_in_at))}</small></article>`).join(''):emptyPanel('No attendance recorded yet.')}</div></article>
         <article class="crm-box"><h3>Manual Stamp Me migration</h3><p>Use this only where no website booking represents the earned stamps. Every entry is permanent and audited.</p><form id="crmLoyaltyTransactionForm"><label>Stamp adjustment<input name="amount" type="number" min="-100" max="100" step="1" required placeholder="e.g. 3 or -1"></label><label>Reason<textarea name="reason" rows="3" required placeholder="Migrated from Stamp Me"></textarea></label><button class="button" type="submit">Record immutable adjustment</button></form>${Number(p.loyalty_adjustment||0)!==0?`<p class="crm-legacy-adjustment"><strong>Legacy profile adjustment:</strong> ${Number(p.loyalty_adjustment)>0?'+':''}${esc(p.loyalty_adjustment)}. This existing read-only value is already included in the displayed balance; do not enter it again as a Stamp Me migration.</p>`:''}</article></div>
@@ -1885,6 +1914,7 @@ Type REFUNDED to continue.`);
   $('#classPassAdminProduct')?.addEventListener('change',loadClassPasses);
   $('#classPassAdminNearing')?.addEventListener('change',loadClassPasses);
   $('#classEditorForm')?.addEventListener('submit',saveClass);
+  $('#classEditorForm')?.elements?.booking_format?.addEventListener('change',event=>updateTicketFormatFields(event.currentTarget.form));
   $$('[data-class-template]').forEach(node=>node.addEventListener('click',()=>applyClassTemplate(node.dataset.classTemplate)));
   $('#classEditorForm')?.elements?.starts_at?.addEventListener('change',event=>{if(activeClassTemplate)applyTemplateTimes(event.currentTarget.form,activeClassTemplate);});
   $$('[data-close-class-modal]').forEach(node=>node.addEventListener('click',closeClassEditor));
