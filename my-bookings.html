@@ -171,6 +171,9 @@
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const date=value=>new Intl.DateTimeFormat('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
   const money=pence=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(pence)||0)/100);
+  const ticketName=b=>b.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[b.ticket_product_code||b.ticket_type]||'Class + Social');
+  const ticketTime=value=>value?new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'';
+  const ticketDetail=b=>{const code=b.ticket_product_code||b.ticket_type,label=ticketName(b);if(code==='SOCIAL_ONLY')return `${label}${b.ticket_entry_at||b.ticket_entry_time?` · Entry from ${ticketTime(b.ticket_entry_at||b.ticket_entry_time)}`:''}`;if(['BEGINNER_SOCIAL','IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(code))return `${label}${b.ticket_starts_at?` · Teaching ${ticketTime(b.ticket_starts_at)}${b.ticket_ends_at?`–${ticketTime(b.ticket_ends_at)}`:''} + social afterwards`:''}`;return label;};
 
   function bookingCard(b,upcoming){
     const actions=[];
@@ -185,7 +188,7 @@
       </div>
       <dl>
         <div><dt>Reference</dt><dd>${esc(b.reference)}</dd></div>
-        <div><dt>Ticket</dt><dd>${b.ticket_type==='SOCIAL_ONLY'?`Social Only${b.ticket_entry_time?` · Entry ${esc(b.ticket_entry_time)}`:''}`:'Class + Social'}</dd></div>
+        <div><dt>Ticket</dt><dd>${esc(ticketDetail(b))}</dd></div>
         <div><dt>Places</dt><dd>${esc(b.quantity)}</dd></div>
         <div><dt>Total</dt><dd>${esc(money(b.amount_pence))}</dd></div>
         <div><dt>Payment</dt><dd>${esc(b.payment_label||b.status)}</dd></div>

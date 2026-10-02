@@ -429,6 +429,64 @@ function withClassCalendarStatus(row,now=new Date(),includeAvailability=false){
   return {...row,...timing,booking_open:classOpen&&!full,waiting_list_open:classOpen&&full};
 }
 
+const CLASS_TICKET_DEFINITIONS=Object.freeze({
+  CLASS_SOCIAL:{label:'Class + Social',description:'Join the class and stay for the social afterwards.',sumup_description:'Class + Social',beginner:0,improver:0,social:1,capacity_units:1},
+  BEGINNER_SOCIAL:{label:'Beginner Class + Social',description:'Beginner-friendly teaching with step-by-step breakdowns.',sumup_description:'Beginner + Social',beginner:1,improver:0,social:1,capacity_units:1},
+  IMPROVER_SOCIAL:{label:'Improver Class + Social',description:'More challenging dances, tags, restarts and quicker transitions.',sumup_description:'Improver + Social',beginner:0,improver:1,social:1,capacity_units:1},
+  BEGINNER_IMPROVER_SOCIAL:{label:'Beginner + Improver + Social',description:'Join both teaching hours and stay for the social afterwards.',sumup_description:'Beginner + Improver',beginner:1,improver:1,social:1,capacity_units:1,badge:'BEST VALUE · FULL EVENING'},
+  SOCIAL_ONLY:{label:'Social Only',description:'Skip the teaching and join us for requests, favourites and social line dancing.',sumup_description:'Social Only',beginner:0,improver:0,social:1,capacity_units:1}
+});
+
+function ticketDefinition(code){return CLASS_TICKET_DEFINITIONS[String(code||'')]||null;}
+function ticketSnapshotCode(row){return row?.ticket_product_code||row?.ticket_type||'CLASS_SOCIAL';}
+function ticketSnapshotLabel(row){return row?.ticket_product_label||ticketDefinition(ticketSnapshotCode(row))?.label||'Class + Social';}
+function ticketTimeText(value){
+  if(!value)return '';
+  if(/^([01]\d|2[0-3]):[0-5]\d$/.test(String(value)))return String(value);
+  const date=new Date(value);return Number.isNaN(date.getTime())?String(value):(londonDateParts(value).time||String(value));
+}
+function ticketSnapshotText(row){
+  const label=ticketSnapshotLabel(row),code=ticketSnapshotCode(row);
+  if(code==='SOCIAL_ONLY'){
+    const entry=row?.ticket_entry_at||row?.ticket_entry_time;
+    return `${label}${entry?` · Entry from ${ticketTimeText(entry)}`:''}`;
+  }
+  if(['BEGINNER_SOCIAL','IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(code)){
+    const start=ticketTimeText(row?.ticket_starts_at),end=ticketTimeText(row?.ticket_ends_at);
+    return `${label}${start?` · Teaching ${start}${end?`–${end}`:''} + social afterwards`:''}`;
+  }
+  return label;
+}
+
+async function classTicketProducts(env,klass,{includeDisabled=false}={}){
+  if(!klass)return [];
+  if(klass.booking_format==='BEGINNER_IMPROVER'){
+    const result=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_ticket_products WHERE class_id=? ${includeDisabled?'':'AND enabled=1'} ORDER BY display_order,product_code`).bind(klass.id).all();
+    return (result.results||[]).map(row=>({...ticketDefinition(row.product_code),...row,code:row.product_code,price_pence:Number(row.price_pence),class_pass_eligible:Number(row.class_pass_eligible)===1,class_pass_credit_cost:Number(row.class_pass_credit_cost||1)}));
+  }
+  const pass=await env.BOOKINGS_DB.prepare(`SELECT eligible FROM class_pass_class_eligibility WHERE class_id=?`).bind(klass.id).first().catch(()=>null);
+  const rows=[{...ticketDefinition('CLASS_SOCIAL'),code:'CLASS_SOCIAL',enabled:1,price_pence:Number(klass.price_pence||0),starts_at:klass.starts_at,ends_at:klass.ends_at,entry_at:null,class_pass_eligible:Number(pass?.eligible)===1,class_pass_credit_cost:1,display_order:10}];
+  if(Number(klass.social_only_enabled)===1)rows.push({...ticketDefinition('SOCIAL_ONLY'),code:'SOCIAL_ONLY',enabled:1,price_pence:Number(klass.social_only_price_pence||0),starts_at:null,ends_at:null,entry_at:klass.social_only_entry_time,class_pass_eligible:false,class_pass_credit_cost:1,display_order:40});
+  return rows;
+}
+
+async function resolveTicketProduct(env,klass,body,{anniversary=false}={}){
+  const supplied=Object.prototype.hasOwnProperty.call(body||{},'ticket_product_code')||Object.prototype.hasOwnProperty.call(body||{},'ticket_type');
+  const code=clean(body?.ticket_product_code??body?.ticket_type,40);
+  if(supplied&&!code)return {error:'Unsupported ticket type.',status:400};
+  if(anniversary){
+    if(supplied&&code!=='CLASS_SOCIAL')return {error:'That ticket type is not available for the Anniversary event.',status:409};
+    return {product:{...ticketDefinition('CLASS_SOCIAL'),code:'CLASS_SOCIAL',enabled:1,price_pence:Number(klass.price_pence||0),starts_at:klass.starts_at,ends_at:klass.ends_at,entry_at:null,class_pass_eligible:false,class_pass_credit_cost:1}};
+  }
+  if(klass.booking_format==='BEGINNER_IMPROVER'&&!supplied)return {error:'Choose a ticket type for this class.',status:400};
+  const requested=code||(klass.booking_format==='STANDARD'?'CLASS_SOCIAL':'');
+  if(!ticketDefinition(requested))return {error:'Unsupported ticket type.',status:400};
+  const products=await classTicketProducts(env,klass);
+  const product=products.find(item=>item.code===requested&&Number(item.enabled)!==0);
+  if(!product)return {error:'That ticket is not available for this class.',status:409};
+  return {product};
+}
+
 function londonTodayStartIso(now=new Date()){
   const localDate=londonCalendarDate(now);
   if(!localDate)return now.toISOString();
@@ -467,6 +525,12 @@ async function activeClassPassProducts(env){
     ORDER BY display_order,name
   `).all();
   return result.results||[];
+}
+async function publicClassPassProducts(env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  await ensureBookingSchema(env);
+  const products=await activeClassPassProducts(env);
+  return json(products.map(product=>({id:product.id,name:product.name,price_pence:Number(product.price_pence),credits:Number(product.original_credits),validity_days:Number(product.validity_days)})));
 }
 
 async function memberClassPasses(env,memberId){
@@ -558,13 +622,13 @@ async function appendClassPassLedgerEvent(env,{
   return {ok:false,code:owned?'INSUFFICIENT_CREDITS':'PASS_NOT_FOUND'};
 }
 
-async function earliestExpiringEligiblePass(env,{memberId,classId}){
+async function earliestExpiringEligiblePass(env,{memberId,classId,productEligible=null,creditCost=1}){
   const klass=await env.BOOKINGS_DB.prepare(`
     SELECT c.id,c.starts_at,COALESCE(e.eligible,0) pass_eligible
     FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id
     WHERE c.id=?
   `).bind(classId).first();
-  if(!klass||Number(klass.pass_eligible)!==1)return null;
+  if(!klass||(productEligible===null?Number(klass.pass_eligible)!==1:productEligible!==true))return null;
   const classDate=londonCalendarDate(klass.starts_at);
   if(!classDate)return null;
   const pass=await env.BOOKINGS_DB.prepare(`
@@ -573,10 +637,10 @@ async function earliestExpiringEligiblePass(env,{memberId,classId}){
     FROM member_passes mp JOIN class_pass_products p ON p.id=mp.product_id
     WHERE mp.member_id=? AND mp.status='ACTIVE'
       AND mp.valid_through>=?
-      AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
+      AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>=?
     ORDER BY mp.valid_through,COALESCE(mp.purchased_at,mp.created_at),mp.id
     LIMIT 1
-  `).bind(memberId,classDate).first();
+  `).bind(memberId,classDate,Math.max(1,Number(creditCost)||1)).first();
   return pass?{...pass,remaining_credits:Number(pass.remaining_credits||0),class_date:classDate}:null;
 }
 
@@ -781,8 +845,9 @@ async function classCreditOptions(request,env,url){
   const session=await memberSession(request,env);
   if(!session)return json({authenticated:false,can_use_credit:false},401);
   const classId=clean(url.searchParams.get('class_id'),120);
+  const productCode=clean(url.searchParams.get('ticket_product_code')||url.searchParams.get('ticket_type'),40);
   const klass=classId?await env.BOOKINGS_DB.prepare(`
-    SELECT c.id,c.status,c.starts_at,c.capacity,COALESCE(e.eligible,0) pass_eligible,
+    SELECT c.*,COALESCE(e.eligible,0) pass_eligible,
       c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
       -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND julianday(h.expires_at)>julianday('now')),0)
       -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) spaces_remaining
@@ -791,9 +856,13 @@ async function classCreditOptions(request,env,url){
   if(!klass||klass.status!=='open'||new Date(klass.starts_at).getTime()<=Date.now())return json({authenticated:true,can_use_credit:false});
   const anniversaryClass=await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_events WHERE class_id=? AND active=1`).bind(classId).first().catch(()=>null);
   if(anniversaryClass)return json({authenticated:true,can_use_credit:false,special_event:true});
-  const pass=Number(klass.pass_eligible)===1?await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId}):null;
+  const resolved=await resolveTicketProduct(env,klass,{ticket_product_code:productCode||undefined});
+  if(resolved.error)return json({authenticated:true,can_use_credit:false,reason:resolved.error});
+  const eligible=resolved.product.class_pass_eligible===true;
+  const pass=eligible?await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId,productEligible:true,creditCost:resolved.product.class_pass_credit_cost}):null;
   return json({
     authenticated:true,can_use_credit:Boolean(pass),class_full:Number(klass.spaces_remaining||0)<1,
+    ticket_product_code:resolved.product.code,credit_cost:Number(resolved.product.class_pass_credit_cost||1),
     pass:pass?{product_name:pass.product_name,remaining_credits:Number(pass.remaining_credits),valid_through:pass.valid_through}:null
   });
 }
@@ -807,17 +876,23 @@ async function createClassCreditBooking(request,env){
   const body=await request.json().catch(()=>null);
   const classId=clean(body?.class_id,120),operationId=classCreditOperationId(body?.operation_id);
   if(!classId||!operationId)return json({error:'Choose a class and retry the booking.'},400);
-  if(clean(body?.ticket_type,30)==='SOCIAL_ONLY')return json({error:'Class Pass credits can only book the Class + Social ticket.'},409);
   const operationKey=`class-pass-booking:${session.member_id}:${operationId}`;
   const bookingId=`cpb-${await memberSha256Hex(operationKey)}`;
   const existing=await env.BOOKINGS_DB.prepare(`
     SELECT b.* FROM bookings b LEFT JOIN class_pass_credit_ledger l ON l.id=b.class_pass_ledger_id
     WHERE b.id=? AND b.customer_id=? AND (l.idempotency_key=? OR b.payment_provider='CLASS_PASS')
   `).bind(bookingId,session.customer_id,operationKey).first();
-  if(existing)return json({ok:true,idempotent:true,reference:existing.reference,status:existing.status,secure_token:existing.secure_token,customer_token:existing.customer_token,total_pence:0,payment_enabled:false},200);
+  const requestedProduct=clean(body?.ticket_product_code??body?.ticket_type,40);
+  if(existing){
+    if(existing.class_id!==classId||(requestedProduct&&ticketSnapshotCode(existing)!==requestedProduct))return json({error:'That operation reference was already used for a different class or ticket.'},409);
+    return json({ok:true,idempotent:true,reference:existing.reference,status:existing.status,secure_token:existing.secure_token,customer_token:existing.customer_token,total_pence:0,payment_enabled:false},200);
+  }
   const waitingId=`cpw-${await memberSha256Hex(operationKey)}`;
   const existingWait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE id=? AND lower(customer_email)=lower(?)`).bind(waitingId,session.email).first();
-  if(existingWait)return json({ok:true,idempotent:true,waitlisted:true,status:'WAITLISTED',secure_token:existingWait.secure_token,message:'You are on the waiting list. No class credit has been used.'},200);
+  if(existingWait){
+    if(existingWait.class_id!==classId||(requestedProduct&&ticketSnapshotCode(existingWait)!==requestedProduct))return json({error:'That operation reference was already used for a different class or ticket.'},409);
+    return json({ok:true,idempotent:true,waitlisted:true,status:'WAITLISTED',secure_token:existingWait.secure_token,message:'You are on the waiting list. No class credit has been used.'},200);
+  }
 
   const klass=await env.BOOKINGS_DB.prepare(`
     SELECT c.*,COALESCE(e.eligible,0) pass_eligible
@@ -827,26 +902,29 @@ async function createClassCreditBooking(request,env){
   if(!klass)return json({error:'This class is no longer open for booking.'},404);
   const anniversaryClass=await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_events WHERE class_id=? AND active=1`).bind(classId).first().catch(()=>null);
   if(anniversaryClass)return json({error:'Class credits cannot be used for the anniversary party.'},409);
-  if(Number(klass.pass_eligible)!==1)return json({error:'Class credits are not available for this class.'},409);
-  const pass=await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId});
+  const resolved=await resolveTicketProduct(env,klass,body);
+  if(resolved.error)return json({error:resolved.error},resolved.status);
+  const product=resolved.product,creditCost=Number(product.class_pass_credit_cost||1);
+  if(product.class_pass_eligible!==true||product.code==='SOCIAL_ONLY'||product.code==='BEGINNER_IMPROVER_SOCIAL')return json({error:'Class credits are not available for this ticket.'},409);
+  const pass=await earliestExpiringEligiblePass(env,{memberId:session.member_id,classId,productEligible:true,creditCost});
   if(!pass)return json({error:'You do not have an active class pass that can be used for this class.'},409);
 
   const holdId=crypto.randomUUID(),holdExpiry=new Date(Date.now()+15*60*1000).toISOString(),now=new Date().toISOString();
   const held=await env.BOOKINGS_DB.prepare(`
-    INSERT INTO booking_holds(id,class_id,quantity,expires_at,ticket_type,ticket_price_pence)
-    SELECT ?,c.id,1,?,'CLASS_SOCIAL',c.price_pence FROM classes c
+    INSERT INTO booking_holds(id,class_id,quantity,expires_at,ticket_type,ticket_price_pence,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
+    SELECT ?,c.id,1,?,NULL,?,?,?,?,?,? FROM classes c
     WHERE c.id=? AND c.status='open' AND c.starts_at>?
       AND 1<=c.capacity
         -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
         -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
-  `).bind(holdId,holdExpiry,classId,now,now).run();
+  `).bind(holdId,holdExpiry,Number(product.price_pence),product.code,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null,classId,now,now).run();
   if(Number(held?.meta?.changes||0)===0){
     const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
     await env.BOOKINGS_DB.prepare(`
-      INSERT OR IGNORE INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token,ticket_type,ticket_price_pence)
-      SELECT ?,?,?,?,1,'WAITING',?,'CLASS_SOCIAL',price_pence FROM classes WHERE id=?
-    `).bind(waitingId,classId,session.name,session.email,secureToken,classId).run();
+      INSERT OR IGNORE INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token,ticket_type,ticket_price_pence,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
+      SELECT ?,?,?,?,1,'WAITING',?,NULL,?,?,?,?,?,? FROM classes WHERE id=?
+    `).bind(waitingId,classId,session.name,session.email,secureToken,Number(product.price_pence),product.code,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null,classId).run();
     const wait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE id=?`).bind(waitingId).first();
     return json({ok:true,waitlisted:true,status:'WAITLISTED',secure_token:wait?.secure_token||secureToken,message:'The class is full, so you have been added to the waiting list. No class credit has been used.'},201);
   }
@@ -859,25 +937,26 @@ async function createClassCreditBooking(request,env){
         INSERT OR IGNORE INTO bookings(
           id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,quantity,
           amount_pence,original_amount_pence,discount_pence,status,payment_provider,secure_token,customer_token,
-          terms_accepted_at,paid_at,retention_delete_after,class_pass_id,ticket_type
+          terms_accepted_at,paid_at,retention_delete_after,class_pass_id,ticket_type,
+          ticket_product_code,ticket_product_label,ticket_unit_price_pence,ticket_starts_at,ticket_ends_at,ticket_entry_at
         )
-        SELECT ?,?,?,?,mp.customer_id,?,?,?,1,0,0,0,'PAID','CLASS_PASS',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,datetime('now','+24 months'),mp.id,'CLASS_SOCIAL'
+        SELECT ?,?,?,?,mp.customer_id,?,?,?,1,0,0,0,'PAID','CLASS_PASS',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,datetime('now','+24 months'),mp.id,NULL,?,?,?,?,?,?
         FROM member_passes mp
         WHERE mp.id=? AND mp.member_id=? AND mp.customer_id=? AND mp.status='ACTIVE' AND mp.valid_through>=?
-          AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
-          AND EXISTS(SELECT 1 FROM class_pass_class_eligibility e WHERE e.class_id=? AND e.eligible=1)
+          AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>=?
           AND EXISTS(SELECT 1 FROM booking_holds h WHERE h.id=? AND h.class_id=? AND julianday(h.expires_at)>julianday('now'))
       `).bind(bookingId,reference,classId,holdId,session.name,session.email,session.phone||'',secureToken,customerToken,
-        pass.id,session.member_id,session.customer_id,pass.class_date,classId,holdId,classId),
+        product.code,product.label,Number(product.price_pence),product.starts_at||null,product.ends_at||null,product.entry_at||null,
+        pass.id,session.member_id,session.customer_id,pass.class_date,creditCost,holdId,classId),
       env.BOOKINGS_DB.prepare(`
         INSERT OR IGNORE INTO class_pass_credit_ledger(
           id,pass_id,member_id,booking_id,amount,event_type,reason,actor_type,actor_id,idempotency_key
         )
-        SELECT ?,mp.id,mp.member_id,b.id,-1,'CLASS_BOOKING','One class credit used','MEMBER',mp.member_id,?
+        SELECT ?,mp.id,mp.member_id,b.id,?,'CLASS_BOOKING',?,'MEMBER',mp.member_id,?
         FROM bookings b JOIN member_passes mp ON mp.id=b.class_pass_id
         WHERE b.id=? AND b.customer_id=? AND b.payment_provider='CLASS_PASS' AND b.status='PAID'
-          AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0
-      `).bind(ledgerId,operationKey,bookingId,session.customer_id),
+          AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>=?
+      `).bind(ledgerId,-creditCost,`${creditCost} class credit${creditCost===1?'':'s'} used`,operationKey,bookingId,session.customer_id,creditCost),
       env.BOOKINGS_DB.prepare(`
         UPDATE bookings SET class_pass_ledger_id=(SELECT id FROM class_pass_credit_ledger WHERE idempotency_key=?)
         WHERE id=? AND customer_id=? AND class_pass_ledger_id IS NULL
@@ -1601,7 +1680,7 @@ async function publicClasses(env) {
         WHERE b.class_id=c.id
           AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
       ),0) AS sold,
-      c.status,c.level,c.public_notes,c.poster_url,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,COALESCE(pe.eligible,0) AS class_pass_eligible,
+      c.status,c.level,c.public_notes,c.poster_url,c.booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,COALESCE(pe.eligible,0) AS class_pass_eligible,
       MAX(
         0,
         c.capacity
@@ -1622,13 +1701,13 @@ async function publicClasses(env) {
       WHERE c.status='open' AND c.starts_at>=? ORDER BY c.starts_at
     `).bind(now,todayStart).all();
     const anniversary=await anniversaryInventory(env).catch(()=>null);
-    return json(results.map(row => {
+    return json(await Promise.all(results.map(async row => {
       if(anniversary&&row.id===anniversary.event.class_id){
         const price=anniversary.current_release?.price_pence??row.price_pence;
         return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant,true);
       }
-      return withClassCalendarStatus({ ...row, price: row.price_pence / 100 },currentInstant,true);
-    }));
+      return withClassCalendarStatus({ ...row, price: row.price_pence / 100,ticket_products:await classTicketProducts(env,row) },currentInstant,true);
+    })));
   } catch (error) {
     return json({ error: 'The booking database could not be prepared.', detail: error.message }, 500);
   }
@@ -2213,7 +2292,7 @@ function notificationCopy(eventType, booking) {
   const start = parts.date ? `${parts.date} at ${parts.time}` : '';
   const venue = booking.venue || booking.location || '';
   const amount = `£${(Number(booking.refund_amount_pence || booking.amount_pence || 0) / 100).toFixed(2)}`;
-  const ticket = booking.ticket_type==='SOCIAL_ONLY' ? `Social Only${booking.ticket_entry_time?` · Entry from ${booking.ticket_entry_time}`:''}` : 'Class + Social';
+  const ticket = ticketSnapshotText(booking);
   if (eventType === 'BOOKING_CONFIRMED') return {
     subject: `Booking confirmed — ${className}`,
     text: `Hi ${booking.customer_name}, your booking ${booking.reference} is confirmed for ${className}${start ? ` on ${start}` : ''}${venue ? ` at ${venue}` : ''}. Ticket: ${ticket}. Places: ${booking.quantity}. Total: ${amount}. We can’t wait to dance with you!`,
@@ -2287,7 +2366,7 @@ async function sendAdminClassBookingAlert(env,booking,eventType){
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO notification_log(id,booking_id,class_id,event_type,channel,recipient,status) VALUES(?,?,?,'ADMIN_BOOKING_PAID','ADMIN_EMAIL',?,'PENDING')`).bind(id,booking.id,booking.class_id,adminEmail).run().catch(()=>{});
   const amount=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(booking.amount_pence)||0)/100);
   const subject=`New class booking — ${clean(booking.class_title,100)} — ${clean(booking.customer_name,100)}`;
-  const ticket=booking.ticket_type==='SOCIAL_ONLY'?`Social Only${booking.ticket_entry_time?` · Entry ${booking.ticket_entry_time}`:''}`:'Class + Social';
+  const ticket=ticketSnapshotText(booking);
   const text=`New paid Boot Scootin’ class booking.\n\nCustomer: ${clean(booking.customer_name,120)}\nEmail: ${clean(booking.customer_email,160)}\nPhone: ${clean(booking.customer_phone,40)||'Not supplied'}\nClass: ${clean(booking.class_title,160)}\nTicket: ${ticket}\nDate/time: ${clean(booking.starts_at,80)}\nVenue: ${clean(booking.venue,160)}\nPlaces: ${Number(booking.quantity||1)}\nPaid: ${amount}\nReference: ${clean(booking.reference,80)}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch.html`;
   const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>New paid class booking</h2><p><strong>${clean(booking.customer_name,120)}</strong> booked ${Number(booking.quantity||1)} place${Number(booking.quantity||1)===1?'':'s'}.</p><p><strong>Class:</strong> ${clean(booking.class_title,160)}<br><strong>Ticket:</strong> ${ticket}<br><strong>Date/time:</strong> ${clean(booking.starts_at,80)}<br><strong>Venue:</strong> ${clean(booking.venue,160)}<br><strong>Paid:</strong> ${amount}<br><strong>Reference:</strong> ${clean(booking.reference,80)}</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html" style="display:inline-block;padding:14px 20px;background:#c81924;color:white;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
   try{
@@ -2536,15 +2615,12 @@ async function issuePersonalPromotion(env,{email,name,type='BIRTHDAY',percent=20
 }
 async function publicPromoValidate(request,env){
   await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
-  const classRow=await env.BOOKINGS_DB.prepare(`SELECT price_pence,social_only_enabled,social_only_price_pence FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
+  const classRow=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
   const anniversary=await anniversaryInventory(env).catch(()=>null),classId=clean(body.classId,120);
-  const hasTicketType=Object.prototype.hasOwnProperty.call(body,'ticket_type');
-  const requestedTicketType=clean(body.ticket_type,30);
-  if(hasTicketType&&!['CLASS_SOCIAL','SOCIAL_ONLY'].includes(requestedTicketType))return json({error:'Unsupported ticket type.'},400);
-  const ticketType=requestedTicketType||'CLASS_SOCIAL';
-  if(ticketType==='SOCIAL_ONLY'&&anniversary?.event?.class_id===classId)return json({error:'Social Only tickets are not available for the Anniversary event.'},409);
-  if(ticketType==='SOCIAL_ONLY'&&(!Number(classRow.social_only_enabled)||!Number.isInteger(Number(classRow.social_only_price_pence))||Number(classRow.social_only_price_pence)<=0))return json({error:'Social Only tickets are not available for this class.'},409);
-  const unitPrice=ticketType==='SOCIAL_ONLY'?Number(classRow.social_only_price_pence):anniversary?.event?.class_id===classId&&anniversary.current_release?anniversary.current_release.price_pence:Number(classRow.price_pence||0);
+  const anniversaryClass=anniversary?.event?.class_id===classId;
+  const resolved=await resolveTicketProduct(env,classRow,body,{anniversary:anniversaryClass});
+  if(resolved.error)return json({error:resolved.error},resolved.status);
+  const unitPrice=anniversaryClass&&anniversary.current_release?Number(anniversary.current_release.price_pence):Number(resolved.product.price_pence);
   const quantity=Math.max(1,Math.min(4,Number(body.quantity)||1)); const subtotal=unitPrice*quantity;
   const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId,subtotal});
   return result.valid?json({ok:true,...result,subtotal_pence:subtotal}):json({error:result.error},400);
@@ -2564,10 +2640,6 @@ async function createClassReservation(request, env) {
   const quantity = Math.max(1, Math.min(4, Number(body.quantity) || 1));
   const requestedWaitlist = clean(body.bookingMode, 20) === 'waitlist';
   const requestedPromoCode = normalisePromoCode(body.promo_code || '');
-  const hasTicketType=Object.prototype.hasOwnProperty.call(body,'ticket_type');
-  const requestedTicketType=clean(body.ticket_type,30);
-  if(hasTicketType&&!['CLASS_SOCIAL','SOCIAL_ONLY'].includes(requestedTicketType))return json({error:'Unsupported ticket type.'},400);
-  const ticketType=requestedTicketType||'CLASS_SOCIAL';
 
   if (!name || !emailOk(email) || !classId) {
     return json({ error: 'Please enter your full name, a valid email address and choose a class.' }, 400);
@@ -2588,8 +2660,9 @@ async function createClassReservation(request, env) {
   const anniversary = await anniversaryInventory(env).catch(()=>null);
   const anniversaryRelease = anniversary?.event?.class_id===classId ? anniversary.current_release : null;
   if(anniversary?.event?.class_id===classId&&!anniversaryRelease)return json({error:'Anniversary tickets are currently sold out.'},409);
-  if(ticketType==='SOCIAL_ONLY'&&anniversary?.event?.class_id===classId)return json({error:'Social Only tickets are not available for the Anniversary event.'},409);
-  if(ticketType==='SOCIAL_ONLY'&&(!Number(classRow.social_only_enabled)||!Number.isInteger(Number(classRow.social_only_price_pence))||Number(classRow.social_only_price_pence)<=0||!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(classRow.social_only_entry_time||''))))return json({error:'Social Only tickets are not available for this class.'},409);
+  const resolved=await resolveTicketProduct(env,classRow,body,{anniversary:Boolean(anniversaryRelease)});
+  if(resolved.error)return json({error:resolved.error},resolved.status);
+  const product=resolved.product,ticketType=product.code;
 
   const occupancy = await env.BOOKINGS_DB.prepare(`
     SELECT
@@ -2617,9 +2690,9 @@ async function createClassReservation(request, env) {
 
   if (requestedWaitlist || spaces < quantity) {
     await env.BOOKINGS_DB.prepare(
-      `INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token,ticket_type,ticket_price_pence,ticket_entry_time)
-       VALUES(?,?,?,?,?,'WAITING',?,?,?,?)`
-    ).bind(id,classId,name,email,quantity,secureToken,ticketType,ticketType==='SOCIAL_ONLY'?Number(classRow.social_only_price_pence):Number(classRow.price_pence),ticketType==='SOCIAL_ONLY'?classRow.social_only_entry_time:null).run();
+      `INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token,ticket_type,ticket_price_pence,ticket_entry_time,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
+       VALUES(?,?,?,?,?,'WAITING',?,?,?,?,?,?,?,?,?)`
+    ).bind(id,classId,name,email,quantity,secureToken,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,Number(product.price_pence),ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null).run();
 
     return json({
       ok: true,
@@ -2642,7 +2715,7 @@ async function createClassReservation(request, env) {
     throw error;
   }
 
-  const unitPrice = ticketType==='SOCIAL_ONLY' ? Number(classRow.social_only_price_pence) : anniversaryRelease ? Number(anniversaryRelease.price_pence) : Number(classRow.price_pence || 0);
+  const unitPrice = anniversaryRelease ? Number(anniversaryRelease.price_pence) : Number(product.price_pence);
   const originalAmount = unitPrice * quantity;
   let promotion = null;
   if(requestedPromoCode){
@@ -2671,21 +2744,21 @@ async function createClassReservation(request, env) {
           -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0))
     `).bind(holdId,quantity,holdExpiry,classId,anniversaryRelease.id,new Date().toISOString(),quantity,quantity,quantity).run()
     :await env.BOOKINGS_DB.prepare(`
-      INSERT INTO booking_holds(id,class_id,quantity,expires_at,ticket_type,ticket_price_pence,ticket_entry_time)
-      SELECT ?,?,?,?,?,?,?
+      INSERT INTO booking_holds(id,class_id,quantity,expires_at,ticket_type,ticket_price_pence,ticket_entry_time,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
+      SELECT ?,?,?,?,?,?,?,?,?,?,?,?
       FROM classes c
       WHERE c.id=? AND c.status='open' AND c.starts_at>?
         AND ?<=c.capacity
         - COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         - COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
         - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
-    `).bind(holdId,classId,quantity,holdExpiry,ticketType,unitPrice,ticketType==='SOCIAL_ONLY'?classRow.social_only_entry_time:null,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
+    `).bind(holdId,classId,quantity,holdExpiry,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,unitPrice,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
 
   if(Number(holdResult?.meta?.changes||0)===0){
     await env.BOOKINGS_DB.prepare(
-      `INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token,ticket_type,ticket_price_pence,ticket_entry_time)
-       VALUES(?,?,?,?,?,'WAITING',?,?,?,?)`
-    ).bind(id,classId,name,email,quantity,secureToken,ticketType,unitPrice,ticketType==='SOCIAL_ONLY'?classRow.social_only_entry_time:null).run();
+      `INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token,ticket_type,ticket_price_pence,ticket_entry_time,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
+       VALUES(?,?,?,?,?,'WAITING',?,?,?,?,?,?,?,?,?)`
+    ).bind(id,classId,name,email,quantity,secureToken,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,unitPrice,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null).run();
     return json({
       ok:true,waitlisted:true,reference,status:'WAITLISTED',secure_token:secureToken,customer_token:customerToken,
       message:'You have been added to the waiting list. No payment has been taken.'
@@ -2699,12 +2772,14 @@ async function createClassReservation(request, env) {
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,customer_token,
-        terms_accepted_at,marketing_consent,retention_delete_after,anniversary_release_id,ticket_type,ticket_entry_time
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?,?)`
+        terms_accepted_at,marketing_consent,retention_delete_after,anniversary_release_id,ticket_type,ticket_entry_time,
+        ticket_product_code,ticket_product_label,ticket_unit_price_pence,ticket_starts_at,ticket_ends_at,ticket_entry_at
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?,?,?,?,?,?,?)`
     ).bind(
       id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken, customerToken,
-      Number(Boolean(body.marketing_consent)),anniversaryRelease?.id||null,ticketType,ticketType==='SOCIAL_ONLY'?classRow.social_only_entry_time:null
+      Number(Boolean(body.marketing_consent)),anniversaryRelease?.id||null,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,
+      ticketType,product.label,unitPrice,product.starts_at||null,product.ends_at||null,product.entry_at||null
     ).run();
   } catch (error) {
     if(anniversaryRelease)throw error;
@@ -2712,12 +2787,14 @@ async function createClassReservation(request, env) {
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,
-        terms_accepted_at,marketing_consent,retention_delete_after,ticket_type,ticket_entry_time
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?)`
+        terms_accepted_at,marketing_consent,retention_delete_after,ticket_type,ticket_entry_time,
+        ticket_product_code,ticket_product_label,ticket_unit_price_pence,ticket_starts_at,ticket_ends_at,ticket_entry_at
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?,?,?,?,?,?,?)`
     ).bind(
       id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken,
-      Number(Boolean(body.marketing_consent)),ticketType,ticketType==='SOCIAL_ONLY'?classRow.social_only_entry_time:null
+      Number(Boolean(body.marketing_consent)),['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,
+      ticketType,product.label,unitPrice,product.starts_at||null,product.ends_at||null,product.entry_at||null
     ).run();
   }
 
@@ -2754,7 +2831,7 @@ async function createClassReservation(request, env) {
         amount: Number((amount / 100).toFixed(2)),
         currency: 'GBP',
         merchant_code: String(env.SUMUP_MERCHANT_CODE),
-        description: `${classRow.title}${anniversaryRelease?` — ${anniversaryRelease.name}`:ticketType==='SOCIAL_ONLY'?' — Social Only':' — Class + Social'} — ${quantity} place${quantity === 1 ? '' : 's'}`,
+        description: `${classRow.title}${anniversaryRelease?` — ${anniversaryRelease.name}`:` — ${product.sumup_description}`} — ${quantity} place${quantity === 1 ? '' : 's'}`,
         redirect_url: `${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}&customer=${encodeURIComponent(customerToken)}`,
         return_url: `${origin}/api/sumup-webhook`,
         valid_until: holdExpiry,
@@ -3015,6 +3092,8 @@ async function bookingStatus(request,env,url){
   return json({
     reference:booking.reference,status:booking.status,class_title:booking.class_title,starts_at:booking.starts_at,
     venue:booking.venue,location:booking.location,quantity:booking.quantity,amount_pence:booking.amount_pence,ticket_type:booking.ticket_type,ticket_entry_time:booking.ticket_entry_time,
+    ticket_product_code:booking.ticket_product_code,ticket_product_label:booking.ticket_product_label,ticket_unit_price_pence:booking.ticket_unit_price_pence,
+    ticket_starts_at:booking.ticket_starts_at,ticket_ends_at:booking.ticket_ends_at,ticket_entry_at:booking.ticket_entry_at,
     payment_enabled:sumUpConfigured(env),can_cancel:['PENDING','PAID'].includes(booking.status),
     cancellation_guidance:guidance,refund_outcome:booking.refund_status||''
   });
@@ -3446,7 +3525,7 @@ async function memberMe(request,env){
 
   const loyalty=await loyaltySummary(env,session.email,session.customer_id);
   const bookings=await env.BOOKINGS_DB.prepare(`
-    SELECT b.reference,b.status,b.amount_pence,b.paid_at,b.ticket_type,b.ticket_entry_time,c.title,c.starts_at,c.venue
+    SELECT b.reference,b.status,b.amount_pence,b.paid_at,b.ticket_type,b.ticket_entry_time,b.ticket_product_code,b.ticket_product_label,b.ticket_unit_price_pence,b.ticket_starts_at,b.ticket_ends_at,b.ticket_entry_at,c.title,c.starts_at,c.venue
     FROM bookings b LEFT JOIN classes c ON c.id=b.class_id
     WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?)
     ORDER BY b.created_at DESC LIMIT 12
@@ -3947,6 +4026,50 @@ function parseClassDateTime(value,label){
   return explicitClassDate(text,label);
 }
 
+function normaliseClassTicketProducts(input){
+  if(!Array.isArray(input))throw new Error('Beginner + Improver ticket configuration is required.');
+  const allowed=['BEGINNER_SOCIAL','IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL','SOCIAL_ONLY'];
+  const order={BEGINNER_SOCIAL:10,IMPROVER_SOCIAL:20,BEGINNER_IMPROVER_SOCIAL:30,SOCIAL_ONLY:40};
+  const rows=allowed.map(code=>{
+    const source=input.find(item=>clean(item?.product_code,40)===code)||{};
+    const enabled=Number(Boolean(source.enabled)),price=Number(source.price_pence);
+    if(!Number.isInteger(price)||price<=0)throw new Error(`${ticketDefinition(code).label} requires a positive price.`);
+    let startsAt=null,endsAt=null,entryAt=null;
+    if(code==='SOCIAL_ONLY'){
+      if(enabled){entryAt=parseClassDateTime(source.entry_at,'Social Only entry time').toISOString();}
+    }else if(code!=='BEGINNER_IMPROVER_SOCIAL'){
+      startsAt=parseClassDateTime(source.starts_at,`${ticketDefinition(code).label} start`).toISOString();
+      endsAt=parseClassDateTime(source.ends_at,`${ticketDefinition(code).label} finish`).toISOString();
+      if(endsAt<=startsAt)throw new Error(`${ticketDefinition(code).label} finish must be after its start.`);
+    }
+    return {product_code:code,enabled,price_pence:price,starts_at:startsAt,ends_at:endsAt,entry_at:entryAt,
+      class_pass_eligible:['BEGINNER_SOCIAL','IMPROVER_SOCIAL'].includes(code)?1:0,class_pass_credit_cost:1,display_order:order[code]};
+  });
+  const beginner=rows.find(row=>row.product_code==='BEGINNER_SOCIAL'),improver=rows.find(row=>row.product_code==='IMPROVER_SOCIAL'),combined=rows.find(row=>row.product_code==='BEGINNER_IMPROVER_SOCIAL');
+  if(combined.enabled&&(!beginner.enabled||!improver.enabled))throw new Error('Combined tickets require both Beginner and Improver tickets to be enabled.');
+  combined.starts_at=beginner.starts_at;combined.ends_at=improver.ends_at;
+  return rows;
+}
+
+function validateClassTicketSchedule(products,classStart,classEnd){
+  const enabled=products.filter(row=>Number(row.enabled)===1);
+  const teaching=enabled.filter(row=>row.product_code!=='SOCIAL_ONLY');
+  for(const row of teaching){
+    if(row.starts_at<classStart.toISOString())throw new Error(`${ticketDefinition(row.product_code).label} cannot start before the event.`);
+    if(classEnd&&row.ends_at>classEnd.toISOString())throw new Error(`${ticketDefinition(row.product_code).label} cannot finish after the event.`);
+  }
+  const beginner=enabled.find(row=>row.product_code==='BEGINNER_SOCIAL');
+  const improver=enabled.find(row=>row.product_code==='IMPROVER_SOCIAL');
+  if(beginner&&improver&&beginner.ends_at>improver.starts_at)throw new Error('Beginner teaching must finish before Improver teaching starts.');
+  const social=enabled.find(row=>row.product_code==='SOCIAL_ONLY');
+  if(social){
+    const lastTeachingEnd=teaching.reduce((latest,row)=>row.ends_at>latest?row.ends_at:latest,'');
+    if(lastTeachingEnd&&social.entry_at<lastTeachingEnd)throw new Error('Social Only entry cannot begin before teaching has finished.');
+    if(social.entry_at<classStart.toISOString())throw new Error('Social Only entry cannot begin before the event.');
+    if(classEnd&&social.entry_at>classEnd.toISOString())throw new Error('Social Only entry cannot begin after the event has finished.');
+  }
+}
+
 function adminPassOperationId(value){
   const id=String(value||'').trim();
   return /^[A-Za-z0-9_-]{12,100}$/.test(id)?id:'';
@@ -4389,6 +4512,7 @@ async function adminClasses(request, env) {
       if(!classItem)return json({error:'Class not found.'},404);
       const response=await env.BOOKINGS_DB.prepare(`
         SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,b.ticket_type,b.ticket_entry_time,
+          b.ticket_product_code,b.ticket_product_label,b.ticket_unit_price_pence,b.ticket_starts_at,b.ticket_ends_at,b.ticket_entry_at,
           CASE WHEN a.id IS NULL THEN 0 ELSE 1 END checked_in,a.checked_in_at,a.recorded_at
         FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id
         WHERE b.class_id=? AND b.status IN ('PAID','PENDING')
@@ -4400,8 +4524,11 @@ async function adminClasses(request, env) {
         total_bookings:bookings.length,
         checked_in_places:bookings.filter(b=>Number(b.checked_in)).reduce((n,b)=>n+Number(b.quantity||1),0),
         total_places:bookings.reduce((n,b)=>n+Number(b.quantity||1),0),
-        class_social_places:bookings.filter(b=>b.ticket_type!=='SOCIAL_ONLY').reduce((n,b)=>n+Number(b.quantity||1),0),
-        social_only_places:bookings.filter(b=>b.ticket_type==='SOCIAL_ONLY').reduce((n,b)=>n+Number(b.quantity||1),0)
+        class_social_places:bookings.filter(b=>ticketSnapshotCode(b)==='CLASS_SOCIAL').reduce((n,b)=>n+Number(b.quantity||1),0),
+        beginner_places:bookings.filter(b=>['BEGINNER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(ticketSnapshotCode(b))).reduce((n,b)=>n+Number(b.quantity||1),0),
+        improver_places:bookings.filter(b=>['IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(ticketSnapshotCode(b))).reduce((n,b)=>n+Number(b.quantity||1),0),
+        combined_places:bookings.filter(b=>ticketSnapshotCode(b)==='BEGINNER_IMPROVER_SOCIAL').reduce((n,b)=>n+Number(b.quantity||1),0),
+        social_only_places:bookings.filter(b=>ticketSnapshotCode(b)==='SOCIAL_ONLY').reduce((n,b)=>n+Number(b.quantity||1),0)
       }});
     }
     // Reconciliation is helpful, but a temporary SumUp/API problem must never
@@ -4417,7 +4544,7 @@ async function adminClasses(request, env) {
       const response=await env.BOOKINGS_DB.prepare(`
         SELECT
           c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
-          c.status,c.level,c.public_notes,c.poster_url,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,c.created_at,c.updated_at,
+          c.status,c.level,c.public_notes,c.poster_url,c.booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,c.created_at,c.updated_at,
           COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) AS sold,
           COALESCE((SELECT SUM(quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) AS held,
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
@@ -4430,12 +4557,13 @@ async function adminClasses(request, env) {
       const rows=Array.isArray(response?.results)?response.results:[];
       const anniversary=await anniversaryInventory(env).catch(()=>null);
       const currentInstant=new Date();
-      return json(rows.map(row=>withClassCalendarStatus({
+      return json(await Promise.all(rows.map(async row=>withClassCalendarStatus({
         ...row,
+        ticket_products:await classTicketProducts(env,row,{includeDisabled:true}),
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
           : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
-      },currentInstant,true)),200);
+      },currentInstant,true))),200);
     } catch (error) {
       return json({
         error:'Classes could not be loaded from the booking database.',
@@ -4458,13 +4586,16 @@ async function adminClasses(request, env) {
     const end=original.ends_at?new Date(original.ends_at):null;
     start.setDate(start.getDate()+7);
     if(end)end.setDate(end.getDate()+7);
-    await env.BOOKINGS_DB.prepare(`
-      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,social_only_enabled,social_only_price_pence,social_only_entry_time)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    const products=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_ticket_products WHERE class_id=?`).bind(original.id).all();
+    const statements=[env.BOOKINGS_DB.prepare(`
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,booking_format,social_only_enabled,social_only_price_pence,social_only_entry_time)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       id,original.title,original.venue,original.location,start.toISOString(),end?end.toISOString():null,
-      original.price_pence,original.capacity,'draft',original.level,original.public_notes,original.poster_url||'',original.social_only_enabled,original.social_only_price_pence,original.social_only_entry_time
-    ).run();
+      original.price_pence,original.capacity,'draft',original.level,original.public_notes,original.poster_url||'',original.booking_format||'STANDARD',original.social_only_enabled,original.social_only_price_pence,original.social_only_entry_time
+    )];
+    for(const row of products.results||[])statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO class_ticket_products(id,class_id,product_code,enabled,price_pence,starts_at,ends_at,entry_at,class_pass_eligible,class_pass_credit_cost,display_order) VALUES(?,?,?,?,?,datetime(?,'+7 days'),datetime(?,'+7 days'),datetime(?,'+7 days'),?,?,?)`).bind(crypto.randomUUID(),id,row.product_code,row.enabled,row.price_pence,row.starts_at,row.ends_at,row.entry_at,row.class_pass_eligible,row.class_pass_credit_cost,row.display_order));
+    await env.BOOKINGS_DB.batch(statements);
     return json({ok:true,id},201);
   }
 
@@ -4537,18 +4668,31 @@ async function adminClasses(request, env) {
   if(socialOnlyEnabled&&(!Number.isInteger(socialOnlyPrice)||socialOnlyPrice<=0||!/^([01]\d|2[0-3]):[0-5]\d$/.test(socialOnlyEntry)))return json({error:'Social Only requires a positive price and valid 24-hour entry time.'},400);
   const anniversaryClass=id?await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_events WHERE class_id=? AND active=1`).bind(id).first().catch(()=>null):null;
   if(socialOnlyEnabled&&anniversaryClass)return json({error:'Social Only cannot be enabled for the Anniversary event.'},409);
+  const bookingFormat=clean(b.booking_format,40)||'STANDARD';
+  if(!['STANDARD','BEGINNER_IMPROVER'].includes(bookingFormat))return json({error:'Unsupported class booking format.'},400);
+  if(bookingFormat==='BEGINNER_IMPROVER'&&anniversaryClass)return json({error:'Beginner + Improver tickets cannot be enabled for the Anniversary event.'},409);
+  let ticketProducts=[];
+  try{if(bookingFormat==='BEGINNER_IMPROVER')ticketProducts=normaliseClassTicketProducts(b.ticket_products);}catch(error){return json({error:error.message},400);}
+  try{if(bookingFormat==='BEGINNER_IMPROVER')validateClassTicketSchedule(ticketProducts,starts,ends);}catch(error){return json({error:error.message},400);}
+  const configuredSocial=ticketProducts.find(row=>row.product_code==='SOCIAL_ONLY');
 
   const vals=[
     title,venue,location,starts.toISOString(),ends?ends.toISOString():null,
     Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),
-    status,clean(b.level,80)||'Beginner friendly',clean(publicNotes,50000),clean(b.poster_url,500),socialOnlyEnabled,socialOnlyEnabled?socialOnlyPrice:null,socialOnlyEnabled?socialOnlyEntry:null
+    status,clean(b.level,80)||'Beginner friendly',clean(publicNotes,50000),clean(b.poster_url,500),
+    bookingFormat,
+    bookingFormat==='BEGINNER_IMPROVER'?Number(configuredSocial?.enabled||0):socialOnlyEnabled,
+    bookingFormat==='BEGINNER_IMPROVER'?Number(configuredSocial?.price_pence||0):(socialOnlyEnabled?socialOnlyPrice:null),
+    bookingFormat==='BEGINNER_IMPROVER'&&configuredSocial?.entry_at?new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(configuredSocial.entry_at)):(socialOnlyEnabled?socialOnlyEntry:null)
   ];
 
   if(request.method==='POST'){
-    await env.BOOKINGS_DB.prepare(`
-      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,social_only_enabled,social_only_price_pence,social_only_entry_time)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `).bind(id,...vals).run();
+    const statements=[env.BOOKINGS_DB.prepare(`
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,booking_format,social_only_enabled,social_only_price_pence,social_only_entry_time)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).bind(id,...vals)];
+    for(const row of ticketProducts)statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO class_ticket_products(id,class_id,product_code,enabled,price_pence,starts_at,ends_at,entry_at,class_pass_eligible,class_pass_credit_cost,display_order) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(crypto.randomUUID(),id,row.product_code,row.enabled,row.price_pence,row.starts_at,row.ends_at,row.entry_at,row.class_pass_eligible,row.class_pass_credit_cost,row.display_order));
+    await env.BOOKINGS_DB.batch(statements);
     const created=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(id).first();
     try{await createNewClassDraft(env,created,check.state.email||'hq');}catch(error){console.error('NEW_CLASS_DRAFT_FAILED',error?.message||error);}
     return json({ok:true,id,email_draft_created:true},201);
@@ -4564,11 +4708,27 @@ async function adminClasses(request, env) {
     if(Number(b.capacity)<Number(occupied?.total||0)){
       return json({error:`Capacity cannot be lower than the ${occupied.total} occupied or held places.`},409);
     }
-    await env.BOOKINGS_DB.prepare(`
+    const priorProducts=await classTicketProducts(env,existing,{includeDisabled:true});
+    const previousConfig=JSON.stringify((existing.booking_format||'STANDARD')==='BEGINNER_IMPROVER'
+      ?{booking_format:'BEGINNER_IMPROVER',products:priorProducts.map(row=>({product_code:row.code,enabled:Number(row.enabled),price_pence:Number(row.price_pence),starts_at:row.starts_at||null,ends_at:row.ends_at||null,entry_at:row.entry_at||null,class_pass_eligible:Number(Boolean(row.class_pass_eligible)),class_pass_credit_cost:Number(row.class_pass_credit_cost||1),display_order:Number(row.display_order||0)}))}
+      :{booking_format:'STANDARD',social_only_enabled:Number(existing.social_only_enabled||0),social_only_price_pence:existing.social_only_price_pence==null?null:Number(existing.social_only_price_pence),social_only_entry_time:existing.social_only_entry_time||null});
+    const nextConfig=JSON.stringify(bookingFormat==='BEGINNER_IMPROVER'
+      ?{booking_format:'BEGINNER_IMPROVER',products:ticketProducts}
+      :{booking_format:'STANDARD',social_only_enabled:socialOnlyEnabled,social_only_price_pence:socialOnlyEnabled?socialOnlyPrice:null,social_only_entry_time:socialOnlyEnabled?socialOnlyEntry:null});
+    const configChanged=previousConfig!==nextConfig;
+    const related=await env.BOOKINGS_DB.prepare(`SELECT (SELECT COUNT(*) FROM bookings WHERE class_id=?)+(SELECT COUNT(*) FROM waiting_list WHERE class_id=?) count`).bind(id,id).first();
+    const configReason=clean(b.ticket_configuration_reason,500);
+    if(configChanged&&Number(related?.count||0)>0&&!configReason)return json({error:'Enter a reason before changing ticket products for a class with bookings or waiting-list entries.'},400);
+    const activeProductHolds=configChanged?await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) count FROM booking_holds WHERE class_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')`).bind(id).first():null;
+    if(Number(activeProductHolds?.count||0)>0)return json({error:'Ticket products cannot be changed while active booking holds exist. Wait for the holds to complete or expire, then try again.'},409);
+    const statements=[env.BOOKINGS_DB.prepare(`
       UPDATE classes
-      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,poster_url=?,social_only_enabled=?,social_only_price_pence=?,social_only_entry_time=?,updated_at=CURRENT_TIMESTAMP
+      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,poster_url=?,booking_format=?,social_only_enabled=?,social_only_price_pence=?,social_only_entry_time=?,updated_at=CURRENT_TIMESTAMP
       WHERE id=?
-    `).bind(...vals,id).run();
+    `).bind(...vals,id)];
+    for(const row of ticketProducts)statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO class_ticket_products(id,class_id,product_code,enabled,price_pence,starts_at,ends_at,entry_at,class_pass_eligible,class_pass_credit_cost,display_order) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(class_id,product_code) DO UPDATE SET enabled=excluded.enabled,price_pence=excluded.price_pence,starts_at=excluded.starts_at,ends_at=excluded.ends_at,entry_at=excluded.entry_at,class_pass_eligible=excluded.class_pass_eligible,class_pass_credit_cost=excluded.class_pass_credit_cost,display_order=excluded.display_order,updated_at=CURRENT_TIMESTAMP`).bind(crypto.randomUUID(),id,row.product_code,row.enabled,row.price_pence,row.starts_at,row.ends_at,row.entry_at,row.class_pass_eligible,row.class_pass_credit_cost,row.display_order));
+    if(configChanged)statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO class_ticket_product_audit(operation_id,class_id,actor,reason,previous_json,next_json) VALUES(?,?,?,?,?,?)`).bind(clean(b.ticket_configuration_operation_id,100)||crypto.randomUUID(),id,check.state.email||'hq',configReason||'Initial ticket configuration',previousConfig,nextConfig));
+    await env.BOOKINGS_DB.batch(statements);
     await reconcileClassSold(env,id);
     const detailsChanged=existing && (existing.starts_at!==starts.toISOString() || String(existing.venue||'')!==venue || String(existing.location||'')!==location || String(existing.title||'')!==title);
     let notified=0;
@@ -5822,7 +5982,7 @@ async function adminCustomers(request, env) {
   const customer = await env.BOOKINGS_DB.prepare(customerMetricsSql + ` WHERE lower(cu.email)=?`).bind(email).first();
   if (!customer) return json({error:'Customer not found.'},404);
   const [bookings, waiting, notes, tags, profile, notifications, campaigns, attendanceHistory, loyaltyHistory, lifecycleHistory] = await Promise.all([
-    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.customer_id,b.customer_name,b.customer_email,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.ticket_type,b.ticket_entry_time,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at,(SELECT COUNT(*) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_transaction_count,(SELECT GROUP_CONCAT(DISTINCT t.source_type) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_sources FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?) ORDER BY b.created_at DESC LIMIT 100`).bind(customer.customer_id,email).all(),
+    env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.customer_id,b.customer_name,b.customer_email,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.ticket_type,b.ticket_entry_time,b.ticket_product_code,b.ticket_product_label,b.ticket_unit_price_pence,b.ticket_starts_at,b.ticket_ends_at,b.ticket_entry_at,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at,(SELECT COUNT(*) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_transaction_count,(SELECT GROUP_CONCAT(DISTINCT t.source_type) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_sources FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?) ORDER BY b.created_at DESC LIMIT 100`).bind(customer.customer_id,email).all(),
     env.BOOKINGS_DB.prepare(`SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w LEFT JOIN classes c ON c.id=w.class_id WHERE lower(w.customer_email)=? ORDER BY w.created_at DESC LIMIT 50`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_notes WHERE customer_key=? ORDER BY created_at DESC LIMIT 100`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT tag FROM customer_crm_tags WHERE customer_key=? ORDER BY tag`).bind(email).all(),
@@ -6640,6 +6800,7 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
+      if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
       }
