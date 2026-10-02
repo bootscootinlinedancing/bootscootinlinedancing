@@ -27,7 +27,9 @@
   const $$=selector=>[...document.querySelectorAll(selector)];
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=pence=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(pence)||0)/100);
-  const ticketLabel=booking=>booking?.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[booking?.ticket_product_code||booking?.ticket_type]||'Class + Social');
+  const ticketName=booking=>booking?.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[booking?.ticket_product_code||booking?.ticket_type]||'Class + Social');
+  const ticketTime=value=>{if(!value)return '';const d=new Date(value);return Number.isNaN(d.getTime())?String(value):new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(d);};
+  const ticketLabel=booking=>{const code=booking?.ticket_product_code||booking?.ticket_type,label=ticketName(booking);if(code==='SOCIAL_ONLY')return `${label}${booking?.ticket_entry_at||booking?.ticket_entry_time?` · Entry from ${ticketTime(booking.ticket_entry_at||booking.ticket_entry_time)}`:''}`;if(['BEGINNER_SOCIAL','IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(code))return `${label}${booking?.ticket_starts_at?` · Teaching ${ticketTime(booking.ticket_starts_at)}${booking?.ticket_ends_at?`–${ticketTime(booking.ticket_ends_at)}`:''} + social afterwards`:''}`;return label;};
   const fmt=value=>{
     if(!value)return '—';
     const d=new Date(value);
@@ -1676,8 +1678,8 @@ Type REFUNDED to continue.`);
     const rows=state.bookings?.bookings||[];
     if(!rows.length){toast('There are no bookings to export.','error');return;}
     downloadCsv(`boot-scootin-bookings-${new Date().toISOString().slice(0,10)}.csv`,
-      ['Reference','Customer name','Email','Phone','Class','Starts','Venue','Places','Status','Payment provider','Amount GBP','Refund status','Created'],
-      rows.map(b=>[b.reference,b.customer_name,b.customer_email,b.customer_phone,b.class_title,b.starts_at,b.venue,b.quantity,b.status,b.payment_provider,(Number(b.amount_pence||0)/100).toFixed(2),b.refund_status,b.created_at]));
+      ['Reference','Customer name','Email','Phone','Class','Starts','Venue','Ticket','Places','Status','Payment provider','Amount GBP','Refund status','Created'],
+      rows.map(b=>[b.reference,b.customer_name,b.customer_email,b.customer_phone,b.class_title,b.starts_at,b.venue,ticketLabel(b),b.quantity,b.status,b.payment_provider,(Number(b.amount_pence||0)/100).toFixed(2),b.refund_status,b.created_at]));
     toast('Bookings CSV downloaded.');
   }
   async function exportCustomersCsv(){

@@ -535,6 +535,9 @@ body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:
         }).format(new Date(value));
       } catch { return String(value); }
     }
+    const memberTicketName=b=>b.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[b.ticket_product_code||b.ticket_type]||'Class + Social');
+    const memberTicketTime=value=>value?new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'';
+    const memberTicketDetail=b=>{const code=b.ticket_product_code||b.ticket_type,label=memberTicketName(b);if(code==='SOCIAL_ONLY')return `${label}${b.ticket_entry_at||b.ticket_entry_time?` · Entry from ${memberTicketTime(b.ticket_entry_at||b.ticket_entry_time)}`:''}`;if(['BEGINNER_SOCIAL','IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(code))return `${label}${b.ticket_starts_at?` · Teaching ${memberTicketTime(b.ticket_starts_at)}${b.ticket_ends_at?`–${memberTicketTime(b.ticket_ends_at)}`:''} + social afterwards`:''}`;return label;};
 
     function formatPassDate(value){
       if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||'')))return '';
@@ -695,7 +698,7 @@ body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:
             <div class="member-booking-row">
               <strong>${String(b.title||'Boot Scootin’ class')}</strong>
               <span>${formatMemberDate(b.starts_at)}${b.venue?' · '+String(b.venue):''}</span>
-              <small>${String(b.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[b.ticket_product_code||b.ticket_type]||'Class + Social'))} · ${String(b.status||'').replaceAll('_',' ')}</small>
+              <small>${memberTicketDetail(b)} · ${String(b.status||'').replaceAll('_',' ')}</small>
             </div>`).join('');
         }
       }

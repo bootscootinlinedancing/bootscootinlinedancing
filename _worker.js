@@ -447,8 +447,15 @@ function ticketTimeText(value){
 }
 function ticketSnapshotText(row){
   const label=ticketSnapshotLabel(row),code=ticketSnapshotCode(row);
-  const time=code==='SOCIAL_ONLY'?(row?.ticket_entry_at||row?.ticket_entry_time):(row?.ticket_starts_at||'');
-  return `${label}${time?` · ${code==='SOCIAL_ONLY'?'Entry from ':''}${ticketTimeText(time)}`:''}`;
+  if(code==='SOCIAL_ONLY'){
+    const entry=row?.ticket_entry_at||row?.ticket_entry_time;
+    return `${label}${entry?` · Entry from ${ticketTimeText(entry)}`:''}`;
+  }
+  if(['BEGINNER_SOCIAL','IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(code)){
+    const start=ticketTimeText(row?.ticket_starts_at),end=ticketTimeText(row?.ticket_ends_at);
+    return `${label}${start?` · Teaching ${start}${end?`–${end}`:''} + social afterwards`:''}`;
+  }
+  return label;
 }
 
 async function classTicketProducts(env,klass,{includeDisabled=false}={}){
@@ -875,10 +882,17 @@ async function createClassCreditBooking(request,env){
     SELECT b.* FROM bookings b LEFT JOIN class_pass_credit_ledger l ON l.id=b.class_pass_ledger_id
     WHERE b.id=? AND b.customer_id=? AND (l.idempotency_key=? OR b.payment_provider='CLASS_PASS')
   `).bind(bookingId,session.customer_id,operationKey).first();
-  if(existing)return json({ok:true,idempotent:true,reference:existing.reference,status:existing.status,secure_token:existing.secure_token,customer_token:existing.customer_token,total_pence:0,payment_enabled:false},200);
+  const requestedProduct=clean(body?.ticket_product_code??body?.ticket_type,40);
+  if(existing){
+    if(existing.class_id!==classId||(requestedProduct&&ticketSnapshotCode(existing)!==requestedProduct))return json({error:'That operation reference was already used for a different class or ticket.'},409);
+    return json({ok:true,idempotent:true,reference:existing.reference,status:existing.status,secure_token:existing.secure_token,customer_token:existing.customer_token,total_pence:0,payment_enabled:false},200);
+  }
   const waitingId=`cpw-${await memberSha256Hex(operationKey)}`;
   const existingWait=await env.BOOKINGS_DB.prepare(`SELECT * FROM waiting_list WHERE id=? AND lower(customer_email)=lower(?)`).bind(waitingId,session.email).first();
-  if(existingWait)return json({ok:true,idempotent:true,waitlisted:true,status:'WAITLISTED',secure_token:existingWait.secure_token,message:'You are on the waiting list. No class credit has been used.'},200);
+  if(existingWait){
+    if(existingWait.class_id!==classId||(requestedProduct&&ticketSnapshotCode(existingWait)!==requestedProduct))return json({error:'That operation reference was already used for a different class or ticket.'},409);
+    return json({ok:true,idempotent:true,waitlisted:true,status:'WAITLISTED',secure_token:existingWait.secure_token,message:'You are on the waiting list. No class credit has been used.'},200);
+  }
 
   const klass=await env.BOOKINGS_DB.prepare(`
     SELECT c.*,COALESCE(e.eligible,0) pass_eligible
@@ -4037,6 +4051,25 @@ function normaliseClassTicketProducts(input){
   return rows;
 }
 
+function validateClassTicketSchedule(products,classStart,classEnd){
+  const enabled=products.filter(row=>Number(row.enabled)===1);
+  const teaching=enabled.filter(row=>row.product_code!=='SOCIAL_ONLY');
+  for(const row of teaching){
+    if(row.starts_at<classStart.toISOString())throw new Error(`${ticketDefinition(row.product_code).label} cannot start before the event.`);
+    if(classEnd&&row.ends_at>classEnd.toISOString())throw new Error(`${ticketDefinition(row.product_code).label} cannot finish after the event.`);
+  }
+  const beginner=enabled.find(row=>row.product_code==='BEGINNER_SOCIAL');
+  const improver=enabled.find(row=>row.product_code==='IMPROVER_SOCIAL');
+  if(beginner&&improver&&beginner.ends_at>improver.starts_at)throw new Error('Beginner teaching must finish before Improver teaching starts.');
+  const social=enabled.find(row=>row.product_code==='SOCIAL_ONLY');
+  if(social){
+    const lastTeachingEnd=teaching.reduce((latest,row)=>row.ends_at>latest?row.ends_at:latest,'');
+    if(lastTeachingEnd&&social.entry_at<lastTeachingEnd)throw new Error('Social Only entry cannot begin before teaching has finished.');
+    if(social.entry_at<classStart.toISOString())throw new Error('Social Only entry cannot begin before the event.');
+    if(classEnd&&social.entry_at>classEnd.toISOString())throw new Error('Social Only entry cannot begin after the event has finished.');
+  }
+}
+
 function adminPassOperationId(value){
   const id=String(value||'').trim();
   return /^[A-Za-z0-9_-]{12,100}$/.test(id)?id:'';
@@ -4640,6 +4673,7 @@ async function adminClasses(request, env) {
   if(bookingFormat==='BEGINNER_IMPROVER'&&anniversaryClass)return json({error:'Beginner + Improver tickets cannot be enabled for the Anniversary event.'},409);
   let ticketProducts=[];
   try{if(bookingFormat==='BEGINNER_IMPROVER')ticketProducts=normaliseClassTicketProducts(b.ticket_products);}catch(error){return json({error:error.message},400);}
+  try{if(bookingFormat==='BEGINNER_IMPROVER')validateClassTicketSchedule(ticketProducts,starts,ends);}catch(error){return json({error:error.message},400);}
   const configuredSocial=ticketProducts.find(row=>row.product_code==='SOCIAL_ONLY');
 
   const vals=[

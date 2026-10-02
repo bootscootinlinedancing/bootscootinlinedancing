@@ -19,6 +19,13 @@
   };
   const money=pence=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(pence)||0)/100);
   const ticket=b=>b.ticket_product_label||({CLASS_SOCIAL:'Class + Social',BEGINNER_SOCIAL:'Beginner Class + Social',IMPROVER_SOCIAL:'Improver Class + Social',BEGINNER_IMPROVER_SOCIAL:'Beginner + Improver + Social',SOCIAL_ONLY:'Social Only'}[b.ticket_product_code||b.ticket_type]||'Class + Social');
+  const ticketTime=value=>value?new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'';
+  const ticketDetail=b=>{
+    const code=b.ticket_product_code||b.ticket_type,label=ticket(b);
+    if(code==='SOCIAL_ONLY')return `${label}${b.ticket_entry_at||b.ticket_entry_time?` · Entry from ${ticketTime(b.ticket_entry_at||b.ticket_entry_time)}`:''}`;
+    if(['BEGINNER_SOCIAL','IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(code))return `${label}${b.ticket_starts_at?` · Teaching ${ticketTime(b.ticket_starts_at)}${b.ticket_ends_at?`–${ticketTime(b.ticket_ends_at)}`:''} + social afterwards`:''}`;
+    return label;
+  };
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 
   if(!ref&&!token){
@@ -53,7 +60,7 @@
       <dt>Class</dt><dd>${esc(b.class_title)}</dd>
       <dt>Date</dt><dd>${esc(date(b.starts_at))}</dd>
       <dt>Venue</dt><dd>${esc(b.venue)}</dd>
-      <dt>Ticket</dt><dd>${esc(ticket(b))}</dd>
+      <dt>Ticket</dt><dd>${esc(ticketDetail(b))}</dd>
       <dt>Places</dt><dd>${esc(b.quantity)}</dd>
       <dt>Total</dt><dd>${esc(money(b.amount_pence))}</dd>
       <dt>Status</dt><dd>${esc(String(b.status||'PENDING').replaceAll('_',' '))}</dd>
