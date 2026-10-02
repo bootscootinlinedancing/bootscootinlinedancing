@@ -200,6 +200,11 @@
 <p class="dialog-meta" id="selectedClassMeta"></p>
 <input id="classId" name="classId" type="hidden"/>
 <input id="bookingMode" name="bookingMode" type="hidden" value="booking"/>
+<fieldset class="ticket-type-picker" id="ticketTypePicker" hidden>
+<legend>Choose your ticket</legend>
+<label><input type="radio" name="ticket_type" value="CLASS_SOCIAL" checked><span><strong>Class + Social</strong><small id="classSocialPrice"></small></span></label>
+<label><input type="radio" name="ticket_type" value="SOCIAL_ONLY"><span><strong>Social Only</strong><small id="socialOnlyDetails"></small></span></label>
+</fieldset>
 <div class="form-grid">
 <label>Full name <small>(first name and surname)</small><input autocomplete="name" maxlength="100" minlength="3" name="name" placeholder="e.g. Nora Godollei" required=""/></label>
 <label>Email address<input autocomplete="email" maxlength="160" name="email" required="" type="email"/></label>
