@@ -2130,8 +2130,10 @@ async function checkSumUpConnection(env) {
       data.merchant_code,
       ...profiles.flatMap(profile => [profile.merchant_code, profile.code])
     ].map(value => String(value || '').trim().toUpperCase()).filter(Boolean))];
-    if (returnedCodes.length && !returnedCodes.includes(configuredCode)) {
-      return { ready: false, status: 'attention', message: `SumUp credential profiles (${returnedCodes.join(', ')}) do not include configured merchant ${configuredCode}.` };
+    if (!returnedCodes.includes(configuredCode)) {
+      return { ready: false, status: 'attention', message: returnedCodes.length
+        ? 'The SumUp credential does not include the configured merchant profile.'
+        : 'SumUp returned no merchant profile for the configured credential.' };
     }
     return {
       ready: true,
