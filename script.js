@@ -16,7 +16,7 @@
     if (legacyHeader) {
       const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
       const navItems = [
-        ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],
+        ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],['class-pass.html','Class Pass'],
         ['private-events.html','Private Events'],['gallery.html','Gallery'],['reviews.html','Reviews'],['ask-nora.html','Contact']
       ];
       const links = navItems.map(([href,label]) => {
@@ -137,6 +137,18 @@ function repairPersistentExploreLinks(){
     ['rewards.html','Boot Scootin’ Rewards',true],
     ['passport.html#trail-rewards','Trail & Rewards',false]
   ]);
+
+  // Class Pass is a primary customer journey, not a hidden account feature.
+  // Keep it directly after the existing Classes & Bookings destination on
+  // every public menu without duplicating the page-specific menu markup.
+  const classesLink=panel.querySelector(':scope > .menu45-first');
+  if(classesLink && !panel.querySelector(':scope > .menu45-class-pass')){
+    const passLink=document.createElement('a');
+    passLink.className='menu45-first menu45-class-pass';
+    passLink.href='class-pass.html';
+    passLink.innerHTML='<span><small>Dance more, save more</small><strong>Class Pass</strong><em>Buy credits once and use them on eligible classes</em></span><b aria-hidden="true">›</b>';
+    classesLink.insertAdjacentElement('afterend',passLink);
+  }
 }
 
 document.addEventListener('DOMContentLoaded',repairPersistentExploreLinks);

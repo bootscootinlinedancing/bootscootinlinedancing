@@ -2122,9 +2122,18 @@ async function checkSumUpConnection(env) {
       return { ready: false, status: 'attention', message: `SumUp rejected the configured API key (HTTP ${response.status}).` };
     }
     const configuredCode = String(env.SUMUP_MERCHANT_CODE).trim().toUpperCase();
-    const returnedCode = String(data.merchant_code || data.merchant_profile?.merchant_code || '').trim().toUpperCase();
-    if (returnedCode && returnedCode !== configuredCode) {
-      return { ready: false, status: 'attention', message: 'The SumUp API key belongs to a different merchant account than SUMUP_MERCHANT_CODE.' };
+    // /me has used both a single merchant_profile and a merchant_profiles
+    // collection. Checking only the first top-level value produced a false
+    // mismatch for credentials that can legitimately access several profiles.
+    const profiles = [data.merchant_profile, ...(Array.isArray(data.merchant_profiles) ? data.merchant_profiles : [])].filter(Boolean);
+    const returnedCodes = [...new Set([
+      data.merchant_code,
+      ...profiles.flatMap(profile => [profile.merchant_code, profile.code])
+    ].map(value => String(value || '').trim().toUpperCase()).filter(Boolean))];
+    if (!returnedCodes.includes(configuredCode)) {
+      return { ready: false, status: 'attention', message: returnedCodes.length
+        ? 'The SumUp credential does not include the configured merchant profile.'
+        : 'SumUp returned no merchant profile for the configured credential.' };
     }
     return {
       ready: true,
@@ -6752,15 +6761,38 @@ async function publicMedia(request, env, url) {
 
 
 async function adminPromotions(request,env){
-  const check=await requireAdmin(request,env); if(!check.ok)return check.response; await ensureBookingSchema(env);
+  const check=requireAdmin(request,env); if(check.response)return check.response;
   if(request.method==='GET'){
     try{
-      const result=await env.BOOKINGS_DB.prepare(`SELECT p.*,(SELECT COUNT(*) FROM promotion_codes pc WHERE pc.promotion_id=p.id) issued,(SELECT COUNT(*) FROM promotion_redemptions pr JOIN promotion_codes pc2 ON pc2.id=pr.promotion_code_id WHERE pc2.promotion_id=p.id) redeemed,(SELECT COALESCE(SUM(pr2.discount_pence),0) FROM promotion_redemptions pr2 JOIN promotion_codes pc3 ON pc3.id=pr2.promotion_code_id WHERE pc3.promotion_id=p.id) discounted_pence FROM promotions p ORDER BY p.created_at DESC`).all();
+      // A list request must be strictly read-only. Previously the full schema
+      // bootstrap ran outside this error boundary before every GET, so any DDL
+      // compatibility failure became an unhandled Worker exception. Derived
+      // aggregates also keep all D1 aliases within an explicit query scope.
+      const result=await env.BOOKINGS_DB.prepare(`
+        SELECT p.*,
+          COALESCE(code_totals.issued,0) issued,
+          COALESCE(redemption_totals.redeemed,0) redeemed,
+          COALESCE(redemption_totals.discounted_pence,0) discounted_pence
+        FROM promotions p
+        LEFT JOIN (
+          SELECT promotion_id,COUNT(*) issued FROM promotion_codes GROUP BY promotion_id
+        ) code_totals ON code_totals.promotion_id=p.id
+        LEFT JOIN (
+          SELECT pc.promotion_id,COUNT(pr.id) redeemed,COALESCE(SUM(pr.discount_pence),0) discounted_pence
+          FROM promotion_codes pc LEFT JOIN promotion_redemptions pr ON pr.promotion_code_id=pc.id
+          GROUP BY pc.promotion_id
+        ) redemption_totals ON redemption_totals.promotion_id=p.id
+        ORDER BY p.created_at DESC
+      `).all();
       return json({promotions:result.results||[]});
     }catch(error){
       console.error('admin promotions GET failed',error);
       return json({error:'Promotions could not be loaded from D1. Run System Health and retry.',detail:String(error?.message||error)},500);
     }
+  }
+  try{await ensureBookingSchema(env);}catch(error){
+    console.error('admin promotions schema check failed',error);
+    return json({error:'Promotions are not ready in D1. Run System Health and review the database schema.',detail:String(error?.message||error)},503);
   }
   const body=await request.json().catch(()=>null); if(!body)return json({error:'Promotion request could not be read.'},400);
   if(body.action==='CREATE'){
