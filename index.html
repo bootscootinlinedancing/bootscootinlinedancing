@@ -16,6 +16,15 @@
 <link href="apple-touch-icon.png" rel="apple-touch-icon"/>
 <link href="manifest.webmanifest" rel="manifest"/>
 <link href="desktop-final-fix.css?v=96.4.39" rel="stylesheet"/>
+<style id="entry-first-paint">
+/* The entrance owns first paint.  JS removes intro-open only after entry (or
+   immediately for a session that has already entered), so the homepage can
+   never flash behind the poster while the larger stylesheets initialise. */
+html,body.intro-open{background:#050303}
+body.intro-open{overflow:hidden}
+body.intro-open>:not(#intro){visibility:hidden}
+body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z-index:2147482000;background:#050303}
+</style>
 <style id="menu45-style">
 .menu45-overlay{display:none}
 @media(max-width:950px){

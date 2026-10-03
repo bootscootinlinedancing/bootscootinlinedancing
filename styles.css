@@ -10123,3 +10123,28 @@ body.ranch-v91 .hq-class-form .hq-ticket-enabled input[type=checkbox],.hq-class-
 .class-pass-discovery{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,1fr) auto;gap:1rem;align-items:center;margin:0 0 2rem;padding:1.25rem;border:1px solid rgba(201,25,36,.45);border-radius:18px;background:linear-gradient(135deg,rgba(18,13,12,.96),rgba(43,20,18,.96));color:#fff8e8}.class-pass-discovery h2,.class-pass-discovery p{margin:.2rem 0}.class-pass-discovery>small{grid-column:1/-1;color:#e7d9c2}.class-pass-discovery-products{display:grid;gap:.45rem}.class-pass-discovery-products strong{display:block}.class-pass-discovery-products small{display:block;color:#e7d9c2;font-weight:500}.ticket-product-picker>div{display:grid;gap:.65rem}.ticket-product-card{display:block;cursor:pointer}.ticket-product-card input{position:absolute;opacity:0;pointer-events:none}.ticket-product-card span{display:grid;gap:.25rem;padding:1rem;border:2px solid rgba(120,90,70,.25);border-radius:14px;background:#fffaf0;color:#251818;transition:border-color .15s,box-shadow .15s,transform .15s}.ticket-product-card input:checked+span{border-color:#c81924;box-shadow:0 0 0 3px rgba(200,25,36,.14);transform:translateY(-1px)}.ticket-product-card input:focus-visible+span{outline:3px solid #1473e6;outline-offset:2px}.ticket-product-card em{width:max-content;padding:.2rem .45rem;border-radius:999px;background:#c81924;color:#fff;font-size:.72rem;font-style:normal;font-weight:900;letter-spacing:.06em}.ticket-product-card b{color:#8b1119;font-size:.8rem}.ticket-product-card small{color:#5b4540;line-height:1.35}
 .booking-dialog .ticket-product-card span{color:#211513}.booking-dialog .ticket-product-card strong{color:#211513}.booking-dialog .ticket-product-card small{color:#5b4540}
 @media(max-width:760px){.class-pass-discovery{grid-template-columns:1fr}.class-pass-discovery .button{width:100%;text-align:center}.class-pass-discovery>small{grid-column:auto}}
+
+/* Consolidated public atmosphere + Class Pass destination. */
+body.public-atmosphere,
+body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body){
+  background-color:#090404;
+  background-image:linear-gradient(180deg,rgba(4,2,2,.35),rgba(4,2,2,.76)),url('boot-scootin-entrance-brick-floor.webp');
+  background-position:center top;background-size:cover;background-attachment:fixed;color:#f6ece3
+}
+body:not(.ranch-v91) main{background:linear-gradient(180deg,rgba(7,3,3,.18),rgba(7,3,3,.48))}
+body:not(.ranch-v91) .section.paper,body:not(.ranch-v91) .booking-content,body:not(.ranch-v91) .member-content{background:rgba(8,4,4,.82)!important}
+body:not(.ranch-v91) .new-home-footer,body:not(.ranch-v91) footer{background:linear-gradient(180deg,rgba(10,4,4,.92),rgba(2,1,1,.98))!important;border-top:1px solid #63252a;color:#f4e8df}
+.menu45-class-pass{margin-top:-14px!important;border-color:#6d292e!important}
+.class-pass-main{min-height:100vh;padding:clamp(90px,12vw,150px) clamp(18px,6vw,80px) clamp(60px,8vw,100px)}
+.class-pass-hero,.class-pass-options,.class-pass-explainer{width:min(1120px,100%);margin-inline:auto}
+.class-pass-hero{padding:clamp(28px,6vw,70px);border:1px solid rgba(205,52,61,.65);background:linear-gradient(135deg,rgba(8,3,4,.96),rgba(52,12,15,.88));text-align:center}
+.class-pass-hero h1{margin:.2rem 0;font:400 clamp(3.2rem,10vw,7rem)/1 Rye,serif;color:#fff2e8;text-shadow:0 0 22px rgba(227,29,40,.34)}
+.class-pass-lead{max-width:720px;margin:1rem auto 1.5rem;color:#ddcec3;font-size:clamp(1.05rem,2vw,1.35rem);line-height:1.65}
+.class-pass-buy{text-transform:uppercase;letter-spacing:.08em}
+.class-pass-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(16px,3vw,30px);margin-top:clamp(22px,4vw,42px)}
+.class-pass-options article{position:relative;overflow:hidden;padding:clamp(24px,5vw,48px);border:1px solid #793038;background:rgba(11,5,6,.92);color:#f7ece3}
+.class-pass-options h2{margin:.2rem 0;font:400 clamp(1.8rem,4vw,3rem)/1.1 Rye,serif}.class-pass-options article>strong{display:block;margin:.7rem 0;color:#ef303a;font:700 clamp(2.2rem,6vw,4rem)/1 Oswald,sans-serif}
+.class-pass-options ul{padding-left:1.2rem;color:#d3c1b5;line-height:1.8}.class-pass-count{position:absolute;right:18px;top:-35px;margin:0;color:rgba(194,39,48,.16);font:700 11rem/1 Oswald,sans-serif}
+.class-pass-explainer{display:grid;grid-template-columns:minmax(220px,.7fr) minmax(0,1.3fr);gap:clamp(22px,5vw,60px);align-items:start;margin-top:clamp(28px,6vw,70px);padding:clamp(24px,5vw,48px);background:rgba(243,228,207,.96);color:#211515;border-bottom:8px solid #692d1f;box-shadow:0 24px 55px rgba(0,0,0,.35)}
+.class-pass-explainer h2{margin:.3rem 0;color:#271515;font:400 clamp(2rem,4vw,3.5rem)/1.05 Rye,serif}.class-pass-rules{display:grid;gap:10px}.class-pass-rules p{margin:0;padding:12px 0;border-bottom:1px solid #cbb294;color:#49372f}.class-pass-explainer>.button{grid-column:2;justify-self:start}
+@media(max-width:700px){body.public-atmosphere,body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body){background-attachment:scroll}.class-pass-options,.class-pass-explainer{grid-template-columns:1fr}.class-pass-explainer>.button{grid-column:auto;width:100%;box-sizing:border-box;text-align:center}.class-pass-main{padding-inline:14px}.menu45-class-pass{margin-top:-10px!important}}

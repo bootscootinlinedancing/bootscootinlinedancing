@@ -201,6 +201,24 @@ body.ranch-v91 .danger-outline{background:#160b0c!important;color:#ffb9bd!import
 body.ranch-v91 .status-pill{background:#2a1719!important;color:#f7eee7!important}
 body.ranch-v91 .status-pill.open{background:#102419!important;color:#bce1c8!important}
 body.ranch-v91 .revenue-summary-card small{display:block;margin-top:.45rem;color:#cbb7aa!important;font:500 .64rem/1.45 Oswald,sans-serif;text-transform:none;letter-spacing:0}
+
+/* HQ readability sweep: pale information surfaces always use dark ink; the
+   established dark operational panels continue using cream text. */
+body.ranch-v91 :is(.ranch-stats article,.ranch91-summary article,.revenue-summary-card,.hq-health-card,.hq-pilot-rules,.refund-connection-notice,.ranch91-health-summary,.ranch91-attention-item){overflow-wrap:anywhere;min-width:0}
+body.ranch-v91 :is(.hq-health-card,.hq-pilot-rules,.refund-connection-notice,.ranch-status,.ranch-notice)[style*="background"],
+body.ranch-v91 :is(.hq-health-card,.hq-pilot-rules,.refund-connection-notice).hq-pale-card{color:#241716!important}
+body.ranch-v91 :is(.hq-health-card,.hq-pilot-rules,.refund-connection-notice).hq-pale-card :is(h2,h3,strong,small,p,li,span,b){color:inherit!important}
+body.ranch-v91 :is(.ranch-stats article,.ranch91-summary article,.revenue-summary-card){background:#14090a!important;color:#f8eee5!important;border-color:#713037!important}
+body.ranch-v91 :is(.ranch-stats article,.ranch91-summary article,.revenue-summary-card) span{color:#d7c4b6!important}
+body.ranch-v91 :is(.ranch-stats article,.ranch91-summary article,.revenue-summary-card) strong{color:#fff7ee!important;text-shadow:none!important}
+body.ranch-v91 :is(.ranch-loading,.ranch91-loading,.ranch-empty,.ranch91-empty){color:#d7c4b7!important;background:#120808!important;border-color:#623036!important}
+body.ranch-v91 .refund-connection-notice{background:#17090a!important;color:#f5e9df!important;border-color:#8a343b!important}
+body.ranch-v91 .refund-connection-notice :is(strong,span,p){color:inherit!important}
+body.ranch-v91 .refund-connection-notice.is-ready{border-left-color:#56a971!important;background:#0d1911!important}
+body.ranch-v91 .hq-health-card{background:#13090a!important;color:#f6ebe3!important;border-color:#663036!important}
+body.ranch-v91 .hq-health-card :is(strong,small,b){color:inherit!important}
+body.ranch-v91 .hq-pilot-rules{background:#1b0d0e!important;color:#eadbd0!important;border-color:#9c3b42!important}
+@media(max-width:760px){body.ranch-v91 .ranch-main{padding-inline:14px!important}body.ranch-v91 :is(.ranch-stats,.ranch91-summary){grid-template-columns:1fr!important}body.ranch-v91 :is(.ranch-panel,.ranch91-panel){padding:16px!important}body.ranch-v91 .ranch-panel-head h2{font-size:clamp(1.55rem,9vw,2.15rem)!important;overflow-wrap:anywhere}body.ranch-v91 :is(.ranch-actions,.refund-connection-actions){display:grid!important;grid-template-columns:1fr!important;width:100%}body.ranch-v91 :is(.ranch-actions,.refund-connection-actions) .button{width:100%!important;box-sizing:border-box;white-space:normal}}
 .hq-class-templates{display:grid;gap:.8rem;padding:1rem;border:1px solid #6a2b30;background:#170c0d;color:#f7eee7}
 .hq-class-templates h3{margin:.1rem 0;font:400 1.55rem/1 Rye,serif;color:#fff4eb}
 .hq-class-templates p{margin:.25rem 0;color:#cbb7aa;line-height:1.5}
