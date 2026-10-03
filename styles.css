@@ -10102,6 +10102,23 @@ body.legal-page{
 .ticket-type-picker span,.ticket-type-picker small{display:block}.ticket-type-picker small{margin-top:.2rem}
 .hq-social-ticket-settings{display:grid;gap:.8rem;padding:1rem;border:1px solid rgba(205,54,62,.45)}
 .hq-social-ticket-settings legend{padding:0 .4rem;font-weight:800;color:#fff1df}
+.hq-ticket-products{gap:1rem;padding:1.1rem}
+.hq-ticket-capacity-note{margin:0;font-size:.82rem;line-height:1.45;opacity:.82}
+.hq-ticket-product-config{display:grid;gap:.85rem;padding:1rem;border:1px solid rgba(205,54,62,.32);border-radius:10px;background:rgba(8,4,5,.55)}
+.hq-ticket-product-config.compact{gap:.7rem}
+.hq-ticket-product-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-width:0}
+.hq-ticket-product-head>div{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;min-width:0}
+.hq-ticket-product-head strong{font:700 1rem/1.25 Oswald,sans-serif;color:#fff4eb}
+.hq-ticket-pass-badge{display:inline-flex;align-items:center;min-height:22px;padding:.18rem .48rem;border:1px solid rgba(89,171,119,.55);border-radius:999px;background:rgba(25,89,50,.28);color:#bce1c8;font:700 .67rem/1 Oswald,sans-serif;letter-spacing:.03em;white-space:nowrap}
+.hq-class-form label.hq-ticket-enabled{display:inline-flex;grid-auto-flow:column;align-items:center;gap:.42rem;color:#dfcfc6!important;font:700 .76rem/1 Oswald,sans-serif;letter-spacing:.03em;white-space:nowrap;cursor:pointer}
+body.ranch-v91 .hq-class-form .hq-ticket-enabled input[type=checkbox],.hq-class-form .hq-ticket-enabled input[type=checkbox]{appearance:auto!important;-webkit-appearance:checkbox!important;width:16px!important;height:16px!important;min-width:16px!important;min-height:16px!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;accent-color:#c52a33;cursor:pointer}
+.hq-ticket-field-grid{display:grid;grid-template-columns:minmax(0,220px);gap:.75rem}
+.hq-ticket-field-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.hq-ticket-field-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hq-ticket-field-grid label{min-width:0;font-size:.78rem;letter-spacing:.02em}
+.hq-ticket-field-grid input{box-sizing:border-box}
+@media(max-width:700px){.hq-ticket-product-head{align-items:flex-start}.hq-ticket-field-grid.two,.hq-ticket-field-grid.three{grid-template-columns:1fr}.hq-ticket-products{padding:.85rem}.hq-ticket-product-config{padding:.85rem}}
+@media(max-width:390px){.hq-ticket-product-head{display:grid;gap:.65rem}.hq-ticket-enabled{justify-self:start}}
 @media(max-width:390px){.ticket-type-picker{padding:.75rem}.ticket-type-picker label{min-width:0}.ticket-type-picker span{overflow-wrap:anywhere}}
 .class-pass-discovery{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,1fr) auto;gap:1rem;align-items:center;margin:0 0 2rem;padding:1.25rem;border:1px solid rgba(201,25,36,.45);border-radius:18px;background:linear-gradient(135deg,rgba(18,13,12,.96),rgba(43,20,18,.96));color:#fff8e8}.class-pass-discovery h2,.class-pass-discovery p{margin:.2rem 0}.class-pass-discovery>small{grid-column:1/-1;color:#e7d9c2}.class-pass-discovery-products{display:grid;gap:.45rem}.class-pass-discovery-products strong{display:block}.class-pass-discovery-products small{display:block;color:#e7d9c2;font-weight:500}.ticket-product-picker>div{display:grid;gap:.65rem}.ticket-product-card{display:block;cursor:pointer}.ticket-product-card input{position:absolute;opacity:0;pointer-events:none}.ticket-product-card span{display:grid;gap:.25rem;padding:1rem;border:2px solid rgba(120,90,70,.25);border-radius:14px;background:#fffaf0;color:#251818;transition:border-color .15s,box-shadow .15s,transform .15s}.ticket-product-card input:checked+span{border-color:#c81924;box-shadow:0 0 0 3px rgba(200,25,36,.14);transform:translateY(-1px)}.ticket-product-card input:focus-visible+span{outline:3px solid #1473e6;outline-offset:2px}.ticket-product-card em{width:max-content;padding:.2rem .45rem;border-radius:999px;background:#c81924;color:#fff;font-size:.72rem;font-style:normal;font-weight:900;letter-spacing:.06em}.ticket-product-card b{color:#8b1119;font-size:.8rem}.ticket-product-card small{color:#5b4540;line-height:1.35}
 .booking-dialog .ticket-product-card span{color:#211513}.booking-dialog .ticket-product-card strong{color:#211513}.booking-dialog .ticket-product-card small{color:#5b4540}

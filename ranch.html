@@ -760,7 +760,7 @@
           <label>Capacity<input name="capacity" type="number" min="1" step="1" value="20" required></label>
           <label>Status<select name="status"><option value="draft">Draft</option><option value="open">Open</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option></select></label>
         </div>
-        <label>Booking format<select name="booking_format"><option value="STANDARD">Standard Class + Social</option><option value="BEGINNER_IMPROVER">Beginner + Improver trial</option></select></label>
+        <label>Booking format<select name="booking_format"><option value="STANDARD">Standard Class + Social</option><option value="BEGINNER_IMPROVER">Beginner + Improver</option></select></label>
         <fieldset class="hq-social-ticket-settings" id="standardSocialSettings">
           <legend>Social Only ticket</legend>
           <label class="check-row"><input name="social_only_enabled" type="checkbox" value="1"><span>Offer a separate Social Only ticket for this class</span></label>
@@ -770,19 +770,37 @@
           </div>
           <small>All ticket types share this class's single capacity. Anniversary release tickets remain separate and cannot enable Social Only.</small>
         </fieldset>
-        <fieldset class="hq-social-ticket-settings" id="beginnerImproverSettings" hidden>
+        <fieldset class="hq-social-ticket-settings hq-ticket-products" id="beginnerImproverSettings" hidden>
           <legend>Beginner + Improver ticket products</legend>
-          <p>All enabled products share one physical event capacity. Combined places count once overall and in both teaching-session totals.</p>
+          <p class="hq-ticket-capacity-note">All enabled products share one physical event capacity. Combined places count once overall and in both teaching-session totals.</p>
           <div class="hq-ticket-product-config">
-            <label class="check-row"><input name="beginner_enabled" type="checkbox" checked><span>Beginner Class + Social — Class Pass eligible</span></label>
-            <div class="hq-form-grid three"><label>Start<input name="beginner_start" type="time" value="19:15"></label><label>Finish<input name="beginner_end" type="time" value="20:15"></label><label>Price (£)<input name="beginner_price" type="number" min="0.01" step="0.01" value="6.00"></label></div>
+            <div class="hq-ticket-product-head">
+              <div><strong>Beginner Class + Social</strong><span class="hq-ticket-pass-badge">Class Pass ✓</span></div>
+              <label class="hq-ticket-enabled"><input name="beginner_enabled" type="checkbox" checked><span>Enabled</span></label>
+            </div>
+            <div class="hq-ticket-field-grid three"><label>Start<input name="beginner_start" type="time" value="19:15"></label><label>Finish<input name="beginner_end" type="time" value="20:15"></label><label>Price (£)<input name="beginner_price" type="number" min="0.01" step="0.01" value="6.00"></label></div>
           </div>
           <div class="hq-ticket-product-config">
-            <label class="check-row"><input name="improver_enabled" type="checkbox" checked><span>Improver Class + Social — Class Pass eligible</span></label>
-            <div class="hq-form-grid three"><label>Start<input name="improver_start" type="time" value="20:15"></label><label>Finish<input name="improver_end" type="time" value="21:15"></label><label>Price (£)<input name="improver_price" type="number" min="0.01" step="0.01" value="6.00"></label></div>
+            <div class="hq-ticket-product-head">
+              <div><strong>Improver Class + Social</strong><span class="hq-ticket-pass-badge">Class Pass ✓</span></div>
+              <label class="hq-ticket-enabled"><input name="improver_enabled" type="checkbox" checked><span>Enabled</span></label>
+            </div>
+            <div class="hq-ticket-field-grid three"><label>Start<input name="improver_start" type="time" value="20:15"></label><label>Finish<input name="improver_end" type="time" value="21:15"></label><label>Price (£)<input name="improver_price" type="number" min="0.01" step="0.01" value="6.00"></label></div>
           </div>
-          <div class="hq-ticket-product-config"><label class="check-row"><input name="combined_enabled" type="checkbox" checked><span>Beginner + Improver + Social — payment only</span></label><label>Combined price (£)<input name="combined_price" type="number" min="0.01" step="0.01" value="8.00"></label></div>
-          <div class="hq-ticket-product-config"><label class="check-row"><input name="trial_social_enabled" type="checkbox" checked><span>Social Only — never Class Pass eligible</span></label><div class="hq-form-grid"><label>Social Only price (£)<input name="trial_social_price" type="number" min="0.01" step="0.01" value="4.00"></label><label>Entry time<input name="trial_social_entry" type="time" value="21:15"></label></div></div>
+          <div class="hq-ticket-product-config compact">
+            <div class="hq-ticket-product-head">
+              <strong>Beginner + Improver + Social</strong>
+              <label class="hq-ticket-enabled"><input name="combined_enabled" type="checkbox" checked><span>Enabled</span></label>
+            </div>
+            <div class="hq-ticket-field-grid"><label>Price (£)<input name="combined_price" type="number" min="0.01" step="0.01" value="8.00"></label></div>
+          </div>
+          <div class="hq-ticket-product-config compact">
+            <div class="hq-ticket-product-head">
+              <strong>Social Only</strong>
+              <label class="hq-ticket-enabled"><input name="trial_social_enabled" type="checkbox" checked><span>Enabled</span></label>
+            </div>
+            <div class="hq-ticket-field-grid two"><label>Price (£)<input name="trial_social_price" type="number" min="0.01" step="0.01" value="4.00"></label><label>Entry time<input name="trial_social_entry" type="time" value="21:15"></label></div>
+          </div>
           <label>Reason for ticket configuration change<textarea name="ticket_configuration_reason" rows="3" maxlength="500" placeholder="Required when bookings or waiting-list entries already exist"></textarea></label>
           <small>Changing these settings never rewrites existing booking, hold or waiting-list snapshots. Anniversary events cannot use this format.</small>
         </fieldset>
