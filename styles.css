@@ -5305,7 +5305,7 @@ nav a{
 /* VERSION 60 — ROBUST LOGO + SAFE SELF-HOSTED VIDEO */
 .brand-logo{
   display:block;
-  background:#120807 url('brand-logo-v60.webp') center/cover no-repeat;
+  background:#120807 url('brand-logo-transparent.png') center/contain no-repeat;
 }
 .summer-stomp-video-player{
   display:grid;
@@ -10148,3 +10148,48 @@ body:not(.ranch-v91) .new-home-footer,body:not(.ranch-v91) footer{background:lin
 .class-pass-explainer{display:grid;grid-template-columns:minmax(220px,.7fr) minmax(0,1.3fr);gap:clamp(22px,5vw,60px);align-items:start;margin-top:clamp(28px,6vw,70px);padding:clamp(24px,5vw,48px);background:rgba(243,228,207,.96);color:#211515;border-bottom:8px solid #692d1f;box-shadow:0 24px 55px rgba(0,0,0,.35)}
 .class-pass-explainer h2{margin:.3rem 0;color:#271515;font:400 clamp(2rem,4vw,3.5rem)/1.05 Rye,serif}.class-pass-rules{display:grid;gap:10px}.class-pass-rules p{margin:0;padding:12px 0;border-bottom:1px solid #cbb294;color:#49372f}.class-pass-explainer>.button{grid-column:2;justify-self:start}
 @media(max-width:700px){body.public-atmosphere,body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body){background-attachment:scroll}.class-pass-options,.class-pass-explainer{grid-template-columns:1fr}.class-pass-explainer>.button{grid-column:auto;width:100%;box-sizing:border-box;text-align:center}.class-pass-main{padding-inline:14px}.menu45-class-pass{margin-top:-10px!important}}
+
+/* Targeted public presentation repairs. */
+body.honky-home:not(.intro-open) .desktop-home-start-v32,
+body.honky-home:not(.intro-open) .cream-home{
+  background-color:rgba(8,4,4,.86)!important;
+  background-image:linear-gradient(180deg,rgba(5,2,2,.36),rgba(5,2,2,.74)),url('boot-scootin-entrance-brick-floor.webp')!important;
+  background-position:center top!important;
+  background-size:cover!important;
+}
+body.honky-home .home-group-photo img{
+  width:100%!important;
+  height:auto!important;
+  aspect-ratio:4/3!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  background:#080404!important;
+}
+.class-pass-page .class-pass-brand{display:flex;align-items:center;gap:.65rem;min-width:0;text-decoration:none}
+.class-pass-page .class-pass-brand-mark{display:block;width:52px;height:52px;flex:0 0 52px;object-fit:contain;object-position:center}
+.class-pass-page .class-pass-brand-wordmark{display:block;width:min(220px,44vw);min-width:0}
+.class-pass-page .class-pass-brand-wordmark img{display:block;width:100%;height:auto;max-height:54px;object-fit:contain;object-position:left center}
+.calendar-live-event+.calendar-live-event{margin-top:1rem}
+body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) .brand-logo{
+  object-fit:contain!important;
+  object-position:center!important;
+  background:none!important;
+  border-radius:0!important;
+}
+.booking-confirmed-main{min-height:100svh;display:grid;place-items:center;padding:clamp(24px,6vw,80px);box-sizing:border-box}
+.booking-confirmed-card{width:min(720px,100%);box-sizing:border-box;padding:clamp(28px,7vw,64px);border:1px solid #7b3035;background:linear-gradient(160deg,rgba(8,3,4,.97),rgba(50,12,15,.93));box-shadow:0 24px 70px rgba(0,0,0,.55);text-align:center}
+.booking-confirmed-brand{display:flex;align-items:center;justify-content:center;gap:.8rem;width:min(360px,100%);margin:0 auto 2rem;text-decoration:none}
+.booking-confirmed-brand>img{display:block;width:64px;height:64px;flex:0 0 64px;object-fit:contain}
+.booking-confirmed-brand>span{display:block;width:min(240px,55vw)}
+.booking-confirmed-brand>span img{display:block;width:100%;height:auto;max-height:64px;object-fit:contain}
+.booking-confirmed-card h1{margin:.5rem 0 1rem;color:#fff3e8;font:400 clamp(2.25rem,8vw,4.8rem)/1.08 Rye,serif}
+.booking-confirmed-card>p:not(.kicker){max-width:590px;margin:0 auto 1.8rem;color:#e4d3c8;font-size:clamp(1.05rem,2.5vw,1.3rem);line-height:1.6}
+.booking-confirmed-actions{display:flex;justify-content:center;gap:.8rem;flex-wrap:wrap}
+.booking-confirmed-actions .button{min-width:180px}
+@media(max-width:520px){.booking-confirmed-main{padding:14px}.booking-confirmed-card{padding:28px 18px}.booking-confirmed-brand{gap:.45rem}.booking-confirmed-brand>img{width:48px;height:48px;flex-basis:48px}.booking-confirmed-actions{display:grid}.booking-confirmed-actions .button{width:100%;box-sizing:border-box}}
+@media(max-width:520px){
+  .class-pass-page>.header{gap:.55rem!important;padding-inline:12px!important}
+  .class-pass-page .class-pass-brand{gap:.4rem;max-width:calc(100% - 96px)}
+  .class-pass-page .class-pass-brand-mark{width:42px;height:42px;flex-basis:42px}
+  .class-pass-page .class-pass-brand-wordmark{width:min(172px,48vw)}
+}

@@ -296,71 +296,12 @@
 <div class="legal-footer-links"><a href="terms.html">Terms &amp; Conditions</a><a href="privacy.html">Privacy</a><a href="refunds.html">Cancellation &amp; Refunds</a><a href="cookies.html">Cookies</a><a href="accessibility.html">Accessibility</a></div></footer>
 <script src="script.js?v=96.4.59"></script>
 <script>
-    const classEvents = [
-      {
-        date: "2026-08-07",
-        venue: "Edgbaston Community Centre",
-        type: "ecc",
-        time: "7:30pm–8:30pm",
-        price: "£6 per person",
-        note: "Beginner-friendly Friday class.",
-        address: "40 Woodview Drive, Edgbaston, Birmingham B15 2HU",
-        parking: "Free onsite parking, including disabled bays.",
-        facilities: "Standard and accessible toilets available.",
-        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703",
-        googleMaps: "https://www.google.com/maps/search/?api=1&query=Edgbaston%20Community%20Centre%2C%2040%20Woodview%20Drive%2C%20Birmingham%20B15%202HU",
-        appleMaps: "https://maps.apple.com/?q=Edgbaston%20Community%20Centre&address=40%20Woodview%20Drive%2C%20Birmingham%20B15%202HU",
-        calendarFile: "class-2026-08-07.ics"
-      },
-      {
-        date: "2026-08-14",
-        venue: "Low Places",
-        type: "low",
-        time: "7:15pm–9:00pm",
-        price: "£6 per person",
-        note: "Warm-up, class and social dancing afterwards.",
-        address: "60–64 Heath Mill Lane, Digbeth, Birmingham B9 4AR",
-        parking: "Paid parking is available opposite the venue.",
-        facilities: "Standard and accessible toilets available.",
-        booking: "https://www.eventbrite.co.uk/e/boot-scootin-line-dancing-launch-night-at-low-places-bar-tickets-1994513541694",
-        googleMaps: "https://www.google.com/maps/search/?api=1&query=Low%20Places%2C%2060-64%20Heath%20Mill%20Lane%2C%20Birmingham%20B9%204AR",
-        appleMaps: "https://maps.apple.com/?q=Low%20Places&address=60-64%20Heath%20Mill%20Lane%2C%20Birmingham%20B9%204AR",
-        calendarFile: "class-2026-08-14.ics"
-      },
-      {
-        date: "2026-08-21",
-        venue: "Edgbaston Community Centre",
-        type: "ecc",
-        time: "7:30pm–8:30pm",
-        price: "£6 per person",
-        note: "Beginner-friendly Friday class.",
-        address: "40 Woodview Drive, Edgbaston, Birmingham B15 2HU",
-        parking: "Free onsite parking, including disabled bays.",
-        facilities: "Standard and accessible toilets available.",
-        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703",
-        googleMaps: "https://www.google.com/maps/search/?api=1&query=Edgbaston%20Community%20Centre%2C%2040%20Woodview%20Drive%2C%20Birmingham%20B15%202HU",
-        appleMaps: "https://maps.apple.com/?q=Edgbaston%20Community%20Centre&address=40%20Woodview%20Drive%2C%20Birmingham%20B15%202HU",
-        calendarFile: "class-2026-08-21.ics"
-      },
-      {
-        date: "2026-08-26",
-        venue: "Low Places",
-        type: "low",
-        time: "7:15pm–9:00pm",
-        price: "£6 per person",
-        note: "Midweek class and social dancing.",
-        address: "60–64 Heath Mill Lane, Digbeth, Birmingham B9 4AR",
-        parking: "Paid parking is available opposite the venue.",
-        facilities: "Standard and accessible toilets available.",
-        booking: "https://www.eventbrite.co.uk/o/boot-scootin-line-dancing-121257430703",
-        googleMaps: "https://www.google.com/maps/search/?api=1&query=Low%20Places%2C%2060-64%20Heath%20Mill%20Lane%2C%20Birmingham%20B9%204AR",
-        appleMaps: "https://maps.apple.com/?q=Low%20Places&address=60-64%20Heath%20Mill%20Lane%2C%20Birmingham%20B9%204AR",
-        calendarFile: "class-2026-08-26.ics"
-      }
-    ];
-
-    let currentYear = 2026;
-    let currentMonth = 7;
+    let classEvents = [];
+    const londonToday = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date());
+    let [currentYear,currentMonth] = londonToday.split('-').map(Number);
+    currentMonth -= 1;
 
     const monthLabel = document.getElementById("calendarMonth");
     const grid = document.getElementById("calendarGrid");
@@ -391,17 +332,17 @@
 
       for (let day = 1; day <= daysInMonth; day++) {
         const key = dateKey(currentYear, currentMonth, day);
-        const event = classEvents.find(item => item.date === key);
+        const events = classEvents.filter(item => item.date === key);
 
-        const cell = document.createElement(event ? "button" : "span");
+        const cell = document.createElement(events.length ? "button" : "span");
         cell.className = "calendar-day";
         cell.textContent = day;
 
-        if (event) {
+        if (events.length) {
           cell.type = "button";
-          cell.classList.add("has-event", event.type);
-          cell.setAttribute("aria-label", `${day} ${monthNames[currentMonth]}: ${event.venue}`);
-          cell.addEventListener("click", () => showEvent(event));
+          cell.classList.add("has-event", events.some(event => event.type === 'low') ? 'low' : 'ecc');
+          cell.setAttribute("aria-label", `${day} ${monthNames[currentMonth]}: ${events.map(event => event.title).join(', ')}`);
+          cell.addEventListener("click", () => showEvents(events));
         }
 
         grid.appendChild(cell);
@@ -409,28 +350,23 @@
     }
 
     function googleCalendarUrl(event) {
-      const start = event.date.replaceAll("-", "") + "T" + event.time.split("–")[0].replace("pm", "").replace("am", "").replace(":", "") + "00";
-      const end = event.date.replaceAll("-", "") + "T" + event.time.split("–")[1].replace("pm", "").replace("am", "").replace(":", "") + "00";
-      const startHour = Number(event.time.split("–")[0].split(":")[0]);
-      const endHour = Number(event.time.split("–")[1].split(":")[0]);
-      const startMinutes = event.time.split("–")[0].split(":")[1].slice(0,2);
-      const endMinutes = event.time.split("–")[1].split(":")[1].slice(0,2);
-      const sHour = startHour < 12 ? startHour + 12 : startHour;
-      const eHour = endHour < 12 ? endHour + 12 : endHour;
-      const dateOnly = event.date.replaceAll("-", "");
-      const dates = `${dateOnly}T${String(sHour).padStart(2,"0")}${startMinutes}00/${dateOnly}T${String(eHour).padStart(2,"0")}${endMinutes}00`;
+      const stamp = value => new Date(value).toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
       const params = new URLSearchParams({
         action: "TEMPLATE",
-        text: `Boot Scootin' Line Dancing — ${event.venue}`,
-        dates,
+        text: event.title,
+        dates: `${stamp(event.starts_at)}/${stamp(event.ends_at)}`,
         location: event.address,
         details: `${event.note} Book here: ${event.booking}`
       });
       return `https://calendar.google.com/calendar/render?${params.toString()}`;
     }
 
-    function showEvent(event) {
-      const date = new Date(`${event.date}T12:00:00`);
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[character]);
+
+    function showEvents(events) {
+      const date = new Date(`${events[0].date}T12:00:00`);
       const formatted = date.toLocaleDateString("en-GB", {
         weekday: "long",
         day: "numeric",
@@ -438,33 +374,74 @@
         year: "numeric"
       });
 
-      panel.innerHTML = `
-        <div class="western-ticket">
+      panel.innerHTML = events.map(event => `
+        <div class="western-ticket calendar-live-event">
           <p class="ticket-eyebrow">Admit one dancer</p>
-          <p class="event-date">${formatted}</p>
-          <h2>${event.venue}</h2>
+          <p class="event-date">${escapeHtml(formatted)}</p>
+          <h2>${escapeHtml(event.title)}</h2>
           <dl class="event-details">
-            <div><dt>Time</dt><dd>${event.time}</dd></div>
-            <div><dt>Price</dt><dd>${event.price}</dd></div>
-            <div><dt>Address</dt><dd>${event.address}</dd></div>
-            <div><dt>Parking</dt><dd>${event.parking}</dd></div>
-            <div><dt>Facilities</dt><dd>${event.facilities}</dd></div>
-            <div><dt>Details</dt><dd>${event.note}</dd></div>
+            <div><dt>Time</dt><dd>${escapeHtml(event.time)}</dd></div>
+            <div><dt>Price</dt><dd>${escapeHtml(event.price)}</dd></div>
+            <div><dt>Venue</dt><dd>${escapeHtml(event.venue)}</dd></div>
+            <div><dt>Address</dt><dd>${escapeHtml(event.address)}</dd></div>
+            ${event.note ? `<div><dt>Details</dt><dd>${escapeHtml(event.note)}</dd></div>` : ''}
           </dl>
 
           <div class="ticket-actions">
-            <a class="button event-book" href="${event.booking}" target="_blank" rel="noopener">Reserve My Boots</a>
+            <a class="button event-book" href="${escapeHtml(event.booking)}">Reserve My Boots</a>
             <p class="ticket-reward-note"><svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.83#trophy"></use></svg> Every paid class earns a stamp towards your free 10th class.</p>
-            <a class="ticket-link" href="${event.googleMaps}" target="_blank" rel="noopener">Open in Google Maps</a>
-            <a class="ticket-link" href="${event.appleMaps}" target="_blank" rel="noopener">Open in Apple Maps</a>
-            <a class="ticket-link" href="${event.calendarFile}" download>Add to Apple Calendar</a>
-            <a class="ticket-link" href="${googleCalendarUrl(event)}" target="_blank" rel="noopener">Add to Google Calendar</a>
+            <a class="ticket-link" href="${escapeHtml(event.googleMaps)}" target="_blank" rel="noopener">Open in Google Maps</a>
+            <a class="ticket-link" href="${escapeHtml(event.appleMaps)}" target="_blank" rel="noopener">Open in Apple Maps</a>
+            <a class="ticket-link" href="${escapeHtml(googleCalendarUrl(event))}" target="_blank" rel="noopener">Add to Google Calendar</a>
             <a class="ticket-link request-ticket-link" href="${event.type === 'low' ? 'requests.html?type=social' : 'requests.html?type=learn'}">
               ${event.type === 'low' ? 'Request a Social Dance' : 'Request a Dance to Learn'}
             </a>
           </div>
         </div>
-      `;
+      `).join('');
+    }
+
+    const londonDate = value => new Intl.DateTimeFormat('en-CA', {
+      timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'
+    }).format(new Date(value));
+    const londonTime = value => new Intl.DateTimeFormat('en-GB', {
+      timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',hour12:false
+    }).format(new Date(value));
+    const mapClass = item => {
+      const venue = item.venue || '';
+      const address = item.location || venue;
+      return {
+        id:item.id,
+        date:londonDate(item.starts_at),
+        title:item.title || venue || 'Boot Scootin’ class',
+        venue,
+        type:/low places/i.test(venue) ? 'low' : 'ecc',
+        time:`${londonTime(item.starts_at)}–${londonTime(item.ends_at)}`,
+        starts_at:item.starts_at,
+        ends_at:item.ends_at,
+        price:`£${(Number(item.price_pence || 0) / 100).toFixed(2).replace('.00','')} per person`,
+        note:item.public_notes || '',
+        address,
+        booking:`bookings.html?event=${encodeURIComponent(item.id)}`,
+        googleMaps:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`,
+        appleMaps:`https://maps.apple.com/?q=${encodeURIComponent(venue)}&address=${encodeURIComponent(address)}`
+      };
+    };
+
+    async function loadClasses() {
+      panel.innerHTML = '<p class="kicker red">Loading classes…</p>';
+      try {
+        const response = await fetch('/api/classes?calendar=1', {headers:{Accept:'application/json'},cache:'no-store'});
+        const data = await response.json();
+        if (!response.ok || !Array.isArray(data)) throw new Error(data?.error || 'Classes unavailable');
+        classEvents = data.map(mapClass).filter(event => /^\d{4}-\d{2}-\d{2}$/.test(event.date));
+        renderCalendar();
+        panel.innerHTML = '<p class="kicker red">Choose a date</p><h2>Your next class</h2><p>Tap one of the highlighted dates to see exactly where we\'ll be dancing.</p><div class="event-empty"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#star"></use></svg></div>';
+      } catch (error) {
+        classEvents = [];
+        renderCalendar();
+        panel.innerHTML = '<p class="kicker red">Calendar unavailable</p><h2>Please try again</h2><p>We could not refresh the live class dates. Visit Classes &amp; Bookings to see the latest schedule.</p><a class="button" href="bookings.html">Classes &amp; Bookings</a>';
+      }
     }
 
     document.getElementById("prevMonth").addEventListener("click", () => {
@@ -486,6 +463,7 @@
     });
 
     renderCalendar();
+    loadClasses();
   </script>
 <aside aria-label="Install Boot Scootin' on your phone" class="install-app" hidden="" id="installApp">
 <img alt="" onerror="this.onerror=null;this.src='logo.webp'" src="brand-logo-transparent.png"/>

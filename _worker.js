@@ -1665,7 +1665,7 @@ async function adminAnniversary(request,env){
   return json({ok:true,inventory:await anniversaryInventory(env,{includePrivate:true})});
 }
 
-async function publicClasses(env) {
+async function publicClasses(env, includeHistory = false) {
   if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
   try {
     await ensureBookingSchema(env);
@@ -1698,8 +1698,8 @@ async function publicClasses(env) {
         - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
       ) AS spaces_remaining
       FROM classes c LEFT JOIN class_pass_class_eligibility pe ON pe.class_id=c.id
-      WHERE c.status='open' AND c.starts_at>=? ORDER BY c.starts_at
-    `).bind(now,todayStart).all();
+      WHERE c.status='open' AND (?=1 OR c.starts_at>=?) ORDER BY c.starts_at
+    `).bind(now,includeHistory?1:0,todayStart).all();
     const anniversary=await anniversaryInventory(env).catch(()=>null);
     return json(await Promise.all(results.map(async row => {
       if(anniversary&&row.id===anniversary.event.class_id){
@@ -2152,7 +2152,7 @@ function htmlEscape(value) {
 
 
 const SITE_ORIGIN = 'https://bootscootinlinedancing.co.uk';
-const BRAND_LOGO_URL = `${SITE_ORIGIN}/brand-logo-v60.webp`;
+const BRAND_LOGO_URL = `${SITE_ORIGIN}/brand-logo-transparent.png`;
 const BRAND_SOCIALS = {
   website: SITE_ORIGIN,
   instagram: 'https://www.instagram.com/boot.scootin.linedancing/',
@@ -3106,6 +3106,40 @@ async function bookingStatus(request,env,url){
     payment_enabled:sumUpConfigured(env),can_cancel:['PENDING','PAID'].includes(booking.status),
     cancellation_guidance:guidance,refund_outcome:booking.refund_status||''
   });
+}
+
+const BOOKING_CONFIRMED_COOKIE='bs_booking_confirmed';
+function requestCookie(request,name){
+  const match=(request.headers.get('Cookie')||'').match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match?decodeURIComponent(match[1]):'';
+}
+function bookingConfirmedCookie(token,maxAge=600){
+  return `${BOOKING_CONFIRMED_COOKIE}=${encodeURIComponent(token||'')}; Path=/booking-confirmed; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
+}
+async function claimBookingConfirmed(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This confirmation request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),token=clean(body?.token,160);
+  if(!token)return json({error:'Secure booking confirmation is missing.'},400);
+  let booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE secure_token=?`).bind(token).first();
+  if(!booking)return json({error:'Booking not found.'},404);
+  booking=await syncSumUpBooking(env,booking,'BOOKING_CONFIRMATION_RETURN');
+  const verified=booking?.status==='PAID'&&booking?.payment_provider==='SUMUP'&&Number(booking?.amount_pence||0)>0;
+  if(!verified)return json({error:'The payment is not confirmed.',status:booking?.status||'PENDING'},409);
+  const response=json({ok:true,redirect:'/booking-confirmed'});
+  response.headers.set('Set-Cookie',bookingConfirmedCookie(token));
+  return response;
+}
+async function serveBookingConfirmed(request,env){
+  if(!env.BOOKINGS_DB)return Response.redirect(new URL('/bookings.html',request.url).toString(),302);
+  const token=clean(requestCookie(request,BOOKING_CONFIRMED_COOKIE),160);
+  const booking=token?await env.BOOKINGS_DB.prepare(`SELECT id FROM bookings WHERE secure_token=? AND status='PAID' AND payment_provider='SUMUP' AND amount_pence>0`).bind(token).first():null;
+  if(!booking)return Response.redirect(new URL('/bookings.html',request.url).toString(),302);
+  const asset=await env.ASSETS.fetch(new Request(new URL('/booking-confirmed.html',request.url),{method:'GET',headers:request.headers}));
+  const headers=new Headers(asset.headers);
+  headers.set('Cache-Control','no-store, no-cache, must-revalidate');
+  headers.set('Set-Cookie',bookingConfirmedCookie('',0));
+  return new Response(asset.body,{status:asset.status,statusText:asset.statusText,headers});
 }
 
 async function cancelBooking(request,env){
@@ -6831,7 +6865,7 @@ export default {
       : incomingPath;
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
-      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
+      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1');
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
@@ -6845,6 +6879,7 @@ export default {
       if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);
       if (path === '/api/sumup/callback' && request.method === 'GET') return sumUpOAuthCallback(request, env, url);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
+      if (path === '/api/booking-confirmed-claim' && request.method === 'POST') return claimBookingConfirmed(request,env);
       if (path === '/api/booking-cancel' && request.method === 'POST') return cancelBooking(request, env);
       if (path === '/api/admin/system-health' && request.method === 'GET') return systemHealth(request, env);
       if (path === '/api/admin/cleanup-known-august-tests' && request.method === 'POST') return cleanupKnownAugustTestBookings(request, env);
@@ -6906,6 +6941,9 @@ export default {
       if (path === '/api/public/media' && request.method === 'GET') return publicMedia(request, env, url);
       if (path.startsWith('/media/')) return serveMedia(request, env, path);
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
+      if (path === '/booking-confirmed' && request.method === 'GET') return serveBookingConfirmed(request,env);
+      if (path === '/booking-confirmed.html' && request.method === 'GET') return Response.redirect(new URL('/booking-confirmed',request.url).toString(),302);
+      if ((path === '/reviews' || path === '/reviews/') && request.method === 'GET') return Response.redirect(new URL('/reviews.html',request.url).toString(),302);
       return servePublicAssetWithRepairs(request, env);
     } catch (error) {
       if (path.startsWith('/api/') || incomingPath.startsWith('/ranch/api/')) return json({ error: 'Server error', detail: clean(error && error.message ? error.message : error, 500), code: 'UNHANDLED_API_ERROR' }, 500);
