@@ -27,6 +27,7 @@
     return label;
   };
   const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  let confirmationClaimStarted=false;
 
   if(!ref&&!token){
     title.textContent='Booking reference missing';
@@ -76,6 +77,17 @@
       policy.textContent=b.cancellation_guidance||'';
       cancelButton.disabled=!b.can_cancel;
     }else panel.hidden=true;
+
+    if(confirmed&&token&&!confirmationClaimStarted){
+      confirmationClaimStarted=true;
+      fetch('/api/booking-confirmed-claim',{
+        method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({token})
+      }).then(async response=>{
+        if(!response.ok)return;
+        const result=await response.json().catch(()=>({}));
+        if(result.redirect==='/booking-confirmed')window.location.replace(result.redirect);
+      }).catch(()=>{});
+    }
   }
 
   async function fetchStatus(){

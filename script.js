@@ -132,6 +132,12 @@ function repairPersistentExploreLinks(){
     ['businesses.html#backroad-boots','Backroad Boots UK',false],
     ['country-guide-festivals.html','Festivals &amp; Country Events',false]
   ]);
+  render('My Boot Scootin’',[
+    ['member-hub.html','Member Login &amp; Registration',true],
+    ['member-hub.html#class-passes','Class Passes',false],
+    ['my-bookings.html','My Bookings',false],
+    ['reviews.html','Reviews &amp; Feedback',false]
+  ]);
   render('Shop & Rewards',[
     ['community.html#merchandise','Official Merchandise',true],
     ['rewards.html','Boot Scootin’ Rewards',true],
