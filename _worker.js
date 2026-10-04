@@ -6943,7 +6943,6 @@ export default {
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
       if (path === '/booking-confirmed' && request.method === 'GET') return serveBookingConfirmed(request,env);
       if (path === '/booking-confirmed.html' && request.method === 'GET') return Response.redirect(new URL('/booking-confirmed',request.url).toString(),302);
-      if ((path === '/reviews' || path === '/reviews/') && request.method === 'GET') return Response.redirect(new URL('/reviews.html',request.url).toString(),302);
       return servePublicAssetWithRepairs(request, env);
     } catch (error) {
       if (path.startsWith('/api/') || incomingPath.startsWith('/ranch/api/')) return json({ error: 'Server error', detail: clean(error && error.message ? error.message : error, 500), code: 'UNHANDLED_API_ERROR' }, 500);
