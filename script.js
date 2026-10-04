@@ -152,7 +152,16 @@ function repairPersistentExploreLinks(){
 }
 
 document.addEventListener('DOMContentLoaded',repairPersistentExploreLinks);
-window.addEventListener('pageshow',repairPersistentExploreLinks);
+window.addEventListener('pageshow', () => {
+  repairPersistentExploreLinks();
+  // Safari restores pages from its back-forward cache with DOM classes intact.
+  // Always return Explore to its closed root state after navigation.
+  nav?.classList.remove('open');
+  nav?.setAttribute('aria-hidden', 'true');
+  menuButton?.setAttribute('aria-expanded', 'false');
+  desktopExploreButton?.setAttribute('aria-expanded', 'false');
+  document.body.classList.remove('menu-open');
+});
 
 // VERSION 81 — ONE STABLE MENU CONTROLLER
 const navClose = document.getElementById('navClose');
@@ -195,11 +204,10 @@ if (menuButton && nav) {
     setMenuOpen(false);
   });
 
-  nav.querySelectorAll('a').forEach(link => {
-    link.addEventListener('click', () => setMenuOpen(false));
-  });
-
   nav.addEventListener('click', event => {
+    // Delegate link closing so links added by repairPersistentExploreLinks are
+    // covered too (notably Class Pass on mobile Safari).
+    if (event.target.closest('a[href]')) setMenuOpen(false);
     if (event.target === nav) setMenuOpen(false);
   });
 

@@ -1665,7 +1665,7 @@ async function adminAnniversary(request,env){
   return json({ok:true,inventory:await anniversaryInventory(env,{includePrivate:true})});
 }
 
-async function publicClasses(env) {
+async function publicClasses(env, includeHistory = false) {
   if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
   try {
     await ensureBookingSchema(env);
@@ -1698,8 +1698,8 @@ async function publicClasses(env) {
         - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
       ) AS spaces_remaining
       FROM classes c LEFT JOIN class_pass_class_eligibility pe ON pe.class_id=c.id
-      WHERE c.status='open' AND c.starts_at>=? ORDER BY c.starts_at
-    `).bind(now,todayStart).all();
+      WHERE c.status='open' AND (?=1 OR c.starts_at>=?) ORDER BY c.starts_at
+    `).bind(now,includeHistory?1:0,todayStart).all();
     const anniversary=await anniversaryInventory(env).catch(()=>null);
     return json(await Promise.all(results.map(async row => {
       if(anniversary&&row.id===anniversary.event.class_id){
@@ -6831,7 +6831,7 @@ export default {
       : incomingPath;
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
-      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env);
+      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1');
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
