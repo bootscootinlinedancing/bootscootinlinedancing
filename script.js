@@ -158,28 +158,23 @@ function repairPersistentExploreLinks(){
 }
 
 document.addEventListener('DOMContentLoaded',repairPersistentExploreLinks);
-window.addEventListener('pageshow', () => {
-  repairPersistentExploreLinks();
-  // Safari restores pages from its back-forward cache with DOM classes intact.
-  // Always return Explore to its closed root state after navigation.
-  nav?.classList.remove('open');
-  nav?.setAttribute('aria-hidden', 'true');
-  menuButton?.setAttribute('aria-expanded', 'false');
-  desktopExploreButton?.setAttribute('aria-expanded', 'false');
-  document.body.classList.remove('menu-open');
-});
 
 // VERSION 81 — ONE STABLE MENU CONTROLLER
 const navClose = document.getElementById('navClose');
+let menuScrollY = 0;
 
-function setMenuOpen(open) {
+function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
   if (!nav || !menuButton) return;
+  const wasOpen = nav.classList.contains('open') || document.body.classList.contains('menu-open');
+
+  if (open && !wasOpen) menuScrollY = window.scrollY || document.documentElement.scrollTop || 0;
 
   nav.classList.toggle('open', open);
   nav.setAttribute('aria-hidden', String(!open));
   menuButton.setAttribute('aria-expanded', String(open));
   desktopExploreButton?.setAttribute('aria-expanded', String(open));
   document.body.classList.toggle('menu-open', open);
+  document.documentElement.classList.remove('menu-open');
 
   if (open) {
     repairPersistentExploreLinks();
@@ -189,9 +184,21 @@ function setMenuOpen(open) {
     nav.querySelectorAll('details.menu45-section[open]').forEach(section => {
       section.open = false;
     });
-    requestAnimationFrame(() => menuButton.focus({preventScroll:true}));
+    if (restoreScroll && wasOpen) window.scrollTo({top:menuScrollY,left:0,behavior:'instant'});
+    if (restoreFocus) requestAnimationFrame(() => menuButton.focus({preventScroll:true}));
   }
 }
+
+function resetMenuAfterNavigation(){
+  repairPersistentExploreLinks();
+  setMenuOpen(false,{restoreFocus:false,restoreScroll:true});
+}
+
+// iOS Safari can preserve the fixed menu and scroll-lock classes in its
+// back-forward cache. Use the same complete close path before caching and
+// after restoring instead of clearing only part of the menu state.
+window.addEventListener('pagehide', () => setMenuOpen(false,{restoreFocus:false,restoreScroll:true}));
+window.addEventListener('pageshow', resetMenuAfterNavigation);
 
 if (menuButton && nav) {
   // A single click handler works for touch, mouse and keyboard.
@@ -213,7 +220,7 @@ if (menuButton && nav) {
   nav.addEventListener('click', event => {
     // Delegate link closing so links added by repairPersistentExploreLinks are
     // covered too (notably Class Pass on mobile Safari).
-    if (event.target.closest('a[href]')) setMenuOpen(false);
+    if (event.target.closest('a[href]')) setMenuOpen(false,{restoreFocus:false});
     if (event.target === nav) setMenuOpen(false);
   });
 
