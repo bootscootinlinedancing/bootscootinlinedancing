@@ -26,7 +26,7 @@
       legacyHeader.className = 'honky-header unified-desktop-header';
       legacyHeader.innerHTML = `
         <a class="honky-logo brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
-          <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="">
+          <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
         </a>
         <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
         <a class="honky-book" href="bookings.html">Book a class</a>`;
@@ -41,10 +41,10 @@
 function upgradePublicBranding(){
   if(document.body?.matches('.ranch-v91,.ranch-body,.admin-login-body'))return;
   document.querySelectorAll('header .brand-lockup,.footer-lockup,.footer-brand-centred').forEach(lockup=>{
-    if(lockup.querySelector(':scope > .public-brand-wordmark'))return;
+    if(lockup.querySelector(':scope > .public-brand-logo'))return;
     const image=document.createElement('img');
-    image.className='public-brand-wordmark';
-    image.src='boot-scootin-wordmark-master.png';
+    image.className='public-brand-logo';
+    image.src='boot-scootin-logo-approved.png';
     image.alt=lockup.matches('header *')?'':'Boot Scootin’ Line Dancing';
     lockup.replaceChildren(image);
   });
