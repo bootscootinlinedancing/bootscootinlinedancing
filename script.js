@@ -26,13 +26,31 @@
       legacyHeader.className = 'honky-header unified-desktop-header';
       legacyHeader.innerHTML = `
         <a class="honky-logo brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
-          <img src="brand-logo-transparent.png" alt=""><span class="brand-lockup-copy"><strong>BOOT SCOOTIN’</strong><b>LINE DANCING</b><small>EST. 2025</small></span>
+          <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
         </a>
         <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
         <a class="honky-book" href="bookings.html">Book a class</a>`;
     }
   }, {once:true});
 })();
+
+// Keep every public header/footer on the approved neon wordmark. The source
+// pages still contain legacy fallbacks for no-script resilience; this shared
+// upgrade prevents the old circular mark and a second wordmark appearing
+// together in the live navigation.
+function upgradePublicBranding(){
+  if(document.body?.matches('.ranch-v91,.ranch-body,.admin-login-body'))return;
+  document.querySelectorAll('header .brand-lockup,.footer-lockup,.footer-brand-centred').forEach(lockup=>{
+    if(lockup.querySelector(':scope > .public-brand-logo'))return;
+    const image=document.createElement('img');
+    image.className='public-brand-logo';
+    image.src='boot-scootin-logo-approved.png';
+    image.alt=lockup.matches('header *')?'':'Boot Scootin’ Line Dancing';
+    lockup.replaceChildren(image);
+  });
+}
+
+document.addEventListener('DOMContentLoaded',upgradePublicBranding);
 
 
 
@@ -154,6 +172,17 @@ function repairPersistentExploreLinks(){
     passLink.href='class-pass.html';
     passLink.innerHTML='<span><small>Dance more, save more</small><strong>Class Pass</strong><em>Buy credits once and use them on eligible classes</em></span><b aria-hidden="true">›</b>';
     classesLink.insertAdjacentElement('afterend',passLink);
+  }
+
+  // Reviews are a public destination, so keep them visible at the first
+  // Explore level as well as in the account/community links below.
+  const classPassLink=panel.querySelector(':scope > .menu45-class-pass');
+  if(classPassLink && !panel.querySelector(':scope > .menu45-reviews')){
+    const reviewsLink=document.createElement('a');
+    reviewsLink.className='menu45-first menu45-reviews';
+    reviewsLink.href='reviews.html';
+    reviewsLink.innerHTML='<span><small>Real words from the dance floor</small><strong>Reviews</strong><em>Read verified dancer feedback</em></span><b aria-hidden="true">›</b>';
+    classPassLink.insertAdjacentElement('afterend',reviewsLink);
   }
 }
 

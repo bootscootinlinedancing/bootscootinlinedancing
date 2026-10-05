@@ -10166,9 +10166,7 @@ body.honky-home .home-group-photo img{
   background:#080404!important;
 }
 .class-pass-page .class-pass-brand{display:flex;align-items:center;gap:.65rem;min-width:0;text-decoration:none}
-.class-pass-page .class-pass-brand-mark{display:block;width:52px;height:52px;flex:0 0 52px;object-fit:contain;object-position:center}
-.class-pass-page .class-pass-brand-wordmark{display:block;width:min(220px,44vw);min-width:0}
-.class-pass-page .class-pass-brand-wordmark img{display:block;width:100%;height:auto;max-height:54px;object-fit:contain;object-position:left center}
+.class-pass-page .class-pass-brand-logo{display:block;width:58px;height:58px;flex:0 0 58px;object-fit:contain;object-position:center}
 .calendar-live-event+.calendar-live-event{margin-top:1rem}
 body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) .brand-logo{
   object-fit:contain!important;
@@ -10182,6 +10180,7 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) .brand-logo{
 .booking-confirmed-brand>img{display:block;width:64px;height:64px;flex:0 0 64px;object-fit:contain}
 .booking-confirmed-brand>span{display:block;width:min(240px,55vw)}
 .booking-confirmed-brand>span img{display:block;width:100%;height:auto;max-height:64px;object-fit:contain}
+.booking-confirmed-brand>.booking-confirmed-approved-logo{display:block;width:min(180px,48vw);height:auto;max-width:180px;object-fit:contain}
 .booking-confirmed-card h1{margin:.5rem 0 1rem;color:#fff3e8;font:400 clamp(2.25rem,8vw,4.8rem)/1.08 Rye,serif}
 .booking-confirmed-card>p:not(.kicker){max-width:590px;margin:0 auto 1.8rem;color:#e4d3c8;font-size:clamp(1.05rem,2.5vw,1.3rem);line-height:1.6}
 .booking-confirmed-actions{display:flex;justify-content:center;gap:.8rem;flex-wrap:wrap}
@@ -10190,6 +10189,18 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) .brand-logo{
 @media(max-width:520px){
   .class-pass-page>.header{gap:.55rem!important;padding-inline:12px!important}
   .class-pass-page .class-pass-brand{gap:.4rem;max-width:calc(100% - 96px)}
-  .class-pass-page .class-pass-brand-mark{width:42px;height:42px;flex-basis:42px}
-  .class-pass-page .class-pass-brand-wordmark{width:min(172px,48vw)}
+  .class-pass-page .class-pass-brand-logo{width:48px;height:48px;flex-basis:48px}
 }
+
+/* Approved public wordmark baseline. The later repair layer only refines
+   homepage/HQ layouts that carry additional legacy specificity. */
+.public-brand-logo{
+  display:block!important;width:58px!important;height:58px!important;
+  max-width:58px!important;max-height:58px!important;object-fit:contain!important;object-position:center!important;
+  border:0!important;border-radius:0!important;background:transparent!important;
+}
+.honky-logo.brand-lockup{min-width:0!important}
+.honky-logo.brand-lockup>.public-brand-logo{width:58px!important;height:58px!important}
+body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .brand-lockup>img.public-brand-logo{width:58px!important;height:58px!important;min-width:0!important;max-width:58px!important;max-height:58px!important;object-fit:contain!important}
+.footer-lockup>.public-brand-logo,.footer-brand-centred>.public-brand-logo{width:min(180px,48vw)!important;height:auto!important;max-width:180px!important;max-height:none!important;margin-inline:auto;object-position:center!important}
+.confirmation-card>.public-brand-logo{width:min(180px,60vw)!important;height:auto!important;max-width:180px!important;max-height:none!important;margin-inline:auto!important}
