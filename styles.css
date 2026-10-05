@@ -10193,3 +10193,15 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) .brand-logo{
   .class-pass-page .class-pass-brand-mark{width:42px;height:42px;flex-basis:42px}
   .class-pass-page .class-pass-brand-wordmark{width:min(172px,48vw)}
 }
+
+/* Approved public wordmark baseline. The later repair layer only refines
+   homepage/HQ layouts that carry additional legacy specificity. */
+.public-brand-wordmark{
+  display:block!important;width:min(238px,48vw)!important;height:auto!important;
+  max-height:62px!important;object-fit:contain!important;object-position:left center!important;
+  border:0!important;border-radius:0!important;background:transparent!important;
+}
+.honky-logo.brand-lockup{min-width:0!important}
+.honky-logo.brand-lockup>.public-brand-wordmark{width:min(230px,100%)!important;height:auto!important;max-height:58px!important}
+body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .brand-lockup>img.public-brand-wordmark{width:min(220px,100%)!important;height:auto!important;min-width:0!important;max-width:220px!important;max-height:58px!important;object-fit:contain!important}
+.footer-lockup>.public-brand-wordmark,.footer-brand-centred>.public-brand-wordmark{width:min(340px,78vw)!important;max-height:none!important;margin-inline:auto;object-position:center!important}
