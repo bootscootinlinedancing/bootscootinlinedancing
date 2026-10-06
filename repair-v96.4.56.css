@@ -533,3 +533,46 @@ html.desktop-mode body:not(.ranch-v91) .honky-header .honky-logo.brand-lockup>im
 html body.ranch-v91 .class-manager-summary article{background:#f3e4cf!important;color:#251716!important;border-color:#c8aa87!important}
 html body.ranch-v91 .class-manager-summary article>span{color:#654b40!important}
 html body.ranch-v91 .class-manager-summary article>strong{color:#7e1f27!important;text-shadow:none!important}
+
+/* Targeted navigation/branding follow-up: preserve each artwork's natural
+   proportions and keep the approved logo + horizontal wordmark together. */
+html body:not(.ranch-v91) header :is(.brand-lockup,.class-pass-brand){display:flex!important;align-items:center!important;gap:clamp(6px,1vw,12px)!important;min-width:0!important}
+html body:not(.ranch-v91) header :is(.brand-lockup,.class-pass-brand)>img.public-brand-logo{
+  width:auto!important;height:58px!important;max-width:58px!important;max-height:58px!important;flex:0 0 auto!important;object-fit:contain!important;
+}
+html body:not(.ranch-v91) header .public-brand-wordmark{
+  display:block!important;width:clamp(96px,12vw,150px)!important;height:auto!important;max-height:44px!important;flex:0 1 auto!important;object-fit:contain!important;
+}
+body.ranch-v91 .ranch91-brand img.ranch91-brand-logo{
+  width:auto!important;height:52px!important;max-width:52px!important;flex:0 0 auto!important;border-radius:0!important;object-fit:contain!important;
+}
+body.ranch-v91 .ranch91-brand img.ranch91-brand-wordmark{
+  display:block!important;width:128px!important;height:auto!important;max-height:38px!important;object-fit:contain!important;border:0!important;box-shadow:none!important;border-radius:0!important;
+}
+
+/* One continuous authentic scene prevents lower homepage sections from
+   restarting the texture and forming visible artificial seams. */
+body.honky-home:not(.intro-open) main{
+  background-repeat:no-repeat!important;background-position:center top!important;background-size:cover!important;
+}
+body.honky-home:not(.intro-open) :is(.desktop-home-start-v32,.cream-home,.home-meet-nora-lower,.home-new-here-stories,.home-shop-return,.lower-home,.home-featured-reviews,.saloon-signoff){
+  background-image:none!important;background-color:rgba(8,4,4,.68)!important;
+}
+body.honky-home:not(.intro-open) :is(.home-meet-nora-lower,.home-shop-return,.lower-home,.home-featured-reviews){background-color:rgba(8,4,4,.58)!important}
+
+.booking-confirmed-summary{max-width:590px;margin:0 auto 2rem;padding:clamp(16px,4vw,26px);border:1px solid #713137;background:rgba(4,2,2,.52);text-align:left}
+.booking-confirmed-summary h2{margin:0 0 .8rem;color:#fff3e8;font:400 clamp(1.35rem,4vw,1.8rem)/1.15 Rye,serif;text-align:center}
+.booking-confirmed-summary dl{margin:0}.booking-confirmed-summary dl>div{display:grid;grid-template-columns:minmax(90px,.42fr) minmax(0,1fr);gap:1rem;padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.booking-confirmed-summary dl>div:last-child{border-bottom:0}.booking-confirmed-summary dt{color:#d8c4a7;font-weight:700}.booking-confirmed-summary dd{margin:0;color:#fff3e8;overflow-wrap:anywhere}
+
+@media(max-width:600px){
+  html body:not(.ranch-v91) header :is(.brand-lockup,.class-pass-brand)>img.public-brand-logo{width:auto!important;height:48px!important;max-width:48px!important;max-height:48px!important}
+  html body:not(.ranch-v91) header .public-brand-wordmark{width:clamp(80px,29vw,118px)!important;max-height:36px!important}
+  .event-details div{grid-template-columns:1fr!important;gap:.3rem!important}
+  .event-details dd{width:100%;min-width:0;line-height:1.6;overflow-wrap:anywhere}
+  .booking-confirmed-summary dl>div{grid-template-columns:1fr;gap:.15rem}
+}
+@media(max-width:360px){
+  html body:not(.ranch-v91) header :is(.brand-lockup,.class-pass-brand)>img.public-brand-logo{height:44px!important;max-width:44px!important;max-height:44px!important}
+  html body:not(.ranch-v91) header .public-brand-wordmark{width:82px!important;max-height:32px!important}
+}

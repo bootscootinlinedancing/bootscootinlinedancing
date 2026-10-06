@@ -3130,16 +3130,34 @@ async function claimBookingConfirmed(request,env){
   response.headers.set('Set-Cookie',bookingConfirmedCookie(token));
   return response;
 }
+function bookingConfirmedSummaryHtml(booking){
+  const when=londonDateParts(booking?.starts_at);
+  const amount=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(booking?.amount_pence||0)/100);
+  const rows=[
+    ['Reference',booking?.reference],
+    ['Name',booking?.customer_name],
+    ['Class',booking?.class_title],
+    ['Date',when.date],
+    ['Time',when.time],
+    ['Venue',[booking?.venue,booking?.location].filter(Boolean).join(', ')],
+    ['Ticket',ticketSnapshotText(booking)],
+    ['Places',String(Number(booking?.quantity||1))],
+    ['Amount paid',amount]
+  ].filter(([,value])=>String(value||'').trim());
+  return `<h2>Your booking details</h2><dl>${rows.map(([label,value])=>`<div><dt>${htmlEscape(label)}</dt><dd>${htmlEscape(value)}</dd></div>`).join('')}</dl>`;
+}
 async function serveBookingConfirmed(request,env){
   if(!env.BOOKINGS_DB)return Response.redirect(new URL('/bookings.html',request.url).toString(),302);
   const token=clean(requestCookie(request,BOOKING_CONFIRMED_COOKIE),160);
-  const booking=token?await env.BOOKINGS_DB.prepare(`SELECT id FROM bookings WHERE secure_token=? AND status='PAID' AND payment_provider='SUMUP' AND amount_pence>0`).bind(token).first():null;
+  const booking=token?await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.secure_token=? AND b.status='PAID' AND b.payment_provider='SUMUP' AND b.amount_pence>0`).bind(token).first():null;
   if(!booking)return Response.redirect(new URL('/bookings.html',request.url).toString(),302);
   const asset=await env.ASSETS.fetch(new Request(new URL('/booking-confirmed.html',request.url),{method:'GET',headers:request.headers}));
   const headers=new Headers(asset.headers);
   headers.set('Cache-Control','no-store, no-cache, must-revalidate');
   headers.set('Set-Cookie',bookingConfirmedCookie('',0));
-  return new Response(asset.body,{status:asset.status,statusText:asset.statusText,headers});
+  const template=await asset.text();
+  const body=template.replace('<!--BOOKING_CONFIRMED_SUMMARY-->',bookingConfirmedSummaryHtml(booking));
+  return new Response(body,{status:asset.status,statusText:asset.statusText,headers});
 }
 
 async function cancelBooking(request,env){

@@ -27,6 +27,7 @@
       legacyHeader.innerHTML = `
         <a class="honky-logo brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
           <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
+          <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
         <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
         <a class="honky-book" href="bookings.html">Book a class</a>`;
@@ -34,19 +35,23 @@
   }, {once:true});
 })();
 
-// Keep every public header/footer on the approved neon wordmark. The source
-// pages still contain legacy fallbacks for no-script resilience; this shared
-// upgrade prevents the old circular mark and a second wordmark appearing
-// together in the live navigation.
+// Keep public headers on the approved logo plus the established horizontal
+// wordmark. Footers retain the approved primary logo without duplicating the
+// header lockup.
 function upgradePublicBranding(){
   if(document.body?.matches('.ranch-v91,.ranch-body,.admin-login-body'))return;
-  document.querySelectorAll('header .brand-lockup,.footer-lockup,.footer-brand-centred').forEach(lockup=>{
-    if(lockup.querySelector(':scope > .public-brand-logo'))return;
-    const image=document.createElement('img');
-    image.className='public-brand-logo';
-    image.src='boot-scootin-logo-approved.png';
-    image.alt=lockup.matches('header *')?'':'Boot Scootin’ Line Dancing';
-    lockup.replaceChildren(image);
+  document.querySelectorAll('header .brand-lockup,header .class-pass-brand').forEach(lockup=>{
+    let logo=lockup.querySelector(':scope > .public-brand-logo,:scope > .class-pass-brand-logo');
+    if(!logo){logo=document.createElement('img');lockup.prepend(logo);}
+    logo.className='public-brand-logo';logo.src='boot-scootin-logo-approved.png';logo.alt='';
+    let wordmark=lockup.querySelector(':scope > .public-brand-wordmark');
+    if(!wordmark){wordmark=document.createElement('img');lockup.append(wordmark);}
+    wordmark.className='public-brand-wordmark';wordmark.src='boot-scootin-wordmark-master.png';wordmark.alt='';wordmark.setAttribute('aria-hidden','true');
+  });
+  document.querySelectorAll('.footer-lockup,.footer-brand-centred').forEach(lockup=>{
+    let logo=lockup.querySelector(':scope > .public-brand-logo');
+    if(!logo){logo=document.createElement('img');lockup.prepend(logo);}
+    logo.src='boot-scootin-logo-approved.png';logo.alt='Boot Scootin’ Line Dancing';
   });
 }
 
@@ -464,7 +469,6 @@ installGuide?.addEventListener("click", event => {
   const panel = document.getElementById('menu45');
   if (!overlay || !panel) return;
 
-  const sections = [...panel.querySelectorAll('.menu45-section')];
   const first = panel.querySelector('.menu45-first');
   const sectionsWrap = panel.querySelector('.menu45-sections');
   const home = panel.querySelector('.menu45-home');
@@ -497,7 +501,7 @@ installGuide?.addEventListener("click", event => {
     sectionsWrap?.removeAttribute('hidden');
     home?.removeAttribute('hidden');
     footerBrand?.removeAttribute('hidden');
-    sections.forEach(s => { s.open = false; s.classList.remove('menu58-active','menu46-active'); });
+    panel.querySelectorAll('.menu45-section').forEach(s => { s.open = false; s.classList.remove('menu58-active','menu46-active'); });
     panel.classList.remove('menu58-drilldown','menu46-drilldown','submenu-active','menu61-active');
     scrollMenuTop();
   }
@@ -539,15 +543,19 @@ installGuide?.addEventListener("click", event => {
     scrollMenuTop();
   }
 
-  sections.forEach(section => {
-    section.querySelector(':scope > summary')?.addEventListener('click', event => {
-      if (!window.matchMedia('(max-width:950px)').matches) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      showSection(section);
-    }, true);
-  });
+  // Delegate from the persistent panel so Safari bfcache restores and menu
+  // repairs cannot leave stale summary-node listeners behind.
+  panel.addEventListener('click', event => {
+    if (!window.matchMedia('(max-width:950px)').matches) return;
+    const summary = event.target.closest('summary');
+    const section = summary?.closest('.menu45-section');
+    if (!section || !panel.contains(section)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    showSection(section);
+  }, true);
 
   document.getElementById('navClose')?.addEventListener('click', showRoot, true);
+  window.addEventListener('pagehide', showRoot);
   window.addEventListener('pageshow', showRoot);
 })();;
