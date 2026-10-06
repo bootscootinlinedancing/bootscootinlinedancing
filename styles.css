@@ -10204,3 +10204,23 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) .brand-logo{
 body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .brand-lockup>img.public-brand-logo{width:58px!important;height:58px!important;min-width:0!important;max-width:58px!important;max-height:58px!important;object-fit:contain!important}
 .footer-lockup>.public-brand-logo,.footer-brand-centred>.public-brand-logo{width:min(180px,48vw)!important;height:auto!important;max-width:180px!important;max-height:none!important;margin-inline:auto;object-position:center!important}
 .confirmation-card>.public-brand-logo{width:min(180px,60vw)!important;height:auto!important;max-width:180px!important;max-height:none!important;margin-inline:auto!important}
+
+/* Shared public lockup and narrow details layout. The logo and wordmark keep
+   their native proportions; long event copy gets the full mobile width. */
+body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header :is(.brand-lockup,.class-pass-brand){display:flex!important;align-items:center!important;gap:clamp(6px,1vw,12px)!important;min-width:0!important}
+body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header :is(.brand-lockup,.class-pass-brand)>img.public-brand-logo{width:auto!important;height:58px!important;max-width:58px!important;max-height:58px!important;flex:0 0 auto!important;object-fit:contain!important}
+body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-brand-wordmark{display:block!important;width:clamp(96px,12vw,150px)!important;height:auto!important;max-height:44px!important;flex:0 1 auto!important;object-fit:contain!important}
+.booking-confirmed-summary{max-width:590px;margin:0 auto 2rem;padding:clamp(16px,4vw,26px);border:1px solid #713137;background:rgba(4,2,2,.52);text-align:left}
+.booking-confirmed-summary h2{margin:0 0 .8rem;color:#fff3e8;font:400 clamp(1.35rem,4vw,1.8rem)/1.15 Rye,serif;text-align:center}
+.booking-confirmed-summary dl{margin:0}.booking-confirmed-summary dl>div{display:grid;grid-template-columns:minmax(90px,.42fr) minmax(0,1fr);gap:1rem;padding:.55rem 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.booking-confirmed-summary dl>div:last-child{border-bottom:0}.booking-confirmed-summary dt{color:#d8c4a7;font-weight:700}.booking-confirmed-summary dd{margin:0;color:#fff3e8;overflow-wrap:anywhere}
+@media(max-width:600px){
+  body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header :is(.brand-lockup,.class-pass-brand)>img.public-brand-logo{width:auto!important;height:48px!important;max-width:48px!important;max-height:48px!important}
+  body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-brand-wordmark{width:clamp(80px,29vw,118px)!important;max-height:36px!important}
+  .event-details div{grid-template-columns:1fr!important;gap:.3rem!important}.event-details dd{width:100%;min-width:0;line-height:1.6;overflow-wrap:anywhere}
+  .booking-confirmed-summary dl>div{grid-template-columns:1fr;gap:.15rem}
+}
+@media(max-width:360px){
+  body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header :is(.brand-lockup,.class-pass-brand)>img.public-brand-logo{height:44px!important;max-width:44px!important;max-height:44px!important}
+  body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-brand-wordmark{width:82px!important;max-height:32px!important}
+}
