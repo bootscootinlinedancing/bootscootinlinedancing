@@ -372,15 +372,6 @@
     if(welcome)welcome.textContent=`Welcome, ${name}`;
     if(drawerWelcome)drawerWelcome.textContent=`Welcome, ${name}`;
 
-    const warning=$('#ranch91AccessWarning');
-    if(warning){
-      warning.hidden=protectedMode;
-      if(!protectedMode){
-        warning.querySelector('strong').textContent='Cloudflare Access session could not be verified.';
-        warning.querySelector('span').textContent='Please sign in again or refresh your HQ session. Private administration remains locked.';
-      }
-    }
-
     const note=$('#ranch91AccessNote');
     if(note){
       note.classList.toggle('protected',protectedMode);

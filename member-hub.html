@@ -45,7 +45,7 @@ body.member-hub-body{background:radial-gradient(circle at 50% 0,#24090c 0,#0b050
 .member-preview-pill{border-color:#743038!important;background:#19090b!important;color:#e7c6a9!important}
 .member-feature-intro{padding:1.1rem 1.2rem;margin:0 0 18px;border-left:4px solid #d52b38;background:#120809;color:var(--member-muted)}
 .member-hub-brand{gap:.55rem!important;min-width:0}
-.member-hub-brand img.member-hub-brand-mark{width:40px!important;height:40px!important;flex:0 0 40px!important}
+.member-hub-brand img.member-hub-brand-mark{width:auto!important;height:48px!important;max-width:48px!important;flex:0 0 auto!important;border-radius:0!important;object-fit:contain!important}
 .member-hub-brand img.member-hub-wordmark{width:clamp(142px,16vw,205px)!important;height:auto!important;max-height:48px!important;object-fit:contain!important;object-position:left center!important;border-radius:0!important;filter:drop-shadow(0 0 8px rgba(205,38,48,.28))}
 body.member-hub-body .member-entry-heading{margin:1rem auto .35rem!important}
 body.member-hub-body .member-entry-heading h1{font-size:clamp(1.85rem,4.2vw,3rem)!important;line-height:1.02!important;margin:.1rem 0 .35rem!important}
@@ -61,7 +61,8 @@ body.member-hub-body .member-auth-form label{gap:.3rem!important}
 body.member-hub-body .member-auth-form input,body.member-hub-body .member-auth-form select{min-height:50px;box-sizing:border-box}
 body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:1.2em!important}
 @media(max-width:900px){.member-main-nav{grid-template-columns:repeat(2,1fr)}.member-welcome{grid-template-columns:1fr!important}}
-@media(max-width:760px){.member-app-simple{padding-left:16px;padding-right:16px}.member-benefit-grid{grid-template-columns:1fr}.member-stat-grid{grid-template-columns:repeat(2,1fr)}.member-profile-form .two{grid-template-columns:1fr}.member-main-nav{grid-template-columns:1fr 1fr}.member-main-nav a,.member-main-nav button{font-size:12px;min-height:58px;padding:10px 6px}.member-hub-topbar{padding:.45rem .7rem!important}.member-hub-brand img.member-hub-brand-mark{width:34px!important;height:34px!important;flex-basis:34px!important}.member-hub-brand img.member-hub-wordmark{width:min(150px,42vw)!important;max-height:40px!important}body.member-hub-body .member-entry-heading{margin:.7rem auto .2rem!important}body.member-hub-body .member-entry-heading h1{font-size:clamp(1.65rem,8vw,2.15rem)!important}body.member-hub-body .member-entry-heading p:last-child{font-size:.9rem!important}body.member-hub-body #memberAuthShell{padding:.25rem .75rem .8rem!important}body.member-hub-body #memberAuthShell .member-auth-card{padding:1rem!important}body.member-hub-body #memberAuthShell .member-auth-card>h1{font-size:clamp(1.65rem,7vw,2.05rem)!important;line-height:1.08!important}body.member-hub-body #memberAuthIntro{font-size:.92rem;margin-bottom:.55rem}body.member-hub-body #memberAuthTabs button{min-height:48px!important;font-size:.9rem!important}}
+@media(max-width:760px){.member-app-simple{padding-left:16px;padding-right:16px}.member-benefit-grid{grid-template-columns:1fr}.member-stat-grid{grid-template-columns:repeat(2,1fr)}.member-profile-form .two{grid-template-columns:1fr}.member-main-nav{grid-template-columns:1fr 1fr}.member-main-nav a,.member-main-nav button{font-size:12px;min-height:58px;padding:10px 6px}.member-hub-topbar{grid-template-columns:minmax(0,1fr) auto!important;gap:.55rem!important;padding:.45rem .7rem!important}.member-hub-brand img.member-hub-brand-mark{width:auto!important;height:38px!important;max-width:38px!important}.member-hub-brand img.member-hub-wordmark{width:min(132px,36vw)!important;max-height:36px!important}.member-top-actions{gap:.45rem}.member-exit{white-space:nowrap}body.member-hub-body .member-entry-heading{margin:.7rem auto .2rem!important}body.member-hub-body .member-entry-heading h1{font-size:clamp(1.65rem,8vw,2.15rem)!important}body.member-hub-body .member-entry-heading p:last-child{font-size:.9rem!important}body.member-hub-body #memberAuthShell{padding:.25rem .75rem .8rem!important}body.member-hub-body #memberAuthShell .member-auth-card{padding:1rem!important}body.member-hub-body #memberAuthShell .member-auth-card>h1{font-size:clamp(1.65rem,7vw,2.05rem)!important;line-height:1.08!important}body.member-hub-body #memberAuthIntro{font-size:.92rem;margin-bottom:.55rem}body.member-hub-body #memberAuthTabs button{min-height:48px!important;font-size:.9rem!important}}
+.member-card-actions:empty,.member-card-actions>a:empty{display:none!important}
 @media(max-width:760px){.member-pass-grid,.member-pass-products{grid-template-columns:1fr}.member-pass-facts{grid-template-columns:1fr}.member-pass-card-head{align-items:center}}
 </style>
 
@@ -70,7 +71,7 @@ body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <header class="member-hub-topbar">
     <a class="member-hub-brand" href="index.html">
-      <img class="member-hub-brand-mark" src="brand-logo-transparent.png" alt="">
+      <img class="member-hub-brand-mark" src="boot-scootin-logo-approved.png" alt="">
       <img class="member-hub-wordmark" src="boot-scootin-wordmark-master.png" alt="Boot Scootin’ Line Dancing — Established 2025">
     </a>
     <div class="member-preview-pill">MEMBER LOGIN & REGISTRATION</div>
