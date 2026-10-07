@@ -48,6 +48,9 @@ function upgradePublicBranding(){
     let logo=lockup.querySelector(':scope > .public-brand-logo,:scope > .class-pass-brand-logo');
     if(!logo){logo=document.createElement('img');lockup.prepend(logo);}
     logo.className='public-brand-logo';logo.src='boot-scootin-logo-approved.png';logo.alt='';
+    // Some older pages load a legacy repair layer after styles.css. Keep the
+    // approved circular art clipped at the shared branding source of truth.
+    logo.style.setProperty('border-radius','50%','important');
     let wordmark=lockup.querySelector(':scope > .public-brand-wordmark');
     if(!wordmark){wordmark=document.createElement('img');lockup.append(wordmark);}
     wordmark.className='public-brand-wordmark';wordmark.src='boot-scootin-wordmark-master.png';wordmark.alt='';wordmark.setAttribute('aria-hidden','true');
@@ -57,6 +60,7 @@ function upgradePublicBranding(){
     let logo=lockup.querySelector(':scope > .public-brand-logo');
     if(!logo){logo=document.createElement('img');lockup.prepend(logo);}
     logo.className='public-brand-logo';logo.src='boot-scootin-logo-approved.png';logo.alt='Boot Scootin’ Line Dancing';
+    logo.style.setProperty('border-radius','50%','important');
   });
 }
 
