@@ -1415,9 +1415,9 @@ async function ensureBookingSchema(env) {
       actor TEXT NOT NULL,reason TEXT NOT NULL,previous_json TEXT,next_json TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS reviews (
-      id TEXT PRIMARY KEY,member_account_id TEXT NOT NULL REFERENCES member_accounts(id),customer_id TEXT NOT NULL REFERENCES customers(id),
+      id TEXT PRIMARY KEY,member_account_id TEXT REFERENCES member_accounts(id),customer_id TEXT REFERENCES customers(id),
       review_type TEXT NOT NULL DEFAULT 'GENERAL' CHECK(review_type IN ('GENERAL')),rating INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
-      review_text TEXT NOT NULL,class_id TEXT REFERENCES classes(id) ON DELETE SET NULL,display_name TEXT,
+      review_text TEXT NOT NULL,class_id TEXT REFERENCES classes(id) ON DELETE SET NULL,display_name TEXT,reviewer_name TEXT,reviewer_email TEXT,reviewer_email_normalized TEXT,
       first_name_only INTEGER NOT NULL DEFAULT 1 CHECK(first_name_only IN (0,1)),is_private INTEGER NOT NULL DEFAULT 0 CHECK(is_private IN (0,1)),
       website_permission INTEGER NOT NULL DEFAULT 0 CHECK(website_permission IN (0,1)),social_permission INTEGER NOT NULL DEFAULT 0 CHECK(social_permission IN (0,1)),
       moderation_status TEXT NOT NULL DEFAULT 'PENDING' CHECK(moderation_status IN ('PENDING','PUBLISHED','PRIVATE','REJECTED','ARCHIVED')),
@@ -1436,11 +1436,12 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_class_pass_ledger_booking ON class_pass_credit_ledger(booking_id,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_class_pass_audit_pass ON class_pass_audit_log(pass_id,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_class_pass_admin_operations_target ON class_pass_admin_operations(target_type,target_id,created_at)`,
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_one_active_general_member ON reviews(member_account_id,review_type) WHERE archived_at IS NULL`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_one_active_general_member ON reviews(member_account_id,review_type) WHERE archived_at IS NULL AND member_account_id IS NOT NULL`,
     `CREATE INDEX IF NOT EXISTS idx_reviews_moderation ON reviews(moderation_status,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_reviews_public ON reviews(moderation_status,is_private,archived_at,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_reviews_featured ON reviews(featured_homepage,moderation_status,website_permission,created_at)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_moderation_operation ON reviews(moderation_operation_id) WHERE moderation_operation_id IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_reviews_anonymous_rate_limit ON reviews(reviewer_email_normalized,created_at) WHERE member_account_id IS NULL AND reviewer_email_normalized IS NOT NULL`,
     `CREATE INDEX IF NOT EXISTS idx_review_history_review ON review_history(review_id,created_at)`,
     `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_update BEFORE UPDATE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
     `CREATE TRIGGER IF NOT EXISTS class_pass_credit_ledger_no_delete BEFORE DELETE ON class_pass_credit_ledger BEGIN SELECT RAISE(ABORT,'class pass credit ledger is immutable'); END`,
@@ -4279,9 +4280,50 @@ function safeMemberReview(row){
 }
 
 function publicReviewName(row){
-  const preferred=String(row.display_name||'').trim(),account=String(row.customer_name||'').trim();
+  const preferred=String(row.display_name||row.reviewer_name||'').trim(),account=String(row.customer_name||'').trim();
   if(Number(row.first_name_only))return (preferred||account).split(/\s+/)[0]||'Boot Scootin’ Dancer';
   return preferred||account||'Boot Scootin’ Dancer';
+}
+
+function anonymousReviewInput(body){
+  const protectedFields=['id','member_id','member_account_id','customer_id','moderation_status','featured_homepage','verified_dancer','created_at','updated_at','archived_at'];
+  if(protectedFields.some(key=>Object.prototype.hasOwnProperty.call(body||{},key)))return {error:'Review moderation and ownership fields cannot be submitted.'};
+  const name=String(body?.name??'').trim(),email=normalizedCustomerEmail(body?.email),reviewText=String(body?.review_text??'').trim(),rating=Number(body?.rating);
+  if(name.length<2||name.length>80||/[<>\r\n]/.test(name))return {error:'Enter your name using 2 to 80 characters.'};
+  if(!emailOk(email)||email.length>254)return {error:'Enter a valid email address.'};
+  if(!Number.isInteger(rating)||rating<1||rating>5)return {error:'Choose a rating from 1 to 5.'};
+  if(reviewText.length<10)return {error:'Please write at least 10 characters in your review.'};
+  if(reviewText.length>2000)return {error:'Review text must be 2,000 characters or fewer.'};
+  return {name,email,rating,review_text:reviewText};
+}
+
+async function anonymousReviewCustomer(env,normalizedEmail){
+  const matches=await env.BOOKINGS_DB.prepare(`SELECT customer_id FROM (SELECT i.customer_id customer_id FROM customer_email_identities i JOIN customers c ON c.id=i.customer_id WHERE i.normalized_email=? AND i.status='ACTIVE' UNION SELECT c.id customer_id FROM customers c WHERE lower(trim(c.email))=?) ORDER BY customer_id LIMIT 2`).bind(normalizedEmail,normalizedEmail).all();
+  return (matches.results||[]).length===1?matches.results[0].customer_id:null;
+}
+
+async function submitAnonymousReview(request,env){
+  await ensureBookingSchema(env);
+  if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This review request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),rawOperation=reviewOperationId(body?.operation_id);
+  if(!body||!rawOperation)return json({error:'A valid operation reference is required.'},400);
+  if(String(body?.company||'').trim())return json({ok:true,status:'PENDING'},202);
+  const input=anonymousReviewInput(body);if(input.error)return json({error:input.error},400);
+  const actorHash=await memberSha256Hex(input.email),actorId=`anonymous-${actorHash.slice(0,32)}`,operationId=`public-review:${actorHash}:${rawOperation}`;
+  const next={rating:input.rating,review_text:input.review_text,display_name:input.name,moderation_status:'PENDING',featured_homepage:false,archived_at:null};
+  const replay=await env.BOOKINGS_DB.prepare(`SELECT review_id,next_json FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,actorId).first();
+  if(replay){if(JSON.stringify(JSON.parse(replay.next_json||'{}'))!==JSON.stringify(next))return json({error:'Operation reference conflicts with an earlier review request.'},409);return json({ok:true,idempotent:true,status:'PENDING'});}
+  const recent=await env.BOOKINGS_DB.prepare(`SELECT id FROM reviews WHERE member_account_id IS NULL AND reviewer_email_normalized=? AND archived_at IS NULL AND datetime(created_at)>datetime('now','-15 minutes') LIMIT 1`).bind(input.email).first();
+  if(recent)return json({error:'Please wait before submitting another review.'},429);
+  const customerId=await anonymousReviewCustomer(env,input.email),reviewId=crypto.randomUUID();
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO reviews(id,member_account_id,customer_id,rating,review_text,display_name,reviewer_name,reviewer_email,reviewer_email_normalized,first_name_only,is_private,website_permission,social_permission,moderation_status,featured_homepage) VALUES(?,NULL,?,?,?,?,?,?,?,0,0,1,0,'PENDING',0)`).bind(reviewId,customerId,input.rating,input.review_text,input.name,input.name,String(body.email).trim(),input.email),
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO review_history(id,review_id,event_type,review_version,operation_id,actor_type,actor_id,previous_json,next_json) SELECT ?,id,'CREATED',1,?,'PUBLIC',?,NULL,? FROM reviews WHERE id=?`).bind(crypto.randomUUID(),operationId,actorId,JSON.stringify(next),reviewId)
+  ]);
+  const recorded=await env.BOOKINGS_DB.prepare(`SELECT review_id,next_json FROM review_history WHERE operation_id=? AND actor_id=?`).bind(operationId,actorId).first();
+  if(!recorded)return json({error:'Your review could not be recorded. Please try again.'},409);
+  if(JSON.stringify(JSON.parse(recorded.next_json||'{}'))!==JSON.stringify(next))return json({error:'Operation reference conflicts with an earlier review request.'},409);
+  return json({ok:true,status:'PENDING'},201);
 }
 
 async function memberReviewRow(env,memberId){
@@ -4384,13 +4426,13 @@ async function archiveMemberReview(request,env){
 
 function safeAdminReview(row){
   if(!row)return null;
-  return {...safeMemberReview(row),id:row.id,reviewer_name:row.customer_name||'',reviewer_email:row.customer_email||'',verified_dancer:Boolean(row.verified_dancer)};
+  return {...safeMemberReview(row),id:row.id,reviewer_name:row.reviewer_name||row.customer_name||row.display_name||'',reviewer_email:row.reviewer_email||row.customer_email||'',verified_dancer:Boolean(row.verified_dancer)};
 }
 
 async function adminReviewRow(env,id){
   return env.BOOKINGS_DB.prepare(`SELECT r.*,cu.name customer_name,cu.email customer_email,c.title class_title,c.venue,
-    EXISTS(SELECT 1 FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=r.customer_id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) verified_dancer
-    FROM reviews r JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id WHERE r.id=? LIMIT 1`).bind(id).first();
+    EXISTS(SELECT 1 FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id WHERE r.customer_id IS NOT NULL AND b.customer_id=r.customer_id AND (b.status='PAID' OR a.id IS NOT NULL)) verified_dancer
+    FROM reviews r LEFT JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id WHERE r.id=? LIMIT 1`).bind(id).first();
 }
 
 async function adminReviews(request,env){
@@ -4404,8 +4446,8 @@ async function adminReviews(request,env){
       return json({review:safeAdminReview(row),history:history.results||[]});
     }
     const rows=await env.BOOKINGS_DB.prepare(`SELECT r.*,cu.name customer_name,cu.email customer_email,c.title class_title,c.venue,
-      EXISTS(SELECT 1 FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=r.customer_id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) verified_dancer
-      FROM reviews r JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id ORDER BY r.updated_at DESC,r.id DESC LIMIT 500`).all();
+      EXISTS(SELECT 1 FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id WHERE r.customer_id IS NOT NULL AND b.customer_id=r.customer_id AND (b.status='PAID' OR a.id IS NOT NULL)) verified_dancer
+      FROM reviews r LEFT JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id ORDER BY r.updated_at DESC,r.id DESC LIMIT 500`).all();
     const all=(rows.results||[]).map(safeAdminReview),published=all.filter(r=>r.moderation_status==='PUBLISHED'&&!r.is_private&&!r.archived_at);
     return json({reviews:all,summary:{pending:all.filter(r=>r.moderation_status==='PENDING'&&!r.archived_at).length,published:published.length,
       private:all.filter(r=>r.moderation_status==='PRIVATE'&&!r.archived_at).length,featured:published.filter(r=>r.featured_homepage&&r.website_permission).length,
@@ -4444,7 +4486,7 @@ async function publicReviews(request,env){
   await ensureBookingSchema(env);const url=new URL(request.url),sort=clean(url.searchParams.get('sort'),20).toLowerCase();
   const featuredOnly=url.searchParams.get('featured')==='1',order=sort==='highest'?'r.rating DESC,r.created_at DESC':sort==='lowest'?'r.rating ASC,r.created_at DESC':'r.created_at DESC';
   const [rows,summaryRows]=await Promise.all([
-    env.BOOKINGS_DB.prepare(`SELECT r.rating,r.review_text,r.display_name,r.first_name_only,r.website_permission,r.featured_homepage,r.created_at,r.updated_at,cu.name customer_name,c.title class_title,c.venue,EXISTS(SELECT 1 FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=r.customer_id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))) verified_dancer FROM reviews r JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id WHERE r.moderation_status='PUBLISHED' AND r.is_private=0 AND r.archived_at IS NULL ${featuredOnly?'AND r.website_permission=1 AND r.featured_homepage=1':''} ORDER BY ${order} LIMIT ${featuredOnly?3:200}`).all(),
+    env.BOOKINGS_DB.prepare(`SELECT r.rating,r.review_text,r.display_name,r.reviewer_name,r.first_name_only,r.website_permission,r.featured_homepage,r.created_at,r.updated_at,cu.name customer_name,c.title class_title,c.venue,EXISTS(SELECT 1 FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id WHERE r.customer_id IS NOT NULL AND b.customer_id=r.customer_id AND (b.status='PAID' OR a.id IS NOT NULL)) verified_dancer FROM reviews r LEFT JOIN customers cu ON cu.id=r.customer_id LEFT JOIN classes c ON c.id=r.class_id WHERE r.moderation_status='PUBLISHED' AND r.is_private=0 AND r.archived_at IS NULL ${featuredOnly?'AND r.website_permission=1 AND r.featured_homepage=1':''} ORDER BY ${order} LIMIT ${featuredOnly?3:200}`).all(),
     env.BOOKINGS_DB.prepare(`SELECT rating,COUNT(*) count FROM reviews WHERE moderation_status='PUBLISHED' AND is_private=0 AND archived_at IS NULL GROUP BY rating`).all()
   ]);
   const reviews=(rows.results||[]).map(row=>({rating:Number(row.rating),review_text:row.review_text,display_name:publicReviewName(row),review_date:row.updated_at||row.created_at,class_title:row.class_title||null,venue:row.venue||null,verified_dancer:Boolean(row.verified_dancer),featured:Boolean(Number(row.featured_homepage)&&Number(row.website_permission))}));
@@ -6889,6 +6931,7 @@ export default {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
       }
       if (path === '/api/reviews' && request.method === 'GET') return publicReviews(request, env);
+      if (path === '/api/reviews' && request.method === 'POST') return submitAnonymousReview(request, env);
       if (path === '/api/class-reservations' && request.method === 'POST') return createClassReservation(request, env);
       if (path === '/api/promotions/validate' && request.method === 'POST') return publicPromoValidate(request, env);
       if (path === '/api/merch-orders' && request.method === 'POST') return createMerchOrder(request, env);

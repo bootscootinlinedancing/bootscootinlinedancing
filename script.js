@@ -41,6 +41,10 @@
 function upgradePublicBranding(){
   if(document.body?.matches('.ranch-v91,.ranch-body,.admin-login-body'))return;
   document.querySelectorAll('header .brand-lockup,header .class-pass-brand').forEach(lockup=>{
+    // Older pages still ship their original logo/text lockup in the HTML.
+    // Remove those direct children before adding the approved pair so the
+    // runtime upgrade cannot leave two logos or a vertically wrapped wordmark.
+    lockup.querySelectorAll(':scope > .brand-logo,:scope > .class-pass-brand-logo,:scope > .wordmark').forEach(node=>node.remove());
     let logo=lockup.querySelector(':scope > .public-brand-logo,:scope > .class-pass-brand-logo');
     if(!logo){logo=document.createElement('img');lockup.prepend(logo);}
     logo.className='public-brand-logo';logo.src='boot-scootin-logo-approved.png';logo.alt='';
@@ -49,9 +53,10 @@ function upgradePublicBranding(){
     wordmark.className='public-brand-wordmark';wordmark.src='boot-scootin-wordmark-master.png';wordmark.alt='';wordmark.setAttribute('aria-hidden','true');
   });
   document.querySelectorAll('.footer-lockup,.footer-brand-centred').forEach(lockup=>{
+    lockup.querySelectorAll(':scope > .brand-logo,:scope > .footer-logo,:scope > .wordmark').forEach(node=>node.remove());
     let logo=lockup.querySelector(':scope > .public-brand-logo');
     if(!logo){logo=document.createElement('img');lockup.prepend(logo);}
-    logo.src='boot-scootin-logo-approved.png';logo.alt='Boot Scootin’ Line Dancing';
+    logo.className='public-brand-logo';logo.src='boot-scootin-logo-approved.png';logo.alt='Boot Scootin’ Line Dancing';
   });
 }
 
