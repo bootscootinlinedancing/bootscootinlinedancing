@@ -220,6 +220,9 @@ function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
     nav.scrollTop = 0;
     requestAnimationFrame(() => navClose?.focus({preventScroll:true}));
   } else {
+    // Reset the separate mobile drill-down controller on every close. Safari
+    // can otherwise restore a hidden root view and stale cloned links.
+    window.dispatchEvent(new Event('explore:reset'));
     nav.querySelectorAll('details.menu45-section[open]').forEach(section => {
       section.open = false;
     });
@@ -561,6 +564,5 @@ installGuide?.addEventListener("click", event => {
   }, true);
 
   document.getElementById('navClose')?.addEventListener('click', showRoot, true);
-  window.addEventListener('pagehide', showRoot);
-  window.addEventListener('pageshow', showRoot);
+  window.addEventListener('explore:reset', showRoot);
 })();;
