@@ -10154,9 +10154,8 @@ body:not(.ranch-v91) .new-home-footer,body:not(.ranch-v91) footer{background:lin
 body.honky-home:not(.intro-open) .desktop-home-start-v32,
 body.honky-home:not(.intro-open) .cream-home{
   background-color:rgba(8,4,4,.86)!important;
-  background-image:linear-gradient(180deg,rgba(5,2,2,.36),rgba(5,2,2,.74)),url('boot-scootin-entrance-brick-floor.webp')!important;
-  background-position:center top!important;
-  background-size:cover!important;
+  /* The body owns the single continuous brick/floor texture. */
+  background-image:linear-gradient(180deg,rgba(5,2,2,.36),rgba(5,2,2,.74))!important;
 }
 body.honky-home .home-group-photo img{
   width:100%!important;
@@ -10198,7 +10197,11 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) .brand-logo{
 .public-brand-logo{
   display:block!important;width:58px!important;height:58px!important;
   max-width:58px!important;max-height:58px!important;object-fit:contain!important;object-position:center!important;
-  border:0!important;border-radius:0!important;background:transparent!important;
+  /* Clip only the opaque square corners around the circular approved art. */
+  border:0!important;border-radius:50%!important;background:transparent!important;
+}
+.entry-boot-photo,.member-hub-brand-mark,.booking-confirmed-approved-logo{
+  border-radius:50%!important;object-fit:contain!important;object-position:center!important;
 }
 .honky-logo.brand-lockup{min-width:0!important}
 .honky-logo.brand-lockup>.public-brand-logo{width:58px!important;height:58px!important}
