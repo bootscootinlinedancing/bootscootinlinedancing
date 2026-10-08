@@ -580,3 +580,133 @@ body.honky-home:not(.intro-open) .saloon-signoff{border-top:0!important}
   html body:not(.ranch-v91) header :is(.brand-lockup,.class-pass-brand)>img.public-brand-logo{height:44px!important;max-width:44px!important;max-height:44px!important}
   html body:not(.ranch-v91) header .public-brand-wordmark{width:82px!important;max-height:32px!important}
 }
+
+/* V96.4.118 — desktop/responsive composition polish.
+   Presentation only: booking products, prices and actions are untouched. */
+@media(min-width:951px){
+  /* Give the approved brand wordmark enough presence without making the
+     navigation row taller. Both image and legacy text lockups are supported. */
+  html body:not(.ranch-v91) header :is(.brand-lockup,.class-pass-brand){
+    flex-basis:auto!important;width:auto!important;max-width:none!important;min-width:230px!important;
+  }
+  html body:not(.ranch-v91) header .public-brand-wordmark{
+    width:clamp(165px,13vw,210px)!important;max-height:46px!important;
+  }
+  html body:not(.ranch-v91) header .wordmark strong{font-size:1.55rem!important;line-height:1!important;white-space:nowrap!important}
+  html body:not(.ranch-v91) header .wordmark span{font-size:.75rem!important;letter-spacing:.22em!important;white-space:nowrap!important}
+  html body.honky-home>.honky-header .honky-logo.brand-lockup{
+    flex:0 0 280px!important;width:280px!important;max-width:280px!important;overflow:visible!important;
+  }
+  html body.honky-home>.honky-header .public-brand-wordmark{
+    width:190px!important;max-width:190px!important;max-height:46px!important;
+  }
+
+  /* Rebalance the three-column desktop start: the group image is a real
+     visual anchor rather than a thumbnail between two content columns. */
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32{
+    grid-template-columns:minmax(230px,.8fr) minmax(340px,1.25fr) minmax(330px,1.05fr)!important;
+    gap:clamp(22px,2.4vw,42px)!important;
+    padding:clamp(28px,3vw,46px) clamp(24px,4vw,68px)!important;
+    background-color:rgba(8,3,4,.48)!important;
+  }
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32 .desktop-nora-v32{
+    width:100%!important;max-width:520px!important;padding:9px 9px 16px!important;
+  }
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32 .desktop-nora-v32 img{
+    width:100%!important;height:auto!important;max-height:390px!important;aspect-ratio:4/3!important;
+    object-fit:contain!important;object-position:center!important;background:#080404!important;
+  }
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32 .desktop-upcoming-v32 .class-card-grid{
+    grid-template-columns:1fr!important;gap:12px!important;
+  }
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32 .home-class-card{
+    display:grid!important;grid-template-columns:104px minmax(0,1fr)!important;min-height:0!important;
+  }
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32 .home-class-card>img{
+    width:104px!important;height:100%!important;min-height:112px!important;max-height:145px!important;object-fit:contain!important;background:#080404!important;
+  }
+
+  /* A focused desktop booking panel, not a near-full-screen sheet. */
+  .booking-dialog:not(.event-details-dialog){width:min(800px,calc(100% - 48px))!important;max-width:800px!important}
+  .booking-dialog:not(.event-details-dialog) form{padding:clamp(30px,3vw,42px)!important}
+  .booking-dialog .ticket-product-picker>div{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.7rem!important}
+  .booking-dialog .ticket-product-card span{min-height:100%;box-sizing:border-box;padding:.85rem 1rem!important}
+
+  /* Two complete class cards per desktop row. */
+  .booking-page .booking-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:22px!important}
+  .booking-page .class-card{grid-template-columns:72px minmax(0,1fr)!important;gap:16px!important;align-content:start!important;padding:18px!important}
+  .booking-page .class-card .class-poster{grid-column:1/-1!important;margin:-19px -19px 2px!important}
+  .booking-page .class-card .class-poster img{
+    width:100%!important;height:clamp(245px,26vw,360px)!important;max-height:360px!important;object-fit:contain!important;object-position:center!important;background:#080505!important;
+  }
+  .booking-page .class-card .class-date{min-height:74px!important}
+  .booking-page .class-card .class-date strong{font-size:34px!important}
+  .booking-page .class-card .class-info h3{font-size:clamp(1.25rem,1.7vw,1.65rem)!important;line-height:1.1!important}
+  .booking-page .class-card-actions{grid-column:1/-1!important}
+}
+
+/* All listing posters show their complete artwork, whatever the source ratio. */
+.booking-page .class-poster{display:grid!important;place-items:center!important;background:#080505!important;overflow:hidden!important}
+.booking-page .class-poster img{display:block!important;object-fit:contain!important;object-position:center!important;background:#080505!important}
+
+/* Ticket cards stay pale by design; restore crisp dark copy and an obvious
+   checked state after the global atmosphere rules. */
+.booking-dialog .ticket-product-card span{
+  background:#f8eddd!important;color:#241614!important;border-color:#b89573!important;box-shadow:none!important;
+}
+html body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) .booking-dialog .ticket-product-card span :is(strong,b){color:#5f1116!important}
+html body:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body):not(.intro-open) .booking-dialog .ticket-product-card span small{color:#4c3933!important}
+.booking-dialog .ticket-product-card input:checked+span{
+  border-color:#d01f2a!important;background:#fff8ed!important;box-shadow:0 0 0 3px rgba(208,31,42,.24),inset 5px 0 0 #d01f2a!important;
+}
+.booking-dialog .form-grid{align-items:start!important}
+.booking-dialog .form-grid label{min-width:0!important}
+.booking-dialog .form-grid :is(input,select){width:100%!important;box-sizing:border-box!important}
+.booking-dialog,.booking-dialog form,.booking-dialog fieldset,.booking-dialog .ticket-product-picker>div,.booking-dialog .ticket-product-card,.booking-dialog .ticket-product-card span{box-sizing:border-box!important;min-width:0!important;max-width:100%!important}
+.booking-dialog{overflow-x:hidden!important}
+.booking-dialog .ticket-product-picker,.booking-dialog .ticket-product-picker>div{width:auto!important}
+.booking-dialog .ticket-product-card{display:block!important;width:100%!important}
+.booking-dialog .ticket-product-card span{width:100%!important}
+.booking-page .class-card,.booking-page .class-info,.booking-page .class-card-actions{box-sizing:border-box!important;min-width:0!important;max-width:100%!important}
+.booking-page .class-card-actions .button{min-width:0!important;white-space:normal!important}
+
+/* Reveal more of the authentic asset while keeping content on dark glass. */
+body.public-atmosphere,
+body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body){
+  background-image:linear-gradient(180deg,rgba(4,2,2,.18),rgba(4,2,2,.48)),url('boot-scootin-entrance-brick-floor.webp')!important;
+}
+body:not(.ranch-v91) main{background:linear-gradient(180deg,rgba(7,3,3,.08),rgba(7,3,3,.24))!important}
+body:not(.ranch-v91) :is(.section.paper,.booking-content,.member-content){background:rgba(8,4,4,.64)!important}
+body.honky-home:not(.intro-open) :is(.desktop-home-start-v32,.cream-home,.home-meet-nora-lower,.home-new-here-stories,.home-shop-return,.lower-home,.home-featured-reviews,.saloon-signoff){
+  background-color:rgba(8,4,4,.50)!important;
+}
+body.honky-home:not(.intro-open) :is(.home-meet-nora-lower,.home-shop-return,.lower-home,.home-featured-reviews){background-color:rgba(8,4,4,.42)!important}
+
+@media(min-width:768px) and (max-width:950px){
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32{
+    grid-template-columns:minmax(180px,.72fr) minmax(245px,1fr) minmax(285px,1.08fr)!important;gap:16px!important;
+  }
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32 .desktop-nora-v32{max-width:330px!important}
+  body.honky-home:not(.intro-open)>.desktop-home-start-v32 .desktop-nora-v32 img{height:auto!important;aspect-ratio:4/3!important;object-fit:contain!important}
+}
+
+@media(max-width:767px){
+  /* Phone remains one card per row and naturally wide; contain prevents tall
+     portrait or landscape poster lettering from being cut off. */
+  .booking-dialog:not(.event-details-dialog){width:calc(100% - 20px)!important;max-width:none!important;max-height:92dvh!important}
+  .booking-dialog:not(.event-details-dialog){max-width:calc(100vw - 20px)!important;margin-inline:auto!important}
+  .booking-dialog:not(.event-details-dialog) form{width:100%!important;padding:28px 18px 24px!important;overflow:hidden!important}
+  .booking-dialog .ticket-product-picker{padding:.75rem!important}
+  .booking-dialog .ticket-product-picker>div{grid-template-columns:1fr!important}
+  .booking-page .booking-grid{grid-template-columns:1fr!important}
+  .booking-page .class-card{padding:14px!important;gap:12px!important}
+  .booking-page .class-card .class-poster{margin:-15px -15px 2px!important}
+  .booking-page .class-card .class-poster img{width:100%!important;height:auto!important;max-height:310px!important;object-fit:contain!important}
+  .booking-page .class-card-actions{gap:.55rem!important}
+  .booking-page .class-card-actions .button{padding:.72rem .35rem!important;font-size:.78rem!important;line-height:1.15!important}
+  body.public-atmosphere,
+  body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body){
+    background-image:linear-gradient(180deg,rgba(4,2,2,.28),rgba(4,2,2,.62)),url('boot-scootin-entrance-brick-floor.webp')!important;
+  }
+  body:not(.ranch-v91) :is(.section.paper,.booking-content,.member-content){background:rgba(8,4,4,.70)!important}
+}
