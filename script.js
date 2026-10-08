@@ -481,10 +481,16 @@ installGuide?.addEventListener("click", event => {
   const panel = document.getElementById('menu45');
   if (!overlay || !panel) return;
 
+  repairPersistentExploreLinks();
+
   const first = panel.querySelector('.menu45-first');
   const sectionsWrap = panel.querySelector('.menu45-sections');
   const home = panel.querySelector('.menu45-home');
   const footerBrand = panel.querySelector('.menu45-footer-brand');
+  // Safari can restore the exact mutated DOM from its back-forward cache.
+  // Keep an immutable copy of the root sections and rebuild from it whenever
+  // Explore is closed/restored rather than trusting those restored nodes.
+  const cleanSectionsMarkup = sectionsWrap?.innerHTML || '';
 
   let drill = panel.querySelector('.menu61-drilldown-view');
   if (!drill) {
@@ -509,6 +515,7 @@ installGuide?.addEventListener("click", event => {
   function showRoot(){
     drill.hidden = true;
     drill.innerHTML = '';
+    if (sectionsWrap && cleanSectionsMarkup) sectionsWrap.innerHTML = cleanSectionsMarkup;
     first?.removeAttribute('hidden');
     sectionsWrap?.removeAttribute('hidden');
     home?.removeAttribute('hidden');
@@ -524,7 +531,11 @@ installGuide?.addEventListener("click", event => {
     const title = summary?.querySelector('strong')?.textContent?.trim() || 'Explore';
     const subtitle = summary?.querySelector('small')?.textContent?.trim() || '';
     const submenu = section.querySelector(':scope > .menu45-submenu');
-    const links = submenu ? [...submenu.querySelectorAll(':scope > a')] : [];
+    const links = submenu ? [...submenu.querySelectorAll(':scope > a')].map(link => ({
+      href: link.getAttribute('href') || '#',
+      label: link.querySelector('span')?.textContent?.trim() || link.textContent.replace(/›/g,'').trim(),
+      current: link.getAttribute('aria-current')
+    })) : [];
 
     drill.innerHTML = `
       <div class="menu61-section-head">
@@ -535,12 +546,18 @@ installGuide?.addEventListener("click", event => {
       <button type="button" class="menu61-back-text">← Back to Explore sections</button>`;
 
     const target = drill.querySelector('.menu61-links');
-    links.forEach(link => {
-      const clone = link.cloneNode(true);
-      clone.removeAttribute('style');
-      clone.classList.remove('menu-pinned-link');
-      clone.addEventListener('click', () => setMenuOpen(false));
-      target.appendChild(clone);
+    links.forEach(item => {
+      const link = document.createElement('a');
+      link.href = item.href;
+      if (item.current) link.setAttribute('aria-current', item.current);
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      const arrow = document.createElement('b');
+      arrow.setAttribute('aria-hidden','true');
+      arrow.textContent = '›';
+      link.append(label, arrow);
+      link.addEventListener('click', () => setMenuOpen(false));
+      target.appendChild(link);
     });
 
     first?.setAttribute('hidden','');
