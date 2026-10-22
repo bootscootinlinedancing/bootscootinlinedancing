@@ -113,7 +113,7 @@
     });
     render();
     const requested=new URLSearchParams(location.search).get('event');
-    if(requested){const c=classes.find(item=>String(item.id)===requested);if(c)setTimeout(()=>{document.getElementById(`event-${CSS.escape(String(c.id))}`)?.scrollIntoView({block:'center'});openEventDetails(c);},80);}
+    if(requested){const c=classes.find(item=>String(item.id)===requested);if(c)setTimeout(()=>{document.getElementById(`event-${CSS.escape(String(c.id))}`)?.scrollIntoView({block:'center'});if(new URLSearchParams(location.search).get('book')==='1'){document.querySelector(`.class-card .book-class[data-id="${CSS.escape(String(c.id))}"]`)?.click();}else openEventDetails(c);},80);}
   }
 
   async function loadClassPassDiscovery(){

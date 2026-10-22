@@ -14,6 +14,9 @@
   const dateLabel = value => new Intl.DateTimeFormat('en-GB', {
     weekday:'short', day:'numeric', month:'short'
   }).format(new Date(value));
+  const eventDateLabel = value => new Intl.DateTimeFormat('en-GB', {
+    weekday:'long', day:'numeric', month:'long', year:'numeric'
+  }).format(new Date(value));
   const timeLabel = value => new Intl.DateTimeFormat('en-GB', {
     hour:'2-digit', minute:'2-digit'
   }).format(new Date(value));
@@ -43,6 +46,26 @@
       </div>
     </article>`;
   };
+  const renderAnniversary = classItem => {
+    const feature = document.querySelector('[data-home-anniversary]');
+    if (!feature || !classItem || classItem.event_type !== 'ANNIVERSARY') return;
+    const bookingOpen = classItem.booking_open === true || classItem.waiting_list_open === true;
+    const detailsUrl = `bookings.html?event=${encodeURIComponent(classItem.id)}`;
+    const bookingUrl = `${detailsUrl}&book=1`;
+    const poster = feature.querySelector('[data-anniversary-poster]');
+    poster.src = safePoster(classItem.poster_url);
+    const eventVenue = venueLabel(classItem.venue).replace(/ Bar Birmingham$/i, ' Bar, Birmingham');
+    feature.querySelector('[data-anniversary-meta]').textContent = `${eventDateLabel(classItem.starts_at)} · ${eventVenue}`;
+    const release = classItem.ticket_release;
+    feature.querySelector('[data-anniversary-availability]').textContent = release
+      ? `${release.name} · ${money(Number(release.price_pence) / 100)} · ${release.remaining} tickets available in this release`
+      : bookingOpen ? `${classItem.spaces_remaining} event places available` : 'Booking is now closed';
+    const book = feature.querySelector('[data-anniversary-book]');
+    book.href = bookingOpen ? bookingUrl : detailsUrl;
+    book.textContent = bookingOpen ? 'Book Anniversary Tickets' : 'View Anniversary Event';
+    feature.querySelector('[data-anniversary-details]').href = detailsUrl;
+    feature.hidden = false;
+  };
   const showMessage = message => {
     grids.forEach(grid => {
       grid.innerHTML = `<p class="home-classes-status" role="status">${escapeHtml(message)} <a href="bookings.html">View the booking page →</a></p>`;
@@ -55,10 +78,14 @@
       if (!response.ok) throw new Error('Classes unavailable');
       return Array.isArray(data) ? data : [];
     })
-    .then(classes => classes
-      .filter(classItem => classItem && classItem.id && classItem.starts_at && classItem.is_past !== true)
-      .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))
-      .slice(0, 2))
+    .then(classes => {
+      const current = classes
+        .filter(classItem => classItem && classItem.id && classItem.starts_at && classItem.is_past !== true)
+        .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+      const anniversary = current.find(classItem => classItem.event_type === 'ANNIVERSARY');
+      renderAnniversary(anniversary);
+      return current.filter(classItem => !anniversary || classItem.id !== anniversary.id).slice(0, 2);
+    })
     .then(classes => {
       if (!classes.length) {
         showMessage('New class dates are being prepared.');

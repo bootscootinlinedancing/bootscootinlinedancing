@@ -224,7 +224,7 @@
     }).join('');
 
     const stamps=document.getElementById('customerLoyaltyStamps');
-    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}">${i<data.summary.loyalty_progress?'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.83#star"></use></svg>':'<svg class="western-icon" aria-hidden="true"><use href="western-icons.svg?v=96.4.83#star"></use></svg>'}</span>`).join('');
+    stamps.innerHTML=Array.from({length:9},(_,i)=>`<span class="loyalty-brand-stamp ${i<data.summary.loyalty_progress?'earned':''}" aria-label="${i<data.summary.loyalty_progress?'Earned':'Not earned'} stamp ${i+1}"><img src="boot-scootin-logo-approved.png" alt="" aria-hidden="true"></span>`).join('');
 
     document.getElementById('customerUpcomingBookings').innerHTML=data.upcoming.length
       ?data.upcoming.map(b=>bookingCard(b,true)).join('')
