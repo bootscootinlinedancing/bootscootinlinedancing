@@ -6931,7 +6931,7 @@ export default {
         const state = adminState(request, env);
         if (!state.email) return json({error:'Cloudflare Access authentication is required.',code:'ACCESS_REQUIRED'},401);
         if (!state.authorised) return json({error:'This email is not authorised to use Boot Scootin’ HQ.',code:'ADMIN_NOT_AUTHORISED'},403);
-        return Response.redirect(new URL('/ranch.html?access=verified', request.url).toString(), 302);
+        return new Response(null,{status:302,headers:{Location:new URL('/ranch.html?access=verified',request.url).toString(),'Cache-Control':'no-store, no-cache, must-revalidate'}});
       }
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1');

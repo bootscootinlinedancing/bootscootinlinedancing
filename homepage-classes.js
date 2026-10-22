@@ -49,7 +49,8 @@
   const renderAnniversary = classItem => {
     const feature = document.querySelector('[data-home-anniversary]');
     if (!feature || !classItem || classItem.event_type !== 'ANNIVERSARY') return;
-    const bookingOpen = classItem.booking_open === true || classItem.waiting_list_open === true;
+    const bookingOpen = classItem.booking_open === true;
+    const waitingListOpen = classItem.waiting_list_open === true;
     const detailsUrl = `bookings.html?event=${encodeURIComponent(classItem.id)}`;
     const bookingUrl = `${detailsUrl}&book=1`;
     const poster = feature.querySelector('[data-anniversary-poster]');
@@ -59,10 +60,10 @@
     const release = classItem.ticket_release;
     feature.querySelector('[data-anniversary-availability]').textContent = release
       ? `${release.name} · ${money(Number(release.price_pence) / 100)} · ${release.remaining} tickets available in this release`
-      : bookingOpen ? `${classItem.spaces_remaining} event places available` : 'Booking is now closed';
+      : bookingOpen ? `${classItem.spaces_remaining} event places available` : waitingListOpen ? 'Sold out · waiting list available' : 'Booking is now closed';
     const book = feature.querySelector('[data-anniversary-book]');
-    book.href = bookingOpen ? bookingUrl : detailsUrl;
-    book.textContent = bookingOpen ? 'Book Anniversary Tickets' : 'View Anniversary Event';
+    book.href = bookingOpen || waitingListOpen ? bookingUrl : detailsUrl;
+    book.textContent = bookingOpen ? 'Book Anniversary Tickets' : waitingListOpen ? 'Join Anniversary Waiting List' : 'View Anniversary Event';
     feature.querySelector('[data-anniversary-details]').href = detailsUrl;
     feature.hidden = false;
   };
