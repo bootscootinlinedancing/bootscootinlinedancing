@@ -16,6 +16,26 @@
   const timeFmt=s=>new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(s));
   const venueLabel=venue=>/^(low places bar|low places bar birmingham)$/i.test(String(venue||'').trim())?'Low Places Bar Birmingham':String(venue||'').trim();
   const venueKey=venue=>venueLabel(venue).toLowerCase();
+  const bookingFailureMessage='Your booking could not be completed online. Please try again or email bookings@bootscootinlinedancing.co.uk.';
+
+  async function readApiJson(response,context,fallbackMessage){
+    const contentType=String(response.headers.get('content-type')||'').toLowerCase();
+    const responsePath=(()=>{try{return new URL(response.url,location.href).pathname;}catch(_){return 'unavailable';}})();
+    if(!contentType.includes('application/json')){
+      console.error('BOOT_SCOOTIN_API_NON_JSON_RESPONSE',{context,status:response.status,content_type:contentType||'missing',path:responsePath});
+      const error=new Error(fallbackMessage);
+      error.code='NON_JSON_API_RESPONSE';
+      throw error;
+    }
+    const text=await response.text();
+    try{return text?JSON.parse(text):{};}
+    catch(_){
+      console.error('BOOT_SCOOTIN_API_INVALID_JSON_RESPONSE',{context,status:response.status,content_type:contentType,path:responsePath});
+      const error=new Error(fallbackMessage);
+      error.code='INVALID_JSON_API_RESPONSE';
+      throw error;
+    }
+  }
 
   function summaryText(text){
     const clean=String(text||'').replace(/\s+/g,' ').trim();
@@ -188,8 +208,8 @@
     if(!email){msg.textContent='Enter your email address first. Personal birthday and loyalty codes are linked to your email.';msg.className='form-message promo-error';return;}
     const button=document.getElementById('applyPromo');button.disabled=true;msg.textContent='Checking code…';
     try{
-      const r=await fetch('/api/promotions/validate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code,email,classId:selectedClass.id,quantity:Number(form.elements.quantity.value||1),ticket_product_code:selectedTicketType()})});
-      const out=await r.json();if(!r.ok)throw new Error(out.error||'This code could not be applied.');
+      const r=await fetch('/api/promotions/validate',{method:'POST',headers:{'content-type':'application/json',Accept:'application/json'},body:JSON.stringify({code,email,classId:selectedClass.id,quantity:Number(form.elements.quantity.value||1),ticket_product_code:selectedTicketType()})});
+      const out=await readApiJson(r,'promotion-validation','This code could not be checked. Please try again.');if(!r.ok)throw new Error(out.error||'This code could not be applied.');
       appliedPromo=out;document.getElementById('promoCode').value=out.code;msg.textContent=`✓ ${out.promotion_name} applied`;msg.className='form-message promo-success';showPromoTotals(out);
     }catch(error){appliedPromo=null;showPromoTotals(null);msg.textContent=error.message;msg.className='form-message promo-error';}
     finally{button.disabled=false;}
@@ -207,14 +227,14 @@
     data.terms_accepted=Boolean(data.terms);
     data.marketing_consent=Boolean(data.marketing_consent);
     try{
-      const r=await fetch('/api/class-reservations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-      const out=await r.json();if(!r.ok)throw new Error(out.error||'Booking could not be created.');
+      const r=await fetch('/api/class-reservations',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(data)});
+      const out=await readApiJson(r,'class-reservation',bookingFailureMessage);if(!r.ok)throw new Error(out.error||'Booking could not be created.');
       if(out.checkout_url){
         location.href=out.checkout_url;
         return;
       }
       location.href=`booking-confirmation.html?reference=${encodeURIComponent(out.reference)}&token=${encodeURIComponent(out.secure_token||'')}&customer=${encodeURIComponent(out.customer_token||'')}`;
-    }catch(e){msg.textContent=(e&&e.message&&e.message!=='The string did not match the expected pattern.')?e.message:'Your booking could not be completed online. Please try again or email bookings@bootscootinlinedancing.co.uk.';button.disabled=false;}
+    }catch(e){msg.textContent=(e&&e.message&&e.message!=='The string did not match the expected pattern.')?e.message:bookingFailureMessage;button.disabled=false;}
   });
 
   load();loadClassPassDiscovery();

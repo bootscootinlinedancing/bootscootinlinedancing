@@ -395,8 +395,6 @@
         ?`Secure session verified for ${email||name}.`
         :'Please sign in again or refresh your HQ session.';
     }
-    const signIn=$('#hqAccessSignIn');
-    if(signIn)signIn.hidden=protectedMode;
   }
 
   function lockHQForAccessFailure(){
@@ -539,7 +537,7 @@
         if(detail)detail.textContent=accessFailure?'Please sign in again or refresh your HQ session. Private administration remains locked.':'The live check did not finish. Tap Refresh to try again.';
         const attention=document.getElementById('ranch91Attention');
         if(attention)attention.innerHTML=accessFailure
-          ?`<div class="ranch92-state locked"><strong>HQ session not verified</strong><p>No private information has been loaded.</p><a class="button compact" href="/ranch/api/admin/access-login">SIGN IN TO HQ</a></div>`
+          ?`<div class="ranch92-state locked"><strong>HQ session not verified</strong><p>No private information has been loaded. Open the protected HQ address again to complete Cloudflare Access sign-in.</p></div>`
           :setupPanel('Backend temporarily unavailable','The page stopped waiting after six seconds. Tap Refresh to retry.');
         if(showToast)toast('Backend refresh timed out.','error');
         throw error;
