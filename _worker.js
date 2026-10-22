@@ -6924,6 +6924,15 @@ export default {
       ? incomingPath.slice('/ranch'.length)
       : incomingPath;
     try {
+      // This URL is intentionally inside the existing Cloudflare Access-protected
+      // HQ API path. A top-level navigation (unlike an XHR from the public shell)
+      // gives Safari a real Access challenge and returns to HQ after verification.
+      if (path === '/api/admin/access-login' && request.method === 'GET') {
+        const state = adminState(request, env);
+        if (!state.email) return json({error:'Cloudflare Access authentication is required.',code:'ACCESS_REQUIRED'},401);
+        if (!state.authorised) return json({error:'This email is not authorised to use Boot Scootin’ HQ.',code:'ADMIN_NOT_AUTHORISED'},403);
+        return new Response(null,{status:302,headers:{Location:new URL('/ranch.html?access=verified',request.url).toString(),'Cache-Control':'no-store, no-cache, must-revalidate'}});
+      }
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1');
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);

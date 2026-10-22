@@ -112,6 +112,7 @@
       const duration=Math.round(performance.now()-started);
       diagnosticEvent('request_completed',{endpoint:url,method,request_id:requestId,status:response.status,duration_ms:duration});
       if(!response.ok){
+        if((response.status===401||response.status===403)&&String(url).startsWith(ADMIN_API_PREFIX))lockHQForAccessFailure();
         const error=new Error(data.error||data.detail||`Request failed (${response.status}).`);
         error.code=data.code||'REQUEST_FAILED';
         error.status=response.status;
@@ -281,9 +282,23 @@
   closeButton?.addEventListener('click',()=>setDrawer(false));
   backdrop?.addEventListener('click',()=>setDrawer(false));
   document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false);});
-  window.addEventListener('pageshow',()=>{clearLegacyScrollLocks();setDrawer(false);});
-  window.addEventListener('pagehide',clearLegacyScrollLocks);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!drawer?.classList.contains('open'))clearLegacyScrollLocks();});
+  window.addEventListener('pageshow',event=>{
+    clearLegacyScrollLocks();setDrawer(false);
+    if(event.persisted){
+      document.body.classList.add('hq-access-pending');
+      state.bootstrap=null;state.bootstrapVerified=false;state.bootstrapLoadedAt=0;
+      try{localStorage.removeItem(BOOTSTRAP_CACHE_KEY);}catch(_){ }
+      setAccessPresentation(false,'');
+      loadBootstrap(false,{force:true,silent:false}).catch(()=>{});
+    }
+  });
+  window.addEventListener('pagehide',()=>{clearLegacyScrollLocks();document.body.classList.add('hq-access-pending');});
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState!=='visible')return;
+    if(!drawer?.classList.contains('open'))clearLegacyScrollLocks();
+    lockHQForAccessFailure();
+    loadBootstrap(false,{force:true,silent:false}).catch(()=>{});
+  });
 
   const titles={overview:'HQ Home',classes:'Classes','class-passes':'Class Passes',reviews:'Reviews',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
@@ -380,6 +395,15 @@
         ?`Secure session verified for ${email||name}.`
         :'Please sign in again or refresh your HQ session.';
     }
+    const signIn=$('#hqAccessSignIn');
+    if(signIn)signIn.hidden=protectedMode;
+  }
+
+  function lockHQForAccessFailure(){
+    document.body.classList.add('hq-access-pending');
+    state.bootstrap=null;state.bootstrapVerified=false;state.bootstrapLoadedAt=0;
+    try{localStorage.removeItem(BOOTSTRAP_CACHE_KEY);}catch(_){ }
+    setAccessPresentation(false,'');
   }
 
   function renderMode(){
@@ -481,6 +505,7 @@
         }
         state.bootstrap=data;
         state.bootstrapVerified=true;
+        document.body.classList.remove('hq-access-pending');
         state.bootstrapLoadedAt=Date.now();
         state.bootstrapError=null;
         saveBootstrapCache(data);
@@ -492,6 +517,7 @@
       }catch(error){
         state.bootstrapError=error;
         state.bootstrapVerified=false;
+        document.body.classList.add('hq-access-pending');
         if(error.status===401||error.status===403){
           state.bootstrap=null;
           state.bootstrapLoadedAt=0;
@@ -513,7 +539,7 @@
         if(detail)detail.textContent=accessFailure?'Please sign in again or refresh your HQ session. Private administration remains locked.':'The live check did not finish. Tap Refresh to try again.';
         const attention=document.getElementById('ranch91Attention');
         if(attention)attention.innerHTML=accessFailure
-          ?lockedPanel('HQ session not verified','Please sign in again or refresh your HQ session. No private information has been loaded.')
+          ?`<div class="ranch92-state locked"><strong>HQ session not verified</strong><p>No private information has been loaded.</p><a class="button compact" href="/ranch/api/admin/access-login">SIGN IN TO HQ</a></div>`
           :setupPanel('Backend temporarily unavailable','The page stopped waiting after six seconds. Tap Refresh to retry.');
         if(showToast)toast('Backend refresh timed out.','error');
         throw error;
@@ -2018,15 +2044,12 @@ Type REFUNDED to continue.`);
   diagnosticEvent('hq_script_started',{result:'V95.0.0 loaded',online:navigator.onLine,visibility:document.visibilityState});
 
   showView('overview');
-  const cachedBootstrap=readBootstrapCache();
-  if(cachedBootstrap?.data){
-    state.bootstrap=cachedBootstrap.data;
-    state.bootstrapVerified=false;
-    state.bootstrapLoadedAt=cachedBootstrap.savedAt||Date.now();
-    renderMode();renderSetup();renderOverview();renderOperationsFromBootstrap();
-    updateLastUpdated('cache');
-  }
-  loadBootstrap(false,{silent:Boolean(state.bootstrap)}).catch(()=>{});
+  // Never paint cached private data before the current request proves Access.
+  // This is especially important when Safari restores HQ from its back/forward cache.
+  try{localStorage.removeItem(BOOTSTRAP_CACHE_KEY);}catch(_){ }
+  state.bootstrap=null;
+  state.bootstrapVerified=false;
+  loadBootstrap(false,{silent:false}).catch(()=>{});
   renderDiagnostics();
 
   document.addEventListener('click',event=>{

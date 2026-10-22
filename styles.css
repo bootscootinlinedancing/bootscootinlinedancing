@@ -10228,3 +10228,31 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-bran
   body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header :is(.brand-lockup,.class-pass-brand)>img.public-brand-logo{height:44px!important;max-width:44px!important;max-height:44px!important}
   body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-brand-wordmark{width:82px!important;max-height:32px!important}
 }
+
+/* Anniversary homepage feature: populated from the authoritative classes API. */
+.home-anniversary-feature[hidden]{display:none!important}
+.home-anniversary-feature{width:min(1180px,calc(100% - 40px));margin:clamp(18px,3vw,38px) auto;display:grid;grid-template-columns:minmax(220px,360px) minmax(0,1fr);gap:clamp(20px,4vw,54px);align-items:center;padding:clamp(18px,3vw,34px);border:1px solid rgba(232,52,62,.68);background:linear-gradient(135deg,rgba(28,8,11,.94),rgba(8,4,5,.88));box-shadow:0 20px 55px rgba(0,0,0,.36),0 0 28px rgba(216,33,44,.12);color:#f8ede2}
+.home-anniversary-poster{display:grid;place-items:center;min-width:0;background:#090405;border:1px solid rgba(238,199,151,.3)}
+.home-anniversary-poster img{display:block;width:100%;height:auto;max-height:430px;object-fit:contain}
+.home-anniversary-copy h2{margin:.2rem 0 .6rem;color:#fff6ed;font:400 clamp(2rem,5vw,4rem)/.98 Rye,serif;text-shadow:0 0 18px rgba(222,37,48,.34)}
+.home-anniversary-copy>p{max-width:680px;color:#ead7c8;line-height:1.65}
+.home-anniversary-copy .home-anniversary-meta{color:#fff5e8;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.home-anniversary-availability{padding:.7rem .85rem;border-left:3px solid #e22d38;background:rgba(105,18,25,.28);font-weight:800}
+.home-anniversary-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.1rem}
+.home-anniversary-actions .button{min-height:48px;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+
+/* Branded nine-stamp loyalty seal. Logic and progress values are unchanged. */
+.member-stamp-row span.loyalty-brand-stamp,.loyalty-stamp-row span.loyalty-brand-stamp{display:grid;place-items:center;aspect-ratio:1;border-radius:50%;overflow:hidden;border:1px solid #744047;background:#160b0d;opacity:.5;filter:grayscale(1);box-shadow:inset 0 0 0 2px rgba(245,225,201,.04)}
+.member-stamp-row .loyalty-brand-stamp img,.loyalty-stamp-row .loyalty-brand-stamp img{display:block;width:82%;height:82%;object-fit:contain;border-radius:50%}
+.member-stamp-row span.loyalty-brand-stamp.earned,.loyalty-stamp-row span.loyalty-brand-stamp.earned{opacity:1;filter:none;background:#9f222c;border-color:#f05a63;box-shadow:0 0 15px rgba(225,42,55,.3),inset 0 0 0 2px rgba(255,235,211,.16)}
+.loyalty-stamp-row{grid-template-columns:repeat(9,minmax(0,44px));gap:clamp(.2rem,1vw,.45rem)}
+
+@media(max-width:700px){
+  .home-anniversary-feature{width:calc(100% - 24px);grid-template-columns:1fr;gap:16px;padding:16px;margin-block:18px}
+  .home-anniversary-poster img{max-height:min(58vh,390px)}
+  .home-anniversary-copy h2{font-size:clamp(1.9rem,10vw,3rem)}
+  .home-anniversary-actions{display:grid;grid-template-columns:1fr}
+  .home-anniversary-actions .button{width:100%}
+  .member-stamp-row,.loyalty-stamp-row{grid-template-columns:repeat(9,minmax(0,1fr))!important;width:100%;gap:4px!important}
+  .member-stamp-row span.loyalty-brand-stamp,.loyalty-stamp-row span.loyalty-brand-stamp{width:100%!important;height:auto!important;min-width:0}
+}

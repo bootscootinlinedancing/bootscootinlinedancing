@@ -190,6 +190,9 @@ body.ranch-v91 .ranch91-attention-item,
 body.ranch-v91 .ranch91-health-row{background:#170d0e!important;color:#f7eee7!important;border-color:#5b292d!important}
 body.ranch-v91 .ranch91-modebar{background:#231417!important;color:#f0dcd0!important;border-left-color:#c58a3e!important}
 body.ranch-v91 .ranch91-modebar.protected{background:#102419!important;color:#cce7d5!important;border-left-color:#38945b!important}
+body.ranch-v91.hq-access-pending .ranch-view,
+body.ranch-v91.hq-access-pending .ranch-view.active{display:none!important}
+body.ranch-v91 .hq-access-sign-in{justify-self:start;margin-top:.45rem;text-decoration:none}
 body.ranch-v91 .hq-class-form label{color:#f7eee7!important}
 body.ranch-v91 .hq-class-form input,
 body.ranch-v91 .hq-class-form select,
