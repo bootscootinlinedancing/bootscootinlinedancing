@@ -63,8 +63,9 @@
     const submit=document.getElementById('bookingSubmit');
     document.getElementById('selectedClassMeta').textContent=product?`${dayFmt(selectedClass.starts_at)} · ${venueLabel(selectedClass.venue)} · ${product.label} · ${money(ticketUnitPrice(selectedClass))} per person${productTime(product)?` · ${productTime(product)}`:''}`:`${dateFmt(selectedClass.starts_at)} · ${venueLabel(selectedClass.venue)}`;
     const credit=document.getElementById('classCreditOption');credit.hidden=!product?.class_pass_eligible||credit.dataset.available!=='1';
-    submit.disabled=selectedClass.booking_format==='BEGINNER_IMPROVER'&&!product;
-    submit.textContent=!product&&selectedClass.booking_format==='BEGINNER_IMPROVER'
+    const productRequired=selectedClass.booking_format==='BEGINNER_IMPROVER'||selectedClass.event_type==='ANNIVERSARY';
+    submit.disabled=!waitlist&&productRequired&&!product;
+    submit.textContent=!waitlist&&!product&&productRequired
       ?'Choose a ticket to continue'
       :waitlist?'Join Waiting List':`Continue to Secure Payment — ${money(ticketUnitPrice(selectedClass)*Number(form.elements.quantity.value||1))}`;
     appliedPromo=null;showPromoTotals(null);document.getElementById('promoMessage').textContent='';
@@ -162,7 +163,8 @@
     document.getElementById('classId').value=c.id;
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
     const picker=document.getElementById('ticketTypePicker'),choices=document.getElementById('ticketProductChoices'),products=c.ticket_products||[];
-    picker.hidden=products.length<2&&c.booking_format!=='BEGINNER_IMPROVER';
+    const showSingleAnniversaryProduct=c.event_type==='ANNIVERSARY'&&products.length===1;
+    picker.hidden=products.length===0||(!showSingleAnniversaryProduct&&products.length<2&&c.booking_format!=='BEGINNER_IMPROVER');
     choices.innerHTML=products.map((product,index)=>`<label class="ticket-product-card"><input type="radio" name="ticket_product_code" value="${esc(product.code)}" ${c.booking_format!=='BEGINNER_IMPROVER'&&index===0?'checked':''} required><span>${product.badge?`<em>${esc(product.badge)}</em>`:''}<strong>${esc(product.label)} — ${money(Number(product.price_pence)/100)}</strong><small>${esc(productTime(product))}</small><small>${esc(product.description||'')}</small>${product.class_pass_eligible?'<b>Class Pass eligible</b>':''}</span></label>`).join('');
     choices.querySelectorAll('input').forEach(input=>input.addEventListener('change',()=>{updateTicketChoice();loadClassCreditOption(c);}));
     document.getElementById('bookingSubmit').textContent=waitlist?'Join Waiting List':'Continue to Secure Payment';

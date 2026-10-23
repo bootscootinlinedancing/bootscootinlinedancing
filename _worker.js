@@ -470,13 +470,24 @@ async function classTicketProducts(env,klass,{includeDisabled=false}={}){
   return rows;
 }
 
-async function resolveTicketProduct(env,klass,body,{anniversary=false}={}){
+function anniversaryTicketProduct(klass,release){
+  if(!klass||!release)return null;
+  const label=String(release.name||'').trim()||'Anniversary admission';
+  return {...ticketDefinition('CLASS_SOCIAL'),code:'CLASS_SOCIAL',enabled:1,label,
+    sumup_description:label,price_pence:Number(release.price_pence||0),starts_at:klass.starts_at,
+    ends_at:klass.ends_at,entry_at:null,remaining:Number(release.remaining||0),
+    class_pass_eligible:false,class_pass_credit_cost:1,display_order:10};
+}
+
+async function resolveTicketProduct(env,klass,body,{anniversary=false,anniversaryRelease=null}={}){
   const supplied=Object.prototype.hasOwnProperty.call(body||{},'ticket_product_code')||Object.prototype.hasOwnProperty.call(body||{},'ticket_type');
   const code=clean(body?.ticket_product_code??body?.ticket_type,40);
   if(supplied&&!code)return {error:'Unsupported ticket type.',status:400};
   if(anniversary){
     if(supplied&&code!=='CLASS_SOCIAL')return {error:'That ticket type is not available for the Anniversary event.',status:409};
-    return {product:{...ticketDefinition('CLASS_SOCIAL'),code:'CLASS_SOCIAL',enabled:1,price_pence:Number(klass.price_pence||0),starts_at:klass.starts_at,ends_at:klass.ends_at,entry_at:null,class_pass_eligible:false,class_pass_credit_cost:1}};
+    const product=anniversaryTicketProduct(klass,anniversaryRelease);
+    if(!product)return {error:'Anniversary tickets are currently sold out.',status:409};
+    return {product};
   }
   if(klass.booking_format==='BEGINNER_IMPROVER'&&!supplied)return {error:'Choose a ticket type for this class.',status:400};
   const requested=code||(klass.booking_format==='STANDARD'?'CLASS_SOCIAL':'');
@@ -1705,7 +1716,8 @@ async function publicClasses(env, includeHistory = false) {
     return json(await Promise.all(results.map(async row => {
       if(anniversary&&row.id===anniversary.event.class_id){
         const price=anniversary.current_release?.price_pence??row.price_pence;
-        return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant,true);
+        const ticketProduct=anniversaryTicketProduct(row,anniversary.current_release);
+        return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,ticket_products:ticketProduct?[ticketProduct]:[],releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant,true);
       }
       return withClassCalendarStatus({ ...row, price: row.price_pence / 100,ticket_products:await classTicketProducts(env,row) },currentInstant,true);
     })));
@@ -2628,7 +2640,7 @@ async function publicPromoValidate(request,env){
   const classRow=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
   const anniversary=await anniversaryInventory(env).catch(()=>null),classId=clean(body.classId,120);
   const anniversaryClass=anniversary?.event?.class_id===classId;
-  const resolved=await resolveTicketProduct(env,classRow,body,{anniversary:anniversaryClass});
+  const resolved=await resolveTicketProduct(env,classRow,body,{anniversary:anniversaryClass,anniversaryRelease:anniversary?.current_release||null});
   if(resolved.error)return json({error:resolved.error},resolved.status);
   const unitPrice=anniversaryClass&&anniversary.current_release?Number(anniversary.current_release.price_pence):Number(resolved.product.price_pence);
   const quantity=Math.max(1,Math.min(4,Number(body.quantity)||1)); const subtotal=unitPrice*quantity;
@@ -2668,9 +2680,12 @@ async function createClassReservation(request, env) {
   if (!classRow) return json({ error: 'This class is no longer open for booking.' }, 404);
 
   const anniversary = await anniversaryInventory(env).catch(()=>null);
-  const anniversaryRelease = anniversary?.event?.class_id===classId ? anniversary.current_release : null;
-  if(anniversary?.event?.class_id===classId&&!anniversaryRelease)return json({error:'Anniversary tickets are currently sold out.'},409);
-  const resolved=await resolveTicketProduct(env,classRow,body,{anniversary:Boolean(anniversaryRelease)});
+  const anniversaryClass = anniversary?.event?.class_id===classId;
+  const anniversaryRelease = anniversaryClass ? anniversary.current_release : null;
+  const anniversaryWaitlistRelease=anniversaryClass&&requestedWaitlist&&!anniversaryRelease
+    ?[...(anniversary?.releases||[])].reverse().find(release=>Number(release.active)!==0)||null:null;
+  if(anniversaryClass&&!anniversaryRelease&&!requestedWaitlist)return json({error:'Anniversary tickets are currently sold out.'},409);
+  const resolved=await resolveTicketProduct(env,classRow,body,{anniversary:anniversaryClass,anniversaryRelease:anniversaryRelease||anniversaryWaitlistRelease});
   if(resolved.error)return json({error:resolved.error},resolved.status);
   const product=resolved.product,ticketType=product.code;
 
@@ -2784,7 +2799,7 @@ async function createClassReservation(request, env) {
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,customer_token,
         terms_accepted_at,marketing_consent,retention_delete_after,anniversary_release_id,ticket_type,ticket_entry_time,
         ticket_product_code,ticket_product_label,ticket_unit_price_pence,ticket_starts_at,ticket_ends_at,ticket_entry_at
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?,?,?,?,?,?,?)`
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?,?,?,?,?,?,?,?)`
     ).bind(
       id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
       paymentReady ? 'SUMUP' : 'MANUAL', secureToken, customerToken,
@@ -2792,7 +2807,13 @@ async function createClassReservation(request, env) {
       ticketType,product.label,unitPrice,product.starts_at||null,product.ends_at||null,product.entry_at||null
     ).run();
   } catch (error) {
-    if(anniversaryRelease)throw error;
+    if(anniversaryRelease){
+      console.error('ANNIVERSARY_BOOKING_ERROR',{context:'class-reservation',stage:'booking-insert',
+        code:clean(error?.code||error?.name||'ERROR',80),message:clean(error?.message||'Unexpected error',240),
+        class_id:classId,event_id:anniversary?.event?.id||null,release_id:anniversaryRelease.id});
+      await env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=? AND NOT EXISTS(SELECT 1 FROM bookings WHERE hold_id=?)`).bind(holdId,holdId).run().catch(()=>{});
+      return json({error:'Your booking could not be completed. No payment has been taken. Please try again or contact Boot Scootin’.',code:'ANNIVERSARY_BOOKING_FAILED'},500);
+    }
     await env.BOOKINGS_DB.prepare(
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
@@ -7006,6 +7027,11 @@ export default {
       if (path === '/booking-confirmed.html' && request.method === 'GET') return Response.redirect(new URL('/booking-confirmed',request.url).toString(),302);
       return servePublicAssetWithRepairs(request, env);
     } catch (error) {
+      if(path==='/api/class-reservations'&&request.method==='POST'){
+        console.error('PUBLIC_BOOKING_ERROR',{context:'class-reservation',stage:'unhandled',
+          code:clean(error?.code||error?.name||'ERROR',80),message:clean(error?.message||'Unexpected error',240)});
+        return json({error:'Your booking could not be completed. No payment has been taken. Please try again or contact Boot Scootin’.',code:'BOOKING_FAILED'},500);
+      }
       if (path.startsWith('/api/') || incomingPath.startsWith('/ranch/api/')) return json({ error: 'Server error', detail: clean(error && error.message ? error.message : error, 500), code: 'UNHANDLED_API_ERROR' }, 500);
       return new Response('Boot Scootin’ is temporarily unavailable.', { status: 500 });
     }
