@@ -84,6 +84,7 @@
     const status = document.getElementById('mailingPopupStatus');
     const data = new FormData(form);
     const payload = {name:String(data.get('name') || '').trim(),email:String(data.get('email') || '').trim(),consent:data.get('consent') === 'on'};
+    if (!payload.name) { if (status) status.textContent = 'Please enter your first name.'; form.elements.name?.focus(); return; }
     button.disabled = true;
     if (status) status.textContent = 'Joining…';
     try {
@@ -212,6 +213,11 @@ if (intro) {
 function repairPersistentExploreLinks(){
   const panel=document.getElementById('menu45');
   if(!panel) return;
+  panel.querySelectorAll('a[href^="mailto:partnerships@bootscootinlinedancing.co.uk"]').forEach(link => {
+    link.href='partnerships.html';
+    const label=link.querySelector('span');
+    if(label) label.textContent='Partnerships & Advertising';
+  });
   const findSection=(label)=>[...panel.querySelectorAll('details.menu45-section')].find(section =>
     section.querySelector(':scope > summary strong')?.textContent.trim()===label
   );
@@ -513,6 +519,7 @@ installGuide?.addEventListener("click", event => {
         email: String(data.get('email') || '').trim(),
         consent: data.get('consent') === 'on'
       };
+      if (!payload.name) { if (status) status.textContent = 'Please enter your first name.'; form.elements.name?.focus(); return; }
       if (!payload.email || !payload.consent) return;
       button.disabled = true;
       if (status) status.textContent = 'Joining…';

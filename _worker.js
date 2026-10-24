@@ -5920,6 +5920,7 @@ async function subscribeMailingList(request,env){
   const consent=body?.consent===true;
 
   if(!consent) return json({error:'Please tick the consent box to join the mailing list.'},400);
+  if(!name) return json({error:'Please enter your first name.'},400);
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({error:'Please enter a valid email address.'},400);
 
   await env.BOOKINGS_DB.prepare(`DELETE FROM mailing_unsubscribes WHERE lower(email)=lower(?)`).bind(email).run().catch(()=>{});

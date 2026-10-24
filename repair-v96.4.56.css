@@ -66,6 +66,34 @@ body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(input,se
 @media(max-width:760px){.home-community-features{grid-template-columns:1fr;padding:42px 18px}.recommended-links{display:grid}.mailing-popup-card ul{grid-template-columns:1fr}.home-promo-track>a{font-size:13px;padding-inline:12px}}
 @media(max-width:430px){.home-promo-strip,.home-promo-track{min-height:48px}.home-promo-track>a{min-height:48px;padding-block:6px}.mailing-popup{padding:10px}.mailing-popup-card{max-height:calc(100dvh - 20px);padding:24px 18px}.mailing-popup-card h2{font-size:29px}.mailing-popup-close{top:9px;right:9px}}
 @media(prefers-reduced-motion:reduce){.home-promo-track>a{transition:none}}
+
+/* v96.4.119 — compact invitation and Western-neon promotion strip */
+.home-promo-strip{border-color:rgba(225,71,77,.5);background:radial-gradient(circle at 50% 120%,rgba(194,102,35,.18),transparent 58%),#100606;box-shadow:inset 0 1px rgba(255,198,124,.07),inset 0 -1px rgba(255,198,124,.06)}
+.home-promo-track>a{color:#f7d39a;font-weight:600;letter-spacing:.075em;text-transform:uppercase;text-shadow:0 0 8px rgba(238,151,62,.28)}
+.home-promo-track>a::before,.home-promo-track>a::after{content:'✦';margin:0 .65em;color:#d94b45;font-size:.7em;text-shadow:0 0 7px rgba(227,65,60,.45)}
+.home-feature-teaser{display:flex;flex-direction:column;justify-content:center;min-height:260px}.home-feature-teaser .button{align-self:flex-start}.mailing-popup-mobile-summary{display:none}
+@media(max-width:760px){
+  .mailing-popup{padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom))}
+  .mailing-popup-card{width:min(100%,430px);max-height:calc(100dvh - 16px);padding:18px 16px 16px;border-radius:14px}
+  .mailing-popup-card .kicker{margin:0 44px 4px 0;font-size:.69rem;letter-spacing:.12em}.mailing-popup-card h2{margin:0 42px 6px 0;font-size:clamp(24px,7vw,30px);line-height:1.02}
+  .mailing-popup-intro{margin:0 0 8px;font-size:.9rem;line-height:1.35}.mailing-popup-offer{margin:0 0 8px;padding:7px 10px;font-size:.84rem;line-height:1.3}
+  .mailing-popup-card ul{display:none}.mailing-popup-mobile-summary{display:block;margin:0 0 9px;color:#d8c5b8;font-size:.78rem;line-height:1.3}.mailing-popup-card form{gap:8px}
+  .mailing-popup-card form>label:not(.consent-preview){gap:3px;font-size:.82rem}.mailing-popup-card input[type="text"],.mailing-popup-card input[type="email"]{min-height:42px;padding:8px 10px}.mailing-popup-card .consent-preview{gap:8px;font-size:.75rem;line-height:1.28}.mailing-popup-card .button{min-height:42px;padding:9px 12px}.mailing-popup-card .mailing-status{min-height:1.1em;font-size:.78rem}.mailing-popup-close{top:8px;right:8px;width:40px;height:40px;font-size:26px}.home-feature-teaser{min-height:0}
+}
+@media(max-width:430px){.home-promo-strip,.home-promo-track{min-height:42px}.home-promo-track>a{min-height:42px;padding:5px 8px;font-size:11px;line-height:1.25;letter-spacing:.045em}.home-promo-track>a::before,.home-promo-track>a::after{margin:0 .4em}}
+@media(prefers-reduced-motion:reduce){.home-promo-track>a{transform:none!important;transition:none!important}}
+@media(max-width:950px){
+  nav#nav.menu45-overlay{padding:0!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important}
+  #menu45.menu45-panel{width:min(620px,100%)!important;min-height:100dvh!important;margin:0 auto!important;padding:0 20px calc(40px + env(safe-area-inset-bottom))!important;box-sizing:border-box!important;background:#080505!important}
+  #menu45 .menu45-head{min-height:76px!important;padding:calc(10px + env(safe-area-inset-top)) 0 10px!important;margin:0 0 6px!important}
+  #menu45 .nav-close{width:44px!important;height:44px!important;min-width:44px!important}
+  #menu45 .menu45-first{min-height:76px!important;margin:0 0 8px!important;padding:12px 0 14px!important;border-radius:0!important;border-width:0 0 1px!important;background:transparent!important;box-shadow:none!important}
+  #menu45 .menu45-sections{display:block!important;width:100%!important}
+  #menu45 details.menu45-section{width:100%!important;margin:0!important;border:0!important;border-bottom:1px solid #472326!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+  #menu45 details.menu45-section>summary{min-height:62px!important;padding:13px 0!important;background:transparent!important;border:0!important;border-radius:0!important}
+  #menu45 .menu45-submenu{padding:0 0 10px 10px!important;background:transparent!important}
+  #menu45 .menu45-submenu>a{min-height:44px!important;padding:9px 0!important;border-width:0 0 1px!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;font-size:15px!important}
+}
 /* Nora's Choreography link is an intentional one-dance view */
 body.nora-original-only .library-controls .filter-row{display:none!important}
 
