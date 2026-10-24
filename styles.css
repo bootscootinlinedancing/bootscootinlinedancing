@@ -6534,6 +6534,15 @@ body.ranch-v91 .class-check-in-button{min-height:54px;width:100%;font-size:1.05r
 body.ranch-v91 .checked-in-label{color:#8ee0aa;font-size:1.05rem}
 body.ranch-v91 .class-register-correct{justify-self:center;padding:4px 7px;border:0;background:transparent;color:#d6b3a8;text-decoration:underline;cursor:pointer}
 body.ranch-v91 .class-register-loading{padding:24px;text-align:center}
+.booking-guest-details{margin:16px 0;padding:16px;border:1px solid rgba(163,36,43,.28);background:rgba(255,248,237,.72)}
+.booking-guest-details h3{margin:0 0 6px}.booking-guest-details h3 small{font-size:.72em;font-weight:500}.booking-guest-details>p{margin:0 0 13px;font-size:.9rem}
+.booking-guest-fields{display:grid;gap:10px}.booking-guest-fields fieldset{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0;padding:12px;border:1px solid rgba(80,35,25,.2)}
+.booking-guest-fields legend{padding:0 6px;font-weight:800}.booking-guest-fields label{display:grid;gap:5px}
+body.ranch-v91 .class-register-attendees{display:grid;gap:8px;margin-top:10px}
+body.ranch-v91 .class-register-attendee{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid rgba(255,241,223,.18);background:rgba(0,0,0,.18)}
+body.ranch-v91 .class-register-attendee-copy{display:grid;gap:2px;min-width:0}body.ranch-v91 .class-register-attendee-copy small{overflow-wrap:anywhere}
+body.ranch-v91 .class-register-complimentary{margin:16px 0;padding:14px;border:1px solid rgba(205,54,62,.35);background:rgba(28,11,13,.55)}
+body.ranch-v91 .class-register-complimentary form{display:grid;grid-template-columns:1fr 1fr;gap:10px}body.ranch-v91 .class-register-complimentary .wide{grid-column:1/-1}
 @media(max-width:720px){
   body.ranch-v91 .class-register-panel{margin-inline:-10px;padding:14px}
   body.ranch-v91 .class-register-head{display:grid}
@@ -6541,6 +6550,9 @@ body.ranch-v91 .class-register-loading{padding:24px;text-align:center}
   body.ranch-v91 .class-register-tools .button{flex:1 1 auto}
   body.ranch-v91 .class-register-summary{grid-template-columns:1fr 1fr}
   body.ranch-v91 .class-register-row{grid-template-columns:1fr;gap:12px}
+  .booking-guest-fields fieldset,body.ranch-v91 .class-register-complimentary form{grid-template-columns:1fr}
+  body.ranch-v91 .class-register-complimentary .wide{grid-column:auto}
+  body.ranch-v91 .class-register-attendee{grid-template-columns:1fr}
   body.ranch-v91 .class-register-payment{display:flex;align-items:center;justify-content:space-between;gap:10px}
   body.ranch-v91 .class-check-in-button{min-height:60px;font-size:1.15rem}
 }
@@ -10248,11 +10260,22 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-bran
 .loyalty-stamp-row{grid-template-columns:repeat(9,minmax(0,44px));gap:clamp(.2rem,1vw,.45rem)}
 
 @media(max-width:700px){
-  .home-anniversary-feature{width:calc(100% - 24px);grid-template-columns:1fr;gap:16px;padding:16px;margin-block:18px}
-  .home-anniversary-poster img{max-height:min(58vh,390px)}
-  .home-anniversary-copy h2{font-size:clamp(1.9rem,10vw,3rem)}
-  .home-anniversary-actions{display:grid;grid-template-columns:1fr}
+  .home-anniversary-feature{width:calc(100% - 20px);grid-template-columns:1fr;gap:10px;padding:11px;margin-block:14px}
+  .home-anniversary-poster img{max-height:min(66vw,270px);object-fit:contain}
+  .home-anniversary-copy h2{margin:.1rem 0 .35rem;font-size:clamp(1.55rem,7vw,2.15rem);line-height:1.04}
+  .home-anniversary-copy>p{margin:.35rem 0;line-height:1.45}
+  .home-anniversary-availability{padding:.5rem .65rem}
+  .home-anniversary-actions{display:grid;grid-template-columns:1fr;gap:.5rem;margin-top:.7rem}
   .home-anniversary-actions .button{width:100%}
   .member-stamp-row,.loyalty-stamp-row{grid-template-columns:repeat(9,minmax(0,1fr))!important;width:100%;gap:4px!important}
   .member-stamp-row span.loyalty-brand-stamp,.loyalty-stamp-row span.loyalty-brand-stamp{width:100%!important;height:auto!important;min-width:0}
 }
+
+/* Dance Library achievement stays secondary to the choreography details. */
+.library-achievement{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:1rem;align-items:center;margin:1rem 0;padding:.9rem;border:1px solid rgba(220,48,59,.58);background:rgba(92,18,24,.18)}
+.library-achievement h3{margin:.15rem 0 .35rem;color:#fff4e8;font-size:1.05rem}
+.library-achievement p{margin:0;color:#d9c5b6;line-height:1.5}
+.library-achievement figure{margin:0;text-align:center}
+.library-achievement img{display:block;width:auto;max-width:100%;height:auto;max-height:132px;margin-inline:auto;object-fit:contain;background:#090506;border:1px solid rgba(242,221,194,.35)}
+.library-achievement figcaption{margin-top:.35rem;color:#ecd7c3;font-size:.72rem;line-height:1.25}
+@media(max-width:520px){.library-achievement{grid-template-columns:1fr}.library-achievement figure{max-width:150px}.library-achievement img{max-height:170px}}
