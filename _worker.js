@@ -202,13 +202,26 @@ async function createMemberEmailToken(env,memberId,purpose,hours){
   if(!Number(results[1].meta?.changes))throw new Error('Member access changed.');
   return token;
 }
+async function attendeeSchemaAvailable(env){
+  try{
+    const row=await env.BOOKINGS_DB.prepare(`SELECT 1 available FROM sqlite_master WHERE type='table' AND name='booking_attendees' LIMIT 1`).first();
+    return Boolean(row?.available);
+  }catch(_){ return false; }
+}
+async function bookingUsesPersonAttendance(env,bookingId){
+  if(!await attendeeSchemaAvailable(env))return false;
+  return Boolean(await env.BOOKINGS_DB.prepare(`SELECT 1 present FROM booking_attendees WHERE booking_id=? LIMIT 1`).bind(bookingId).first());
+}
 async function syncLoyaltyForEmail(env,email){
   const normalized=String(email||'').trim().toLowerCase(); if(!emailOk(normalized)) return;
   const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(normalized).first();
+  const attendeeFilter=await attendeeSchemaAvailable(env)
+    ?`AND NOT EXISTS(SELECT 1 FROM booking_attendees ba WHERE ba.booking_id=bookings.id)`
+    :``;
   const paid=await env.BOOKINGS_DB.prepare(`
     SELECT id,status,amount_pence,refund_status,refund_amount_pence
     FROM bookings WHERE lower(customer_email)=lower(?) AND amount_pence>0
-      AND NOT EXISTS(SELECT 1 FROM booking_attendees ba WHERE ba.booking_id=bookings.id)
+      ${attendeeFilter}
   `).bind(normalized).all();
   for(const b of (paid.results||[])){
     if(b.status==='PAID' && b.refund_status!=='REFUNDED'){
@@ -229,7 +242,8 @@ async function syncLoyaltyForEmail(env,email){
   }
 }
 async function awardLoyaltyStampForBooking(env,bookingId){
-  const b=await env.BOOKINGS_DB.prepare(`SELECT id,customer_email,amount_pence,status,refund_status FROM bookings WHERE id=? AND NOT EXISTS(SELECT 1 FROM booking_attendees WHERE booking_id=bookings.id)`).bind(bookingId).first();
+  const attendeeFilter=await attendeeSchemaAvailable(env)?`AND NOT EXISTS(SELECT 1 FROM booking_attendees WHERE booking_id=bookings.id)`:``;
+  const b=await env.BOOKINGS_DB.prepare(`SELECT id,customer_email,amount_pence,status,refund_status FROM bookings WHERE id=? ${attendeeFilter}`).bind(bookingId).first();
   if(!b || b.status!=='PAID' || Number(b.amount_pence||0)<=0 || b.refund_status==='REFUNDED') return;
   const email=String(b.customer_email||'').toLowerCase();
   const member=await env.BOOKINGS_DB.prepare(`SELECT id FROM member_accounts WHERE lower(email)=lower(?)`).bind(email).first();
@@ -294,14 +308,16 @@ async function uniqueAttendanceCountForEmail(env,email,since=null){
 }
 async function uniqueAttendanceCountForCustomer(env,customerId,email){
   const normalized=normalizedCustomerEmail(email);
+  const attendeeUnion=await attendeeSchemaAvailable(env)
+    ?`UNION SELECT ba.class_id FROM booking_attendees ba WHERE ba.customer_id=? AND ba.attendance_status='ATTENDED'`
+    :``;
   const row=await env.BOOKINGS_DB.prepare(`
     SELECT COUNT(DISTINCT class_id) total FROM (
       SELECT b.class_id FROM attendance a JOIN bookings b ON b.id=a.booking_id
       WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?)
-      UNION
-      SELECT ba.class_id FROM booking_attendees ba WHERE ba.customer_id=? AND ba.attendance_status='ATTENDED'
+      ${attendeeUnion}
     )
-  `).bind(customerId,normalized,customerId).first();
+  `).bind(...(attendeeUnion?[customerId,normalized,customerId]:[customerId,normalized])).first();
   return Math.max(0,Number(row?.total||0));
 }
 async function attendanceForClass(env,classId){
@@ -352,9 +368,12 @@ function validatedBookingGuests(guests,quantity){
 }
 async function bookingAttendeeRows(env,{bookingId,classId,lead,quantity,guests=[]}){
   const rows=[{id:crypto.randomUUID(),booking_id:bookingId,class_id:classId,place_number:1,role:'LEAD',snapshot_name:lead.name,snapshot_email:lead.email,normalized_email:normalizedCustomerEmail(lead.email),customer_id:lead.customerId||null}];
+  const resolvedCustomerIds=new Set(lead.customerId?[lead.customerId]:[]);
   for(const input of validatedBookingGuests(guests,quantity)){
     const {place_number:place,name,email}=input;
     const matched=email?await deterministicAttendeeCustomer(env,email):null;
+    if(matched?.id&&resolvedCustomerIds.has(matched.id))throw Object.assign(new Error('Each named or emailed ticket must belong to a different person.'),{code:'DUPLICATE_ATTENDEE_IDENTITY'});
+    if(matched?.id)resolvedCustomerIds.add(matched.id);
     rows.push({id:crypto.randomUUID(),booking_id:bookingId,class_id:classId,place_number:place,role:'GUEST',snapshot_name:name||matched?.name||`Ticket ${place} guest`,snapshot_email:email||null,normalized_email:email||null,customer_id:matched?.id||null});
   }
   return rows;
@@ -389,10 +408,22 @@ async function checkInBookingAttendee(env,{attendeeId,actor,operationId,reason='
       FROM attendee_loyalty_credits alc JOIN customers c ON c.id=alc.customer_id LEFT JOIN member_accounts m ON m.customer_id=c.id
       WHERE alc.attendee_id=?`).bind(transactionId,attendee.booking_id,reason,attendeeId,actor,attendeeId));
   }
-  await env.BOOKINGS_DB.batch(statements);
+  const results=await env.BOOKINGS_DB.batch(statements);
+  const loyaltyInserted=identifiable&&qualifies&&Number(results[3]?.meta?.changes||0)>0;
+  if(loyaltyInserted){
+    const customer=await env.BOOKINGS_DB.prepare(`SELECT id,name,email FROM customers WHERE id=?`).bind(attendee.customer_id).first();
+    const balance=customer?await loyaltyTransactionBalance(env,customer.email,customer.id):0;
+    if(customer&&balance>0&&balance%9===0){
+      const existingReward=await env.BOOKINGS_DB.prepare(`SELECT pc.id FROM promotion_codes pc WHERE lower(pc.customer_email)=lower(?) AND pc.issued_reason='LOYALTY' AND strftime('%Y',pc.issued_at)=? LIMIT 1`).bind(customer.email,String(new Date().getFullYear())).first();
+      const reward=await issuePersonalPromotion(env,{email:customer.email,name:customer.name,type:'LOYALTY',days:90});
+      if(reward&&!existingReward)await sendTransactionalEmail(env,customer.email,'You earned a free Boot Scootin’ class',brandedEmailHtml({
+        greeting:`Hi ${customer.name},`,heading:'Your free class reward is ready',paragraphs:['You have completed nine loyalty stamps, so your tenth class is free.',`Your personal code: ${reward.code}`,'Use it within 90 days when booking your next class.']
+      }),'You earned a free class. Code: '+reward.code,'members');
+    }
+  }
   const credit=await env.BOOKINGS_DB.prepare(`SELECT id FROM attendee_loyalty_credits WHERE attendee_id=?`).bind(attendeeId).first();
   const ownAudit=await env.BOOKINGS_DB.prepare(`SELECT id FROM booking_attendee_audit WHERE operation_id=?`).bind(operationId).first();
-  return {ok:true,idempotent:!ownAudit,loyalty_credited:Boolean(credit?.id),attendee:await env.BOOKINGS_DB.prepare(`SELECT * FROM booking_attendees WHERE id=?`).bind(attendeeId).first()};
+  return {ok:true,idempotent:!ownAudit,loyalty_credited:loyaltyInserted,attendee:await env.BOOKINGS_DB.prepare(`SELECT * FROM booking_attendees WHERE id=?`).bind(attendeeId).first()};
 }
 async function loyaltyTransactionBalance(env,email,customerId=null){
   const normalized=String(email||'').trim().toLowerCase();
@@ -1018,7 +1049,7 @@ async function createClassCreditBooking(request,env){
   const ledgerId=crypto.randomUUID(),secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const reference=`BC-${(await memberSha256Hex(operationKey)).slice(0,12).toUpperCase()}`;
   try{
-    await env.BOOKINGS_DB.batch([
+    const classPassStatements=[
       env.BOOKINGS_DB.prepare(`
         INSERT OR IGNORE INTO bookings(
           id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,quantity,
@@ -1049,11 +1080,12 @@ async function createClassCreditBooking(request,env){
       `).bind(operationKey,bookingId,session.customer_id),
       env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
         WHERE id=? AND EXISTS(SELECT 1 FROM bookings WHERE id=? AND status='PAID' AND class_pass_ledger_id IS NOT NULL)`).bind(holdId,bookingId),
-      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO booking_attendees(id,booking_id,class_id,place_number,role,snapshot_name,snapshot_email,normalized_email,customer_id)
-        SELECT ?,b.id,b.class_id,1,'LEAD',b.customer_name,b.customer_email,lower(trim(b.customer_email)),b.customer_id FROM bookings b WHERE b.id=? AND b.customer_id=?`)
-        .bind(crypto.randomUUID(),bookingId,session.customer_id),
-      bookingConfirmationInsert(env,bookingId)
-    ]);
+    ];
+    if(await attendeeSchemaAvailable(env))classPassStatements.push(env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO booking_attendees(id,booking_id,class_id,place_number,role,snapshot_name,snapshot_email,normalized_email,customer_id)
+      SELECT ?,b.id,b.class_id,1,'LEAD',b.customer_name,b.customer_email,lower(trim(b.customer_email)),b.customer_id FROM bookings b WHERE b.id=? AND b.customer_id=?`)
+      .bind(crypto.randomUUID(),bookingId,session.customer_id));
+    classPassStatements.push(bookingConfirmationInsert(env,bookingId));
+    await env.BOOKINGS_DB.batch(classPassStatements);
   }catch(error){
     await env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId).run().catch(()=>{});
     throw error;
@@ -2821,9 +2853,9 @@ async function createClassReservation(request, env) {
     }
     throw error;
   }
-  let attendeeRows;
+  let attendeeRows=[];
   try{
-    attendeeRows=await bookingAttendeeRows(env,{bookingId:id,classId,quantity,lead:{name,email,customerId:customer.id},guests:guestInputs});
+    if(await attendeeSchemaAvailable(env))attendeeRows=await bookingAttendeeRows(env,{bookingId:id,classId,quantity,lead:{name,email,customerId:customer.id},guests:guestInputs});
   }catch(error){
     return json({error:error?.message||'Guest ticket details are invalid.'},400);
   }
@@ -2918,7 +2950,7 @@ async function createClassReservation(request, env) {
   }
 
   try{
-    await env.BOOKINGS_DB.batch(attendeeRows.map(row=>bookingAttendeeInsert(env,row)));
+    if(attendeeRows.length)await env.BOOKINGS_DB.batch(attendeeRows.map(row=>bookingAttendeeInsert(env,row)));
   }catch(error){
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
@@ -4741,13 +4773,13 @@ async function adminClasses(request, env) {
         ORDER BY lower(b.customer_name),b.created_at
       `).bind(registerClassId).all();
       const bookings=response.results||[];
-      const attendeeResult=await env.BOOKINGS_DB.prepare(`
+      const attendeeResult=await attendeeSchemaAvailable(env)?await env.BOOKINGS_DB.prepare(`
         SELECT ba.id,ba.booking_id,ba.class_id,ba.place_number,ba.role,ba.snapshot_name,ba.snapshot_email,ba.customer_id,ba.attendance_status,ba.checked_in_at,ba.checked_in_by,
           CASE WHEN alc.id IS NULL THEN 0 ELSE 1 END loyalty_credited
         FROM booking_attendees ba LEFT JOIN attendee_loyalty_credits alc ON alc.attendee_id=ba.id
         WHERE ba.class_id=? AND ba.attendance_status<>'CANCELLED'
         ORDER BY CASE ba.role WHEN 'COMPLIMENTARY' THEN 1 ELSE 0 END,ba.booking_id,ba.place_number,lower(ba.snapshot_name)
-      `).bind(registerClassId).all();
+      `).bind(registerClassId).all():{results:[]};
       const attendees=attendeeResult.results||[];
       return json({class:classItem,bookings,attendees,stats:{
         checked_in_bookings:bookings.filter(b=>Number(b.checked_in)).length,
@@ -6098,6 +6130,7 @@ async function adminCustomers(request, env) {
         WHERE b.id=? AND lower(b.customer_email)=lower(?)
       `).bind(bookingId,customerKey).first();
       if(!booking)return json({error:'That booking does not belong to this customer.'},404);
+      if(await bookingUsesPersonAttendance(env,bookingId))return json({error:'This booking uses person-level attendance. Use the class register to check in each person.',code:'PERSON_ATTENDANCE_REQUIRED'},409);
       if(!['PAID','PENDING'].includes(booking.status))return json({error:'Only a genuine paid or pending historical booking can be marked attended.'},409);
       const classTime=new Date(booking.starts_at);
       if(Number.isNaN(classTime.getTime())||classTime>=new Date())return json({error:'Only a class that has already taken place can be marked retrospectively attended.'},409);
@@ -6112,6 +6145,7 @@ async function adminCustomers(request, env) {
       if(!reason)return json({error:'An audit reason is required to undo attendance.'},400);
       const booking=await env.BOOKINGS_DB.prepare(`SELECT b.id,b.class_id,b.customer_id,b.customer_email,(SELECT id FROM customers WHERE lower(email)=lower(b.customer_email) LIMIT 1) stable_customer_id FROM bookings b WHERE b.id=? AND lower(b.customer_email)=lower(?)`).bind(bookingId,customerKey).first();
       if(!booking)return json({error:'That booking does not belong to this customer.'},404);
+      if(await bookingUsesPersonAttendance(env,bookingId))return json({error:'This booking uses person-level attendance. Use person-level attendance corrections.',code:'PERSON_ATTENDANCE_REQUIRED'},409);
       const result=await undoAttendance(env,{booking,reason,createdBy:check.state.email,auditAction:'RETROSPECTIVE_ATTENDANCE_UNDONE'});
       return json({ok:true,...result,balance:await loyaltyTransactionBalance(env,customerKey,booking.stable_customer_id||booking.customer_id)});
     }
@@ -6170,6 +6204,9 @@ async function adminCustomers(request, env) {
 
   if (request.method !== 'GET') return json({error:'Method not allowed.'},405);
 
+  const hasAttendeeSchema=await attendeeSchemaAvailable(env);
+  const attendeeClassUnion=hasAttendeeSchema?`UNION SELECT ba.class_id FROM booking_attendees ba WHERE ba.customer_id=cu.id AND ba.attendance_status='ATTENDED'`:``;
+  const attendeeLast=hasAttendeeSchema?`COALESCE((SELECT MAX(ba.checked_in_at) FROM booking_attendees ba WHERE ba.customer_id=cu.id AND ba.attendance_status='ATTENDED'),'')`:`''`;
   const customerMetricsSql = `
     SELECT
       cu.id customer_id,
@@ -6186,11 +6223,11 @@ async function adminCustomers(request, env) {
       (SELECT COUNT(*) FROM bookings b WHERE lower(b.customer_email)=lower(cu.email) AND b.status='REFUNDED') refunded_bookings,
       (SELECT COUNT(DISTINCT class_id) FROM (
         SELECT b.class_id FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))
-        UNION SELECT ba.class_id FROM booking_attendees ba WHERE ba.customer_id=cu.id AND ba.attendance_status='ATTENDED'
+        ${attendeeClassUnion}
       )) attended_classes,
       MAX(
         COALESCE((SELECT MAX(a.checked_in_at) FROM attendance a JOIN bookings b ON b.id=a.booking_id WHERE b.customer_id=cu.id OR (b.customer_id IS NULL AND lower(b.customer_email)=lower(cu.email))),''),
-        COALESCE((SELECT MAX(ba.checked_in_at) FROM booking_attendees ba WHERE ba.customer_id=cu.id AND ba.attendance_status='ATTENDED'),'')
+        ${attendeeLast}
       ) last_attendance,
       CASE WHEN EXISTS(SELECT 1 FROM member_passes mp WHERE mp.customer_id=cu.id AND mp.status='ACTIVE' AND mp.valid_through>=date('now') AND COALESCE((SELECT SUM(l.amount) FROM class_pass_credit_ledger l WHERE l.pass_id=mp.id),0)>0) THEN 1 ELSE 0 END has_active_class_pass,
       COALESCE((SELECT SUM(l.stamp_delta) FROM loyalty_stamp_ledger l WHERE lower(l.customer_email)=lower(cu.email)),0)
@@ -6219,6 +6256,13 @@ async function adminCustomers(request, env) {
 
   const customer = await env.BOOKINGS_DB.prepare(customerMetricsSql + ` WHERE lower(cu.email)=?`).bind(email).first();
   if (!customer) return json({error:'Customer not found.'},404);
+  const personAttendanceStatement=hasAttendeeSchema
+    ?env.BOOKINGS_DB.prepare(`SELECT * FROM (
+      SELECT a.id,a.booking_id,a.checked_in_at,a.recorded_at,a.checked_in_by,b.reference,c.title class_title,c.starts_at,c.venue FROM attendance a JOIN bookings b ON b.id=a.booking_id LEFT JOIN classes c ON c.id=b.class_id WHERE lower(b.customer_email)=?
+      UNION ALL
+      SELECT ba.id,ba.booking_id,ba.checked_in_at,ba.checked_in_at recorded_at,ba.checked_in_by,b.reference,c.title class_title,c.starts_at,c.venue FROM booking_attendees ba LEFT JOIN bookings b ON b.id=ba.booking_id LEFT JOIN classes c ON c.id=ba.class_id WHERE ba.customer_id=? AND ba.attendance_status='ATTENDED'
+    ) ORDER BY checked_in_at DESC,id DESC LIMIT 100`).bind(email,customer.customer_id)
+    :env.BOOKINGS_DB.prepare(`SELECT a.id,a.booking_id,a.checked_in_at,a.recorded_at,a.checked_in_by,b.reference,c.title class_title,c.starts_at,c.venue FROM attendance a JOIN bookings b ON b.id=a.booking_id LEFT JOIN classes c ON c.id=b.class_id WHERE lower(b.customer_email)=? ORDER BY a.checked_in_at DESC,a.id DESC LIMIT 100`).bind(email);
   const [bookings, waiting, notes, tags, profile, notifications, campaigns, attendanceHistory, loyaltyHistory, lifecycleHistory] = await Promise.all([
     env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.customer_id,b.customer_name,b.customer_email,b.status,b.quantity,b.amount_pence,b.refund_status,b.refund_amount_pence,b.ticket_type,b.ticket_entry_time,b.ticket_product_code,b.ticket_product_label,b.ticket_unit_price_pence,b.ticket_starts_at,b.ticket_ends_at,b.ticket_entry_at,b.created_at,b.paid_at,c.title class_title,c.starts_at,c.venue,EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) attended,(SELECT a.id FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_id,(SELECT a.checked_in_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) checked_in_at,(SELECT a.recorded_at FROM attendance a WHERE a.booking_id=b.id LIMIT 1) attendance_recorded_at,(SELECT COUNT(*) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_transaction_count,(SELECT GROUP_CONCAT(DISTINCT t.source_type) FROM loyalty_transactions t WHERE t.booking_id=b.id) loyalty_sources FROM bookings b LEFT JOIN classes c ON c.id=b.class_id WHERE b.customer_id=? OR (b.customer_id IS NULL AND lower(trim(b.customer_email))=?) ORDER BY b.created_at DESC LIMIT 100`).bind(customer.customer_id,email).all(),
     env.BOOKINGS_DB.prepare(`SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w LEFT JOIN classes c ON c.id=w.class_id WHERE lower(w.customer_email)=? ORDER BY w.created_at DESC LIMIT 50`).bind(email).all(),
@@ -6227,11 +6271,7 @@ async function adminCustomers(request, env) {
     env.BOOKINGS_DB.prepare(`SELECT * FROM customer_crm_profiles WHERE customer_key=?`).bind(email).first(),
     env.BOOKINGS_DB.prepare(`SELECT event_type,channel,status,created_at,sent_at,error_message FROM notification_log WHERE lower(recipient)=? ORDER BY created_at DESC LIMIT 50`).bind(email).all(),
     env.BOOKINGS_DB.prepare(`SELECT ec.subject,ec.status,ec.sent_at,ec.created_at,ecr.status recipient_status FROM email_campaign_recipients ecr JOIN email_campaigns ec ON ec.id=ecr.campaign_id WHERE lower(ecr.email)=? ORDER BY ec.created_at DESC LIMIT 50`).bind(email).all(),
-    env.BOOKINGS_DB.prepare(`SELECT * FROM (
-      SELECT a.id,a.booking_id,a.checked_in_at,a.recorded_at,a.checked_in_by,b.reference,c.title class_title,c.starts_at,c.venue FROM attendance a JOIN bookings b ON b.id=a.booking_id LEFT JOIN classes c ON c.id=b.class_id WHERE lower(b.customer_email)=?
-      UNION ALL
-      SELECT ba.id,ba.booking_id,ba.checked_in_at,ba.checked_in_at recorded_at,ba.checked_in_by,b.reference,c.title class_title,c.starts_at,c.venue FROM booking_attendees ba LEFT JOIN bookings b ON b.id=ba.booking_id LEFT JOIN classes c ON c.id=ba.class_id WHERE ba.customer_id=? AND ba.attendance_status='ATTENDED'
-    ) ORDER BY checked_in_at DESC,id DESC LIMIT 100`).bind(email,customer.customer_id).all(),
+    personAttendanceStatement.all(),
     env.BOOKINGS_DB.prepare(`SELECT id,booking_id,stamp_delta amount,reason,'LEGACY' source_type,event_key source_id,NULL created_by,created_at FROM loyalty_stamp_ledger WHERE lower(customer_email)=lower(?) UNION ALL SELECT id,booking_id,amount,reason,source_type,source_id,created_by,created_at FROM loyalty_transactions WHERE customer_id=? OR (customer_id IS NULL AND lower(customer_email)=lower(?)) ORDER BY created_at DESC LIMIT 200`).bind(email,customer.customer_id,email).all(),
     env.BOOKINGS_DB.prepare(`SELECT action,reason,actor,created_at FROM admin_lifecycle_audit WHERE customer_id=? ORDER BY created_at DESC LIMIT 50`).bind(customer.customer_id).all()
   ]);
@@ -6346,11 +6386,13 @@ async function adminBookings(request, env, ctx) {
   const id=clean(body.id,120),action=clean(body.action,40);
 
   if(action==='REGISTER_ATTENDEE_CHECK_IN'){
+    if(!await attendeeSchemaAvailable(env))return json({error:'Person-level attendance is not available until its database migration is complete.'},503);
     const operationId=clean(body.operation_id,120);if(!id||!operationId)return json({error:'Attendee and operation reference are required.'},400);
     const result=await checkInBookingAttendee(env,{attendeeId:id,actor:check.state.email,operationId});
     return result.error?json({error:result.error},result.status||409):json(result);
   }
   if(action==='ADD_COMPLIMENTARY_ATTENDANCE'){
+    if(!await attendeeSchemaAvailable(env))return json({error:'Person-level attendance is not available until its database migration is complete.'},503);
     const classId=clean(body.class_id,120),email=normalizedCustomerEmail(body.customer_email),reason=clean(body.reason,500),operationId=clean(body.operation_id,120);
     if(!classId||!emailOk(email)||!reason||!operationId)return json({error:'Class, exact customer email, reason and operation reference are required.'},400);
     const prior=await env.BOOKINGS_DB.prepare(`SELECT class_id,customer_id,reason,next_json FROM booking_attendee_audit WHERE operation_id=?`).bind(operationId).first();
@@ -6510,6 +6552,7 @@ async function adminBookings(request, env, ctx) {
   }else if(action==='ISSUE_CREDIT'){
     await env.BOOKINGS_DB.prepare(`UPDATE bookings SET refund_status='CLASS_CREDIT_ISSUED',admin_notes=? WHERE id=?`).bind(clean(body.admin_notes,600),id).run();
   }else if(action==='CHECK_IN'){
+    if(await bookingUsesPersonAttendance(env,id))return json({error:'This booking uses person-level attendance. Check in each person from the class register.',code:'PERSON_ATTENDANCE_REQUIRED'},409);
     const attendanceResult=await recordAttendance(env,{bookingId:id,checkedInBy:check.state.email});
     if(attendanceResult.created){
       const checked=await bookingWithClass(env,id); if(checked){const count=await uniqueAttendanceCountForEmail(env,checked.customer_email); if(count>0&&count%9===0){const reward=await issuePersonalPromotion(env,{email:checked.customer_email,name:checked.customer_name,type:'LOYALTY',days:90}); if(reward)await sendTransactionalEmail(env,checked.customer_email,'You earned a free Boot Scootin’ class',brandedEmailHtml({
@@ -6522,12 +6565,14 @@ async function adminBookings(request, env, ctx) {
       .bind(check.state.email,action,'booking',id,JSON.stringify({...body,created:attendanceResult.created})).run();
     return json({ok:true,checked_in:true,already_checked_in:!attendanceResult.created});
   }else if(action==='REGISTER_CHECK_IN'){
+    if(await bookingUsesPersonAttendance(env,id))return json({error:'This booking uses person-level attendance. Check in each person from the class register.',code:'PERSON_ATTENDANCE_REQUIRED'},409);
     const attendanceResult=await recordAttendance(env,{bookingId:id,checkedInBy:check.state.email});
     const loyaltyResult=await attendanceLoyaltyCredit(env,{booking,attendance:attendanceResult.attendance,createdBy:check.state.email});
     await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
       .bind(check.state.email,action,'booking',id,JSON.stringify({created:attendanceResult.created,loyalty_credited:loyaltyResult.credited,reconciliation:loyaltyResult.reconciled_to})).run();
     return json({ok:true,checked_in:true,already_checked_in:!attendanceResult.created,attendance:attendanceResult.attendance,loyalty:loyaltyResult});
   }else if(action==='UNDO_CHECK_IN'){
+    if(await bookingUsesPersonAttendance(env,id))return json({error:'This booking uses person-level attendance. Use person-level attendance corrections.',code:'PERSON_ATTENDANCE_REQUIRED'},409);
     const reason=clean(body.reason||'',500);
     if(!reason)return json({error:'An audit reason is required to undo attendance.'},400);
     const result=await undoAttendance(env,{booking,reason,createdBy:check.state.email,auditAction:'CLASS_REGISTER_ATTENDANCE_UNDONE'});
