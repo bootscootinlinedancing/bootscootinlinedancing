@@ -35,6 +35,72 @@
   }, {once:true});
 })();
 
+// Homepage promotions and optional mailing-list invitation.
+(() => {
+  const promoLinks = [...document.querySelectorAll('[data-promo-track] > a')];
+  if (promoLinks.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let promoIndex = 0;
+    window.setInterval(() => {
+      promoLinks[promoIndex].classList.remove('is-active');
+      promoIndex = (promoIndex + 1) % promoLinks.length;
+      promoLinks[promoIndex].classList.add('is-active');
+    }, 6500);
+  }
+
+  const popup = document.getElementById('mailingPopup');
+  const form = document.getElementById('mailingPopupForm');
+  if (!popup || !form) return;
+  const storageKey = 'bootScootinMailingPopupDismissedAt';
+  const dismissalDays = 14;
+  let previousFocus = null;
+  const recentlyDismissed = () => {
+    try {
+      const dismissedAt = Number(localStorage.getItem(storageKey) || 0);
+      return dismissedAt > Date.now() - dismissalDays * 86400000;
+    } catch (_) { return false; }
+  };
+  const closePopup = (remember = true) => {
+    popup.hidden = true;
+    document.body.classList.remove('mailing-popup-open');
+    if (remember) try { localStorage.setItem(storageKey, String(Date.now())); } catch (_) {}
+    previousFocus?.focus?.();
+  };
+  const openPopup = () => {
+    if (recentlyDismissed() || !popup.hidden) return;
+    previousFocus = document.activeElement;
+    popup.hidden = false;
+    document.body.classList.add('mailing-popup-open');
+    popup.querySelector('.mailing-popup-close')?.focus();
+  };
+  popup.querySelectorAll('[data-mailing-popup-close]').forEach(control => control.addEventListener('click', () => closePopup()));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !popup.hidden) closePopup();
+  });
+  window.setTimeout(openPopup, 9000);
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = form.querySelector('button[type="submit"]');
+    const status = document.getElementById('mailingPopupStatus');
+    const data = new FormData(form);
+    const payload = {name:String(data.get('name') || '').trim(),email:String(data.get('email') || '').trim(),consent:data.get('consent') === 'on'};
+    button.disabled = true;
+    if (status) status.textContent = 'Joining…';
+    try {
+      const response = await fetch('/api/mailing-list/subscribe', {method:'POST',headers:{'content-type':'application/json',Accept:'application/json'},body:JSON.stringify(payload)});
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Could not join the mailing list.');
+      if (status) status.textContent = result.promotion_code
+        ? `Welcome! Your personal 10% code is ${result.promotion_code}. Keep it safe for your first regular class booking.`
+        : (result.message || 'You’re on the list — welcome!');
+      form.reset();
+      try { localStorage.setItem(storageKey, String(Date.now())); } catch (_) {}
+    } catch (error) {
+      if (status) status.textContent = error.message || 'Something went wrong. Please try again.';
+    } finally { button.disabled = false; }
+  });
+})();
+
 // Keep public headers on the approved logo plus the established horizontal
 // wordmark. Footers retain the approved primary logo without duplicating the
 // header lockup.
@@ -456,7 +522,9 @@ installGuide?.addEventListener("click", event => {
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || 'Could not join the mailing list.');
-        if (status) status.textContent = result.message || 'You’re on the list — welcome to the Boot Scootin’ Round-Up!';
+        if (status) status.textContent = result.promotion_code
+          ? `You’re on the list! Your personal 10% code is ${result.promotion_code}.`
+          : (result.message || 'You’re on the list — welcome to the Boot Scootin’ Round-Up!');
         form.reset();
       } catch (error) {
         if (status) status.textContent = error.message || 'Something went wrong. Please try again.';

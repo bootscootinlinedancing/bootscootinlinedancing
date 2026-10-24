@@ -2716,20 +2716,36 @@ function promoDiscountPence(promo, subtotal){
   if(promo?.discount_type==='FIXED') return Math.min(total,value);
   return 0;
 }
-async function validatePromotion(env,{code,email,classId,subtotal}){
+async function validatePromotion(env,{code,email,classId,subtotal,anniversary=false}){
   const normalized=normalisePromoCode(code); if(!normalized)return {valid:false,error:'Enter a promo code.'};
+  await env.BOOKINGS_DB.prepare(`UPDATE promotion_codes SET active=1 WHERE code=? AND issued_reason='WELCOME' AND active=0 AND NOT EXISTS(SELECT 1 FROM promotion_redemptions WHERE promotion_code_id=promotion_codes.id) AND NOT EXISTS(SELECT 1 FROM bookings WHERE lower(customer_email)=lower(promotion_codes.customer_email) AND status='PAID') AND NOT EXISTS(SELECT 1 FROM bookings b JOIN booking_holds h ON h.id=b.hold_id WHERE b.promo_code=promotion_codes.code AND b.status='PENDING' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).bind(normalized).run();
   const row=await env.BOOKINGS_DB.prepare(`SELECT pc.*,p.name promotion_name,p.discount_type,p.discount_value,p.starts_at,p.ends_at,p.max_uses promotion_max_uses,p.uses_per_customer,p.applicable_class_id,p.personal_only,p.active promotion_active FROM promotion_codes pc JOIN promotions p ON p.id=pc.promotion_id WHERE pc.code=?`).bind(normalized).first();
-  if(!row||!row.active||!row.promotion_active)return {valid:false,error:'This promo code is not valid.'};
+  if(!row||!row.promotion_active)return {valid:false,error:'This promo code is not valid.'};
+  if(anniversary&&row.issued_reason==='WELCOME')return {valid:false,error:'Welcome discounts are for regular class bookings only.'};
   const now=Date.now(); if(row.starts_at&&new Date(row.starts_at).getTime()>now)return {valid:false,error:'This promo code is not active yet.'};
   if((row.ends_at&&new Date(row.ends_at).getTime()<now)||(row.expires_at&&new Date(row.expires_at).getTime()<now))return {valid:false,error:'This promo code has expired.'};
   if(row.applicable_class_id&&row.applicable_class_id!==classId)return {valid:false,error:'This promo code does not apply to this class.'};
   if(row.customer_email&&String(row.customer_email).toLowerCase()!==String(email||'').toLowerCase())return {valid:false,error:'This personal promo code belongs to another customer.'};
+  if(row.issued_reason==='WELCOME'){
+    const priorPaid=await env.BOOKINGS_DB.prepare(`SELECT id FROM bookings WHERE lower(customer_email)=lower(?) AND status='PAID' LIMIT 1`).bind(email||'').first();
+    if(priorPaid)return {valid:false,error:'This welcome discount is only valid on your first booking.'};
+  }
+  if(!row.active)return {valid:false,error:'This promo code is not valid.'};
   const codeUses=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM promotion_redemptions WHERE promotion_code_id=?`).bind(row.id).first();
   if(Number(codeUses?.n||0)>=Number(row.max_uses||1))return {valid:false,error:'This promo code has already been used.'};
   const customerUses=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) n FROM promotion_redemptions WHERE promotion_code_id=? AND lower(customer_email)=lower(?)`).bind(row.id,email||'').first();
   if(Number(customerUses?.n||0)>=Number(row.uses_per_customer||1))return {valid:false,error:'You have already used this promo code.'};
   const discount=promoDiscountPence(row,subtotal); if(discount<=0)return {valid:false,error:'This promo code does not reduce this booking.'};
-  return {valid:true,code:normalized,promotion_code_id:row.id,promotion_name:row.promotion_name,discount_pence:discount,total_pence:Math.max(0,subtotal-discount),discount_type:row.discount_type,discount_value:row.discount_value};
+  return {valid:true,code:normalized,promotion_code_id:row.id,promotion_name:row.promotion_name,discount_pence:discount,total_pence:Math.max(0,subtotal-discount),discount_type:row.discount_type,discount_value:row.discount_value,issued_reason:row.issued_reason||null};
+}
+async function claimWelcomePromotion(env,promotion){
+  if(promotion?.issued_reason!=='WELCOME')return true;
+  const claimed=await env.BOOKINGS_DB.prepare(`UPDATE promotion_codes SET active=0 WHERE id=? AND issued_reason='WELCOME' AND active=1 AND NOT EXISTS(SELECT 1 FROM promotion_redemptions WHERE promotion_code_id=promotion_codes.id) AND NOT EXISTS(SELECT 1 FROM bookings WHERE lower(customer_email)=lower(promotion_codes.customer_email) AND status='PAID')`).bind(promotion.promotion_code_id).run();
+  return Number(claimed?.meta?.changes||0)===1;
+}
+async function releaseWelcomePromotion(env,promotionCodeId){
+  if(!promotionCodeId)return;
+  await env.BOOKINGS_DB.prepare(`UPDATE promotion_codes SET active=1 WHERE id=? AND issued_reason='WELCOME' AND active=0 AND NOT EXISTS(SELECT 1 FROM promotion_redemptions WHERE promotion_code_id=promotion_codes.id) AND NOT EXISTS(SELECT 1 FROM bookings WHERE lower(customer_email)=lower(promotion_codes.customer_email) AND status='PAID') AND NOT EXISTS(SELECT 1 FROM bookings b JOIN booking_holds h ON h.id=b.hold_id WHERE b.promo_code=promotion_codes.code AND b.status='PENDING' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).bind(promotionCodeId).run();
 }
 async function issuePersonalPromotion(env,{email,name,type='BIRTHDAY',percent=20,days=30}){
   const normalizedEmail=String(email||'').toLowerCase(); if(!emailOk(normalizedEmail))return null;
@@ -2745,6 +2761,19 @@ async function issuePersonalPromotion(env,{email,name,type='BIRTHDAY',percent=20
   await env.BOOKINGS_DB.prepare(`INSERT INTO promotion_codes(id,promotion_id,code,customer_email,issued_reason,expires_at,max_uses,active) VALUES(?,?,?,?,?,?,1,1)`).bind(id,promotionId,code,normalizedEmail,type,expires).run();
   return {id,code,expires_at:expires};
 }
+async function issueWelcomePromotion(env,email){
+  const normalizedEmail=String(email||'').trim().toLowerCase();
+  if(!emailOk(normalizedEmail))return null;
+  const existingPaidBooking=await env.BOOKINGS_DB.prepare(`SELECT id FROM bookings WHERE lower(customer_email)=lower(?) AND status='PAID' LIMIT 1`).bind(normalizedEmail).first();
+  if(existingPaidBooking)return null;
+  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`WELCOME:${normalizedEmail}`)));
+  const fingerprint=[...digest].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+  const id=`welcome-${fingerprint.slice(0,24)}`;
+  const code=`WELCOME-${fingerprint.slice(0,8).toUpperCase()}`;
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotions(id,name,code_prefix,discount_type,discount_value,uses_per_customer,personal_only,active) VALUES('auto-welcome-10','Mailing-list welcome 10%','WELCOME','PERCENT',10,1,1,1)`).run();
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotion_codes(id,promotion_id,code,customer_email,issued_reason,max_uses,active) VALUES(?,'auto-welcome-10',?,?, 'WELCOME',1,1)`).bind(id,code,normalizedEmail).run();
+  return env.BOOKINGS_DB.prepare(`SELECT id,code,expires_at FROM promotion_codes WHERE id=? AND lower(customer_email)=lower(?) AND issued_reason='WELCOME'`).bind(id,normalizedEmail).first();
+}
 async function publicPromoValidate(request,env){
   await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
   const classRow=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
@@ -2754,7 +2783,7 @@ async function publicPromoValidate(request,env){
   if(resolved.error)return json({error:resolved.error},resolved.status);
   const unitPrice=anniversaryClass&&anniversary.current_release?Number(anniversary.current_release.price_pence):Number(resolved.product.price_pence);
   const quantity=Math.max(1,Math.min(4,Number(body.quantity)||1)); const subtotal=unitPrice*quantity;
-  const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId,subtotal});
+  const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId,subtotal,anniversary:anniversaryClass});
   return result.valid?json({ok:true,...result,subtotal_pence:subtotal}):json({error:result.error},400);
 }
 
@@ -2864,7 +2893,7 @@ async function createClassReservation(request, env) {
   const originalAmount = unitPrice * quantity;
   let promotion = null;
   if(requestedPromoCode){
-    promotion = await validatePromotion(env,{code:requestedPromoCode,email,classId,subtotal:originalAmount});
+    promotion = await validatePromotion(env,{code:requestedPromoCode,email,classId,subtotal:originalAmount,anniversary:anniversaryClass});
     if(!promotion.valid)return json({error:promotion.error},400);
   }
   const discountPence = promotion?.discount_pence || 0;
@@ -2910,11 +2939,14 @@ async function createClassReservation(request, env) {
     },201);
   }
 
+  const welcomePromotionRequiresClaim=promotion?.issued_reason==='WELCOME';
+  let welcomePromotionClaimed=false;
+
   // Try the upgraded schema first. If the customer_token column has not yet
   // propagated, use the compatible schema and continue safely.
   try {
     await env.BOOKINGS_DB.prepare(
-      `INSERT INTO bookings(
+        `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,customer_token,
         terms_accepted_at,marketing_consent,retention_delete_after,anniversary_release_id,ticket_type,ticket_entry_time,
@@ -2934,19 +2966,35 @@ async function createClassReservation(request, env) {
       await env.BOOKINGS_DB.prepare(`DELETE FROM booking_holds WHERE id=? AND NOT EXISTS(SELECT 1 FROM bookings WHERE hold_id=?)`).bind(holdId,holdId).run().catch(()=>{});
       return json({error:'Your booking could not be completed. No payment has been taken. Please try again or contact Boot Scootin’.',code:'ANNIVERSARY_BOOKING_FAILED'},500);
     }
-    await env.BOOKINGS_DB.prepare(
+    try{
+      await env.BOOKINGS_DB.prepare(
       `INSERT INTO bookings(
         id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,
         quantity,amount_pence,original_amount_pence,discount_pence,promo_code,status,payment_provider,secure_token,
         terms_accepted_at,marketing_consent,retention_delete_after,ticket_type,ticket_entry_time,
         ticket_product_code,ticket_product_label,ticket_unit_price_pence,ticket_starts_at,ticket_ends_at,ticket_entry_at
       ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING',?,?,CURRENT_TIMESTAMP,?,datetime('now','+24 months'),?,?,?,?,?,?,?,?)`
-    ).bind(
-      id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
-      paymentReady ? 'SUMUP' : 'MANUAL', secureToken,
-      Number(Boolean(body.marketing_consent)),['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,
-      ticketType,product.label,unitPrice,product.starts_at||null,product.ends_at||null,product.entry_at||null
-    ).run();
+      ).bind(
+        id, reference, classId, holdId, customer.id, name, email, phone, quantity, amount, originalAmount, discountPence, promotion?.code || null,
+        paymentReady ? 'SUMUP' : 'MANUAL', secureToken,
+        Number(Boolean(body.marketing_consent)),['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,
+        ticketType,product.label,unitPrice,product.starts_at||null,product.ends_at||null,product.entry_at||null
+      ).run();
+    }catch(fallbackError){
+      await env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId).run().catch(()=>{});
+      throw fallbackError;
+    }
+  }
+
+  if(welcomePromotionRequiresClaim){
+    welcomePromotionClaimed=await claimWelcomePromotion(env,promotion);
+    if(!welcomePromotionClaimed){
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
+        env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId)
+      ]).catch(()=>{});
+      return json({error:'This welcome discount is already in use or has been redeemed. Please retry after any unfinished payment has expired.'},409);
+    }
   }
 
   try{
@@ -2956,6 +3004,7 @@ async function createClassReservation(request, env) {
       env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
       env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId)
     ]).catch(()=>{});
+    if(welcomePromotionClaimed)await releaseWelcomePromotion(env,promotion.promotion_code_id);
     return json({error:'Your booking could not be completed. No payment has been taken. Please try again.',code:'ATTENDEE_SETUP_FAILED'},500);
   }
 
@@ -3037,6 +3086,7 @@ async function createClassReservation(request, env) {
           `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`
         ).bind(email, 'SUMUP_CHECKOUT_FAILED', 'booking', id, JSON.stringify({ status: sumup.status, providerMessage }))
       ]);
+      if(welcomePromotionClaimed)await releaseWelcomePromotion(env,promotion.promotion_code_id);
       return json({
         error: 'SumUp could not open the secure payment page. No payment or booking has been taken. Please try again.',
         reference
@@ -3046,6 +3096,7 @@ async function createClassReservation(request, env) {
         env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId),
         env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id)
       ]);
+      if(welcomePromotionClaimed)await releaseWelcomePromotion(env,promotion.promotion_code_id);
       return json({
         error: 'The secure payment service is temporarily unavailable. No payment or booking has been taken. Please try again.',
         reference
@@ -3148,6 +3199,10 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
           checkout_status: checkoutStatus
         }))
       ]);
+      if(booking.promo_code){
+        const failedPromo=await env.BOOKINGS_DB.prepare(`SELECT id,issued_reason FROM promotion_codes WHERE code=?`).bind(booking.promo_code).first();
+        if(failedPromo?.issued_reason==='WELCOME')await releaseWelcomePromotion(env,failedPromo.id);
+      }
     }
     booking.status = checkoutStatus;
   }
@@ -5566,10 +5621,11 @@ async function sendMarketingAutomation(env,{key,type,email,name,subject,text,sen
     return result;
   }catch(error){await recordAutomation(env,key,type,email,meta,null,error);throw error;}
 }
-async function sendMailingWelcome(env,email,name){
+async function sendMailingWelcome(env,email,name,promotionCode=''){
   if(!(await automationEnabled(env,'welcome'))) return {skipped:true};
   const key=`WELCOME:${String(email).toLowerCase()}`;
-  return sendMarketingAutomation(env,{key,type:'WELCOME',email,name,subject:'Welcome to the Boot Scootin’ mailing list',text:`Hi {{first_name}},\n\nWelcome to the Boot Scootin’ mailing list. You’ll receive class dates, reminders, special events and the latest Boot Scootin’ news.\n\nView upcoming classes: ${SITE_ORIGIN}/bookings.html\n\nNora\nBoot Scootin’ Line Dancing`});
+  const offer=promotionCode?`\n\nYour personal 10% welcome code is ${promotionCode}. It can be used once on your first eligible regular class booking.`:'';
+  return sendMarketingAutomation(env,{key,type:'WELCOME',email,name,subject:'Welcome to the Boot Scootin’ mailing list',text:`Hi {{first_name}},\n\nWelcome to the Boot Scootin’ mailing list. You’ll receive class dates, reminders, special events and the latest Boot Scootin’ news.${offer}\n\nView upcoming classes: ${SITE_ORIGIN}/bookings.html\n\nNora\nBoot Scootin’ Line Dancing`});
 }
 function londonPartsNow(date=new Date()){
   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hour12:false}).formatToParts(date);
@@ -5855,6 +5911,7 @@ async function adminEmailCentreInner(request,env,ctx){
 
 async function subscribeMailingList(request,env){
   await ensureEmailCentreSchema(env);
+  await ensureBookingSchema(env);
   let body;
   try{ body=await request.json(); }catch{ return json({error:'Please enter your details again.'},400); }
 
@@ -5875,9 +5932,10 @@ async function subscribeMailingList(request,env){
       updated_at=CURRENT_TIMESTAMP
   `).bind(email,name).run();
 
-  try{ await sendMailingWelcome(env,email,name); }catch(error){ console.error('MAILING_WELCOME_ERROR',error?.message||error); }
+  const welcomePromotion=await issueWelcomePromotion(env,email);
+  try{ await sendMailingWelcome(env,email,name,welcomePromotion?.code||''); }catch(error){ console.error('MAILING_WELCOME_ERROR',error?.message||error); }
 
-  return json({ok:true,message:'You’re on the list — welcome to the Boot Scootin’ Round-Up!'});
+  return json({ok:true,message:'You’re on the list — welcome to the Boot Scootin’ Round-Up!',promotion_code:welcomePromotion?.code||null});
 }
 
 async function unsubscribeEmail(request,env,url){
