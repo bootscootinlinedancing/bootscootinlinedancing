@@ -10248,11 +10248,22 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-bran
 .loyalty-stamp-row{grid-template-columns:repeat(9,minmax(0,44px));gap:clamp(.2rem,1vw,.45rem)}
 
 @media(max-width:700px){
-  .home-anniversary-feature{width:calc(100% - 24px);grid-template-columns:1fr;gap:16px;padding:16px;margin-block:18px}
-  .home-anniversary-poster img{max-height:min(58vh,390px)}
-  .home-anniversary-copy h2{font-size:clamp(1.9rem,10vw,3rem)}
-  .home-anniversary-actions{display:grid;grid-template-columns:1fr}
+  .home-anniversary-feature{width:calc(100% - 20px);grid-template-columns:1fr;gap:10px;padding:11px;margin-block:14px}
+  .home-anniversary-poster img{max-height:min(66vw,270px);object-fit:contain}
+  .home-anniversary-copy h2{margin:.1rem 0 .35rem;font-size:clamp(1.55rem,7vw,2.15rem);line-height:1.04}
+  .home-anniversary-copy>p{margin:.35rem 0;line-height:1.45}
+  .home-anniversary-availability{padding:.5rem .65rem}
+  .home-anniversary-actions{display:grid;grid-template-columns:1fr;gap:.5rem;margin-top:.7rem}
   .home-anniversary-actions .button{width:100%}
   .member-stamp-row,.loyalty-stamp-row{grid-template-columns:repeat(9,minmax(0,1fr))!important;width:100%;gap:4px!important}
   .member-stamp-row span.loyalty-brand-stamp,.loyalty-stamp-row span.loyalty-brand-stamp{width:100%!important;height:auto!important;min-width:0}
 }
+
+/* Dance Library achievement stays secondary to the choreography details. */
+.library-achievement{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:1rem;align-items:center;margin:1rem 0;padding:.9rem;border:1px solid rgba(220,48,59,.58);background:rgba(92,18,24,.18)}
+.library-achievement h3{margin:.15rem 0 .35rem;color:#fff4e8;font-size:1.05rem}
+.library-achievement p{margin:0;color:#d9c5b6;line-height:1.5}
+.library-achievement figure{margin:0;text-align:center}
+.library-achievement img{display:block;width:auto;max-width:100%;height:auto;max-height:132px;margin-inline:auto;object-fit:contain;background:#090506;border:1px solid rgba(242,221,194,.35)}
+.library-achievement figcaption{margin-top:.35rem;color:#ecd7c3;font-size:.72rem;line-height:1.25}
+@media(max-width:520px){.library-achievement{grid-template-columns:1fr}.library-achievement figure{max-width:150px}.library-achievement img{max-height:170px}}

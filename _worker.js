@@ -2003,7 +2003,7 @@ async function sumUpOAuthCallback(request, env, url) {
   const stateValue = clean(url.searchParams.get('state'), 300);
   const code = clean(url.searchParams.get('code'), 2000);
   const oauthError = clean(url.searchParams.get('error_description') || url.searchParams.get('error'), 500);
-  const failureRedirect = message => Response.redirect(`https://bootscootinlinedancing.co.uk/ranch.html?sumup=error&message=${encodeURIComponent(clean(message, 300))}#bookings`, 302);
+  const failureRedirect = message => Response.redirect(`https://bootscootinlinedancing.co.uk/ranch?sumup=error&message=${encodeURIComponent(clean(message, 300))}#bookings`, 302);
   if (oauthError) return failureRedirect(oauthError);
   if (!stateValue || !code) return failureRedirect('SumUp did not return a valid authorisation code.');
   const stateRow = await env.BOOKINGS_DB.prepare(`SELECT * FROM oauth_states WHERE state=? AND provider=? AND expires_at >= CURRENT_TIMESTAMP`)
@@ -2028,7 +2028,7 @@ async function sumUpOAuthCallback(request, env, url) {
     await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
       .bind(stateRow.actor || 'hq', 'SUMUP_OAUTH_CONNECTED', 'integration', 'sumup', JSON.stringify({ merchant_code: merchantCode, scope: tokenData.scope || '', requested_scope: config.scope, payments_granted: paymentsGranted })).run().catch(() => {});
     const result = paymentsGranted ? 'connected' : 'scope-missing';
-    return Response.redirect(`https://bootscootinlinedancing.co.uk/ranch.html?sumup=${result}#bookings`, 302);
+    return Response.redirect(`https://bootscootinlinedancing.co.uk/ranch?sumup=${result}#bookings`, 302);
   } catch (error) {
     return failureRedirect(error.message || 'SumUp could not be connected.');
   }
@@ -2389,8 +2389,8 @@ async function sendAdminClassBookingAlert(env,booking,eventType){
   const amount=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format((Number(booking.amount_pence)||0)/100);
   const subject=`New class booking — ${clean(booking.class_title,100)} — ${clean(booking.customer_name,100)}`;
   const ticket=ticketSnapshotText(booking);
-  const text=`New paid Boot Scootin’ class booking.\n\nCustomer: ${clean(booking.customer_name,120)}\nEmail: ${clean(booking.customer_email,160)}\nPhone: ${clean(booking.customer_phone,40)||'Not supplied'}\nClass: ${clean(booking.class_title,160)}\nTicket: ${ticket}\nDate/time: ${clean(booking.starts_at,80)}\nVenue: ${clean(booking.venue,160)}\nPlaces: ${Number(booking.quantity||1)}\nPaid: ${amount}\nReference: ${clean(booking.reference,80)}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch.html`;
-  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>New paid class booking</h2><p><strong>${clean(booking.customer_name,120)}</strong> booked ${Number(booking.quantity||1)} place${Number(booking.quantity||1)===1?'':'s'}.</p><p><strong>Class:</strong> ${clean(booking.class_title,160)}<br><strong>Ticket:</strong> ${ticket}<br><strong>Date/time:</strong> ${clean(booking.starts_at,80)}<br><strong>Venue:</strong> ${clean(booking.venue,160)}<br><strong>Paid:</strong> ${amount}<br><strong>Reference:</strong> ${clean(booking.reference,80)}</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html" style="display:inline-block;padding:14px 20px;background:#c81924;color:white;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
+  const text=`New paid Boot Scootin’ class booking.\n\nCustomer: ${clean(booking.customer_name,120)}\nEmail: ${clean(booking.customer_email,160)}\nPhone: ${clean(booking.customer_phone,40)||'Not supplied'}\nClass: ${clean(booking.class_title,160)}\nTicket: ${ticket}\nDate/time: ${clean(booking.starts_at,80)}\nVenue: ${clean(booking.venue,160)}\nPlaces: ${Number(booking.quantity||1)}\nPaid: ${amount}\nReference: ${clean(booking.reference,80)}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch`;
+  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1a1111"><h2>New paid class booking</h2><p><strong>${clean(booking.customer_name,120)}</strong> booked ${Number(booking.quantity||1)} place${Number(booking.quantity||1)===1?'':'s'}.</p><p><strong>Class:</strong> ${clean(booking.class_title,160)}<br><strong>Ticket:</strong> ${ticket}<br><strong>Date/time:</strong> ${clean(booking.starts_at,80)}<br><strong>Venue:</strong> ${clean(booking.venue,160)}<br><strong>Paid:</strong> ${amount}<br><strong>Reference:</strong> ${clean(booking.reference,80)}</p><p><a href="https://bootscootinlinedancing.co.uk/ranch" style="display:inline-block;padding:14px 20px;background:#c81924;color:white;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
   try{
     const sent=await sendTransactionalEmail(env,adminEmail,subject,html,text,'bookings');
     if(sent?.skipped){await env.BOOKINGS_DB.prepare(`UPDATE notification_log SET status='SKIPPED',error_message=? WHERE booking_id=? AND event_type='ADMIN_BOOKING_PAID' AND channel='ADMIN_EMAIL'`).bind(clean(sent.reason,240),booking.id).run().catch(()=>{});return sent;}
@@ -3496,7 +3496,7 @@ async function memberRegister(request,env){
     const adminEmail=clean(env.ADMIN_EMAIL || env.MEMBERS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
     if(emailOk(adminEmail)){
       const adminText=`New Boot Scootin’ member registration.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nTrail identity: ${trailIdentity}\n\nAny safely linked customer history and loyalty will remain attached after verification.`;
-      const adminHtml=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New member registration</h2><p><strong>${name}</strong><br>${email}<br>${phone||'No phone supplied'}</p><p>Any safely linked customer history and loyalty remains attached after verification.</p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html">Open HQ</a></p></div>`;
+      const adminHtml=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New member registration</h2><p><strong>${name}</strong><br>${email}<br>${phone||'No phone supplied'}</p><p>Any safely linked customer history and loyalty remains attached after verification.</p><p><a href="https://bootscootinlinedancing.co.uk/ranch">Open HQ</a></p></div>`;
       await sendTransactionalEmail(env,adminEmail,`New member registration — ${name}`,adminHtml,adminText,'members').catch(()=>null);
     }
 
@@ -3879,7 +3879,7 @@ async function privateEventInquiry(request, env) {
   if(emailOk(adminEmail)){
     try{
       const origin=new URL(request.url).origin;
-      const hqUrl=`${origin}/ranch.html`;
+      const hqUrl=`${origin}/ranch`;
       const subject=`New private event inquiry — ${reference}`;
       const timeLabel=[clean(b.start_time,8),clean(b.end_time,8)].filter(Boolean).join('–') || 'Not supplied';
       const textBody=`New private-event inquiry received.\n\nReference: ${reference}\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nEvent: ${type}\nPreferred date: ${preferred}\nTime: ${timeLabel}\nGuests: ${guests}\nVenue: ${clean(b.venue_name,160)||'Not supplied'}\nAddress: ${address}, ${postcode}\n\nOpen Boot Scootin’ HQ to review and quote:\n${hqUrl}`;
@@ -6419,8 +6419,8 @@ async function sendAdminMerchAlert(env,order){
   const already=await env.BOOKINGS_DB.prepare(`SELECT id FROM audit_log WHERE action=? LIMIT 1`).bind(marker).first().catch(()=>null);
   if(already)return;
   const money=`£${(Number(order.amount_pence||0)/100).toFixed(2)}`;
-  const text=`New paid Boot Scootin’ merchandise order.\n\nOrder: ${order.reference}\nCustomer: ${order.customer_name}\nEmail: ${order.customer_email}\nPhone: ${order.customer_phone||'Not supplied'}\nItem: ${order.design}\nFit/size: ${order.fit} / ${order.size}\nQuantity: ${order.quantity}\nFulfilment: ${merchDeliveryLabel(order)}\nTotal: ${money}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch.html`;
-  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New paid merch order</h2><p><strong>${order.reference}</strong><br>${order.customer_name}<br>${order.customer_email}</p><p>${order.design} · ${order.fit} · ${order.size} · Qty ${order.quantity}<br>${merchDeliveryLabel(order)} · <strong>${money}</strong></p><p><a href="https://bootscootinlinedancing.co.uk/ranch.html">Open HQ</a></p></div>`;
+  const text=`New paid Boot Scootin’ merchandise order.\n\nOrder: ${order.reference}\nCustomer: ${order.customer_name}\nEmail: ${order.customer_email}\nPhone: ${order.customer_phone||'Not supplied'}\nItem: ${order.design}\nFit/size: ${order.fit} / ${order.size}\nQuantity: ${order.quantity}\nFulfilment: ${merchDeliveryLabel(order)}\nTotal: ${money}\n\nOpen HQ: https://bootscootinlinedancing.co.uk/ranch`;
+  const html=`<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>New paid merch order</h2><p><strong>${order.reference}</strong><br>${order.customer_name}<br>${order.customer_email}</p><p>${order.design} · ${order.fit} · ${order.size} · Qty ${order.quantity}<br>${merchDeliveryLabel(order)} · <strong>${money}</strong></p><p><a href="https://bootscootinlinedancing.co.uk/ranch">Open HQ</a></p></div>`;
   const sent=await sendTransactionalEmail(env,adminEmail,`New merch order — ${order.reference}`,html,text,'general').catch(()=>null);
   if(sent&&!sent.skipped)await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind('SYSTEM',marker,'merch_order',order.id,JSON.stringify({recipient:adminEmail})).run().catch(()=>{});
 }
@@ -7023,6 +7023,14 @@ export default {
       if (path === '/api/public/media' && request.method === 'GET') return publicMedia(request, env, url);
       if (path.startsWith('/media/')) return serveMedia(request, env, path);
       if (path.startsWith('/api/')) return json({ error: 'This API feature is not connected in the free pilot yet.' }, 404);
+      if (path === '/ranch.html' && request.method === 'GET') {
+        const target=new URL('/ranch',request.url);target.search=url.search;
+        return Response.redirect(target.toString(),302);
+      }
+      if ((path === '/ranch' || path === '/ranch/') && request.method === 'GET') {
+        const assetUrl=new URL('/ranch.html',request.url);
+        return servePublicAssetWithRepairs(new Request(assetUrl,{method:'GET',headers:request.headers}),env);
+      }
       if (path === '/booking-confirmed' && request.method === 'GET') return serveBookingConfirmed(request,env);
       if (path === '/booking-confirmed.html' && request.method === 'GET') return Response.redirect(new URL('/booking-confirmed',request.url).toString(),302);
       return servePublicAssetWithRepairs(request, env);
