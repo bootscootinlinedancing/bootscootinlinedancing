@@ -543,6 +543,40 @@ const CLASS_TICKET_DEFINITIONS=Object.freeze({
   SOCIAL_ONLY:{label:'Social Only',description:'Skip the teaching and join us for requests, favourites and social line dancing.',sumup_description:'Social Only',beginner:0,improver:0,social:1,capacity_units:1}
 });
 
+const SUNDAY_SESSION_PRICES=Object.freeze({adult:600,child_10_17:400,child_5_9:300,under_5:0});
+const SUNDAY_SESSION_BUNDLES=Object.freeze({
+  FAMILY_1A1C:{adults:1,children:1,base:800},FAMILY_1A2C:{adults:1,children:2,base:1000},
+  FAMILY_2A1C:{adults:2,children:1,base:1300},FAMILY_2A2C:{adults:2,children:2,base:1500}
+});
+function sundaySessionSelection(value){
+  const input=value&&typeof value==='object'?value:{};
+  const selection_code=clean(input.selection_code,30).toUpperCase();
+  const integer=(key)=>{const value=Number(input[key]);if(!Number.isInteger(value)||value<0||value>10)throw new Error('Choose valid attendee numbers.');return value;};
+  let adult_count=integer('adult_count'),child_10_17_count=integer('child_10_17_count'),child_5_9_count=integer('child_5_9_count'),under_5_count=integer('under_5_count');
+  let amount=0;
+  if(selection_code==='INDIVIDUAL')amount=adult_count*600+child_10_17_count*400+child_5_9_count*300;
+  else {
+    const bundle=SUNDAY_SESSION_BUNDLES[selection_code];
+    if(!bundle||adult_count!==bundle.adults||child_10_17_count+child_5_9_count!==bundle.children)throw new Error('That family-ticket composition does not match the selected bundle.');
+    amount=bundle.base+child_10_17_count*100;
+  }
+  const total_people=adult_count+child_10_17_count+child_5_9_count+under_5_count;
+  if(total_people<1||total_people>10)throw new Error('Choose between 1 and 10 attendees.');
+  if(adult_count+child_10_17_count+child_5_9_count<1)throw new Error('A booking must include at least one paid attendee.');
+  return {selection_code,adult_count,child_10_17_count,child_5_9_count,under_5_count,total_people,calculated_amount_pence:amount,
+    price_breakdown:{adult_pence:600,child_10_17_pence:400,child_5_9_pence:300,under_5_pence:0,bundle_base_pence:SUNDAY_SESSION_BUNDLES[selection_code]?.base??null,older_child_surcharge_pence:selection_code==='INDIVIDUAL'?0:child_10_17_count*100}};
+}
+function sundaySessionProducts(){return [
+  {code:'INDIVIDUAL',label:'Individual tickets (under 5s free)',price_pence:300,description:'Ages 5–9 £3 · Ages 10–17 £4 · Adults £6 · Under 5s free'},
+  {code:'FAMILY_1A1C',label:'1 adult + 1 child',price_pence:800,description:'£8 with a child aged 5–9; add £1 for age 10–17'},
+  {code:'FAMILY_1A2C',label:'1 adult + 2 children',price_pence:1000,description:'£10 with children aged 5–9; add £1 per child aged 10–17'},
+  {code:'FAMILY_2A1C',label:'2 adults + 1 child',price_pence:1300,description:'£13 with a child aged 5–9; add £1 for age 10–17'},
+  {code:'FAMILY_2A2C',label:'2 adults + 2 children',price_pence:1500,description:'£15 with children aged 5–9; add £1 per child aged 10–17'}
+].map((row,index)=>({...row,enabled:1,class_pass_eligible:false,display_order:(index+1)*10,starts_at:'2026-11-29T15:00:00.000Z',ends_at:'2026-11-29T17:00:00.000Z'}));}
+function sundaySessionDetailInsert(env,bookingId,classId,details){return env.BOOKINGS_DB.prepare(`INSERT INTO sunday_session_booking_details(
+  booking_id,class_id,selection_code,adult_count,child_10_17_count,child_5_9_count,under_5_count,total_people,calculated_amount_pence,price_breakdown_json
+) VALUES(?,?,?,?,?,?,?,?,?,?)`).bind(bookingId,classId,details.selection_code,details.adult_count,details.child_10_17_count,details.child_5_9_count,details.under_5_count,details.total_people,details.calculated_amount_pence,JSON.stringify(details.price_breakdown));}
+
 function ticketDefinition(code){return CLASS_TICKET_DEFINITIONS[String(code||'')]||null;}
 function ticketSnapshotCode(row){return row?.ticket_product_code||row?.ticket_type||'CLASS_SOCIAL';}
 function ticketSnapshotLabel(row){return row?.ticket_product_label||ticketDefinition(ticketSnapshotCode(row))?.label||'Class + Social';}
@@ -566,6 +600,7 @@ function ticketSnapshotText(row){
 
 async function classTicketProducts(env,klass,{includeDisabled=false}={}){
   if(!klass)return [];
+  if(klass.special_booking_format==='SUNDAY_SESSIONS')return sundaySessionProducts();
   if(klass.booking_format==='BEGINNER_IMPROVER'){
     const result=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_ticket_products WHERE class_id=? ${includeDisabled?'':'AND enabled=1'} ORDER BY display_order,product_code`).bind(klass.id).all();
     return (result.results||[]).map(row=>({...ticketDefinition(row.product_code),...row,code:row.product_code,price_pence:Number(row.price_pence),class_pass_eligible:Number(row.class_pass_eligible)===1,class_pass_credit_cost:Number(row.class_pass_credit_cost||1)}));
@@ -1802,7 +1837,7 @@ async function publicClasses(env, includeHistory = false) {
         WHERE b.class_id=c.id
           AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
       ),0) AS sold,
-      c.status,c.level,c.public_notes,c.poster_url,c.booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,COALESCE(pe.eligible,0) AS class_pass_eligible,
+      c.status,c.level,c.public_notes,c.poster_url,c.booking_format,c.special_booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,COALESCE(pe.eligible,0) AS class_pass_eligible,
       MAX(
         0,
         c.capacity
@@ -2777,6 +2812,7 @@ async function issueWelcomePromotion(env,email){
 async function publicPromoValidate(request,env){
   await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
   const classRow=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
+  if(classRow.special_booking_format==='SUNDAY_SESSIONS')return json({error:'Promotion codes cannot be used with Sunday Sessions tickets.'},400);
   const anniversary=await anniversaryInventory(env).catch(()=>null),classId=clean(body.classId,120);
   const anniversaryClass=anniversary?.event?.class_id===classId;
   const resolved=await resolveTicketProduct(env,classRow,body,{anniversary:anniversaryClass,anniversaryRelease:anniversary?.current_release||null});
@@ -2798,8 +2834,7 @@ async function createClassReservation(request, env) {
   const email = clean(body.email, 160).toLowerCase();
   const phone = clean(body.phone, 30);
   const classId = clean(body.classId, 120);
-  const quantity = Math.max(1, Math.min(4, Number(body.quantity) || 1));
-  if(!Number.isInteger(Number(body.quantity))||Number(body.quantity)<1||Number(body.quantity)>4)return json({error:'Choose between 1 and 4 places.'},400);
+  let quantity = Number(body.quantity);
   const requestedWaitlist = clean(body.bookingMode, 20) === 'waitlist';
   const requestedPromoCode = normalisePromoCode(body.promo_code || '');
 
@@ -2822,13 +2857,24 @@ async function createClassReservation(request, env) {
 
   if (!classRow) return json({ error: 'This class is no longer open for booking.' }, 404);
 
+  const sundaySession=classRow.special_booking_format==='SUNDAY_SESSIONS';
+  let sundayDetails=null;
+  if(sundaySession){
+    try{sundayDetails=sundaySessionSelection(body.sunday_session);}
+    catch(error){return json({error:error.message||'Choose a valid Sunday Sessions ticket.'},400);}
+    quantity=sundayDetails.total_people;
+    if(Number(body.quantity)!==quantity)return json({error:'The attendee total must match the booking quantity.'},400);
+  }else if(!Number.isInteger(quantity)||quantity<1||quantity>4)return json({error:'Choose between 1 and 4 places.'},400);
+
   const anniversary = await anniversaryInventory(env).catch(()=>null);
   const anniversaryClass = anniversary?.event?.class_id===classId;
   const anniversaryRelease = anniversaryClass ? anniversary.current_release : null;
   const anniversaryWaitlistRelease=anniversaryClass&&requestedWaitlist&&!anniversaryRelease
     ?[...(anniversary?.releases||[])].reverse().find(release=>Number(release.active)!==0)||null:null;
   if(anniversaryClass&&!anniversaryRelease&&!requestedWaitlist)return json({error:'Anniversary tickets are currently sold out.'},409);
-  const resolved=await resolveTicketProduct(env,classRow,body,{anniversary:anniversaryClass,anniversaryRelease:anniversaryRelease||anniversaryWaitlistRelease});
+  const resolved=sundaySession
+    ?{product:{...ticketDefinition('CLASS_SOCIAL'),code:'CLASS_SOCIAL',label:`Sunday Sessions — ${sundayDetails.selection_code.replaceAll('_',' ')}`,sumup_description:`Sunday Sessions — ${sundayDetails.selection_code.replaceAll('_',' ')}`,price_pence:sundayDetails.calculated_amount_pence/quantity,starts_at:classRow.starts_at,ends_at:classRow.ends_at,class_pass_eligible:false}}
+    :await resolveTicketProduct(env,classRow,body,{anniversary:anniversaryClass,anniversaryRelease:anniversaryRelease||anniversaryWaitlistRelease});
   if(resolved.error)return json({error:resolved.error},resolved.status);
   const product=resolved.product,ticketType=product.code;
 
@@ -2890,8 +2936,9 @@ async function createClassReservation(request, env) {
   }
 
   const unitPrice = anniversaryRelease ? Number(anniversaryRelease.price_pence) : Number(product.price_pence);
-  const originalAmount = unitPrice * quantity;
+  const originalAmount = sundaySession?sundayDetails.calculated_amount_pence:unitPrice * quantity;
   let promotion = null;
+  if(sundaySession&&requestedPromoCode)return json({error:'Promotion codes cannot be used with Sunday Sessions tickets.'},400);
   if(requestedPromoCode){
     promotion = await validatePromotion(env,{code:requestedPromoCode,email,classId,subtotal:originalAmount,anniversary:anniversaryClass});
     if(!promotion.valid)return json({error:promotion.error},400);
@@ -2999,6 +3046,7 @@ async function createClassReservation(request, env) {
 
   try{
     if(attendeeRows.length)await env.BOOKINGS_DB.batch(attendeeRows.map(row=>bookingAttendeeInsert(env,row)));
+    if(sundayDetails&&!paymentReady)await sundaySessionDetailInsert(env,id,classId,sundayDetails).run();
   }catch(error){
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
@@ -3063,9 +3111,9 @@ async function createClassReservation(request, env) {
       } catch (_) {}
 
       if (sumup.ok && checkout.id && checkoutUrl) {
-        await env.BOOKINGS_DB.prepare(
-          `UPDATE bookings SET provider_checkout_id=? WHERE id=?`
-        ).bind(checkout.id, id).run();
+        const checkoutStatements=[env.BOOKINGS_DB.prepare(`UPDATE bookings SET provider_checkout_id=? WHERE id=?`).bind(checkout.id,id)];
+        if(sundayDetails)checkoutStatements.push(sundaySessionDetailInsert(env,id,classId,sundayDetails));
+        await env.BOOKINGS_DB.batch(checkoutStatements);
 
         return json({
           ok: true,
@@ -7188,6 +7236,7 @@ async function serveMedia(request, env, pathname) {
   return new Response(object.body, { headers });
 }
 
+export {sundaySessionSelection,sundaySessionProducts};
 export default {
   async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env)])); },
   async fetch(request, env, ctx) {
