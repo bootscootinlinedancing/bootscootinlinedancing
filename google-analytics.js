@@ -7,6 +7,12 @@
   const measurementId = 'G-24PZCYFPKM';
   const storageKey = 'boot-scootin-analytics-consent';
   let analyticsStarted = false;
+  const consentState = analyticsStorage => ({
+    analytics_storage: analyticsStorage,
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied'
+  });
 
   const readChoice = () => {
     try { return localStorage.getItem(storageKey) || ''; } catch (_) { return ''; }
@@ -21,7 +27,7 @@
     window[`ga-disable-${measurementId}`] = false;
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function gtag(){ window.dataLayer.push(arguments); };
-    window.gtag('consent', 'default', { analytics_storage: 'granted' });
+    window.gtag('consent', 'default', consentState('granted'));
     window.gtag('js', new Date());
     window.gtag('config', measurementId);
     if (!document.querySelector(`script[data-boot-ga4="${measurementId}"]`)) {
@@ -36,7 +42,7 @@
   function stopAnalytics() {
     window[`ga-disable-${measurementId}`] = true;
     if (typeof window.gtag === 'function') {
-      window.gtag('consent', 'update', { analytics_storage: 'denied' });
+      window.gtag('consent', 'update', consentState('denied'));
     }
   }
 
