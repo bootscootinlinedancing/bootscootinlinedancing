@@ -395,6 +395,8 @@
         ?`Secure session verified for ${email||name}.`
         :'Please sign in again or refresh your HQ session.';
     }
+    const signIn=$('[data-hq-access-sign-in]');
+    if(signIn)signIn.hidden=protectedMode;
   }
 
   function lockHQForAccessFailure(){
@@ -417,7 +419,7 @@
     title.textContent=protectedMode?'Protected HQ mode':'Cloudflare Access session not verified';
     detail.textContent=protectedMode
       ?`Signed in${b.admin_email?` as ${b.admin_email}`:''}. Private administration is available.`
-      :'Please sign in again or refresh your HQ session. Private administration remains locked.';
+      :'Use SIGN IN TO HQ to complete Cloudflare Access verification. Private administration remains locked.';
   }
 
   function renderSetup(){
@@ -534,10 +536,10 @@
         const detail=document.getElementById('ranch92ModeDetail');
         const accessFailure=error.status===401||error.status===403;
         if(title)title.textContent=accessFailure?'Cloudflare Access session not verified':'Backend check unavailable';
-        if(detail)detail.textContent=accessFailure?'Please sign in again or refresh your HQ session. Private administration remains locked.':'The live check did not finish. Tap Refresh to try again.';
+        if(detail)detail.textContent=accessFailure?'Use SIGN IN TO HQ to complete Cloudflare Access verification. Private administration remains locked.':'The live check did not finish. Tap Refresh to try again.';
         const attention=document.getElementById('ranch91Attention');
         if(attention)attention.innerHTML=accessFailure
-          ?`<div class="ranch92-state locked"><strong>HQ session not verified</strong><p>No private information has been loaded. Open the protected HQ address again to complete Cloudflare Access sign-in.</p></div>`
+          ?`<div class="ranch92-state locked"><strong>HQ session not verified</strong><p>No private information has been loaded. Use SIGN IN TO HQ above to complete Cloudflare Access sign-in.</p></div>`
           :setupPanel('Backend temporarily unavailable','The page stopped waiting after six seconds. Tap Refresh to retry.');
         if(showToast)toast('Backend refresh timed out.','error');
         throw error;
