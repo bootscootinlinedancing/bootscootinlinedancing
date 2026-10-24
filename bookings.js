@@ -70,6 +70,25 @@
       :waitlist?'Join Waiting List':`Continue to Secure Payment — ${money(ticketUnitPrice(selectedClass)*Number(form.elements.quantity.value||1))}`;
     appliedPromo=null;showPromoTotals(null);document.getElementById('promoMessage').textContent='';
   }
+  function updateGuestFields(){
+    const quantity=Math.max(1,Math.min(4,Number(form.elements.quantity.value)||1));
+    const section=document.getElementById('bookingGuestDetails'),box=document.getElementById('bookingGuestFields');
+    const prior=new Map([...box.querySelectorAll('[data-guest-place]')].map(row=>[Number(row.dataset.guestPlace),{
+      name:row.querySelector('[name$="[name]"]')?.value||'',email:row.querySelector('[name$="[email]"]')?.value||''
+    }]));
+    section.hidden=quantity===1;
+    box.innerHTML=Array.from({length:quantity-1},(_,index)=>{
+      const place=index+2,value=prior.get(place)||{};
+      return `<fieldset data-guest-place="${place}"><legend>Ticket ${place}</legend><label>Guest name <small>(optional)</small><input name="guest_${place}[name]" maxlength="100" autocomplete="off" value="${esc(value.name||'')}"></label><label>Guest email <small>(optional)</small><input name="guest_${place}[email]" maxlength="160" type="email" autocomplete="off" value="${esc(value.email||'')}"></label></fieldset>`;
+    }).join('');
+  }
+  function submittedGuests(){
+    return [...document.querySelectorAll('#bookingGuestFields [data-guest-place]')].map(row=>({
+      place_number:Number(row.dataset.guestPlace),
+      name:row.querySelector('[name$="[name]"]')?.value.trim()||'',
+      email:row.querySelector('[name$="[email]"]')?.value.trim()||''
+    })).filter(guest=>guest.name||guest.email);
+  }
   async function loadClassCreditOption(c){
     const box=document.getElementById('classCreditOption'),button=document.getElementById('classCreditSubmit'),summary=document.getElementById('classCreditSummary');
     box.hidden=true;box.dataset.available='0';summary.textContent='';
@@ -159,6 +178,7 @@
     document.getElementById('bookingDialogKicker').textContent=waitlist?'Join the waiting list':'Book your place';
     document.getElementById('selectedClassName').textContent=c.title;
     form.reset();
+    updateGuestFields();
     document.getElementById('promoMessage').textContent='';document.getElementById('promoTotals').hidden=true;
     document.getElementById('classId').value=c.id;
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
@@ -217,7 +237,7 @@
     finally{button.disabled=false;}
   }
   document.getElementById('applyPromo').addEventListener('click',applyPromo);
-  form.elements.quantity.addEventListener('change',()=>{if(appliedPromo)applyPromo();updateTicketChoice();});
+  form.elements.quantity.addEventListener('change',()=>{updateGuestFields();if(appliedPromo)applyPromo();updateTicketChoice();});
   form.elements.email.addEventListener('change',()=>{if(appliedPromo)applyPromo();});
 
   form.addEventListener('submit',async event=>{
@@ -226,6 +246,7 @@
     const button=document.getElementById('bookingSubmit');
     button.disabled=true;msg.textContent='Securing your place…';
     const data=Object.fromEntries(new FormData(form));
+    data.guests=submittedGuests();
     data.terms_accepted=Boolean(data.terms);
     data.marketing_consent=Boolean(data.marketing_consent);
     try{

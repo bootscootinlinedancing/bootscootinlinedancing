@@ -6534,6 +6534,15 @@ body.ranch-v91 .class-check-in-button{min-height:54px;width:100%;font-size:1.05r
 body.ranch-v91 .checked-in-label{color:#8ee0aa;font-size:1.05rem}
 body.ranch-v91 .class-register-correct{justify-self:center;padding:4px 7px;border:0;background:transparent;color:#d6b3a8;text-decoration:underline;cursor:pointer}
 body.ranch-v91 .class-register-loading{padding:24px;text-align:center}
+.booking-guest-details{margin:16px 0;padding:16px;border:1px solid rgba(163,36,43,.28);background:rgba(255,248,237,.72)}
+.booking-guest-details h3{margin:0 0 6px}.booking-guest-details h3 small{font-size:.72em;font-weight:500}.booking-guest-details>p{margin:0 0 13px;font-size:.9rem}
+.booking-guest-fields{display:grid;gap:10px}.booking-guest-fields fieldset{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0;padding:12px;border:1px solid rgba(80,35,25,.2)}
+.booking-guest-fields legend{padding:0 6px;font-weight:800}.booking-guest-fields label{display:grid;gap:5px}
+body.ranch-v91 .class-register-attendees{display:grid;gap:8px;margin-top:10px}
+body.ranch-v91 .class-register-attendee{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid rgba(255,241,223,.18);background:rgba(0,0,0,.18)}
+body.ranch-v91 .class-register-attendee-copy{display:grid;gap:2px;min-width:0}body.ranch-v91 .class-register-attendee-copy small{overflow-wrap:anywhere}
+body.ranch-v91 .class-register-complimentary{margin:16px 0;padding:14px;border:1px solid rgba(205,54,62,.35);background:rgba(28,11,13,.55)}
+body.ranch-v91 .class-register-complimentary form{display:grid;grid-template-columns:1fr 1fr;gap:10px}body.ranch-v91 .class-register-complimentary .wide{grid-column:1/-1}
 @media(max-width:720px){
   body.ranch-v91 .class-register-panel{margin-inline:-10px;padding:14px}
   body.ranch-v91 .class-register-head{display:grid}
@@ -6541,6 +6550,9 @@ body.ranch-v91 .class-register-loading{padding:24px;text-align:center}
   body.ranch-v91 .class-register-tools .button{flex:1 1 auto}
   body.ranch-v91 .class-register-summary{grid-template-columns:1fr 1fr}
   body.ranch-v91 .class-register-row{grid-template-columns:1fr;gap:12px}
+  .booking-guest-fields fieldset,body.ranch-v91 .class-register-complimentary form{grid-template-columns:1fr}
+  body.ranch-v91 .class-register-complimentary .wide{grid-column:auto}
+  body.ranch-v91 .class-register-attendee{grid-template-columns:1fr}
   body.ranch-v91 .class-register-payment{display:flex;align-items:center;justify-content:space-between;gap:10px}
   body.ranch-v91 .class-check-in-button{min-height:60px;font-size:1.15rem}
 }
