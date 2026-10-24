@@ -2716,10 +2716,11 @@ function promoDiscountPence(promo, subtotal){
   if(promo?.discount_type==='FIXED') return Math.min(total,value);
   return 0;
 }
-async function validatePromotion(env,{code,email,classId,subtotal}){
+async function validatePromotion(env,{code,email,classId,subtotal,anniversary=false}){
   const normalized=normalisePromoCode(code); if(!normalized)return {valid:false,error:'Enter a promo code.'};
   const row=await env.BOOKINGS_DB.prepare(`SELECT pc.*,p.name promotion_name,p.discount_type,p.discount_value,p.starts_at,p.ends_at,p.max_uses promotion_max_uses,p.uses_per_customer,p.applicable_class_id,p.personal_only,p.active promotion_active FROM promotion_codes pc JOIN promotions p ON p.id=pc.promotion_id WHERE pc.code=?`).bind(normalized).first();
   if(!row||!row.active||!row.promotion_active)return {valid:false,error:'This promo code is not valid.'};
+  if(anniversary&&row.issued_reason==='WELCOME')return {valid:false,error:'Welcome discounts are for regular class bookings only.'};
   const now=Date.now(); if(row.starts_at&&new Date(row.starts_at).getTime()>now)return {valid:false,error:'This promo code is not active yet.'};
   if((row.ends_at&&new Date(row.ends_at).getTime()<now)||(row.expires_at&&new Date(row.expires_at).getTime()<now))return {valid:false,error:'This promo code has expired.'};
   if(row.applicable_class_id&&row.applicable_class_id!==classId)return {valid:false,error:'This promo code does not apply to this class.'};
@@ -2745,6 +2746,19 @@ async function issuePersonalPromotion(env,{email,name,type='BIRTHDAY',percent=20
   await env.BOOKINGS_DB.prepare(`INSERT INTO promotion_codes(id,promotion_id,code,customer_email,issued_reason,expires_at,max_uses,active) VALUES(?,?,?,?,?,?,1,1)`).bind(id,promotionId,code,normalizedEmail,type,expires).run();
   return {id,code,expires_at:expires};
 }
+async function issueWelcomePromotion(env,email){
+  const normalizedEmail=String(email||'').trim().toLowerCase();
+  if(!emailOk(normalizedEmail))return null;
+  const existingPaidBooking=await env.BOOKINGS_DB.prepare(`SELECT id FROM bookings WHERE lower(customer_email)=lower(?) AND status='PAID' LIMIT 1`).bind(normalizedEmail).first();
+  if(existingPaidBooking)return null;
+  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(`WELCOME:${normalizedEmail}`)));
+  const fingerprint=[...digest].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+  const id=`welcome-${fingerprint.slice(0,24)}`;
+  const code=`WELCOME-${fingerprint.slice(0,8).toUpperCase()}`;
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotions(id,name,code_prefix,discount_type,discount_value,uses_per_customer,personal_only,active) VALUES('auto-welcome-10','Mailing-list welcome 10%','WELCOME','PERCENT',10,1,1,1)`).run();
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO promotion_codes(id,promotion_id,code,customer_email,issued_reason,max_uses,active) VALUES(?,'auto-welcome-10',?,?, 'WELCOME',1,1)`).bind(id,code,normalizedEmail).run();
+  return env.BOOKINGS_DB.prepare(`SELECT id,code,expires_at FROM promotion_codes WHERE id=? AND lower(customer_email)=lower(?) AND issued_reason='WELCOME'`).bind(id,normalizedEmail).first();
+}
 async function publicPromoValidate(request,env){
   await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
   const classRow=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
@@ -2754,7 +2768,7 @@ async function publicPromoValidate(request,env){
   if(resolved.error)return json({error:resolved.error},resolved.status);
   const unitPrice=anniversaryClass&&anniversary.current_release?Number(anniversary.current_release.price_pence):Number(resolved.product.price_pence);
   const quantity=Math.max(1,Math.min(4,Number(body.quantity)||1)); const subtotal=unitPrice*quantity;
-  const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId,subtotal});
+  const result=await validatePromotion(env,{code:body.code,email:clean(body.email,160).toLowerCase(),classId,subtotal,anniversary:anniversaryClass});
   return result.valid?json({ok:true,...result,subtotal_pence:subtotal}):json({error:result.error},400);
 }
 
@@ -2864,7 +2878,7 @@ async function createClassReservation(request, env) {
   const originalAmount = unitPrice * quantity;
   let promotion = null;
   if(requestedPromoCode){
-    promotion = await validatePromotion(env,{code:requestedPromoCode,email,classId,subtotal:originalAmount});
+    promotion = await validatePromotion(env,{code:requestedPromoCode,email,classId,subtotal:originalAmount,anniversary:anniversaryClass});
     if(!promotion.valid)return json({error:promotion.error},400);
   }
   const discountPence = promotion?.discount_pence || 0;
@@ -5566,10 +5580,11 @@ async function sendMarketingAutomation(env,{key,type,email,name,subject,text,sen
     return result;
   }catch(error){await recordAutomation(env,key,type,email,meta,null,error);throw error;}
 }
-async function sendMailingWelcome(env,email,name){
+async function sendMailingWelcome(env,email,name,promotionCode=''){
   if(!(await automationEnabled(env,'welcome'))) return {skipped:true};
   const key=`WELCOME:${String(email).toLowerCase()}`;
-  return sendMarketingAutomation(env,{key,type:'WELCOME',email,name,subject:'Welcome to the Boot Scootin’ mailing list',text:`Hi {{first_name}},\n\nWelcome to the Boot Scootin’ mailing list. You’ll receive class dates, reminders, special events and the latest Boot Scootin’ news.\n\nView upcoming classes: ${SITE_ORIGIN}/bookings.html\n\nNora\nBoot Scootin’ Line Dancing`});
+  const offer=promotionCode?`\n\nYour personal 10% welcome code is ${promotionCode}. It can be used once on your first eligible regular class booking.`:'';
+  return sendMarketingAutomation(env,{key,type:'WELCOME',email,name,subject:'Welcome to the Boot Scootin’ mailing list',text:`Hi {{first_name}},\n\nWelcome to the Boot Scootin’ mailing list. You’ll receive class dates, reminders, special events and the latest Boot Scootin’ news.${offer}\n\nView upcoming classes: ${SITE_ORIGIN}/bookings.html\n\nNora\nBoot Scootin’ Line Dancing`});
 }
 function londonPartsNow(date=new Date()){
   const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hour12:false}).formatToParts(date);
@@ -5855,6 +5870,7 @@ async function adminEmailCentreInner(request,env,ctx){
 
 async function subscribeMailingList(request,env){
   await ensureEmailCentreSchema(env);
+  await ensureBookingSchema(env);
   let body;
   try{ body=await request.json(); }catch{ return json({error:'Please enter your details again.'},400); }
 
@@ -5875,9 +5891,10 @@ async function subscribeMailingList(request,env){
       updated_at=CURRENT_TIMESTAMP
   `).bind(email,name).run();
 
-  try{ await sendMailingWelcome(env,email,name); }catch(error){ console.error('MAILING_WELCOME_ERROR',error?.message||error); }
+  const welcomePromotion=await issueWelcomePromotion(env,email);
+  try{ await sendMailingWelcome(env,email,name,welcomePromotion?.code||''); }catch(error){ console.error('MAILING_WELCOME_ERROR',error?.message||error); }
 
-  return json({ok:true,message:'You’re on the list — welcome to the Boot Scootin’ Round-Up!'});
+  return json({ok:true,message:'You’re on the list — welcome to the Boot Scootin’ Round-Up!',promotion_code:welcomePromotion?.code||null});
 }
 
 async function unsubscribeEmail(request,env,url){
