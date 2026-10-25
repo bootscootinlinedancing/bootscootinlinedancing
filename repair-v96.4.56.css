@@ -1185,3 +1185,109 @@ body.honky-home:not(.intro-open) .home-story-panel .button{margin-top:.55rem!imp
   body.honky-home:not(.intro-open) .home-story-panel h2,
   body.honky-home:not(.intro-open) #first-class-advice-home h2{font-size:clamp(1.65rem,8vw,2.15rem)!important}
 }
+
+/* v96.4.130 — public typography tokens and restrained honky-tonk finish. */
+:root{
+  --bs-type-display:Rye,Georgia,serif;
+  --bs-type-heading:Oswald,"Arial Narrow",Arial,sans-serif;
+  --bs-type-body:"Trebuchet MS",Arial,sans-serif;
+  --bs-type-script:Caveat,cursive;
+  --bs-public-cream:#f4e7d7;
+  --bs-public-muted:#cfbfb3;
+  --bs-public-charcoal:#090506;
+  --bs-public-panel:rgba(12,6,7,.88);
+  --bs-public-red:#d72b35;
+  --bs-public-line:rgba(163,45,53,.52);
+  --bs-space-section:clamp(44px,6vw,82px);
+}
+
+/* Shared public type hierarchy. Admin/HQ surfaces are intentionally excluded. */
+body.honky-home,
+body.partnerships-page,
+body.public-atmosphere,
+body:has(>header.header){font-family:var(--bs-type-body)}
+body.honky-home :is(h1,h2),
+body.partnerships-page :is(h1,h2),
+body.public-atmosphere :is(h1,h2),
+body:has(>header.header) main :is(h1,h2){font-family:var(--bs-type-display);letter-spacing:0;line-height:1.08}
+body.honky-home :is(h3,h4,.section-label,.kicker),
+body.partnerships-page :is(h3,h4,.kicker),
+body.public-atmosphere :is(h3,h4,.kicker),
+body:has(>header.header) main :is(h3,h4,.kicker){font-family:var(--bs-type-heading);line-height:1.2}
+body.honky-home main :is(p,li),
+body.partnerships-page main :is(p,li),
+body.public-atmosphere main :is(p,li),
+body:has(>header.header) main :is(p,li){line-height:1.62}
+body.honky-home :is(.script,.handwritten),
+body.partnerships-page .script,
+body.public-atmosphere .script,
+body:has(>header.header) .script{font-family:var(--bs-type-script)}
+body.honky-home :is(.button,.paper-link,.honky-book),
+body.partnerships-page .button,
+body.public-atmosphere .button,
+body:has(>header.header) .button{font-family:var(--bs-type-heading);font-weight:700;letter-spacing:.065em}
+
+/* One atmospheric shell: brick at the edges, calm charcoal behind copy. */
+body.partnerships-page,
+body.public-atmosphere,
+body:has(>header.header){
+  background-color:var(--bs-public-charcoal);
+  background-image:linear-gradient(90deg,rgba(4,2,2,.34),rgba(6,3,3,.78) 16%,rgba(7,4,4,.9) 50%,rgba(6,3,3,.78) 84%,rgba(4,2,2,.34)),url('boot-scootin-entrance-brick-floor.webp');
+  background-position:center top,center 38%;
+  background-size:cover,cover;
+  background-attachment:fixed;
+}
+body.honky-home .honky-header,
+body.partnerships-page .honky-header,
+body:has(>header.header)>header.header{
+  background:linear-gradient(180deg,rgba(5,2,3,.96),rgba(13,5,6,.94)),url('broadway-neon-wall.webp') center 24%/cover!important;
+  border-bottom:1px solid rgba(205,43,53,.62)!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.52),inset 0 -1px rgba(255,77,85,.08)!important;
+}
+body.honky-home .honky-header a:focus-visible,
+body.partnerships-page .honky-header a:focus-visible,
+body:has(>header.header)>header.header :is(a,button):focus-visible{outline:2px solid #ff626b;outline-offset:3px}
+body.partnerships-page main,
+body.public-atmosphere main,
+body:has(>header.header) main{background:linear-gradient(180deg,rgba(6,3,3,.42),rgba(8,4,5,.68))}
+body.partnerships-page footer,
+body.public-atmosphere footer,
+body:has(>header.header) footer{
+  background:linear-gradient(180deg,rgba(8,4,4,.84),rgba(3,2,2,.96)),url('boot-scootin-entrance-brick-floor.webp') center bottom/cover no-repeat!important;
+  border-top:1px solid var(--bs-public-line)!important;
+}
+
+/* Natural card heights: square media remains independent from copy height. */
+body.honky-home:not(.intro-open) .home-story-panel-grid{align-items:start!important;grid-auto-rows:auto!important;padding-block:clamp(24px,3.4vw,42px)!important}
+body.honky-home:not(.intro-open) .home-story-panel{align-self:start!important;min-height:0!important;height:auto!important}
+body.honky-home:not(.intro-open) .home-story-panel>div{align-self:start!important;padding:clamp(18px,2vw,26px)!important}
+body.honky-home:not(.intro-open) .home-story-panel h2{font-size:clamp(1.55rem,1.85vw,2.15rem)!important}
+body.honky-home:not(.intro-open) .home-story-panel :is(.paper-link,.button){align-self:start!important}
+
+/* Closing signature, not another hero. */
+body.honky-home:not(.intro-open) .saloon-signoff{
+  min-height:0!important;padding:clamp(30px,4vw,52px) 18px!important;gap:4px!important;
+}
+body.honky-home:not(.intro-open) .saloon-signoff span{font-size:clamp(1.6rem,3.2vw,2.8rem)!important;line-height:1.05!important}
+body.honky-home:not(.intro-open) .saloon-signoff strong{font-size:clamp(1.5rem,3vw,2.7rem)!important;line-height:1!important;letter-spacing:.08em!important}
+
+/* Restrained warm light and timber edge details, never behind body copy. */
+body.honky-home:not(.intro-open) .home-story-panel,
+body.partnerships-page :is(.partnerships-hero,.partnerships-cta){
+  background:linear-gradient(145deg,rgba(20,8,9,.94),rgba(7,4,4,.92))!important;
+  border-color:var(--bs-public-line)!important;
+  box-shadow:0 18px 34px rgba(0,0,0,.38),inset 0 1px rgba(255,236,215,.035)!important;
+}
+body.honky-home:not(.intro-open) .home-story-panel figure{background:#090505!important}
+body.honky-home:not(.intro-open) .home-story-panel figure img{filter:saturate(.94) contrast(1.03)}
+
+@media(max-width:950px){
+  body.partnerships-page,
+  body.public-atmosphere,
+  body:has(>header.header){background-attachment:scroll}
+}
+@media(max-width:760px){
+  body.honky-home:not(.intro-open) .home-story-panel-grid{align-items:stretch!important;padding-block:24px!important}
+  body.honky-home:not(.intro-open) .home-story-panel>div{padding:19px 18px 22px!important}
+  body.honky-home:not(.intro-open) .saloon-signoff{padding-block:30px!important}
+}
