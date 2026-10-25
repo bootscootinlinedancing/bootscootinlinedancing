@@ -34,6 +34,10 @@ assert(ranch.includes('uploadClassPromoPosterIfNeeded')&&ranch.includes("placeme
 assert(homepage.includes('dead-or-dancing-golden-ticket.png')&&homepage.includes('Win 12 free line dancing classes — worth £72!'),'homepage must use the approved campaign artwork and copy');
 assert(script.includes("timeZone:'Europe/London'")&&script.includes("londonDate() <= '2026-10-30'"),'campaign must stop after 30 October in London');
 assert(script.includes("golden-ticket-popup-open"),'mailing and campaign popups must not overlap');
+assert(homepage.includes('id="goldenTicketReopen"')&&homepage.includes('🎟️ WIN 12 FREE CLASSES'),'homepage must expose an accessible campaign reopen control');
+assert(script.includes("openGoldenPopup(true)")&&script.includes("(!manual&&goldenDismissed())"),'manual reopen must bypass, but not reset, automatic-dismissal memory');
+assert(script.includes("goldenReopenWrap.hidden=!goldenCampaignActive()"),'campaign reopen control must be hidden after expiry');
+assert(script.includes("mailingPopup.hidden=true")&&script.includes("mailing-popup-open"),'manual campaign opening must close any visible mailing popup');
 assert(homepage.includes('bookings.html?event=4a5fe2de-52ab-44f5-a0c5-187cd58a13a2'),'campaign links must target the existing event query parameter');
 assert(bookings.includes("new URLSearchParams(location.search).get('event')")&&bookings.includes('openEventDetails(c)'),'event deep links must select and open the matching class');
 assert(css.includes('.booking-arrival-card h2{max-width:12ch')&&css.includes('grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr)'),'arrival heading must remain bounded inside a responsive grid');

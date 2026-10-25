@@ -38,7 +38,10 @@
 // Homepage promotions and optional mailing-list invitation.
 (() => {
   const goldenPopup = document.getElementById('goldenTicketPopup');
+  const goldenReopen = document.getElementById('goldenTicketReopen');
+  const goldenReopenWrap = document.getElementById('goldenTicketReopenWrap');
   const goldenStorageKey = 'bootScootinGoldenTicketHalloween2026Dismissed';
+  let goldenPreviousFocus = null;
   const londonDate = () => {
     const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
     return `${parts.year}-${parts.month}-${parts.day}`;
@@ -50,13 +53,22 @@
     goldenPopup.hidden=true;
     document.body.classList.remove('golden-ticket-popup-open');
     if(remember)try{localStorage.setItem(goldenStorageKey,'1');}catch(_){}
+    goldenPreviousFocus?.focus?.();
   };
-  const openGoldenPopup = () => {
-    if(!goldenPopup||!goldenCampaignActive()||goldenDismissed()||!goldenPopup.hidden)return;
+  const openGoldenPopup = (manual=false) => {
+    if(!goldenPopup||!goldenCampaignActive()||(!manual&&goldenDismissed())||!goldenPopup.hidden)return;
+    const mailingPopup=document.getElementById('mailingPopup');
+    if(mailingPopup&&!mailingPopup.hidden){
+      mailingPopup.hidden=true;
+      document.body.classList.remove('mailing-popup-open');
+    }
+    goldenPreviousFocus=document.activeElement;
     goldenPopup.hidden=false;
     document.body.classList.add('golden-ticket-popup-open');
     goldenPopup.querySelector('.golden-ticket-popup-close')?.focus();
   };
+  if(goldenReopenWrap)goldenReopenWrap.hidden=!goldenCampaignActive();
+  goldenReopen?.addEventListener('click',()=>openGoldenPopup(true));
   goldenPopup?.querySelectorAll('[data-golden-ticket-close]').forEach(control=>control.addEventListener('click',()=>closeGoldenPopup()));
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&goldenPopup&&!goldenPopup.hidden)closeGoldenPopup();});
   if(goldenPopup&&goldenCampaignActive())window.setTimeout(openGoldenPopup,2200);
