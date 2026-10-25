@@ -890,6 +890,56 @@ body.honky-home:not(.intro-open) :is(.desktop-home-start-v32,.cream-home,.home-m
 }
 body.honky-home:not(.intro-open) :is(.home-meet-nora-lower,.home-shop-return,.lower-home,.home-featured-reviews){background-color:rgba(8,4,4,.42)!important}
 
+/* v96.4.126 — compact homepage sign-off and one adaptive navigation system. */
+body.honky-home:not(.intro-open) .saloon-signoff{
+  padding:clamp(24px,3vw,38px) clamp(14px,3vw,28px) clamp(28px,3.4vw,42px)!important;
+  text-align:center!important;
+}
+body.honky-home:not(.intro-open) .saloon-signoff span{
+  font-size:clamp(1.75rem,3.35vw,3.05rem)!important;
+  line-height:1.05!important;
+}
+body.honky-home:not(.intro-open) .saloon-signoff strong{
+  margin-top:clamp(5px,1vw,10px)!important;
+  font-size:clamp(1.95rem,3.5vw,3.25rem)!important;
+  line-height:1.02!important;
+  letter-spacing:clamp(.04em,.45vw,.11em)!important;
+}
+
+/* Explore was a second trigger for the same panel. Wide screens get direct
+   links; narrower screens get one labelled Menu trigger and the same panel. */
+.honky-header .desktop-explore-button{display:none!important}
+html.desktop-mode .honky-header{grid-template-columns:220px minmax(0,1fr) 132px auto!important}
+html.desktop-mode .honky-header .honky-desktop-nav{display:none!important}
+html.desktop-mode .honky-header #menuButton.honky-menu-button{
+  display:inline-flex!important;grid-column:4!important;align-items:center!important;justify-content:center!important;
+}
+html.desktop-mode .honky-header .honky-book{grid-column:3!important}
+
+@media(min-width:1560px){
+  html.desktop-mode .honky-header{grid-template-columns:210px minmax(0,1fr) 124px!important;gap:12px!important;padding-inline:20px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav{
+    display:flex!important;gap:clamp(7px,.68vw,13px)!important;overflow:visible!important;
+  }
+  html.desktop-mode .honky-header .honky-desktop-nav a{
+    font-size:9px!important;letter-spacing:.045em!important;padding-inline:0!important;
+  }
+  html.desktop-mode .honky-header .honky-book{grid-column:3!important;width:124px!important;min-width:124px!important}
+  html.desktop-mode .honky-header #menuButton.honky-menu-button{display:none!important}
+}
+
+@media(max-width:950px){
+  html.desktop-mode .honky-header{grid-template-columns:minmax(0,1fr) auto!important;padding-inline:14px!important}
+  html.desktop-mode .honky-header .honky-book{display:none!important}
+  html.desktop-mode .honky-header #menuButton.honky-menu-button{grid-column:2!important}
+}
+
+@media(max-width:480px){
+  body.honky-home:not(.intro-open) .saloon-signoff{padding:22px 14px 26px!important}
+  body.honky-home:not(.intro-open) .saloon-signoff span{font-size:clamp(1.55rem,8vw,2.15rem)!important}
+  body.honky-home:not(.intro-open) .saloon-signoff strong{font-size:clamp(1.7rem,8.3vw,2.3rem)!important;letter-spacing:.045em!important}
+}
+
 @media(min-width:768px) and (max-width:950px){
   body.honky-home:not(.intro-open)>.desktop-home-start-v32{
     grid-template-columns:minmax(180px,.72fr) minmax(245px,1fr) minmax(285px,1.08fr)!important;gap:16px!important;

@@ -24,7 +24,8 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
       const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
       const navItems = [
         ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],['class-pass.html','Class Pass'],
-        ['private-events.html','Private Events'],['gallery.html','Gallery'],['reviews.html','Reviews'],['ask-nora.html','Contact']
+        ['private-events.html','Private Events'],['gallery.html','Gallery'],['reviews.html','Reviews'],['ask-nora.html','Contact'],
+        ['country-corner.html','Country Corner'],['businesses.html','Businesses We Love'],['partnerships.html','Partnerships & Advertising']
       ];
       const links = navItems.map(([href,label]) => {
         const active = page === href || (href === 'index.html' && (page === '' || page === '/'));
@@ -36,8 +37,9 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
           <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
-        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<button aria-controls="nav" aria-expanded="false" class="desktop-explore-button" id="desktopExploreButton" type="button">Explore</button></nav>
-        <a class="honky-book" href="bookings.html">Book a class</a>`;
+        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
+        <a class="honky-book" href="bookings.html">Book a class</a>
+        <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>`;
     }
   };
   installDesktopHeader();
@@ -206,7 +208,6 @@ document.addEventListener('DOMContentLoaded',upgradePublicBranding);
 const intro = document.getElementById('intro');
 const enter = document.getElementById('enterSite');
 const menuButton = document.getElementById('menuButton');
-const desktopExploreButton = document.getElementById('desktopExploreButton');
 const nav = document.getElementById('nav');
 
 function finishIntro(){
@@ -355,7 +356,6 @@ function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
   nav.classList.toggle('open', open);
   nav.setAttribute('aria-hidden', String(!open));
   menuButton?.setAttribute('aria-expanded', String(open));
-  desktopExploreButton?.setAttribute('aria-expanded', String(open));
   document.body.classList.toggle('menu-open', open);
   document.documentElement.classList.remove('menu-open');
 
@@ -371,7 +371,7 @@ function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
       section.open = false;
     });
     if (restoreScroll && wasOpen) window.scrollTo({top:menuScrollY,left:0,behavior:'instant'});
-    if (restoreFocus) requestAnimationFrame(() => (menuButton || desktopExploreButton)?.focus({preventScroll:true}));
+    if (restoreFocus) requestAnimationFrame(() => menuButton?.focus({preventScroll:true}));
   }
 }
 
@@ -389,11 +389,6 @@ window.addEventListener('pageshow', resetMenuAfterNavigation);
 if (nav) {
   // A single click handler works for touch, mouse and keyboard.
   menuButton?.addEventListener('click', event => {
-    event.preventDefault();
-    setMenuOpen(!nav.classList.contains('open'));
-  });
-
-  desktopExploreButton?.addEventListener('click', event => {
     event.preventDefault();
     setMenuOpen(!nav.classList.contains('open'));
   });

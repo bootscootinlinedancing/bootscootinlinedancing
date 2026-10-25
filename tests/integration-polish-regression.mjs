@@ -13,8 +13,12 @@ assert.match(repair, /max-height:calc\(100dvh - 28px\)/, 'mailing popup is viewp
 assert.match(repair, /@media\(max-height:760px\)/, 'short laptop height receives compact spacing');
 assert.doesNotMatch(analytics, /boot-analytics-settings\{position:fixed/, 'persistent cookie launcher is not fixed');
 assert.match(analytics, /document\.querySelector\('footer'\)/, 'cookie launcher is placed in the footer');
-assert.match(script, /desktop-explore-button/, 'converted desktop headers retain Explore');
-assert.doesNotMatch(script, /class="honky-menu-button" id="menuButton"/, 'desktop header conversion does not create a competing menu button');
+assert.doesNotMatch(script, /desktopExploreButton/, 'redundant Explore trigger is removed from the shared controller');
+assert.match(script, /class="honky-menu-button" id="menuButton"/, 'converted headers receive the single responsive Menu trigger');
+assert.doesNotMatch(index, /desktopExploreButton/, 'homepage does not render a competing Explore trigger');
+assert.match(index, /href="country-corner\.html">Country Corner/, 'wide navigation retains Country Corner discovery');
+assert.match(index, /href="businesses\.html">Businesses We Love/, 'wide navigation retains recommended businesses');
+assert.match(index, /href="partnerships\.html">Partnerships &amp; Advertising/, 'wide navigation retains partnerships discovery');
 assert.match(script, /menuButton\?\.addEventListener/, 'existing mobile menu remains supported where present');
 assert.match(index, /id="goldenTicketPopup" hidden/, 'Golden Ticket dialog remains in the homepage');
 assert.match(index, /id="goldenTicketReopen"[^>]*>🎟️ WIN 12 FREE CLASSES</, 'manual Golden Ticket reopen control remains visible during the campaign');
@@ -37,5 +41,10 @@ assert.match(repair, /font-size:clamp\(2\.15rem,3\.65vw,3\.65rem\)/, 'Halloween 
 assert.match(repair, /event-detail-body\.has-poster:has\(\.event-halloween-video\)/, 'Halloween event detail receives a dedicated wide responsive composition');
 assert.match(repair, /@media\(max-height:620px\) and \(orientation:landscape\)/, 'short landscape viewports retain usable popups');
 assert.match(repair, /max-height:calc\(100dvh - 28px\)/, 'popup sizing responds to dynamic viewport height');
+assert.match(repair, /v96\.4\.126 — compact homepage sign-off and one adaptive navigation system/, 'final targeted responsive refinement layer is present');
+assert.match(repair, /font-size:clamp\(1\.75rem,3\.35vw,3\.05rem\)/, 'homepage neon slogan is reduced with fluid bounds');
+assert.match(repair, /@media\(min-width:1560px\)/, 'wide navigation uses direct links only when they fit');
+assert.match(repair, /#menuButton\.honky-menu-button\{display:none!important\}/, 'wide navigation hides the redundant menu trigger');
+assert.match(index, /data-anniversary-poster[^>]*loading="eager"/, 'Anniversary poster remains eagerly loaded');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');
