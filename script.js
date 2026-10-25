@@ -43,9 +43,9 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
   installDesktopHeader();
 })();
 
-// One approved hosted MP4 will power both Halloween placements. Keep this
-// empty until the owner supplies the asset; no placeholder URL is invented.
-window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '';
+// One approved MP4 powers both Halloween placements. This review branch uses
+// a static Pages asset; production can later point this at the R2 media URL.
+window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '/halloween-hoedown-promo-2026.mp4';
 
 // Homepage promotions and optional mailing-list invitation.
 (() => {

@@ -16,8 +16,8 @@ assert.match(analytics, /document\.querySelector\('footer'\)/, 'cookie launcher 
 assert.match(script, /desktop-explore-button/, 'converted desktop headers retain Explore');
 assert.doesNotMatch(script, /class="honky-menu-button" id="menuButton"/, 'desktop header conversion does not create a competing menu button');
 assert.match(script, /menuButton\?\.addEventListener/, 'existing mobile menu remains supported where present');
-assert.match(script, /window\.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = ''/, 'video URL remains intentionally unset');
-assert.match(index, /data-halloween-video-feature hidden/, 'homepage feature stays gated without an approved MP4');
+assert.match(script, /window\.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '\/halloween-hoedown-promo-2026\.mp4'/, 'both placements use the approved preview MP4');
+assert.match(index, /data-halloween-video-feature hidden/, 'homepage feature is progressively revealed only by the campaign gate');
 assert.match(index, /controls playsinline preload="none"/, 'homepage player is manual, inline and deferred');
 assert.doesNotMatch(index, /<video[^>]*autoplay/, 'homepage video never autoplays');
 assert.match(bookings, /event-halloween-video/, 'Halloween event player is prepared');
