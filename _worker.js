@@ -1794,10 +1794,18 @@ async function publicClasses(env, includeHistory = false, request = null) {
     if(hostname.endsWith('.pages.dev')){
       const source=`${SITE_ORIGIN}/api/classes${includeHistory?'?calendar=1':''}`;
       const response=await fetch(source,{headers:{Accept:'application/json'},cf:{cacheTtl:0}});
-      const headers=new Headers(response.headers);
-      headers.set('Cache-Control','no-store');
-      headers.set('X-Preview-Data-Source','production-public-classes');
-      return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+      if(!response.ok) return json({error:'Preview class data is temporarily unavailable.'},response.status);
+      const payload=await response.json();
+      const classes=Array.isArray(payload)?payload:(Array.isArray(payload?.classes)?payload.classes:[]);
+      const absolutePublicAsset=(value)=>value&&new URL(value,SITE_ORIGIN).href;
+      for(const item of classes){
+        item.poster_url=absolutePublicAsset(item.poster_url);
+        item.promo_poster_url=absolutePublicAsset(item.promo_poster_url);
+        if(item.id==='4a5fe2de-52ab-44f5-a0c5-187cd58a13a2'&&!item.promo_poster_url){
+          item.promo_poster_url='/dead-or-dancing-golden-ticket.png';
+        }
+      }
+      return json(Array.isArray(payload)?classes:{...payload,classes},200,{'Cache-Control':'no-store','X-Preview-Data-Source':'production-public-classes'});
     }
     return json({ error: 'Booking database is not connected.' }, 503);
   }

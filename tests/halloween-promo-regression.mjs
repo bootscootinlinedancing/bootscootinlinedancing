@@ -25,6 +25,7 @@ assert(result[1]==='ok','migration integrity check must pass');
 
 assert(worker.includes('c.poster_url,c.promo_poster_url'),'public/admin class responses must expose both poster fields');
 assert(worker.includes("hostname.endsWith('.pages.dev')")&&worker.includes('X-Preview-Data-Source'),'unbound Pages previews must proxy only the public production class feed');
+assert(worker.includes("new URL(value,SITE_ORIGIN).href")&&worker.includes("item.promo_poster_url='/dead-or-dancing-golden-ticket.png'"),'preview public feed must preserve uploaded poster visibility and provide the approved isolated promo fixture');
 assert(worker.includes('poster_url=?,promo_poster_url=?'),'HQ update must store posters independently');
 assert(bookings.includes('event-detail-poster-gallery')&&bookings.includes('has-two-posters'),'event details must render the dual gallery');
 assert(bookings.includes('target="_blank"')&&bookings.includes('Open ${esc(poster.label)} at full size'),'both posters must open at full size');
