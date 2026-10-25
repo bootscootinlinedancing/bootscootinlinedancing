@@ -47,6 +47,16 @@ body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(input,se
   #nav.menu45-overlay.open{touch-action:pan-y!important}
 }
 
+/* Halloween 2026 Golden Ticket campaign popup */
+.golden-ticket-reopen-wrap[hidden]{display:none!important}.golden-ticket-reopen-wrap{display:flex;justify-content:center;padding:12px 18px;background:linear-gradient(180deg,#0c0505,#160909);border-bottom:1px solid rgba(190,40,48,.5)}.golden-ticket-reopen{border:1px solid #d4a447;border-radius:999px;padding:10px 18px;background:linear-gradient(180deg,#2a1111,#0d0505);color:#f6d889;box-shadow:0 0 0 1px rgba(190,34,43,.7),0 7px 20px rgba(0,0,0,.35);font:700 .8rem/1 Oswald,sans-serif;letter-spacing:.09em;cursor:pointer}.golden-ticket-reopen:hover,.golden-ticket-reopen:focus-visible{border-color:#ffe09a;background:#a71924;color:#fff8e8;outline:3px solid rgba(255,224,154,.3);outline-offset:3px}
+.golden-ticket-popup[hidden]{display:none!important}.golden-ticket-popup{position:fixed;inset:0;z-index:10010;display:grid;place-items:center;padding:18px}.golden-ticket-popup-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(3px)}.golden-ticket-popup-card{position:relative;display:grid;grid-template-columns:minmax(180px,.8fr) minmax(260px,1fr);gap:22px;align-items:center;width:min(780px,100%);max-height:calc(100dvh - 36px);overflow:auto;border:1px solid #c22f37;border-radius:18px;padding:18px;background:#100607;color:#fff4df;box-shadow:0 26px 80px rgba(0,0,0,.72)}.golden-ticket-popup-art{display:grid;place-items:center;min-width:0;background:#050303}.golden-ticket-popup-art img{display:block;width:100%;height:auto;max-height:min(72dvh,620px);object-fit:contain}.golden-ticket-popup-copy h2{margin:.25rem 0 1rem;color:#fff4df;font-size:clamp(28px,5vw,46px);line-height:1.05}.golden-ticket-popup-copy p{color:#dbc7b7;line-height:1.5}.golden-ticket-popup-close{position:absolute;z-index:2;top:10px;right:10px;display:grid;place-items:center;width:44px;height:44px;border:1px solid rgba(255,255,255,.4);border-radius:50%;background:#211010;color:#fff;font:400 30px/1 Arial,sans-serif;cursor:pointer}.golden-ticket-popup-close:hover,.golden-ticket-popup-close:focus-visible{background:#a71924}.golden-ticket-popup-open{overflow:hidden}
+@media(max-width:600px){.golden-ticket-popup{padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom))}.golden-ticket-popup-card{grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:12px;max-height:calc(100dvh - 16px);padding:12px;border-radius:14px}.golden-ticket-popup-art img{max-height:54dvh}.golden-ticket-popup-copy .kicker{padding-right:36px;font-size:.62rem}.golden-ticket-popup-copy h2{font-size:clamp(20px,6vw,28px)}.golden-ticket-popup-copy p{font-size:.82rem}.golden-ticket-popup-copy .button{padding:9px 10px;font-size:.72rem}.golden-ticket-popup-close{top:7px;right:7px;width:38px;height:38px;font-size:25px}}
+
+/* PR #36 — equal poster stages without cropping artwork. */
+.event-detail-poster-gallery.has-two-posters{grid-template-columns:minmax(0,3fr) minmax(0,2fr)!important;align-items:stretch!important}.event-detail-poster-gallery.has-two-posters .event-detail-poster-shell{box-sizing:border-box!important;height:auto!important;min-height:0!important;padding:8px!important;align-self:stretch!important;border:1px solid #713238!important;background:#050303!important}.event-detail-poster-gallery.has-two-posters .event-detail-poster-shell:first-child{aspect-ratio:1/1}.event-detail-poster-gallery.has-two-posters .event-detail-poster{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important}
+.booking-page .class-card .class-poster{box-sizing:border-box!important;height:clamp(250px,27vw,360px)!important;border:1px solid #6e2d32!important;border-bottom-color:#8b3940!important;background:#080505!important}.booking-page .class-card .class-poster img{display:block!important;width:100%!important;height:100%!important;max-height:none!important;object-fit:contain!important;object-position:center!important}
+@media(max-width:767px){.event-detail-poster-gallery.has-two-posters .event-detail-poster-shell{padding:5px!important}.booking-page .class-card .class-poster{height:clamp(240px,78vw,330px)!important}.booking-page .class-card .class-poster img{height:100%!important;max-height:none!important}}
+
 /* v96.4.118 — homepage promotions, recommendations and optional mailing invite */
 .home-promo-strip{position:relative;z-index:8;min-height:40px;border-block:1px solid rgba(211,48,55,.55);background:#130708;color:#fff4df;overflow:hidden}
 .home-promo-track{position:relative;max-width:1180px;min-height:38px;margin:auto}
@@ -66,6 +76,49 @@ body:not(.admin-page):not(.ranch-page):not(.hq-page) .section.paper :is(input,se
 @media(max-width:760px){.home-community-features{grid-template-columns:1fr;padding:42px 18px}.recommended-links{display:grid}.mailing-popup-card ul{grid-template-columns:1fr}.home-promo-track>a{font-size:13px;padding-inline:12px}}
 @media(max-width:430px){.home-promo-strip,.home-promo-track{min-height:48px}.home-promo-track>a{min-height:48px;padding-block:6px}.mailing-popup{padding:10px}.mailing-popup-card{max-height:calc(100dvh - 20px);padding:24px 18px}.mailing-popup-card h2{font-size:29px}.mailing-popup-close{top:9px;right:9px}}
 @media(prefers-reduced-motion:reduce){.home-promo-track>a{transition:none}}
+
+/* v96.4.119 — compact invitation and Western-neon promotion strip */
+.home-promo-strip{border-color:rgba(225,71,77,.5);background:radial-gradient(circle at 50% 120%,rgba(194,102,35,.18),transparent 58%),#100606;box-shadow:inset 0 1px rgba(255,198,124,.07),inset 0 -1px rgba(255,198,124,.06)}
+.home-promo-track>a{color:#f7d39a;font-weight:600;letter-spacing:.075em;text-transform:uppercase;text-shadow:0 0 8px rgba(238,151,62,.28)}
+.home-promo-track>a::before,.home-promo-track>a::after{content:'✦';margin:0 .65em;color:#d94b45;font-size:.7em;text-shadow:0 0 7px rgba(227,65,60,.45)}
+.home-feature-teaser{display:flex;flex-direction:column;justify-content:center;min-height:260px}.home-feature-teaser .button{align-self:flex-start}.mailing-popup-mobile-summary{display:none}
+@media(max-width:760px){
+  .mailing-popup{padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom))}
+  .mailing-popup-card{width:min(100%,430px);max-height:calc(100dvh - 16px);padding:18px 16px 16px;border-radius:14px}
+  .mailing-popup-card .kicker{margin:0 44px 4px 0;font-size:.69rem;letter-spacing:.12em}.mailing-popup-card h2{margin:0 42px 6px 0;font-size:clamp(24px,7vw,30px);line-height:1.02}
+  .mailing-popup-intro{margin:0 0 8px;font-size:.9rem;line-height:1.35}.mailing-popup-offer{margin:0 0 8px;padding:7px 10px;font-size:.84rem;line-height:1.3}
+  .mailing-popup-card ul{display:none}.mailing-popup-mobile-summary{display:block;margin:0 0 9px;color:#d8c5b8;font-size:.78rem;line-height:1.3}.mailing-popup-card form{gap:8px}
+  .mailing-popup-card form>label:not(.consent-preview){gap:3px;font-size:.82rem}.mailing-popup-card input[type="text"],.mailing-popup-card input[type="email"]{min-height:42px;padding:8px 10px}.mailing-popup-card .consent-preview{gap:8px;font-size:.75rem;line-height:1.28}.mailing-popup-card .button{min-height:42px;padding:9px 12px}.mailing-popup-card .mailing-status{min-height:1.1em;font-size:.78rem}.mailing-popup-close{top:8px;right:8px;width:40px;height:40px;font-size:26px}.home-feature-teaser{min-height:0}
+}
+@media(max-width:430px){.home-promo-strip,.home-promo-track{min-height:42px}.home-promo-track>a{min-height:42px;padding:5px 8px;font-size:11px;line-height:1.25;letter-spacing:.045em}.home-promo-track>a::before,.home-promo-track>a::after{margin:0 .4em}}
+@media(prefers-reduced-motion:reduce){.home-promo-track>a{transform:none!important;transition:none!important}}
+
+/* v96.4.120 — continuous accessible announcement ticker */
+.home-promo-strip{display:flex;align-items:center}
+.home-promo-viewport{min-width:0;flex:1;overflow:hidden}
+.home-promo-track{position:static;display:flex;width:max-content;max-width:none;min-height:0;margin:0;will-change:transform;animation:home-promo-ticker 44s linear infinite}
+.home-promo-group{display:flex;align-items:center;flex-shrink:0}
+.home-promo-group>a{position:static;inset:auto;display:flex;align-items:center;min-height:38px;padding:8px 30px;color:#f7d39a;white-space:nowrap;text-align:center;text-decoration:none;font:600 14px/1.35 Oswald,sans-serif;letter-spacing:.075em;text-transform:uppercase;text-shadow:0 0 8px rgba(238,151,62,.28);opacity:1;visibility:visible;transform:none;transition:none}
+.home-promo-group>a::before,.home-promo-group>a::after{content:'✦';margin:0 .65em;color:#d94b45;font-size:.7em;text-shadow:0 0 7px rgba(227,65,60,.45)}
+.home-promo-group>a:hover,.home-promo-group>a:focus-visible{color:#fff;text-decoration:underline;text-underline-offset:3px}
+.home-promo-track.is-paused,.home-promo-strip:focus-within .home-promo-track,.home-promo-strip:hover .home-promo-track{animation-play-state:paused}
+.home-promo-pause{display:grid;place-items:center;align-self:stretch;min-width:42px;border:0;border-left:1px solid rgba(211,48,55,.45);background:#160809;color:#f7d39a;cursor:pointer}.home-promo-pause:hover,.home-promo-pause:focus-visible{background:#341013;color:#fff}
+@keyframes home-promo-ticker{to{transform:translateX(-50%)}}
+@media(max-width:760px){.home-promo-group>a{font-size:13px;padding-inline:22px}}
+@media(max-width:430px){.home-promo-group>a{min-height:42px;padding:5px 18px;font-size:11px;line-height:1.25;letter-spacing:.045em}.home-promo-group>a::before,.home-promo-group>a::after{margin:0 .4em}}
+@media(prefers-reduced-motion:reduce){.home-promo-track{width:100%;animation:none}.home-promo-group{display:none}.home-promo-group:first-child{display:flex;max-width:100%;overflow-x:auto;scrollbar-width:thin}.home-promo-pause{display:none}}
+@media(max-width:950px){
+  nav#nav.menu45-overlay{padding:0!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important}
+  #menu45.menu45-panel{width:min(620px,100%)!important;min-height:100dvh!important;margin:0 auto!important;padding:0 20px calc(40px + env(safe-area-inset-bottom))!important;box-sizing:border-box!important;background:#080505!important}
+  #menu45 .menu45-head{min-height:76px!important;padding:calc(10px + env(safe-area-inset-top)) 0 10px!important;margin:0 0 6px!important}
+  #menu45 .nav-close{width:44px!important;height:44px!important;min-width:44px!important}
+  #menu45 .menu45-first{min-height:76px!important;margin:0 0 8px!important;padding:12px 0 14px!important;border-radius:0!important;border-width:0 0 1px!important;background:transparent!important;box-shadow:none!important}
+  #menu45 .menu45-sections{display:block!important;width:100%!important}
+  #menu45 details.menu45-section{width:100%!important;margin:0!important;border:0!important;border-bottom:1px solid #472326!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+  #menu45 details.menu45-section>summary{min-height:62px!important;padding:13px 0!important;background:transparent!important;border:0!important;border-radius:0!important}
+  #menu45 .menu45-submenu{padding:0 0 10px 10px!important;background:transparent!important}
+  #menu45 .menu45-submenu>a{min-height:44px!important;padding:9px 0!important;border-width:0 0 1px!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;font-size:15px!important}
+}
 /* Nora's Choreography link is an intentional one-dance view */
 body.nora-original-only .library-controls .filter-row{display:none!important}
 
