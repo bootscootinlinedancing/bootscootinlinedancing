@@ -56,5 +56,8 @@ assert.match(index, /id="about-boot-scootin-home"[\s\S]*?src="boot-scootin-group
 assert.match(index, /id="find-your-next-dance-home"[\s\S]*?src="class2\.webp"/, 'Find Your Next Dance uses an existing genuine class photograph');
 assert.match(index, /href="bookings\.html">View upcoming classes</, 'new classes panel routes into the existing booking page');
 assert.match(repair, /v96\.4\.128 — two-row homepage storytelling composition/, 'two-column responsive panel layer is present');
+assert.match(repair, /v96\.4\.129 — compact square homepage media and editorial partnerships/, 'final compact editorial refinement layer is present');
+assert.match(repair, /home-story-panel figure\{align-self:start!important;aspect-ratio:1\/1!important\}/, 'homepage feature photographs use square frames');
+assert.match(index, /Bring line dancing to your event/, 'homepage private-event copy is direct and natural');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');

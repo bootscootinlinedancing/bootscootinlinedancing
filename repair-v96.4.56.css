@@ -1115,3 +1115,73 @@ body.honky-home:not(.intro-open) .home-story-panel--classes .button{border-radiu
   body.honky-home:not(.intro-open) .home-story-panel-grid{gap:16px;padding-block:26px}
   body.honky-home:not(.intro-open) .home-story-panel>div{padding:20px}
 }
+
+/* v96.4.129 — compact square homepage media and editorial partnerships. */
+body.honky-home:not(.intro-open) .home-story-panel-grid{gap:clamp(16px,2vw,26px)!important;padding-block:clamp(28px,4vw,52px)!important}
+body.honky-home:not(.intro-open) .home-story-panel{
+  grid-template-columns:minmax(180px,42%) minmax(0,58%)!important;align-items:start!important;height:auto!important;
+}
+body.honky-home:not(.intro-open) .home-story-panel figure{align-self:start!important;aspect-ratio:1/1!important}
+body.honky-home:not(.intro-open) .home-story-panel figure img{
+  width:100%!important;height:100%!important;min-height:0!important;aspect-ratio:1/1!important;object-fit:cover!important;
+}
+body.honky-home:not(.intro-open) .home-story-panel--nora figure img{object-position:center 20%!important}
+body.honky-home:not(.intro-open) #about-boot-scootin-home figure img{object-position:center 42%!important}
+body.honky-home:not(.intro-open) #first-class-advice-home figure img{object-position:center 40%!important}
+body.honky-home:not(.intro-open) #find-your-next-dance-home figure img{object-position:center 44%!important}
+body.honky-home:not(.intro-open) .home-story-panel>div{padding:clamp(20px,2.2vw,30px)!important}
+body.honky-home:not(.intro-open) .home-story-panel h2{font-size:clamp(1.65rem,2.1vw,2.45rem)!important;margin-bottom:.65rem!important}
+body.honky-home:not(.intro-open) #first-class-advice-home h2{font-size:clamp(1.55rem,1.9vw,2.2rem)!important}
+body.honky-home:not(.intro-open) .home-story-panel p:not(.section-label):not(.handwritten):not(.home-western-quote){line-height:1.5!important;margin-bottom:.75rem!important}
+body.honky-home:not(.intro-open) .home-story-panel .handwritten,
+body.honky-home:not(.intro-open) .home-story-panel .home-western-quote{font-size:clamp(1.4rem,1.9vw,1.95rem)!important;margin:.35rem 0 .75rem!important}
+body.honky-home:not(.intro-open) .home-story-panel .paper-link,
+body.honky-home:not(.intro-open) .home-story-panel .button{margin-top:.55rem!important}
+
+.partnerships-page .partnerships-hero{max-width:920px!important;padding:clamp(52px,6vw,78px) 0 clamp(38px,4vw,54px)!important}
+.partnerships-page .partnerships-hero h1{font-size:clamp(2.5rem,4.5vw,4.25rem)!important;margin:.18em auto .28em!important}
+.partnerships-hero-tagline{color:#ef434c!important;font:400 clamp(1.45rem,2.5vw,2.25rem)/1.15 Caveat,cursive!important}
+.partnerships-page .partnerships-hero .button{margin-top:18px!important}
+.partnership-opportunities{
+  display:grid;grid-template-columns:minmax(240px,.72fr) minmax(0,1.28fr);gap:clamp(34px,6vw,82px);
+  width:min(1120px,calc(100% - 36px));margin:auto;padding:clamp(44px,7vw,76px) 0;border-block:1px solid rgba(99,39,43,.65);
+}
+.partnership-opportunities>header{align-self:start;position:sticky;top:24px}
+.partnership-opportunities>header h2{margin:.35rem 0 .8rem;font-size:clamp(2rem,3.4vw,3.2rem);line-height:1.03}
+.partnership-opportunities>header p:last-child{color:#cdbbb0;line-height:1.6}
+.partnership-editorial-list{display:grid;gap:0}
+.partnership-editorial-list article{padding:0 0 clamp(24px,3vw,34px);margin:0 0 clamp(24px,3vw,34px);border-bottom:1px solid rgba(105,48,52,.72)}
+.partnership-editorial-list article:last-child{margin-bottom:0;padding-bottom:0;border-bottom:0}
+.partnership-editorial-list h3{margin:0 0 .5rem;color:#fff3e6;font:600 clamp(1.3rem,2vw,1.75rem)/1.15 Oswald,sans-serif;letter-spacing:.02em}
+.partnership-editorial-list h3:before{content:'—';color:#d52b35;margin-right:.55rem}
+.partnership-editorial-list p{margin:0;color:#cfbeb3;line-height:1.62}
+
+.partnerships-page .advertising-options{padding:clamp(48px,7vw,78px) 0!important}
+.partnerships-page .advertising-options .section-title{max-width:800px!important;margin-bottom:clamp(28px,4vw,44px)!important;text-align:left!important}
+.advertising-format-list{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 clamp(34px,5vw,68px);
+  width:min(1040px,calc(100% - 36px));margin:auto;
+}
+.advertising-format-list article{padding:clamp(20px,2.6vw,30px) 0;border-bottom:1px solid rgba(106,48,52,.7)}
+.advertising-format-list article.featured{grid-row:span 2;padding:clamp(26px,3vw,38px);border:0;border-left:4px solid #ce2932;background:linear-gradient(135deg,rgba(65,17,21,.58),rgba(14,7,7,.48))}
+.advertising-format-list h3{margin:0 0 .55rem;color:#fff2e5;font:600 clamp(1.3rem,1.9vw,1.7rem)/1.15 Oswald,sans-serif}
+.advertising-format-list p{margin:0;color:#cdbbb0;line-height:1.58}
+.advertising-format-list strong{display:block;margin-top:.8rem;color:#e3b887;font-size:.9rem}
+.partnerships-page .partnerships-cta{margin-top:clamp(38px,6vw,66px)!important;border:0!important;border-top:1px solid #8f3339!important;background:rgba(30,9,11,.68)!important}
+
+@media(max-width:1180px){
+  body.honky-home:not(.intro-open) .home-story-panel{grid-template-columns:1fr!important}
+  body.honky-home:not(.intro-open) .home-story-panel figure{width:100%!important}
+}
+@media(max-width:760px){
+  .partnership-opportunities{grid-template-columns:1fr;gap:28px;padding-block:40px}
+  .partnership-opportunities>header{position:static}
+  .advertising-format-list{grid-template-columns:1fr}
+  .advertising-format-list article.featured{grid-row:auto}
+  .partnerships-page .partnerships-hero{padding-top:42px!important}
+}
+@media(max-width:430px){
+  body.honky-home:not(.intro-open) .home-story-panel>div{padding:20px 18px 22px!important}
+  body.honky-home:not(.intro-open) .home-story-panel h2,
+  body.honky-home:not(.intro-open) #first-class-advice-home h2{font-size:clamp(1.65rem,8vw,2.15rem)!important}
+}
