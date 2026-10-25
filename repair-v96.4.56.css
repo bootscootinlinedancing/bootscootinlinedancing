@@ -916,7 +916,7 @@ html.desktop-mode .honky-header #menuButton.honky-menu-button{
 }
 html.desktop-mode .honky-header .honky-book{grid-column:3!important}
 
-@media(min-width:1560px){
+@media(min-width:1280px){
   html.desktop-mode .honky-header{grid-template-columns:210px minmax(0,1fr) 124px!important;gap:12px!important;padding-inline:20px!important}
   html.desktop-mode .honky-header .honky-desktop-nav{
     display:flex!important;gap:clamp(7px,.68vw,13px)!important;overflow:visible!important;

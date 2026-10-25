@@ -43,7 +43,7 @@ assert.match(repair, /@media\(max-height:620px\) and \(orientation:landscape\)/,
 assert.match(repair, /max-height:calc\(100dvh - 28px\)/, 'popup sizing responds to dynamic viewport height');
 assert.match(repair, /v96\.4\.126 — compact homepage sign-off and one adaptive navigation system/, 'final targeted responsive refinement layer is present');
 assert.match(repair, /font-size:clamp\(1\.75rem,3\.35vw,3\.05rem\)/, 'homepage neon slogan is reduced with fluid bounds');
-assert.match(repair, /@media\(min-width:1560px\)/, 'wide navigation uses direct links only when they fit');
+assert.match(repair, /@media\(min-width:1280px\)/, 'desktop navigation uses direct links where they fit');
 assert.match(repair, /#menuButton\.honky-menu-button\{display:none!important\}/, 'wide navigation hides the redundant menu trigger');
 assert.match(index, /data-anniversary-poster[^>]*loading="eager"/, 'Anniversary poster remains eagerly loaded');
 
