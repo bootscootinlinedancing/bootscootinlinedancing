@@ -30,6 +30,8 @@ assert(worker.includes('poster_url=?,promo_poster_url=?'),'HQ update must store 
 assert(bookings.includes('event-detail-poster-gallery')&&bookings.includes('has-two-posters'),'event details must render the dual gallery');
 assert(bookings.includes('target="_blank"')&&bookings.includes('Open ${esc(poster.label)} at full size'),'both posters must open at full size');
 assert(css.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&css.includes('object-fit:contain'),'gallery must remain two-column and uncropped');
+assert(css.includes('grid-template-columns:minmax(0,3fr) minmax(0,2fr)')&&css.includes('.event-detail-poster-shell:first-child{aspect-ratio:1/1}'),'square and 2:3 Halloween posters must resolve to matching uncropped visible heights');
+assert(css.includes('.booking-page .class-card .class-poster')&&css.includes('height:clamp(250px,27vw,360px)'),'all listing posters must use a consistent responsive stage');
 assert(ranch.includes('uploadClassPromoPosterIfNeeded')&&ranch.includes("placement','class-promo-poster"),'HQ must upload a separate promotional poster');
 assert(homepage.includes('dead-or-dancing-golden-ticket.png')&&homepage.includes('Win 12 free line dancing classes — worth £72!'),'homepage must use the approved campaign artwork and copy');
 assert(script.includes("timeZone:'Europe/London'")&&script.includes("londonDate() <= '2026-10-30'"),'campaign must stop after 30 October in London');
