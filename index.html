@@ -64,7 +64,7 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
 @media(max-width:420px){#menu45{padding-inline:18px!important}#menu45 .menu45-first strong{font-size:19px!important}#menu45 details.menu45-section>summary>span{font-size:19px!important}}
 </style>
 <link href="honkytonk-recovery-phase1.css?v=1" rel="stylesheet"/>
-<link href="repair-v96.4.56.css?v=96.4.119" rel="stylesheet"/>
+<link href="repair-v96.4.56.css?v=96.4.120" rel="stylesheet"/>
 </head>
 <body class="honky-home home-v9635 intro-open">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -96,12 +96,23 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
 <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>
 </header>
 <aside class="home-promo-strip" aria-label="Boot Scootin’ highlights">
-  <div class="home-promo-track" data-promo-track>
-    <a class="is-active" href="bookings.html">🎃 Halloween Hoedown · Friday 30 October · Book now</a>
-    <a href="#home-anniversary-feature">🎉 First Year Anniversary Party · Friday 6 November · Tickets available</a>
-    <a href="class-pass.html">👢 Class Passes available · Save on regular classes</a>
-    <a href="#home-mailing-list">📩 Join the mailing list · News, events &amp; offers</a>
+  <div class="home-promo-viewport">
+    <div class="home-promo-track" data-promo-track>
+      <div class="home-promo-group">
+        <a href="bookings.html">🎃 Halloween Hoedown · Friday 30 October · Book now</a>
+        <a href="#home-anniversary-feature">🎉 First Year Anniversary Party · Friday 6 November · Tickets available</a>
+        <a href="class-pass.html">👢 Class Passes available · Save on regular classes</a>
+        <a href="#home-mailing-list">📩 Join the mailing list · News, events &amp; offers</a>
+      </div>
+      <div aria-hidden="true" class="home-promo-group">
+        <a href="bookings.html" tabindex="-1">🎃 Halloween Hoedown · Friday 30 October · Book now</a>
+        <a href="#home-anniversary-feature" tabindex="-1">🎉 First Year Anniversary Party · Friday 6 November · Tickets available</a>
+        <a href="class-pass.html" tabindex="-1">👢 Class Passes available · Save on regular classes</a>
+        <a href="#home-mailing-list" tabindex="-1">📩 Join the mailing list · News, events &amp; offers</a>
+      </div>
+    </div>
   </div>
+  <button aria-pressed="false" class="home-promo-pause" data-promo-pause type="button"><span aria-hidden="true">Ⅱ</span><span class="sr-only">Pause announcements</span></button>
 </aside>
 <nav aria-label="Main navigation" class="menu45-overlay" id="nav">
 <div class="menu45-panel" id="menu45">
@@ -380,7 +391,7 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
     </form>
   </section>
 </div>
-<script src="script.js?v=96.4.119"></script>
+<script src="script.js?v=96.4.120"></script>
 <script src="homepage-classes.js?v=1"></script>
 <script src="homepage-reviews.js?v=1"></script>
 </body>

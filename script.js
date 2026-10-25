@@ -37,15 +37,16 @@
 
 // Homepage promotions and optional mailing-list invitation.
 (() => {
-  const promoLinks = [...document.querySelectorAll('[data-promo-track] > a')];
-  if (promoLinks.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    let promoIndex = 0;
-    window.setInterval(() => {
-      promoLinks[promoIndex].classList.remove('is-active');
-      promoIndex = (promoIndex + 1) % promoLinks.length;
-      promoLinks[promoIndex].classList.add('is-active');
-    }, 6500);
-  }
+  const promoTrack = document.querySelector('[data-promo-track]');
+  const promoPause = document.querySelector('[data-promo-pause]');
+  promoPause?.addEventListener('click', () => {
+    const paused = promoTrack?.classList.toggle('is-paused') || false;
+    promoPause.setAttribute('aria-pressed', String(paused));
+    const icon = promoPause.querySelector('[aria-hidden]');
+    const label = promoPause.querySelector('.sr-only');
+    if (icon) icon.textContent = paused ? '▶' : 'Ⅱ';
+    if (label) label.textContent = paused ? 'Play announcements' : 'Pause announcements';
+  });
 
   const popup = document.getElementById('mailingPopup');
   const form = document.getElementById('mailingPopupForm');
