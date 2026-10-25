@@ -1063,3 +1063,55 @@ body.honky-home:not(.intro-open) .home-meet-copy h2{font-size:clamp(2.1rem,3.7vw
 @media(prefers-reduced-motion:reduce){
   .partnership-intro-grid article,.advertising-option-grid article{transition:none!important}
 }
+
+/* v96.4.128 — two-row homepage storytelling composition. */
+body.honky-home:not(.intro-open) .home-story-panel-grid{
+  box-sizing:border-box;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(18px,2.4vw,32px);
+  width:100%;padding:clamp(34px,5vw,70px) clamp(18px,5vw,76px);
+  background:rgba(8,4,4,.48);border-block:1px solid rgba(91,35,39,.8);
+}
+body.honky-home:not(.intro-open) .home-story-panel{
+  box-sizing:border-box;display:grid;grid-template-columns:minmax(190px,.86fr) minmax(0,1.14fr);min-width:0;height:100%;
+  border:1px solid rgba(116,40,45,.78);border-top:2px solid #bd242d;border-radius:2px;
+  background:linear-gradient(145deg,rgba(30,10,12,.94),rgba(9,5,5,.94));overflow:hidden;
+}
+body.honky-home:not(.intro-open) .home-story-panel figure{margin:0;min-width:0;background:#080505;overflow:hidden}
+body.honky-home:not(.intro-open) .home-story-panel figure img{
+  display:block;width:100%;height:100%;min-height:330px;object-fit:cover;object-position:center;
+}
+body.honky-home:not(.intro-open) .home-story-panel--nora figure img{object-position:center 24%}
+body.honky-home:not(.intro-open) .home-story-panel>div{
+  box-sizing:border-box;display:flex;flex-direction:column;align-items:flex-start;min-width:0;padding:clamp(24px,2.8vw,38px);
+}
+body.honky-home:not(.intro-open) .home-story-panel h2{
+  margin:.3rem 0 .8rem;color:#fff5e9;font:400 clamp(1.8rem,2.55vw,3rem)/1.05 Rye,Georgia,serif;
+  text-wrap:balance;text-shadow:0 0 14px rgba(188,30,39,.14);
+}
+body.honky-home:not(.intro-open) #first-class-advice-home h2{font-size:clamp(1.7rem,2.25vw,2.65rem)}
+body.honky-home:not(.intro-open) .home-story-panel p:not(.section-label):not(.handwritten):not(.home-western-quote){
+  margin:.25rem 0 1rem;color:#d9c8bc;font-size:clamp(.98rem,1.15vw,1.1rem);line-height:1.6;
+}
+body.honky-home:not(.intro-open) .home-story-panel .handwritten,
+body.honky-home:not(.intro-open) .home-story-panel .home-western-quote{
+  margin:.55rem 0 1rem;color:#ef3942;font:400 clamp(1.55rem,2.3vw,2.35rem)/1.1 Caveat,cursive!important;
+}
+body.honky-home:not(.intro-open) .home-story-panel .paper-link,
+body.honky-home:not(.intro-open) .home-story-panel .button{margin-top:auto}
+body.honky-home:not(.intro-open) .home-story-panel--classes .button{border-radius:1px;white-space:normal;text-align:center}
+
+@media(max-width:1180px){
+  body.honky-home:not(.intro-open) .home-story-panel{grid-template-columns:1fr}
+  body.honky-home:not(.intro-open) .home-story-panel figure img{height:clamp(210px,28vw,300px);min-height:0}
+  body.honky-home:not(.intro-open) .home-story-panel--nora figure img{object-position:center 22%}
+}
+@media(max-width:760px){
+  body.honky-home:not(.intro-open) .home-story-panel-grid{grid-template-columns:1fr;padding:32px 14px;gap:18px}
+  body.honky-home:not(.intro-open) .home-story-panel figure img{height:clamp(220px,68vw,330px)}
+  body.honky-home:not(.intro-open) .home-story-panel>div{padding:24px 20px 26px}
+  body.honky-home:not(.intro-open) .home-story-panel h2,
+  body.honky-home:not(.intro-open) #first-class-advice-home h2{font-size:clamp(1.75rem,8vw,2.5rem)}
+}
+@media(max-height:620px) and (orientation:landscape){
+  body.honky-home:not(.intro-open) .home-story-panel-grid{gap:16px;padding-block:26px}
+  body.honky-home:not(.intro-open) .home-story-panel>div{padding:20px}
+}

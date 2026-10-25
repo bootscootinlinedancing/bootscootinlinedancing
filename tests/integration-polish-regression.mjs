@@ -46,10 +46,15 @@ assert.match(repair, /font-size:clamp\(1\.75rem,3\.35vw,3\.05rem\)/, 'homepage n
 assert.match(repair, /@media\(min-width:1280px\)/, 'desktop navigation uses direct links where they fit');
 assert.match(repair, /#menuButton\.honky-menu-button\{display:none!important\}/, 'wide navigation hides the redundant menu trigger');
 assert.match(index, /data-anniversary-poster[^>]*loading="eager"/, 'Anniversary poster remains eagerly loaded');
-assert.match(index, /class="home-nora-facts"/, 'Meet Nora includes the compact verified business facts panel');
+assert.doesNotMatch(index, /class="home-nora-facts"/, 'Meet Nora no longer uses outlined fact badges');
 assert.match(repair, /v96\.4\.127 — final component-scoped visual rhythm refinements/, 'final visual refinement layer is present');
 assert.match(repair, /#first-class-advice-home h2\{font-size:clamp\(1\.95rem,3\.15vw,3\.35rem\)/, 'First Class heading has bounded fluid type');
 assert.match(repair, /\.partnerships-page \.partnerships-hero h1/, 'Partnership hero has scoped responsive typography');
 assert.match(repair, /\.partnership-neon-signoff/, 'Partnership slogan reuses the restrained neon-script language');
+assert.match(index, /class="home-story-panel-grid"/, 'homepage uses the approved two-row panel composition');
+assert.match(index, /id="about-boot-scootin-home"[\s\S]*?src="boot-scootin-group\.webp"/, 'About panel reuses the existing Low Places group photograph');
+assert.match(index, /id="find-your-next-dance-home"[\s\S]*?src="class2\.webp"/, 'Find Your Next Dance uses an existing genuine class photograph');
+assert.match(index, /href="bookings\.html">View upcoming classes</, 'new classes panel routes into the existing booking page');
+assert.match(repair, /v96\.4\.128 — two-row homepage storytelling composition/, 'two-column responsive panel layer is present');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');
