@@ -31,5 +31,11 @@ assert.match(bookings, /BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL/, 'event and homepage u
 assert.match(bookings, /4a5fe2de-52ab-44f5-a0c5-187cd58a13a2/, 'video is scoped to the existing Halloween event');
 assert.match(styles, /aspect-ratio:9\/16/, 'both players preserve the portrait aspect ratio');
 assert.match(styles, /object-fit:contain/, 'video artwork is not cropped');
+assert.match(repair, /v96\.4\.125 — PR #38 fluid public composition/, 'responsive composition layer is present');
+assert.match(repair, /grid-template-columns:minmax\(0,1fr\) minmax\(190px,clamp\(210px,20vw,280px\)\)/, 'Halloween feature uses a fluid content-driven grid');
+assert.match(repair, /font-size:clamp\(2\.15rem,3\.65vw,3\.65rem\)/, 'Halloween heading uses bounded fluid typography');
+assert.match(repair, /event-detail-body\.has-poster:has\(\.event-halloween-video\)/, 'Halloween event detail receives a dedicated wide responsive composition');
+assert.match(repair, /@media\(max-height:620px\) and \(orientation:landscape\)/, 'short landscape viewports retain usable popups');
+assert.match(repair, /max-height:calc\(100dvh - 28px\)/, 'popup sizing responds to dynamic viewport height');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');
