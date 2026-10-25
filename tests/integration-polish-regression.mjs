@@ -16,6 +16,12 @@ assert.match(analytics, /document\.querySelector\('footer'\)/, 'cookie launcher 
 assert.match(script, /desktop-explore-button/, 'converted desktop headers retain Explore');
 assert.doesNotMatch(script, /class="honky-menu-button" id="menuButton"/, 'desktop header conversion does not create a competing menu button');
 assert.match(script, /menuButton\?\.addEventListener/, 'existing mobile menu remains supported where present');
+assert.match(index, /id="goldenTicketPopup" hidden/, 'Golden Ticket dialog remains in the homepage');
+assert.match(index, /id="goldenTicketReopen"[^>]*>🎟️ WIN 12 FREE CLASSES</, 'manual Golden Ticket reopen control remains visible during the campaign');
+assert.match(index, /id="mailingPopup" hidden/, 'Round-Up invitation remains in the homepage');
+assert.match(script, /window\.setTimeout\(\(\) => \{ mailingReady = true; openPopup\(\); \}, 9000\)/, 'Round-Up invitation retains its nine-second delay');
+assert.match(script, /if\(mailingReady\)window\.setTimeout\(openPopup,0\)/, 'deferred Round-Up invitation resumes after Golden Ticket closes');
+assert.match(script, /if\(mailingPopup&&!mailingPopup\.hidden\)\{\s*mailingReady=true;/, 'manual Golden Ticket reopening safely queues an open Round-Up invitation');
 assert.match(script, /window\.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '\/halloween-hoedown-promo-2026\.mp4'/, 'both placements use the approved preview MP4');
 assert.match(index, /data-halloween-video-feature hidden/, 'homepage feature is progressively revealed only by the campaign gate');
 assert.match(index, /controls playsinline preload="none"/, 'homepage player is manual, inline and deferred');

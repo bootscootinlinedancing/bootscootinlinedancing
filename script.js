@@ -65,6 +65,7 @@ window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '/halloween-hoedown-promo-2026.mp4';
   const goldenReopenWrap = document.getElementById('goldenTicketReopenWrap');
   const goldenStorageKey = 'bootScootinGoldenTicketHalloween2026Dismissed';
   let goldenPreviousFocus = null;
+  let mailingReady = false;
   const londonDate = () => {
     const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
     return `${parts.year}-${parts.month}-${parts.day}`;
@@ -77,11 +78,16 @@ window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '/halloween-hoedown-promo-2026.mp4';
     document.body.classList.remove('golden-ticket-popup-open');
     if(remember)try{localStorage.setItem(goldenStorageKey,'1');}catch(_){}
     goldenPreviousFocus?.focus?.();
+    // The mailing invitation may have reached its nine-second delay while the
+    // higher-priority Golden Ticket dialog was open. Resume it after Golden
+    // Ticket closes instead of silently losing that one-time opportunity.
+    if(mailingReady)window.setTimeout(openPopup,0);
   };
   const openGoldenPopup = (manual=false) => {
     if(!goldenPopup||!goldenCampaignActive()||(!manual&&goldenDismissed())||!goldenPopup.hidden)return;
     const mailingPopup=document.getElementById('mailingPopup');
     if(mailingPopup&&!mailingPopup.hidden){
+      mailingReady=true;
       mailingPopup.hidden=true;
       document.body.classList.remove('mailing-popup-open');
     }
@@ -123,7 +129,12 @@ window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '/halloween-hoedown-promo-2026.mp4';
     previousFocus?.focus?.();
   };
   const openPopup = () => {
-    if (recentlyDismissed() || !popup.hidden || document.body.classList.contains('golden-ticket-popup-open')) return;
+    if (recentlyDismissed() || !popup.hidden) return;
+    if (document.body.classList.contains('golden-ticket-popup-open')) {
+      mailingReady = true;
+      return;
+    }
+    mailingReady = false;
     previousFocus = document.activeElement;
     popup.hidden = false;
     document.body.classList.add('mailing-popup-open');
@@ -133,7 +144,7 @@ window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '/halloween-hoedown-promo-2026.mp4';
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !popup.hidden) closePopup();
   });
-  window.setTimeout(openPopup, 9000);
+  window.setTimeout(() => { mailingReady = true; openPopup(); }, 9000);
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
