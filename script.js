@@ -37,7 +37,6 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
         <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<button aria-controls="nav" aria-expanded="false" class="desktop-explore-button" id="desktopExploreButton" type="button">Explore</button></nav>
-        <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>
         <a class="honky-book" href="bookings.html">Book a class</a>`;
     }
   };
@@ -337,14 +336,14 @@ const navClose = document.getElementById('navClose');
 let menuScrollY = 0;
 
 function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
-  if (!nav || !menuButton) return;
+  if (!nav) return;
   const wasOpen = nav.classList.contains('open') || document.body.classList.contains('menu-open');
 
   if (open && !wasOpen) menuScrollY = window.scrollY || document.documentElement.scrollTop || 0;
 
   nav.classList.toggle('open', open);
   nav.setAttribute('aria-hidden', String(!open));
-  menuButton.setAttribute('aria-expanded', String(open));
+  menuButton?.setAttribute('aria-expanded', String(open));
   desktopExploreButton?.setAttribute('aria-expanded', String(open));
   document.body.classList.toggle('menu-open', open);
   document.documentElement.classList.remove('menu-open');
@@ -361,7 +360,7 @@ function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
       section.open = false;
     });
     if (restoreScroll && wasOpen) window.scrollTo({top:menuScrollY,left:0,behavior:'instant'});
-    if (restoreFocus) requestAnimationFrame(() => menuButton.focus({preventScroll:true}));
+    if (restoreFocus) requestAnimationFrame(() => (menuButton || desktopExploreButton)?.focus({preventScroll:true}));
   }
 }
 
@@ -376,9 +375,9 @@ function resetMenuAfterNavigation(){
 window.addEventListener('pagehide', () => setMenuOpen(false,{restoreFocus:false,restoreScroll:true}));
 window.addEventListener('pageshow', resetMenuAfterNavigation);
 
-if (menuButton && nav) {
+if (nav) {
   // A single click handler works for touch, mouse and keyboard.
-  menuButton.addEventListener('click', event => {
+  menuButton?.addEventListener('click', event => {
     event.preventDefault();
     setMenuOpen(!nav.classList.contains('open'));
   });

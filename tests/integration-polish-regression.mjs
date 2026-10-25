@@ -14,7 +14,8 @@ assert.match(repair, /@media\(max-height:760px\)/, 'short laptop height receives
 assert.doesNotMatch(analytics, /boot-analytics-settings\{position:fixed/, 'persistent cookie launcher is not fixed');
 assert.match(analytics, /document\.querySelector\('footer'\)/, 'cookie launcher is placed in the footer');
 assert.match(script, /desktop-explore-button/, 'converted desktop headers retain Explore');
-assert.match(script, /class="honky-menu-button" id="menuButton"/, 'converted headers retain one responsive mobile menu control');
+assert.doesNotMatch(script, /class="honky-menu-button" id="menuButton"/, 'desktop header conversion does not create a competing menu button');
+assert.match(script, /menuButton\?\.addEventListener/, 'existing mobile menu remains supported where present');
 assert.match(script, /window\.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = ''/, 'video URL remains intentionally unset');
 assert.match(index, /data-halloween-video-feature hidden/, 'homepage feature stays gated without an approved MP4');
 assert.match(index, /controls playsinline preload="none"/, 'homepage player is manual, inline and deferred');
