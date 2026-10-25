@@ -2,4 +2,3 @@
 -- Existing primary poster URLs and class records are preserved unchanged.
 
 ALTER TABLE classes ADD COLUMN promo_poster_url TEXT;
-

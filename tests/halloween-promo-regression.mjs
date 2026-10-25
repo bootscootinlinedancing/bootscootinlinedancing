@@ -7,7 +7,7 @@ const root=new URL('../',import.meta.url);
 const read=file=>fs.readFileSync(new URL(file,root),'utf8');
 const assert=(condition,message)=>{if(!condition)throw new Error(message);};
 
-const migration=read('migrations/0027_halloween_promo_poster.sql');
+const migration=read('migrations/0026_halloween_promo_poster.sql');
 const worker=read('_worker.js');
 const bookings=read('bookings.js');
 const ranch=read('ranch.js');
