@@ -37,15 +37,16 @@
 
 // Homepage promotions and optional mailing-list invitation.
 (() => {
-  const promoLinks = [...document.querySelectorAll('[data-promo-track] > a')];
-  if (promoLinks.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    let promoIndex = 0;
-    window.setInterval(() => {
-      promoLinks[promoIndex].classList.remove('is-active');
-      promoIndex = (promoIndex + 1) % promoLinks.length;
-      promoLinks[promoIndex].classList.add('is-active');
-    }, 6500);
-  }
+  const promoTrack = document.querySelector('[data-promo-track]');
+  const promoPause = document.querySelector('[data-promo-pause]');
+  promoPause?.addEventListener('click', () => {
+    const paused = promoTrack?.classList.toggle('is-paused') || false;
+    promoPause.setAttribute('aria-pressed', String(paused));
+    const icon = promoPause.querySelector('[aria-hidden]');
+    const label = promoPause.querySelector('.sr-only');
+    if (icon) icon.textContent = paused ? '▶' : 'Ⅱ';
+    if (label) label.textContent = paused ? 'Play announcements' : 'Pause announcements';
+  });
 
   const popup = document.getElementById('mailingPopup');
   const form = document.getElementById('mailingPopupForm');
@@ -84,6 +85,7 @@
     const status = document.getElementById('mailingPopupStatus');
     const data = new FormData(form);
     const payload = {name:String(data.get('name') || '').trim(),email:String(data.get('email') || '').trim(),consent:data.get('consent') === 'on'};
+    if (!payload.name) { if (status) status.textContent = 'Please enter your first name.'; form.elements.name?.focus(); return; }
     button.disabled = true;
     if (status) status.textContent = 'Joining…';
     try {
@@ -212,6 +214,11 @@ if (intro) {
 function repairPersistentExploreLinks(){
   const panel=document.getElementById('menu45');
   if(!panel) return;
+  panel.querySelectorAll('a[href^="mailto:partnerships@bootscootinlinedancing.co.uk"]').forEach(link => {
+    link.href='partnerships.html';
+    const label=link.querySelector('span');
+    if(label) label.textContent='Partnerships & Advertising';
+  });
   const findSection=(label)=>[...panel.querySelectorAll('details.menu45-section')].find(section =>
     section.querySelector(':scope > summary strong')?.textContent.trim()===label
   );
@@ -513,6 +520,7 @@ installGuide?.addEventListener("click", event => {
         email: String(data.get('email') || '').trim(),
         consent: data.get('consent') === 'on'
       };
+      if (!payload.name) { if (status) status.textContent = 'Please enter your first name.'; form.elements.name?.focus(); return; }
       if (!payload.email || !payload.consent) return;
       button.disabled = true;
       if (status) status.textContent = 'Joining…';

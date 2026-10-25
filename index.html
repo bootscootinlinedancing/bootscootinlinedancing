@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&amp;family=Oswald:wght@400;500;600;700&amp;family=Rye&amp;family=Yellowtail&amp;display=swap" rel="stylesheet"/>
-<link href="styles.css?v=96.4.116" rel="stylesheet"/>
+<link href="styles.css?v=96.4.119" rel="stylesheet"/>
 <link href="honky-authentic.css?v=96.4.39" rel="stylesheet"/>
 <link href="favicon.png" rel="icon" type="image/png"/>
 <link href="apple-touch-icon.png" rel="apple-touch-icon"/>
@@ -64,7 +64,7 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
 @media(max-width:420px){#menu45{padding-inline:18px!important}#menu45 .menu45-first strong{font-size:19px!important}#menu45 details.menu45-section>summary>span{font-size:19px!important}}
 </style>
 <link href="honkytonk-recovery-phase1.css?v=1" rel="stylesheet"/>
-<link href="repair-v96.4.56.css?v=96.4.118" rel="stylesheet"/>
+<link href="repair-v96.4.56.css?v=96.4.120" rel="stylesheet"/>
 </head>
 <body class="honky-home home-v9635 intro-open">
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -96,12 +96,23 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
 <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>
 </header>
 <aside class="home-promo-strip" aria-label="Boot Scootin’ highlights">
-  <div class="home-promo-track" data-promo-track>
-    <a class="is-active" href="bookings.html">🎃 Halloween Hoedown · Friday 30 October · Book now</a>
-    <a href="#home-anniversary-feature">🎉 First Year Anniversary Party · Friday 6 November · Tickets available</a>
-    <a href="class-pass.html">👢 Class Passes available · Save on regular classes</a>
-    <a href="#home-mailing-list">📩 Join the mailing list · News, events &amp; offers</a>
+  <div class="home-promo-viewport">
+    <div class="home-promo-track" data-promo-track>
+      <div class="home-promo-group">
+        <a href="bookings.html">🎃 Halloween Hoedown · Friday 30 October · Book now</a>
+        <a href="#home-anniversary-feature">🎉 First Year Anniversary Party · Friday 6 November · Tickets available</a>
+        <a href="class-pass.html">👢 Class Passes available · Save on regular classes</a>
+        <a href="#home-mailing-list">📩 Join the mailing list · News, events &amp; offers</a>
+      </div>
+      <div aria-hidden="true" class="home-promo-group">
+        <a href="bookings.html" tabindex="-1">🎃 Halloween Hoedown · Friday 30 October · Book now</a>
+        <a href="#home-anniversary-feature" tabindex="-1">🎉 First Year Anniversary Party · Friday 6 November · Tickets available</a>
+        <a href="class-pass.html" tabindex="-1">👢 Class Passes available · Save on regular classes</a>
+        <a href="#home-mailing-list" tabindex="-1">📩 Join the mailing list · News, events &amp; offers</a>
+      </div>
+    </div>
   </div>
+  <button aria-pressed="false" class="home-promo-pause" data-promo-pause type="button"><span aria-hidden="true">Ⅱ</span><span class="sr-only">Pause announcements</span></button>
 </aside>
 <nav aria-label="Main navigation" class="menu45-overlay" id="nav">
 <div class="menu45-panel" id="menu45">
@@ -190,7 +201,7 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
 <a href="ask-nora.html"><span>Ask Nora</span><b aria-hidden="true">›</b></a>
 <a href="mailto:hello@bootscootinlinedancing.co.uk"><span>General Enquiries</span><b aria-hidden="true">›</b></a>
 <a href="mailto:bookings@bootscootinlinedancing.co.uk"><span>Booking Help</span><b aria-hidden="true">›</b></a>
-<a href="mailto:partnerships@bootscootinlinedancing.co.uk"><span>Partnerships</span><b aria-hidden="true">›</b></a>
+<a href="partnerships.html"><span>Partnerships &amp; Advertising</span><b aria-hidden="true">›</b></a>
 <a href="mailto:support@bootscootinlinedancing.co.uk"><span>Website Support</span><b aria-hidden="true">›</b></a>
 </div>
 </details>
@@ -309,25 +320,17 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
 </div>
 </section>
 <section class="home-community-features" aria-label="Boot Scootin’ recommendations and advertising">
-  <article class="home-recommends-card" id="boot-scootin-recommends">
+  <article class="home-recommends-card home-feature-teaser" id="boot-scootin-recommends">
     <p class="section-label">Boot Scootin’ Recommends</p>
-    <h2>People, brands &amp; businesses we genuinely love.</h2>
-    <div class="recommended-business">
-      <div><p class="recommended-category">Western Photographer &amp; Creative Director</p><h3>Esther Rose Creative</h3></div>
-      <p>Western-inspired photography and creative direction for brands, creators and campaigns. Esther has worked with Boot Scootin’ and is a creative we genuinely love, support and are proud to recommend.</p>
-      <div class="recommended-links">
-        <a href="https://www.instagram.com/estherrosecreative?vrfl=MWFlaHFwbmF2dGt2MA==" target="_blank" rel="noopener">View Esther’s Instagram <span>@estherrosecreative</span></a>
-        <a href="https://www.instagram.com/estherrosephoto?xtok=ZjZ4eG1ra2x2aXhn" target="_blank" rel="noopener">Photography <span>@estherrosephoto</span></a>
-        <a href="https://www.facebook.com/share/1CkM1cKuQV/?mibextid=wwXIfr" target="_blank" rel="noopener">Facebook</a>
-      </div>
-    </div>
+    <h2>Businesses, creatives &amp; brands we genuinely love.</h2>
+    <p><strong>Featured:</strong> Esther Rose Creative — Western Photographer &amp; Creative Director</p>
+    <a class="button" href="businesses.html">Explore Businesses I Love →</a>
   </article>
-  <article class="home-advertise-card" id="advertise-with-us">
-    <p class="section-label">Business enquiries</p>
-    <h2>Advertise with Boot Scootin’</h2>
-    <p>Want to promote your business to the Boot Scootin’ community? We work with selected businesses, brands and local companies on website advertising, event promotion and partnership opportunities.</p>
-    <p class="home-advertise-note">Enquiries are reviewed personally. Nothing is published automatically and pricing is agreed individually.</p>
-    <a class="button secondary" href="mailto:partnerships@bootscootinlinedancing.co.uk?subject=Advertise%20with%20Boot%20Scootin%E2%80%99">Advertise with us</a>
+  <article class="home-advertise-card home-feature-teaser" id="advertise-with-us">
+    <p class="section-label">Promote your business</p>
+    <h2>Want to advertise with Boot Scootin’?</h2>
+    <p>Website features, event promotion and selected partnership opportunities are available.</p>
+    <a class="button secondary" href="partnerships.html">See advertising options →</a>
   </article>
 </section>
 <section class="home-featured-reviews" id="homeFeaturedReviews" aria-labelledby="homeFeaturedReviewsTitle" hidden>
@@ -345,7 +348,7 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
 <p>Get class dates, new dances, special events and occasional Boot Scootin’ news straight to your inbox. You can unsubscribe at any time.</p>
 </div>
 <form class="mailing-preview" id="homeMailingPreview">
-<label>First name<input autocomplete="given-name" maxlength="80" name="name" placeholder="Your first name" type="text"/></label>
+<label>First name<input autocomplete="given-name" maxlength="80" name="name" placeholder="Your first name" required="" type="text"/></label>
 <label>Email address<input autocomplete="email" maxlength="160" name="email" placeholder="you@example.com" required="" type="email"/></label>
 <label class="consent-preview"><input name="consent" required="" type="checkbox"/> <span>I’d like to receive Boot Scootin’ news and can unsubscribe at any time.</span></label>
 <button class="button" type="submit">Join the Mailing List</button>
@@ -375,11 +378,12 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
     <button class="mailing-popup-close" type="button" aria-label="Close mailing-list invitation" data-mailing-popup-close>×</button>
     <p class="kicker red">Boot Scootin’ Round-Up</p>
     <h2 id="mailingPopupTitle">Join the Boot Scootin’ mailing list</h2>
-    <p>Get class news, event updates, special offers and Boot Scootin’ announcements straight to your inbox.</p>
+    <p class="mailing-popup-intro">Get class news, event updates and special offers.</p>
     <p class="mailing-popup-offer"><strong>New dancers can get 10% off their first regular class booking when they sign up.</strong></p>
     <ul><li>Classes and special events</li><li>Class Pass offers</li><li>Boot Scootin’ news</li></ul>
+    <p class="mailing-popup-mobile-summary">Class news, event updates, offers and Boot Scootin’ stories — all in one friendly round-up.</p>
     <form id="mailingPopupForm">
-      <label>First name <span>(optional)</span><input autocomplete="given-name" maxlength="80" name="name" type="text"></label>
+      <label>First name<input autocomplete="given-name" maxlength="80" name="name" required type="text"></label>
       <label>Email address<input autocomplete="email" maxlength="160" name="email" required type="email"></label>
       <label class="consent-preview"><input name="consent" required type="checkbox"> <span>I’d like to receive Boot Scootin’ news and offers. I can unsubscribe at any time.</span></label>
       <button class="button" type="submit">Join &amp; get 10% off</button>
@@ -387,7 +391,7 @@ body.intro-open>#intro{visibility:visible;display:block;position:fixed;inset:0;z
     </form>
   </section>
 </div>
-<script src="script.js?v=96.4.118"></script>
+<script src="script.js?v=96.4.120"></script>
 <script src="homepage-classes.js?v=1"></script>
 <script src="homepage-reviews.js?v=1"></script>
 </body>
