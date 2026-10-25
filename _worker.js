@@ -1154,6 +1154,7 @@ async function ensureBookingSchema(env) {
       level TEXT NOT NULL DEFAULT 'Beginner friendly',
       public_notes TEXT,
       poster_url TEXT,
+      promo_poster_url TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
@@ -1787,8 +1788,27 @@ async function adminAnniversary(request,env){
   return json({ok:true,inventory:await anniversaryInventory(env,{includePrivate:true})});
 }
 
-async function publicClasses(env, includeHistory = false) {
-  if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
+async function publicClasses(env, includeHistory = false, request = null) {
+  if (!env.BOOKINGS_DB) {
+    const hostname=request?new URL(request.url).hostname:'';
+    if(hostname.endsWith('.pages.dev')){
+      const source=`${SITE_ORIGIN}/api/classes${includeHistory?'?calendar=1':''}`;
+      const response=await fetch(source,{headers:{Accept:'application/json'},cf:{cacheTtl:0}});
+      if(!response.ok) return json({error:'Preview class data is temporarily unavailable.'},response.status);
+      const payload=await response.json();
+      const classes=Array.isArray(payload)?payload:(Array.isArray(payload?.classes)?payload.classes:[]);
+      const absolutePublicAsset=(value)=>value&&new URL(value,SITE_ORIGIN).href;
+      for(const item of classes){
+        item.poster_url=absolutePublicAsset(item.poster_url);
+        item.promo_poster_url=absolutePublicAsset(item.promo_poster_url);
+        if(item.id==='4a5fe2de-52ab-44f5-a0c5-187cd58a13a2'&&!item.promo_poster_url){
+          item.promo_poster_url='/dead-or-dancing-golden-ticket.png';
+        }
+      }
+      return json(Array.isArray(payload)?classes:{...payload,classes},200,{'Cache-Control':'no-store','X-Preview-Data-Source':'production-public-classes'});
+    }
+    return json({ error: 'Booking database is not connected.' }, 503);
+  }
   try {
     await ensureBookingSchema(env);
     const currentInstant = new Date();
@@ -1802,7 +1822,7 @@ async function publicClasses(env, includeHistory = false) {
         WHERE b.class_id=c.id
           AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
       ),0) AS sold,
-      c.status,c.level,c.public_notes,c.poster_url,c.booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,COALESCE(pe.eligible,0) AS class_pass_eligible,
+      c.status,c.level,c.public_notes,c.poster_url,c.promo_poster_url,c.booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,COALESCE(pe.eligible,0) AS class_pass_eligible,
       MAX(
         0,
         c.capacity
@@ -4863,7 +4883,7 @@ async function adminClasses(request, env) {
       const response=await env.BOOKINGS_DB.prepare(`
         SELECT
           c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
-          c.status,c.level,c.public_notes,c.poster_url,c.booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,c.created_at,c.updated_at,
+          c.status,c.level,c.public_notes,c.poster_url,c.promo_poster_url,c.booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,c.created_at,c.updated_at,
           COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) AS sold,
           COALESCE((SELECT SUM(quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) AS held,
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
@@ -4907,11 +4927,11 @@ async function adminClasses(request, env) {
     if(end)end.setDate(end.getDate()+7);
     const products=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_ticket_products WHERE class_id=?`).bind(original.id).all();
     const statements=[env.BOOKINGS_DB.prepare(`
-      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,booking_format,social_only_enabled,social_only_price_pence,social_only_entry_time)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,promo_poster_url,booking_format,social_only_enabled,social_only_price_pence,social_only_entry_time)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(
       id,original.title,original.venue,original.location,start.toISOString(),end?end.toISOString():null,
-      original.price_pence,original.capacity,'draft',original.level,original.public_notes,original.poster_url||'',original.booking_format||'STANDARD',original.social_only_enabled,original.social_only_price_pence,original.social_only_entry_time
+      original.price_pence,original.capacity,'draft',original.level,original.public_notes,original.poster_url||'',original.promo_poster_url||'',original.booking_format||'STANDARD',original.social_only_enabled,original.social_only_price_pence,original.social_only_entry_time
     )];
     for(const row of products.results||[])statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO class_ticket_products(id,class_id,product_code,enabled,price_pence,starts_at,ends_at,entry_at,class_pass_eligible,class_pass_credit_cost,display_order) VALUES(?,?,?,?,?,datetime(?,'+7 days'),datetime(?,'+7 days'),datetime(?,'+7 days'),?,?,?)`).bind(crypto.randomUUID(),id,row.product_code,row.enabled,row.price_pence,row.starts_at,row.ends_at,row.entry_at,row.class_pass_eligible,row.class_pass_credit_cost,row.display_order));
     await env.BOOKINGS_DB.batch(statements);
@@ -4998,7 +5018,7 @@ async function adminClasses(request, env) {
   const vals=[
     title,venue,location,starts.toISOString(),ends?ends.toISOString():null,
     Math.max(0,Number(b.price_pence)||0),Math.max(1,Number(b.capacity)||1),
-    status,clean(b.level,80)||'Beginner friendly',clean(publicNotes,50000),clean(b.poster_url,500),
+    status,clean(b.level,80)||'Beginner friendly',clean(publicNotes,50000),clean(b.poster_url,500),clean(b.promo_poster_url,500),
     bookingFormat,
     bookingFormat==='BEGINNER_IMPROVER'?Number(configuredSocial?.enabled||0):socialOnlyEnabled,
     bookingFormat==='BEGINNER_IMPROVER'?Number(configuredSocial?.price_pence||0):(socialOnlyEnabled?socialOnlyPrice:null),
@@ -5007,8 +5027,8 @@ async function adminClasses(request, env) {
 
   if(request.method==='POST'){
     const statements=[env.BOOKINGS_DB.prepare(`
-      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,booking_format,social_only_enabled,social_only_price_pence,social_only_entry_time)
-      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO classes(id,title,venue,location,starts_at,ends_at,price_pence,capacity,status,level,public_notes,poster_url,promo_poster_url,booking_format,social_only_enabled,social_only_price_pence,social_only_entry_time)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).bind(id,...vals)];
     for(const row of ticketProducts)statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO class_ticket_products(id,class_id,product_code,enabled,price_pence,starts_at,ends_at,entry_at,class_pass_eligible,class_pass_credit_cost,display_order) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(crypto.randomUUID(),id,row.product_code,row.enabled,row.price_pence,row.starts_at,row.ends_at,row.entry_at,row.class_pass_eligible,row.class_pass_credit_cost,row.display_order));
     await env.BOOKINGS_DB.batch(statements);
@@ -5042,7 +5062,7 @@ async function adminClasses(request, env) {
     if(Number(activeProductHolds?.count||0)>0)return json({error:'Ticket products cannot be changed while active booking holds exist. Wait for the holds to complete or expire, then try again.'},409);
     const statements=[env.BOOKINGS_DB.prepare(`
       UPDATE classes
-      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,poster_url=?,booking_format=?,social_only_enabled=?,social_only_price_pence=?,social_only_entry_time=?,updated_at=CURRENT_TIMESTAMP
+      SET title=?,venue=?,location=?,starts_at=?,ends_at=?,price_pence=?,capacity=?,status=?,level=?,public_notes=?,poster_url=?,promo_poster_url=?,booking_format=?,social_only_enabled=?,social_only_price_pence=?,social_only_entry_time=?,updated_at=CURRENT_TIMESTAMP
       WHERE id=?
     `).bind(...vals,id)];
     for(const row of ticketProducts)statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO class_ticket_products(id,class_id,product_code,enabled,price_pence,starts_at,ends_at,entry_at,class_pass_eligible,class_pass_credit_cost,display_order) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(class_id,product_code) DO UPDATE SET enabled=excluded.enabled,price_pence=excluded.price_pence,starts_at=excluded.starts_at,ends_at=excluded.ends_at,entry_at=excluded.entry_at,class_pass_eligible=excluded.class_pass_eligible,class_pass_credit_cost=excluded.class_pass_credit_cost,display_order=excluded.display_order,updated_at=CURRENT_TIMESTAMP`).bind(crypto.randomUUID(),id,row.product_code,row.enabled,row.price_pence,row.starts_at,row.ends_at,row.entry_at,row.class_pass_eligible,row.class_pass_credit_cost,row.display_order));
@@ -7198,7 +7218,7 @@ export default {
       : incomingPath;
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
-      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1');
+      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1',request);
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);

@@ -37,6 +37,42 @@
 
 // Homepage promotions and optional mailing-list invitation.
 (() => {
+  const goldenPopup = document.getElementById('goldenTicketPopup');
+  const goldenReopen = document.getElementById('goldenTicketReopen');
+  const goldenReopenWrap = document.getElementById('goldenTicketReopenWrap');
+  const goldenStorageKey = 'bootScootinGoldenTicketHalloween2026Dismissed';
+  let goldenPreviousFocus = null;
+  const londonDate = () => {
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+  const goldenCampaignActive = () => londonDate() <= '2026-10-30';
+  const goldenDismissed = () => { try{return localStorage.getItem(goldenStorageKey)==='1';}catch(_){return false;} };
+  const closeGoldenPopup = (remember=true) => {
+    if(!goldenPopup)return;
+    goldenPopup.hidden=true;
+    document.body.classList.remove('golden-ticket-popup-open');
+    if(remember)try{localStorage.setItem(goldenStorageKey,'1');}catch(_){}
+    goldenPreviousFocus?.focus?.();
+  };
+  const openGoldenPopup = (manual=false) => {
+    if(!goldenPopup||!goldenCampaignActive()||(!manual&&goldenDismissed())||!goldenPopup.hidden)return;
+    const mailingPopup=document.getElementById('mailingPopup');
+    if(mailingPopup&&!mailingPopup.hidden){
+      mailingPopup.hidden=true;
+      document.body.classList.remove('mailing-popup-open');
+    }
+    goldenPreviousFocus=document.activeElement;
+    goldenPopup.hidden=false;
+    document.body.classList.add('golden-ticket-popup-open');
+    goldenPopup.querySelector('.golden-ticket-popup-close')?.focus();
+  };
+  if(goldenReopenWrap)goldenReopenWrap.hidden=!goldenCampaignActive();
+  goldenReopen?.addEventListener('click',()=>openGoldenPopup(true));
+  goldenPopup?.querySelectorAll('[data-golden-ticket-close]').forEach(control=>control.addEventListener('click',()=>closeGoldenPopup()));
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&goldenPopup&&!goldenPopup.hidden)closeGoldenPopup();});
+  if(goldenPopup&&goldenCampaignActive())window.setTimeout(openGoldenPopup,2200);
+
   const promoLinks = [...document.querySelectorAll('[data-promo-track] > a')];
   if (promoLinks.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     let promoIndex = 0;
@@ -66,7 +102,7 @@
     previousFocus?.focus?.();
   };
   const openPopup = () => {
-    if (recentlyDismissed() || !popup.hidden) return;
+    if (recentlyDismissed() || !popup.hidden || document.body.classList.contains('golden-ticket-popup-open')) return;
     previousFocus = document.activeElement;
     popup.hidden = false;
     document.body.classList.add('mailing-popup-open');
