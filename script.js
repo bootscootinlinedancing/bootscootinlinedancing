@@ -1,4 +1,11 @@
 /* v96.4.30: deterministic desktop mode + one consistent desktop header. */
+if (!document.querySelector('script[src^="google-analytics.js"]')) {
+  const analyticsLoader=document.createElement('script');
+  analyticsLoader.src='google-analytics.js';
+  analyticsLoader.defer=true;
+  document.head.append(analyticsLoader);
+}
+
 (() => {
   const ua = navigator.userAgent || '';
   const platform = navigator.platform || '';
@@ -8,7 +15,7 @@
   if (!desktop) return;
 
   document.documentElement.classList.add('desktop-mode');
-  document.addEventListener('DOMContentLoaded', () => {
+  const installDesktopHeader = () => {
     document.body?.classList.add('desktop-mode');
 
     // Every desktop page now uses the same compact navigation style as the homepage.
@@ -29,11 +36,17 @@
           <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
-        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
+        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<button aria-controls="nav" aria-expanded="false" class="desktop-explore-button" id="desktopExploreButton" type="button">Explore</button></nav>
+        <button aria-controls="nav" aria-expanded="false" class="menu" id="menuButton" type="button">Explore</button>
         <a class="honky-book" href="bookings.html">Book a class</a>`;
     }
-  }, {once:true});
+  };
+  installDesktopHeader();
 })();
+
+// One approved hosted MP4 will power both Halloween placements. Keep this
+// empty until the owner supplies the asset; no placeholder URL is invented.
+window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '';
 
 // Homepage promotions and optional mailing-list invitation.
 (() => {
@@ -83,6 +96,14 @@
   goldenPopup?.querySelectorAll('[data-golden-ticket-close]').forEach(control=>control.addEventListener('click',()=>closeGoldenPopup()));
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&goldenPopup&&!goldenPopup.hidden)closeGoldenPopup();});
   if(goldenPopup&&goldenCampaignActive())window.setTimeout(openGoldenPopup,2200);
+
+  const halloweenVideoUrl=window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL;
+  const halloweenVideoFeature=document.querySelector('[data-halloween-video-feature]');
+  if(halloweenVideoFeature&&halloweenVideoUrl&&goldenCampaignActive()){
+    const video=halloweenVideoFeature.querySelector('video');
+    const source=video?.querySelector('source');
+    if(source){source.src=halloweenVideoUrl;video.load();halloweenVideoFeature.hidden=false;}
+  }
 
   const popup = document.getElementById('mailingPopup');
   const form = document.getElementById('mailingPopupForm');
