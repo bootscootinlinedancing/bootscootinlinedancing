@@ -63,5 +63,7 @@ assert.match(repair, /v96\.4\.130 — public typography tokens and restrained ho
 assert.match(repair, /home-story-panel-grid\{align-items:start!important;grid-auto-rows:auto!important/, 'homepage cards use natural content height instead of forced row stretching');
 assert.match(repair, /--bs-type-body:"Trebuchet MS",Arial,sans-serif/, 'public body typography uses the shared readable type token');
 assert.match(repair, /saloon-signoff\{[\s\S]*?min-height:0!important/, 'homepage closing signature is compact');
+assert.match(index, /honky-wall-detail--guitar[\s\S]*?neon-guitar-broadway\.svg/, 'homepage stage reuses the approved neon guitar asset');
+assert.match(index, /honky-wall-detail--sign[\s\S]*?LIVE MUSIC[\s\S]*?GOOD TIMES/, 'homepage stage includes restrained honky-tonk signage');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');
