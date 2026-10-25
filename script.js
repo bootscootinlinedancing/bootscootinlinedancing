@@ -37,7 +37,7 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
         <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<button aria-controls="nav" aria-expanded="false" class="desktop-explore-button" id="desktopExploreButton" type="button">Explore</button></nav>
-        <button aria-controls="nav" aria-expanded="false" class="menu" id="menuButton" type="button">Explore</button>
+        <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>
         <a class="honky-book" href="bookings.html">Book a class</a>`;
     }
   };
