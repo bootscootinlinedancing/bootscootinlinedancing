@@ -1788,8 +1788,19 @@ async function adminAnniversary(request,env){
   return json({ok:true,inventory:await anniversaryInventory(env,{includePrivate:true})});
 }
 
-async function publicClasses(env, includeHistory = false) {
-  if (!env.BOOKINGS_DB) return json({ error: 'Booking database is not connected.' }, 503);
+async function publicClasses(env, includeHistory = false, request = null) {
+  if (!env.BOOKINGS_DB) {
+    const hostname=request?new URL(request.url).hostname:'';
+    if(hostname.endsWith('.pages.dev')){
+      const source=`${SITE_ORIGIN}/api/classes${includeHistory?'?calendar=1':''}`;
+      const response=await fetch(source,{headers:{Accept:'application/json'},cf:{cacheTtl:0}});
+      const headers=new Headers(response.headers);
+      headers.set('Cache-Control','no-store');
+      headers.set('X-Preview-Data-Source','production-public-classes');
+      return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+    }
+    return json({ error: 'Booking database is not connected.' }, 503);
+  }
   try {
     await ensureBookingSchema(env);
     const currentInstant = new Date();
@@ -7199,7 +7210,7 @@ export default {
       : incomingPath;
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
-      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1');
+      if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1',request);
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
