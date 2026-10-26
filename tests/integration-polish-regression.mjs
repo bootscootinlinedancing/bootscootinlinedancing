@@ -64,6 +64,10 @@ assert.match(repair, /home-story-panel-grid\{align-items:start!important;grid-au
 assert.match(repair, /--bs-type-body:"Trebuchet MS",Arial,sans-serif/, 'public body typography uses the shared readable type token');
 assert.match(repair, /saloon-signoff\{[\s\S]*?min-height:0!important/, 'homepage closing signature is compact');
 assert.doesNotMatch(index, /honky-wall-detail/, 'no substitute signage or assembled decorative artwork remains');
-assert.match(repair, /honky-tonk-reference-approved\.png/, 'the supplied approved reference artwork is the visual foundation');
+assert.doesNotMatch(repair, /url\(['"]honky-tonk-reference-approved\.png/, 'the design reference is never pasted into the public website');
+assert.match(repair, /v96\.4\.134 — reference-led honky-tonk environment using approved site assets/, 'approved-asset environmental layer is present');
+assert.match(repair, /url\('boot-scootin-entrance-brick-floor\.webp'\)!important/, 'existing approved brick-and-floor material is used');
+assert.match(repair, /home-halloween-video\{[\s\S]*?isolation:isolate!important;[\s\S]*?overflow:clip!important/, 'Halloween feature owns one isolated clipped stage');
+assert.match(repair, /home-halloween-video\{[\s\S]*?background:linear-gradient\(135deg,[\s\S]*?\)!important;/, 'Halloween feature uses a clean image-free surface');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');
