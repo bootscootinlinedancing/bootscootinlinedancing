@@ -1360,7 +1360,8 @@ body.honky-home:not(.intro-open) .home-halloween-video{
   padding:clamp(34px,4.2vw,58px) 0!important;gap:clamp(26px,5vw,68px)!important;
   background:
     radial-gradient(ellipse at 12% 34%,rgba(255,34,37,.2),transparent 34%),
-    linear-gradient(90deg,rgba(8,2,3,.06),rgba(4,2,2,.24) 48%,rgba(8,2,3,.04))!important;
+    linear-gradient(90deg,rgba(8,2,3,.08),rgba(4,2,2,.26) 48%,rgba(8,2,3,.06)),
+    url('boot-scootin-entrance-brick-floor.webp') center top/cover no-repeat!important;
   border:0!important;border-radius:0!important;box-shadow:none!important;
 }
 body.honky-home:not(.intro-open) .home-halloween-video:before,
@@ -1389,7 +1390,10 @@ body.honky-home:not(.intro-open) .home-halloween-video-player video{
   body:has(>header.header){background-attachment:scroll}
 }
 @media(max-width:760px){
-  body.honky-home:not(.intro-open) .home-halloween-video{grid-template-columns:1fr!important;width:calc(100% - 28px)!important;padding:22px 0 28px!important}
+  body.honky-home:not(.intro-open) .home-halloween-video{
+    grid-template-columns:1fr!important;width:calc(100% - 28px)!important;padding:22px 0 28px!important;
+    background:linear-gradient(180deg,rgba(6,2,2,.05),rgba(5,2,2,.18))!important;
+  }
   body.honky-home:not(.intro-open) .home-halloween-video-copy{padding:10px 4px 18px!important}
   body.honky-home:not(.intro-open) .home-halloween-video-player{width:min(70vw,230px)!important}
   body.honky-home:not(.intro-open) .home-story-panel-grid{align-items:stretch!important;padding-block:24px!important}
