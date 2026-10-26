@@ -10095,6 +10095,16 @@ body.legal-page{
 .anniversary-public-release{display:flex;flex-direction:column;gap:.25rem}
 @media(max-width:760px){.anniversary-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.anniversary-release-grid,.anniversary-admin-grid{grid-template-columns:1fr}}
 
+/* HQ external ticket orders: order-level accounting with person-level admission. */
+.external-ticket-admin{margin-top:2rem;padding-top:1.5rem;border-top:1px solid rgba(192,37,37,.45)}
+.external-ticket-summary{grid-template-columns:repeat(4,minmax(0,1fr))}
+.external-payment-confirm{grid-template-columns:auto 1fr!important;align-items:center;justify-content:start}.external-payment-confirm input{width:18px!important;height:18px;margin:0}
+.external-ticket-order{align-items:flex-start}.external-ticket-order.is-cancelled{opacity:.62}
+.external-admission-list{display:grid!important;gap:.45rem!important;margin-top:.75rem}.external-admission{display:flex!important;align-items:center;justify-content:space-between;gap:.75rem;padding:.55rem .65rem;border-left:3px solid rgba(205,54,62,.75);background:rgba(0,0,0,.2)}.external-admission.is-checked-in{border-color:#4fa36d;background:rgba(28,91,52,.2)}
+.external-register-section{margin-top:1.5rem}.external-register-section>p{color:#cbb8a7}.external-ticket-grid>form,.external-ticket-grid>section{min-width:0}
+@media(max-width:900px){.external-ticket-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.external-ticket-summary{grid-template-columns:1fr 1fr}.external-ticket-order{display:grid!important;gap:1rem!important}.external-ticket-order>.ranch-actions{justify-content:flex-start;grid-column:auto;grid-row:auto;flex-direction:row;flex-wrap:wrap}.external-admission{align-items:flex-start;flex-direction:column}.external-admission .button{width:100%}}
+
 /* Public menu label: keep the existing trigger and add its familiar three-dot cue. */
 .header #menuButton.menu{gap:.48rem!important}
 .header #menuButton.menu::after{
