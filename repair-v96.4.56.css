@@ -1186,7 +1186,7 @@ body.honky-home:not(.intro-open) .home-story-panel .button{margin-top:.55rem!imp
   body.honky-home:not(.intro-open) #first-class-advice-home h2{font-size:clamp(1.65rem,8vw,2.15rem)!important}
 }
 
-/* v96.4.137 — consolidated bright honky-tonk visual system. */
+/* v96.4.138 — one continuous honky-tonk environment. */
 :root{
   --bs-type-display:Rye,Georgia,serif;
   --bs-type-heading:Oswald,"Arial Narrow",Arial,sans-serif;
@@ -1195,7 +1195,7 @@ body.honky-home:not(.intro-open) .home-story-panel .button{margin-top:.55rem!imp
   --bs-public-cream:#fff0df;
   --bs-public-muted:#dbc7b8;
   --bs-public-charcoal:#090304;
-  --bs-public-panel:rgba(12,4,5,.84);
+  --bs-public-panel:rgba(9,3,4,.68);
   --bs-public-red:#ff1f2d;
   --bs-public-red-hot:#ff3442;
   --bs-public-red-deep:#9d0714;
@@ -1230,7 +1230,7 @@ body.partnerships-page .button,
 body.public-atmosphere .button,
 body:has(>header.header) .button{font-family:var(--bs-type-heading);font-weight:700;letter-spacing:.065em}
 
-/* One atmospheric shell: illuminated brick, a shaded centre and real timber. */
+/* One atmospheric shell: illuminated brick above a real timber floor. */
 body.partnerships-page,
 body.public-atmosphere,
 body:has(>header.header){
@@ -1238,9 +1238,9 @@ body:has(>header.header){
   background-image:
     radial-gradient(ellipse at 8% 15%,rgba(255,35,37,.42),transparent 27%),
     radial-gradient(ellipse at 92% 17%,rgba(255,28,32,.36),transparent 25%),
-    linear-gradient(90deg,rgba(8,1,2,.04),rgba(8,2,3,.24) 23%,rgba(5,2,3,.48) 50%,rgba(8,2,3,.24) 77%,rgba(8,1,2,.04)),
+    linear-gradient(90deg,rgba(8,1,2,.02),rgba(8,2,3,.16) 24%,rgba(5,2,3,.34) 50%,rgba(8,2,3,.16) 76%,rgba(8,1,2,.02)),
     url('boot-scootin-entrance-brick-floor.webp');
-  background-position:center top,center top,center top,center 36%;
+  background-position:center top,center top,center top,center bottom;
   background-size:auto,auto,auto,cover;
   background-repeat:no-repeat;
   background-attachment:fixed;
@@ -1251,9 +1251,9 @@ body.partnerships-page:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):n
   background-image:
     radial-gradient(ellipse at 8% 15%,rgba(255,35,37,.42),transparent 27%),
     radial-gradient(ellipse at 92% 17%,rgba(255,28,32,.36),transparent 25%),
-    linear-gradient(90deg,rgba(8,1,2,.04),rgba(8,2,3,.24) 23%,rgba(5,2,3,.48) 50%,rgba(8,2,3,.24) 77%,rgba(8,1,2,.04)),
+    linear-gradient(90deg,rgba(8,1,2,.02),rgba(8,2,3,.16) 24%,rgba(5,2,3,.34) 50%,rgba(8,2,3,.16) 76%,rgba(8,1,2,.02)),
     url('boot-scootin-entrance-brick-floor.webp')!important;
-  background-position:center top,center top,center top,center 36%!important;
+  background-position:center top,center top,center top,center bottom!important;
   background-size:auto,auto,auto,cover!important;
   background-repeat:no-repeat!important;
   background-attachment:fixed!important;
@@ -1271,7 +1271,7 @@ body:has(>header.header)>header.header :is(a,button):focus-visible{outline:2px s
 body.honky-home:not(.intro-open) main,
 body.partnerships-page main,
 body.public-atmosphere main,
-body:has(>header.header) main{background:linear-gradient(90deg,rgba(7,2,3,.06),rgba(7,2,3,.22) 20%,rgba(4,2,2,.42) 50%,rgba(7,2,3,.22) 80%,rgba(7,2,3,.06))!important}
+body:has(>header.header) main{background:linear-gradient(90deg,rgba(7,2,3,.02),rgba(7,2,3,.12) 20%,rgba(4,2,2,.3) 50%,rgba(7,2,3,.12) 80%,rgba(7,2,3,.02))!important}
 body.partnerships-page footer,
 body.public-atmosphere footer,
 body:has(>header.header) footer{
@@ -1293,12 +1293,12 @@ body.honky-home:not(.intro-open) .saloon-signoff{
 body.honky-home:not(.intro-open) .saloon-signoff span{font-size:clamp(1.6rem,3.2vw,2.8rem)!important;line-height:1.05!important}
 body.honky-home:not(.intro-open) .saloon-signoff strong{font-size:clamp(1.5rem,3vw,2.7rem)!important;line-height:1!important;letter-spacing:.08em!important}
 
-/* Charcoal reading surfaces float over the visible brick environment. */
+/* Reading surfaces are open and lightly shaded, never boxes inside boxes. */
 body.honky-home:not(.intro-open) .home-story-panel,
 body.partnerships-page :is(.partnerships-hero,.partnerships-cta){
-  background:linear-gradient(145deg,rgba(18,5,7,.88),rgba(5,3,3,.88))!important;
-  border-color:var(--bs-public-line)!important;
-  box-shadow:0 18px 34px rgba(0,0,0,.42),0 0 18px rgba(238,18,34,.08)!important;
+  background:linear-gradient(145deg,rgba(14,4,6,.7),rgba(5,3,3,.64))!important;
+  border:0!important;border-top:1px solid rgba(255,45,58,.42)!important;
+  box-shadow:0 16px 32px rgba(0,0,0,.3)!important;
 }
 body.honky-home:not(.intro-open) .home-story-panel figure{background:#090505!important}
 body.honky-home:not(.intro-open) .home-story-panel figure img{filter:saturate(.94) contrast(1.03)}
@@ -1313,37 +1313,69 @@ body.honky-home:not(.intro-open) :is(.button,.honky-book):is(:hover,:focus-visib
 body.partnerships-page .button:is(:hover,:focus-visible){background:linear-gradient(180deg,#ff4653,#e10e22)!important;box-shadow:0 0 10px rgba(255,52,65,.88),0 0 32px rgba(244,16,37,.48)!important}
 
 /* Keep the approved panel composition open to the brick instead of a flat black strip. */
-body.honky-home:not(.intro-open) main section.home-story-panel-grid:not(.dark):not(.better-hero):not(.booking-hero):not(.about-hero):not(.saloon-signoff){background:rgba(8,2,3,.12)!important}
+body.honky-home:not(.intro-open) main section.home-story-panel-grid:not(.dark):not(.better-hero):not(.booking-hero):not(.about-hero):not(.saloon-signoff){
+  background:
+    linear-gradient(180deg,rgba(5,2,2,.08) 0%,rgba(5,2,2,.18) 58%,rgba(5,2,2,.04) 100%),
+    url('boot-scootin-entrance-brick-floor.webp') center bottom/100% auto no-repeat!important;
+}
 
-/* Authoritative Halloween stage: brick perimeter, shaded copy plane, isolated video. */
+/* Let the main homepage sections share the same room instead of stacked framed rooms. */
+body.honky-home:not(.intro-open)>.desktop-home-start-v32,
+body.honky-home:not(.intro-open) main>.cream-home.intro-grid{
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+  background:linear-gradient(180deg,rgba(7,2,3,.2),rgba(5,2,2,.08))!important;
+}
+body.honky-home:not(.intro-open)>.desktop-home-start-v32 :is(.desktop-meet-v32,.desktop-upcoming-v32),
+body.honky-home:not(.intro-open) main>.cream-home.intro-grid :is(.meet-copy,.upcoming-home){
+  border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;
+}
+body.honky-home:not(.intro-open) :is(.why-strip,.home-shop-return,.cream-home,.lower-home,.home-community-features,.home-featured-reviews,.home-mailing-section){
+  border:0!important;box-shadow:none!important;
+  background:linear-gradient(180deg,rgba(7,2,3,.18),rgba(7,2,3,.3))!important;
+}
+body.honky-home:not(.intro-open) :is(.gallery-home,.private-home,.home-community-features>article,.mailing-box){
+  border:0!important;border-top:1px solid rgba(255,46,59,.38)!important;border-radius:0!important;
+  background:linear-gradient(135deg,rgba(12,4,5,.64),rgba(4,2,2,.52))!important;
+  box-shadow:0 18px 34px rgba(0,0,0,.28)!important;
+}
+body.honky-home:not(.intro-open) .home-community-features{gap:clamp(18px,2.5vw,30px)!important}
+body.honky-home:not(.intro-open) .why-grid article{
+  border:0!important;border-top:1px solid rgba(255,46,59,.28)!important;border-radius:0!important;
+  background:rgba(9,3,4,.38)!important;box-shadow:none!important;
+}
+body.honky-home:not(.intro-open) .home-mailing-section{
+  background:
+    linear-gradient(180deg,rgba(5,2,2,.08),rgba(4,2,2,.3)),
+    url('boot-scootin-entrance-brick-floor.webp') center bottom/100% auto no-repeat!important;
+}
+body.honky-home:not(.intro-open) .saloon-signoff{
+  border:0!important;background:linear-gradient(180deg,rgba(5,2,2,.04),rgba(5,2,2,.22))!important;box-shadow:none!important;
+}
+
+/* Halloween is part of the room: one open composition with one isolated video. */
 body.honky-home:not(.intro-open) .home-halloween-video{
   position:relative!important;isolation:isolate!important;overflow:clip!important;
   grid-template-columns:minmax(0,1fr) minmax(190px,clamp(220px,21vw,290px))!important;
-  width:min(1240px,calc(100% - clamp(20px,3vw,44px)))!important;
-  padding:clamp(34px,4.2vw,60px)!important;gap:clamp(24px,4vw,54px)!important;
+  width:min(1200px,calc(100% - clamp(24px,5vw,72px)))!important;
+  padding:clamp(34px,4.2vw,58px) 0!important;gap:clamp(26px,5vw,68px)!important;
   background:
-    radial-gradient(ellipse at 8% 30%,rgba(255,34,37,.34),transparent 31%),
-    radial-gradient(ellipse at 92% 34%,rgba(255,27,34,.3),transparent 29%),
-    linear-gradient(90deg,rgba(8,2,3,.42),rgba(4,2,2,.66) 28%,rgba(4,2,2,.7) 72%,rgba(8,2,3,.4)),
-    url('boot-scootin-entrance-brick-floor.webp') center 30%/cover no-repeat!important;
-  border:0!important;border-block:1px solid rgba(255,42,55,.76)!important;border-radius:0!important;
-  box-shadow:0 22px 50px rgba(0,0,0,.58),inset 0 1px rgba(255,97,104,.18),0 0 28px rgba(255,20,38,.22)!important;
+    radial-gradient(ellipse at 12% 34%,rgba(255,34,37,.2),transparent 34%),
+    linear-gradient(90deg,rgba(8,2,3,.06),rgba(4,2,2,.24) 48%,rgba(8,2,3,.04))!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
 }
 body.honky-home:not(.intro-open) .home-halloween-video:before,
 body.honky-home:not(.intro-open) .home-halloween-video:after,
 body.honky-home:not(.intro-open) .home-story-panel-grid:before,
 body.honky-home:not(.intro-open) .home-community-features:before{content:none!important;display:none!important}
 body.honky-home:not(.intro-open) .home-halloween-video-copy{
-  position:relative!important;z-index:1!important;padding:clamp(22px,3vw,38px)!important;
-  background:linear-gradient(135deg,rgba(8,3,4,.9),rgba(13,4,5,.78))!important;
-  border:0!important;border-left:3px solid var(--bs-public-red)!important;
-  box-shadow:0 18px 36px rgba(0,0,0,.42),-8px 0 24px rgba(255,22,37,.08)!important;
+  position:relative!important;z-index:1!important;padding:clamp(10px,2vw,24px) clamp(4px,2vw,20px)!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
 }
 body.honky-home:not(.intro-open) .home-halloween-video h2{color:var(--bs-public-cream)!important;text-shadow:0 2px 0 #170305,0 0 12px rgba(255,30,44,.16)}
 body.honky-home:not(.intro-open) .home-halloween-video-player{
   position:relative!important;z-index:1!important;isolation:isolate!important;overflow:hidden!important;
-  padding:7px!important;background:#020101!important;border:1px solid #ff3342!important;border-radius:4px!important;
-  box-shadow:0 0 9px rgba(255,41,54,.84),0 0 30px rgba(246,17,36,.48),0 18px 36px rgba(0,0,0,.7)!important;
+  padding:4px!important;background:#020101!important;border:1px solid rgba(255,51,66,.8)!important;border-radius:2px!important;
+  box-shadow:0 0 8px rgba(255,41,54,.62),0 0 22px rgba(246,17,36,.3),0 18px 36px rgba(0,0,0,.6)!important;
 }
 body.honky-home:not(.intro-open) .home-halloween-video-player video{
   position:relative!important;z-index:1!important;display:block!important;width:100%!important;height:auto!important;
@@ -1357,8 +1389,8 @@ body.honky-home:not(.intro-open) .home-halloween-video-player video{
   body:has(>header.header){background-attachment:scroll}
 }
 @media(max-width:760px){
-  body.honky-home:not(.intro-open) .home-halloween-video{grid-template-columns:1fr!important;padding:22px 14px 28px!important;background-position:center 24%!important}
-  body.honky-home:not(.intro-open) .home-halloween-video-copy{padding:20px 18px 22px!important}
+  body.honky-home:not(.intro-open) .home-halloween-video{grid-template-columns:1fr!important;width:calc(100% - 28px)!important;padding:22px 0 28px!important}
+  body.honky-home:not(.intro-open) .home-halloween-video-copy{padding:10px 4px 18px!important}
   body.honky-home:not(.intro-open) .home-halloween-video-player{width:min(70vw,230px)!important}
   body.honky-home:not(.intro-open) .home-story-panel-grid{align-items:stretch!important;padding-block:24px!important}
   body.honky-home:not(.intro-open) .home-story-panel>div{padding:19px 18px 22px!important}
