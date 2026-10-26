@@ -59,15 +59,16 @@ assert.match(repair, /v96\.4\.128 — two-row homepage storytelling composition/
 assert.match(repair, /v96\.4\.129 — compact square homepage media and editorial partnerships/, 'final compact editorial refinement layer is present');
 assert.match(repair, /home-story-panel figure\{align-self:start!important;aspect-ratio:1\/1!important\}/, 'homepage feature photographs use square frames');
 assert.match(index, /Bring line dancing to your event/, 'homepage private-event copy is direct and natural');
-assert.match(repair, /v96\.4\.130 — public typography tokens and restrained honky-tonk finish/, 'shared public visual refinement layer is present');
+assert.match(repair, /v96\.4\.137 — consolidated bright honky-tonk visual system/, 'one consolidated public visual system is present');
 assert.match(repair, /home-story-panel-grid\{align-items:start!important;grid-auto-rows:auto!important/, 'homepage cards use natural content height instead of forced row stretching');
 assert.match(repair, /--bs-type-body:"Trebuchet MS",Arial,sans-serif/, 'public body typography uses the shared readable type token');
 assert.match(repair, /saloon-signoff\{[\s\S]*?min-height:0!important/, 'homepage closing signature is compact');
 assert.doesNotMatch(index, /honky-wall-detail/, 'no substitute signage or assembled decorative artwork remains');
 assert.doesNotMatch(repair, /url\(['"]honky-tonk-reference-approved\.png/, 'the design reference is never pasted into the public website');
-assert.match(repair, /v96\.4\.134 — reference-led honky-tonk environment using approved site assets/, 'approved-asset environmental layer is present');
-assert.match(repair, /url\('boot-scootin-entrance-brick-floor\.webp'\)!important/, 'existing approved brick-and-floor material is used');
+assert.match(repair, /--bs-public-red:#ff1f2d/, 'reference-sampled bright neon red is tokenised');
+assert.match(repair, /url\('boot-scootin-entrance-brick-floor\.webp'\)/, 'existing approved brick-and-floor material is used');
 assert.match(repair, /home-halloween-video\{[\s\S]*?isolation:isolate!important;[\s\S]*?overflow:clip!important/, 'Halloween feature owns one isolated clipped stage');
-assert.match(repair, /home-halloween-video\{[\s\S]*?background:linear-gradient\(135deg,[\s\S]*?\)!important;/, 'Halloween feature uses a clean image-free surface');
+assert.match(repair, /home-halloween-video\{[\s\S]*?url\('boot-scootin-entrance-brick-floor\.webp'\) center 30%\/cover no-repeat!important/, 'Halloween stage uses one approved brick background');
+assert.match(repair, /home-halloween-video-player video\{[\s\S]*?aspect-ratio:9\/16!important;[\s\S]*?object-fit:contain!important/, 'Halloween video remains an isolated uncropped 9:16 player');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');

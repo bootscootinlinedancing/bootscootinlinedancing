@@ -1186,18 +1186,21 @@ body.honky-home:not(.intro-open) .home-story-panel .button{margin-top:.55rem!imp
   body.honky-home:not(.intro-open) #first-class-advice-home h2{font-size:clamp(1.65rem,8vw,2.15rem)!important}
 }
 
-/* v96.4.130 — public typography tokens and restrained honky-tonk finish. */
+/* v96.4.137 — consolidated bright honky-tonk visual system. */
 :root{
   --bs-type-display:Rye,Georgia,serif;
   --bs-type-heading:Oswald,"Arial Narrow",Arial,sans-serif;
   --bs-type-body:"Trebuchet MS",Arial,sans-serif;
   --bs-type-script:Caveat,cursive;
-  --bs-public-cream:#f4e7d7;
-  --bs-public-muted:#cfbfb3;
-  --bs-public-charcoal:#090506;
-  --bs-public-panel:rgba(12,6,7,.88);
-  --bs-public-red:#d72b35;
-  --bs-public-line:rgba(163,45,53,.52);
+  --bs-public-cream:#fff0df;
+  --bs-public-muted:#dbc7b8;
+  --bs-public-charcoal:#090304;
+  --bs-public-panel:rgba(12,4,5,.84);
+  --bs-public-red:#ff1f2d;
+  --bs-public-red-hot:#ff3442;
+  --bs-public-red-deep:#9d0714;
+  --bs-public-line:rgba(255,37,52,.68);
+  --bs-public-glow:0 0 7px rgba(255,38,51,.72),0 0 24px rgba(238,15,34,.34);
   --bs-space-section:clamp(44px,6vw,82px);
 }
 
@@ -1227,29 +1230,48 @@ body.partnerships-page .button,
 body.public-atmosphere .button,
 body:has(>header.header) .button{font-family:var(--bs-type-heading);font-weight:700;letter-spacing:.065em}
 
-/* One atmospheric shell: brick at the edges, calm charcoal behind copy. */
+/* One atmospheric shell: illuminated brick, a shaded centre and real timber. */
 body.partnerships-page,
 body.public-atmosphere,
 body:has(>header.header){
   background-color:var(--bs-public-charcoal);
-  background-image:linear-gradient(90deg,rgba(4,2,2,.34),rgba(6,3,3,.78) 16%,rgba(7,4,4,.9) 50%,rgba(6,3,3,.78) 84%,rgba(4,2,2,.34)),url('boot-scootin-entrance-brick-floor.webp');
-  background-position:center top,center 38%;
-  background-size:cover,cover;
+  background-image:
+    radial-gradient(ellipse at 8% 15%,rgba(255,35,37,.42),transparent 27%),
+    radial-gradient(ellipse at 92% 17%,rgba(255,28,32,.36),transparent 25%),
+    linear-gradient(90deg,rgba(8,1,2,.04),rgba(8,2,3,.24) 23%,rgba(5,2,3,.48) 50%,rgba(8,2,3,.24) 77%,rgba(8,1,2,.04)),
+    url('boot-scootin-entrance-brick-floor.webp');
+  background-position:center top,center top,center top,center 36%;
+  background-size:auto,auto,auto,cover;
+  background-repeat:no-repeat;
   background-attachment:fixed;
+}
+body.honky-home:not(.intro-open):not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body),
+body.partnerships-page:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body){
+  background-color:#120304!important;
+  background-image:
+    radial-gradient(ellipse at 8% 15%,rgba(255,35,37,.42),transparent 27%),
+    radial-gradient(ellipse at 92% 17%,rgba(255,28,32,.36),transparent 25%),
+    linear-gradient(90deg,rgba(8,1,2,.04),rgba(8,2,3,.24) 23%,rgba(5,2,3,.48) 50%,rgba(8,2,3,.24) 77%,rgba(8,1,2,.04)),
+    url('boot-scootin-entrance-brick-floor.webp')!important;
+  background-position:center top,center top,center top,center 36%!important;
+  background-size:auto,auto,auto,cover!important;
+  background-repeat:no-repeat!important;
+  background-attachment:fixed!important;
 }
 body.honky-home .honky-header,
 body.partnerships-page .honky-header,
 body:has(>header.header)>header.header{
-  background:linear-gradient(180deg,rgba(5,2,3,.96),rgba(13,5,6,.94)),url('broadway-neon-wall.webp') center 24%/cover!important;
-  border-bottom:1px solid rgba(205,43,53,.62)!important;
-  box-shadow:0 10px 30px rgba(0,0,0,.52),inset 0 -1px rgba(255,77,85,.08)!important;
+  background:linear-gradient(180deg,rgba(7,1,2,.72),rgba(11,3,4,.88)),url('boot-scootin-entrance-brick-floor.webp') center 10%/cover!important;
+  border-bottom:1px solid var(--bs-public-red)!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.52),0 0 20px rgba(255,26,40,.2)!important;
 }
 body.honky-home .honky-header a:focus-visible,
 body.partnerships-page .honky-header a:focus-visible,
 body:has(>header.header)>header.header :is(a,button):focus-visible{outline:2px solid #ff626b;outline-offset:3px}
+body.honky-home:not(.intro-open) main,
 body.partnerships-page main,
 body.public-atmosphere main,
-body:has(>header.header) main{background:linear-gradient(180deg,rgba(6,3,3,.42),rgba(8,4,5,.68))}
+body:has(>header.header) main{background:linear-gradient(90deg,rgba(7,2,3,.06),rgba(7,2,3,.22) 20%,rgba(4,2,2,.42) 50%,rgba(7,2,3,.22) 80%,rgba(7,2,3,.06))!important}
 body.partnerships-page footer,
 body.public-atmosphere footer,
 body:has(>header.header) footer{
@@ -1271,15 +1293,63 @@ body.honky-home:not(.intro-open) .saloon-signoff{
 body.honky-home:not(.intro-open) .saloon-signoff span{font-size:clamp(1.6rem,3.2vw,2.8rem)!important;line-height:1.05!important}
 body.honky-home:not(.intro-open) .saloon-signoff strong{font-size:clamp(1.5rem,3vw,2.7rem)!important;line-height:1!important;letter-spacing:.08em!important}
 
-/* Restrained warm light and timber edge details, never behind body copy. */
+/* Charcoal reading surfaces float over the visible brick environment. */
 body.honky-home:not(.intro-open) .home-story-panel,
 body.partnerships-page :is(.partnerships-hero,.partnerships-cta){
-  background:linear-gradient(145deg,rgba(20,8,9,.94),rgba(7,4,4,.92))!important;
+  background:linear-gradient(145deg,rgba(18,5,7,.88),rgba(5,3,3,.88))!important;
   border-color:var(--bs-public-line)!important;
-  box-shadow:0 18px 34px rgba(0,0,0,.38),inset 0 1px rgba(255,236,215,.035)!important;
+  box-shadow:0 18px 34px rgba(0,0,0,.42),0 0 18px rgba(238,18,34,.08)!important;
 }
 body.honky-home:not(.intro-open) .home-story-panel figure{background:#090505!important}
 body.honky-home:not(.intro-open) .home-story-panel figure img{filter:saturate(.94) contrast(1.03)}
+body.honky-home:not(.intro-open) .home-story-panel .section-label{color:var(--bs-public-red-hot)!important;text-shadow:0 0 9px rgba(255,32,46,.34)}
+body.honky-home:not(.intro-open) :is(.button,.honky-book),
+body.partnerships-page .button{
+  background:linear-gradient(180deg,#ff2938,#c90b1d)!important;
+  border-color:#ff5260!important;color:#fff7ed!important;
+  box-shadow:var(--bs-public-glow)!important;
+}
+body.honky-home:not(.intro-open) :is(.button,.honky-book):is(:hover,:focus-visible),
+body.partnerships-page .button:is(:hover,:focus-visible){background:linear-gradient(180deg,#ff4653,#e10e22)!important;box-shadow:0 0 10px rgba(255,52,65,.88),0 0 32px rgba(244,16,37,.48)!important}
+
+/* Keep the approved panel composition open to the brick instead of a flat black strip. */
+body.honky-home:not(.intro-open) main section.home-story-panel-grid:not(.dark):not(.better-hero):not(.booking-hero):not(.about-hero):not(.saloon-signoff){background:rgba(8,2,3,.12)!important}
+
+/* Authoritative Halloween stage: brick perimeter, shaded copy plane, isolated video. */
+body.honky-home:not(.intro-open) .home-halloween-video{
+  position:relative!important;isolation:isolate!important;overflow:clip!important;
+  grid-template-columns:minmax(0,1fr) minmax(190px,clamp(220px,21vw,290px))!important;
+  width:min(1240px,calc(100% - clamp(20px,3vw,44px)))!important;
+  padding:clamp(34px,4.2vw,60px)!important;gap:clamp(24px,4vw,54px)!important;
+  background:
+    radial-gradient(ellipse at 8% 30%,rgba(255,34,37,.34),transparent 31%),
+    radial-gradient(ellipse at 92% 34%,rgba(255,27,34,.3),transparent 29%),
+    linear-gradient(90deg,rgba(8,2,3,.42),rgba(4,2,2,.66) 28%,rgba(4,2,2,.7) 72%,rgba(8,2,3,.4)),
+    url('boot-scootin-entrance-brick-floor.webp') center 30%/cover no-repeat!important;
+  border:0!important;border-block:1px solid rgba(255,42,55,.76)!important;border-radius:0!important;
+  box-shadow:0 22px 50px rgba(0,0,0,.58),inset 0 1px rgba(255,97,104,.18),0 0 28px rgba(255,20,38,.22)!important;
+}
+body.honky-home:not(.intro-open) .home-halloween-video:before,
+body.honky-home:not(.intro-open) .home-halloween-video:after,
+body.honky-home:not(.intro-open) .home-story-panel-grid:before,
+body.honky-home:not(.intro-open) .home-community-features:before{content:none!important;display:none!important}
+body.honky-home:not(.intro-open) .home-halloween-video-copy{
+  position:relative!important;z-index:1!important;padding:clamp(22px,3vw,38px)!important;
+  background:linear-gradient(135deg,rgba(8,3,4,.9),rgba(13,4,5,.78))!important;
+  border:0!important;border-left:3px solid var(--bs-public-red)!important;
+  box-shadow:0 18px 36px rgba(0,0,0,.42),-8px 0 24px rgba(255,22,37,.08)!important;
+}
+body.honky-home:not(.intro-open) .home-halloween-video h2{color:var(--bs-public-cream)!important;text-shadow:0 2px 0 #170305,0 0 12px rgba(255,30,44,.16)}
+body.honky-home:not(.intro-open) .home-halloween-video-player{
+  position:relative!important;z-index:1!important;isolation:isolate!important;overflow:hidden!important;
+  padding:7px!important;background:#020101!important;border:1px solid #ff3342!important;border-radius:4px!important;
+  box-shadow:0 0 9px rgba(255,41,54,.84),0 0 30px rgba(246,17,36,.48),0 18px 36px rgba(0,0,0,.7)!important;
+}
+body.honky-home:not(.intro-open) .home-halloween-video-player video{
+  position:relative!important;z-index:1!important;display:block!important;width:100%!important;height:auto!important;
+  aspect-ratio:9/16!important;object-fit:contain!important;opacity:1!important;background:#020101!important;
+  transform:none!important;filter:none!important;
+}
 
 @media(max-width:950px){
   body.partnerships-page,
@@ -1287,124 +1357,10 @@ body.honky-home:not(.intro-open) .home-story-panel figure img{filter:saturate(.9
   body:has(>header.header){background-attachment:scroll}
 }
 @media(max-width:760px){
+  body.honky-home:not(.intro-open) .home-halloween-video{grid-template-columns:1fr!important;padding:22px 14px 28px!important;background-position:center 24%!important}
+  body.honky-home:not(.intro-open) .home-halloween-video-copy{padding:20px 18px 22px!important}
+  body.honky-home:not(.intro-open) .home-halloween-video-player{width:min(70vw,230px)!important}
   body.honky-home:not(.intro-open) .home-story-panel-grid{align-items:stretch!important;padding-block:24px!important}
   body.honky-home:not(.intro-open) .home-story-panel>div{padding:19px 18px 22px!important}
   body.honky-home:not(.intro-open) .saloon-signoff{padding-block:30px!important}
-}
-
-/* v96.4.134 — reference-led honky-tonk environment using approved site assets. */
-body.honky-home:not(.intro-open),
-body.partnerships-page,
-body.public-atmosphere,
-body:has(>header.header){
-  background-color:#100506!important;
-  background-image:
-    radial-gradient(ellipse at 7% 18%,rgba(168,31,27,.24),transparent 29%),
-    radial-gradient(ellipse at 93% 20%,rgba(177,35,29,.2),transparent 27%),
-    linear-gradient(90deg,rgba(3,1,2,.08),rgba(5,2,3,.28) 19%,rgba(5,3,3,.5) 50%,rgba(5,2,3,.28) 81%,rgba(3,1,2,.08)),
-    url('boot-scootin-entrance-brick-floor.webp')!important;
-  background-size:auto,auto,auto,cover!important;
-  background-position:center top,center top,center top,center 34%!important;
-  background-repeat:no-repeat!important;
-  background-attachment:fixed!important;
-}
-body.honky-home:not(.intro-open):not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body),
-body.partnerships-page:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body){
-  background-image:
-    radial-gradient(ellipse at 7% 18%,rgba(168,31,27,.24),transparent 29%),
-    radial-gradient(ellipse at 93% 20%,rgba(177,35,29,.2),transparent 27%),
-    linear-gradient(90deg,rgba(3,1,2,.08),rgba(5,2,3,.28) 19%,rgba(5,3,3,.5) 50%,rgba(5,2,3,.28) 81%,rgba(3,1,2,.08)),
-    url('boot-scootin-entrance-brick-floor.webp')!important;
-  background-size:auto,auto,auto,cover!important;
-  background-position:center top,center top,center top,center 34%!important;
-}
-
-body.honky-home .honky-header,
-body.partnerships-page .honky-header,
-body:has(>header.header)>header.header{
-  background:
-    linear-gradient(180deg,rgba(7,2,3,.72),rgba(10,4,5,.88)),
-    url('boot-scootin-entrance-brick-floor.webp') center 12%/cover no-repeat!important;
-  border-bottom:1px solid rgba(201,44,52,.58)!important;
-  box-shadow:0 12px 30px rgba(0,0,0,.55),0 0 20px rgba(197,29,39,.09)!important;
-}
-
-body.honky-home:not(.intro-open)>:is(.home-promo-strip,.golden-ticket-reopen-wrap){
-  background:rgba(7,3,4,.86)!important;
-  border-block-color:rgba(157,40,47,.48)!important;
-  box-shadow:0 8px 22px rgba(0,0,0,.4)!important;
-}
-
-body.honky-home:not(.intro-open) main,
-body.partnerships-page main,
-body.public-atmosphere main,
-body:has(>header.header) main{
-  background:linear-gradient(90deg,rgba(5,2,3,.14),rgba(7,3,4,.34) 20%,rgba(7,3,4,.46) 50%,rgba(7,3,4,.34) 80%,rgba(5,2,3,.14))!important;
-}
-body.honky-home:not(.intro-open):not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body) main,
-body.partnerships-page:not(.admin-login-body):not(.ranch-body):not(.ranch-v91):not(.member-hub-body) main{
-  background:linear-gradient(90deg,rgba(5,2,3,.14),rgba(7,3,4,.34) 20%,rgba(7,3,4,.46) 50%,rgba(7,3,4,.34) 80%,rgba(5,2,3,.14))!important;
-}
-
-body.honky-home:not(.intro-open) :is(.desktop-home-start-v32,.home-story-panel-grid,.home-community-features,.home-mailing-section),
-body.partnerships-page :is(.partnership-opportunities,.advertising-options){
-  background:rgba(8,4,5,.36)!important;
-  border-block-color:rgba(112,38,43,.42)!important;
-}
-body.honky-home:not(.intro-open) main section.home-story-panel-grid:not(.dark):not(.better-hero):not(.booking-hero):not(.about-hero):not(.saloon-signoff){
-  background:rgba(8,4,5,.18)!important;
-}
-
-body.honky-home:not(.intro-open) .home-story-panel,
-body.partnerships-page :is(.partnerships-hero,.partnerships-cta){
-  background:linear-gradient(145deg,rgba(18,8,9,.91),rgba(6,3,4,.89))!important;
-  border:1px solid rgba(143,39,46,.45)!important;
-  box-shadow:0 18px 34px rgba(0,0,0,.42),inset 0 1px rgba(255,235,213,.035)!important;
-}
-
-/* One clean Halloween stage: no image layer, pseudo-art or competing stacking context. */
-body.honky-home:not(.intro-open) .home-halloween-video{
-  position:relative!important;
-  isolation:isolate!important;
-  overflow:clip!important;
-  grid-template-columns:minmax(0,1fr) minmax(190px,clamp(210px,20vw,280px))!important;
-  width:min(1180px,calc(100% - clamp(24px,4vw,56px)))!important;
-  padding:clamp(24px,3.2vw,42px)!important;
-  gap:clamp(22px,4vw,48px)!important;
-  background:linear-gradient(135deg,rgba(17,7,8,.96),rgba(5,3,3,.98))!important;
-  border:1px solid rgba(190,44,53,.58)!important;
-  box-shadow:0 20px 44px rgba(0,0,0,.54),0 0 22px rgba(189,28,39,.08)!important;
-}
-body.honky-home:not(.intro-open) .home-halloween-video:before,
-body.honky-home:not(.intro-open) .home-halloween-video:after,
-body.honky-home:not(.intro-open) .home-story-panel-grid:before,
-body.honky-home:not(.intro-open) .home-community-features:before{content:none!important;display:none!important}
-body.honky-home:not(.intro-open) .home-halloween-video-copy{
-  position:relative!important;z-index:1!important;
-  padding:clamp(20px,2.5vw,32px)!important;
-  background:transparent!important;border:0!important;box-shadow:none!important;
-}
-body.honky-home:not(.intro-open) .home-halloween-video-player{
-  position:relative!important;z-index:1!important;isolation:isolate!important;overflow:hidden!important;
-  padding:6px!important;background:#030202!important;border:1px solid rgba(222,49,59,.72)!important;
-  box-shadow:0 0 12px rgba(218,37,48,.18),0 14px 30px rgba(0,0,0,.62)!important;
-}
-body.honky-home:not(.intro-open) .home-halloween-video-player video{
-  position:relative!important;z-index:1!important;display:block!important;
-  width:100%!important;height:auto!important;aspect-ratio:9/16!important;object-fit:contain!important;
-  opacity:1!important;background:#020101!important;transform:none!important;filter:none!important;
-}
-
-.partnerships-page .partnership-opportunities,
-.partnerships-page .advertising-options{box-shadow:none!important}
-
-@media(max-width:950px){
-  body.honky-home:not(.intro-open),body.partnerships-page,body.public-atmosphere,body:has(>header.header){
-    background-attachment:scroll!important;background-position:center top!important;
-  }
-}
-@media(max-width:760px){
-  body.honky-home:not(.intro-open) .home-halloween-video{grid-template-columns:1fr!important;padding:16px!important}
-  body.honky-home:not(.intro-open) .home-halloween-video-copy{padding:19px 17px!important}
-  body.honky-home:not(.intro-open) :is(.desktop-home-start-v32,.home-story-panel-grid,.home-community-features,.home-mailing-section){background:rgba(7,3,4,.28)!important}
 }
