@@ -59,5 +59,17 @@ assert.match(repair, /v96\.4\.128 — two-row homepage storytelling composition/
 assert.match(repair, /v96\.4\.129 — compact square homepage media and editorial partnerships/, 'final compact editorial refinement layer is present');
 assert.match(repair, /home-story-panel figure\{align-self:start!important;aspect-ratio:1\/1!important\}/, 'homepage feature photographs use square frames');
 assert.match(index, /Bring line dancing to your event/, 'homepage private-event copy is direct and natural');
+assert.match(repair, /v96\.4\.139 — consolidated brick-dominant honky-tonk environment/, 'one consolidated public visual system is present');
+assert.match(repair, /home-story-panel-grid\{align-items:start!important;grid-auto-rows:auto!important/, 'homepage cards use natural content height instead of forced row stretching');
+assert.match(repair, /--bs-type-body:"Trebuchet MS",Arial,sans-serif/, 'public body typography uses the shared readable type token');
+assert.match(repair, /saloon-signoff\{[\s\S]*?min-height:0!important/, 'homepage closing signature is compact');
+assert.doesNotMatch(index, /honky-wall-detail/, 'no substitute signage or assembled decorative artwork remains');
+assert.doesNotMatch(repair, /url\(['"]honky-tonk-reference-approved\.png/, 'the design reference is never pasted into the public website');
+assert.match(repair, /--bs-public-red:#ff1f2d/, 'reference-sampled bright neon red is tokenised');
+assert.match(repair, /url\('boot-scootin-brick-wall\.jpg'\)/, 'approved source is separated into a brick-dominant public wall texture');
+assert.match(repair, /saloon-signoff\{[\s\S]*?url\('boot-scootin-wood-floor\.jpg'\)/, 'approved timber crop is limited to the closing environmental transition');
+assert.match(repair, /home-halloween-video\{[\s\S]*?isolation:isolate!important;[\s\S]*?overflow:clip!important/, 'Halloween feature owns one isolated clipped stage');
+assert.match(repair, /home-halloween-video\{[\s\S]*?border:0!important;border-radius:0!important;box-shadow:none!important/, 'Halloween feature is integrated into the surrounding environment without another framed room');
+assert.match(repair, /home-halloween-video-player video\{[\s\S]*?aspect-ratio:9\/16!important;[\s\S]*?object-fit:contain!important/, 'Halloween video remains an isolated uncropped 9:16 player');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');
