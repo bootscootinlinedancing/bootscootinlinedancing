@@ -6,12 +6,60 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
   document.head.append(analyticsLoader);
 }
 
+const BOOT_SCOOTIN_PUBLIC_NAVIGATION = Object.freeze([
+  {title:'Discover',subtitle:'Start here and explore Boot Scootin’',items:[
+    ['about.html','About Boot Scootin’'],['gallery.html','Gallery'],['ask-nora.html','Contact'],
+    ['dance-library.html','Dance Library'],['dance-diary.html','Dance Diary']
+  ]},
+  {title:'Community',subtitle:'Find your people and country events',items:[
+    ['community.html','Community Hub'],['whatsapp-community.html','WhatsApp Community'],
+    ['moonshine.html','Moonshine & Good Times Gang'],['long-road-handbook.html','Long Road Handbook'],
+    ['country-guide-festivals.html','Festivals & Country Events']
+  ]},
+  {title:'Country Corner',subtitle:'Music, dancing, places and adventures',items:[
+    ['country-corner.html','Nora’s Country Corner'],['country-guide.html','Nora’s Country Guide'],
+    ['country-guide-music.html','Country Music'],['country-guide-line-dancing.html','UK Line Dancing'],
+    ['country-guide-fashion.html','Western Fashion'],['country-guide-festivals.html','Country Festivals'],
+    ['country-guide-food-drink.html','Food & Drink'],['country-guide-places.html','Places'],
+    ['country-guide-inspirations.html','Inspirations'],['country-guide-adventures.html','Adventures & Summer Stomp'],
+    ['country-map.html','Country Map']
+  ]},
+  {title:'Businesses & Partners',subtitle:'Recommendations, merchandise and partnerships',items:[
+    ['businesses.html','Businesses We Love'],['businesses.html#threefives','Official Merchandise · ThreeFives'],
+    ['businesses.html#recommendations','Local Recommendations'],['businesses.html#affiliate-partners','Affiliate Recommendations'],
+    ['partnerships.html','Partnerships & Advertising'],['partnerships.html#sponsorship-enquiries','Sponsorship Enquiries']
+  ]}
+]);
+window.BOOT_SCOOTIN_PUBLIC_NAVIGATION=BOOT_SCOOTIN_PUBLIC_NAVIGATION;
+let memberNavigationStatusPromise;
+
+function publicNavPath(value=''){
+  try{return (new URL(value,location.href).pathname.split('/').pop()?.toLowerCase()||'index').replace(/\.html$/,'');}catch(_){return '';}
+}
+function publicNavActive(href){
+  const page=publicNavPath(location.pathname),target=publicNavPath(href);
+  return page===target;
+}
+function publicNavLinks(items,{desktop=false}={}){
+  return items.map(([href,label])=>desktop
+    ? `<a${publicNavActive(href)?' class="active" aria-current="page"':''} href="${href}">${label}</a>`
+    : `<a${publicNavActive(href)?' aria-current="page"':''} href="${href}"><span>${label}</span><b aria-hidden="true">›</b></a>`
+  ).join('');
+}
+function installMobileNavigationInventory(){
+  const sections=document.querySelector('.menu45-sections');
+  if(!sections||sections.dataset.sharedNavigation==='true')return;
+  sections.innerHTML=BOOT_SCOOTIN_PUBLIC_NAVIGATION.map(group=>`<details class="menu45-section"><summary><span class="menu45-summary-copy"><strong>${group.title}</strong><small>${group.subtitle}</small></span><b aria-hidden="true"></b></summary><div class="menu45-submenu">${publicNavLinks(group.items)}</div></details>`).join('');
+  sections.dataset.sharedNavigation='true';
+}
+
 (() => {
   const ua = navigator.userAgent || '';
   const platform = navigator.platform || '';
   const isPhoneTablet = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) && !/Macintosh/i.test(ua);
   const isDesktopOS = /Mac|Win|Linux/i.test(platform) && !isPhoneTablet;
   const desktop = isDesktopOS || (!isPhoneTablet && Math.max(screen.width || 0, screen.height || 0) >= 900);
+  installMobileNavigationInventory();
   if (!desktop) return;
 
   document.documentElement.classList.add('desktop-mode');
@@ -22,26 +70,21 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
     // in one accessible Explore menu instead of an overcrowded 11-link row.
     const header = document.querySelector('header.honky-header,header.header');
     if (header) {
-      const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
       const primaryItems = [
-        ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],['class-pass.html','Class Pass'],
+        ['index.html','Home'],['bookings.html','Classes'],['class-pass.html','Class Pass'],
         ['private-events.html','Private Events'],['reviews.html','Reviews']
       ];
-      const exploreItems = [
-        ['gallery.html','Gallery'],['ask-nora.html','Contact'],['country-corner.html','Country Corner'],
-        ['businesses.html','Businesses We Love'],['partnerships.html','Partnerships & Advertising']
-      ];
-      const activeFor = href => page === href || (href === 'index.html' && (page === '' || page === '/'));
-      const links = primaryItems.map(([href,label]) => `<a${activeFor(href)?' class="active"':''} href="${href}">${label}</a>`).join('');
-      const exploreActive=exploreItems.some(([href])=>activeFor(href));
-      const exploreLinks=exploreItems.map(([href,label])=>`<a${activeFor(href)?' class="active" aria-current="page"':''} href="${href}">${label}</a>`).join('');
+      const links = primaryItems.map(([href,label]) => `<a${publicNavActive(href)?' class="active" aria-current="page"':''} href="${href}">${label}</a>`).join('');
+      const exploreActive=BOOT_SCOOTIN_PUBLIC_NAVIGATION.some(group=>group.items.some(([href])=>publicNavActive(href)));
+      const exploreGroups=BOOT_SCOOTIN_PUBLIC_NAVIGATION.map(group=>`<section class="desktop-explore-group"><h2>${group.title}</h2>${publicNavLinks(group.items,{desktop:true})}</section>`).join('');
       header.className = 'honky-header unified-desktop-header';
+      header.dataset.publicNavigation='true';
       header.innerHTML = `
         <a class="honky-logo brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
           <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
-        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<div class="desktop-explore${exploreActive?' is-current':''}"><button class="desktop-explore-toggle" type="button" aria-expanded="false" aria-controls="desktopExploreMenu">Explore <span aria-hidden="true">▼</span></button><div class="desktop-explore-menu" id="desktopExploreMenu" hidden>${exploreLinks}</div></div></nav>
+        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<div class="desktop-explore${exploreActive?' is-current':''}"><button class="desktop-explore-toggle" type="button" aria-expanded="false" aria-controls="desktopExploreMenu">Explore <span aria-hidden="true">▼</span></button><div class="desktop-explore-menu" id="desktopExploreMenu" hidden>${exploreGroups}</div></div></nav>
         <a class="honky-account" href="member-hub.html" data-member-account-link><span aria-hidden="true">👤</span> <b data-member-account-label>My account</b></a>
         <a class="honky-book" href="bookings.html">Book a class</a>
         <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>`;
@@ -59,14 +102,28 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
         if(opening)menu.querySelector('a')?.focus();
       });
       header.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu?.hidden){event.preventDefault();closeExplore({restoreFocus:true});}});
+      menu?.addEventListener('keydown',event=>{
+        if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+        const links=[...menu.querySelectorAll('a')];if(!links.length)return;
+        event.preventDefault();
+        const current=Math.max(0,links.indexOf(document.activeElement));
+        const next=event.key==='Home'?0:event.key==='End'?links.length-1:event.key==='ArrowDown'?(current+1)%links.length:(current-1+links.length)%links.length;
+        links[next].focus();
+      });
       document.addEventListener('click',event=>{if(!explore?.contains(event.target))closeExplore();});
       refreshMemberNavigation();
     }
   };
   installDesktopHeader();
+  window.addEventListener('pageshow',()=>{
+    const toggle=document.querySelector('.desktop-explore-toggle'),menu=document.querySelector('.desktop-explore-menu');
+    if(toggle&&menu){toggle.setAttribute('aria-expanded','false');menu.hidden=true;toggle.closest('.desktop-explore')?.classList.remove('is-open');}
+    installMobileNavigationInventory();
+    memberNavigationStatusPromise=undefined;
+    refreshMemberNavigation();
+  });
 })();
 
-let memberNavigationStatusPromise;
 async function refreshMemberNavigation(){
   memberNavigationStatusPromise??=(async()=>{
     try{

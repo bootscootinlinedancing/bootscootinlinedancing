@@ -3473,6 +3473,7 @@ async function systemHealth(request, env) {
     checked_at: new Date().toISOString()
   };
 
+  let recentMemberResetFailures=0;
   try {
     if (env.BOOKINGS_DB) {
       await ensureBookingSchema(env);
@@ -3484,6 +3485,8 @@ async function systemHealth(request, env) {
         label: Number(count?.total || 0) > 0 ? 'D1 database connected' : 'D1 database needs setup',
         detail: `${Number(count?.total || 0)} tables available`
       };
+      const resetFailures=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) total FROM audit_log WHERE action='MEMBER_PASSWORD_RESET_EMAIL_FAILED' AND datetime(created_at)>=datetime('now','-24 hours')`).first().catch(()=>null);
+      recentMemberResetFailures=Number(resetFailures?.total||0);
     }
   } catch (error) {
     result.database = { status: 'error', label: 'D1 database check failed', detail: error.message };
@@ -3503,10 +3506,10 @@ async function systemHealth(request, env) {
     ? { status: 'ready', label: 'SumUp Payments connected', detail: sumupCheck.message }
     : { status: sumupCheck.status === 'setup' ? 'setup' : 'error', label: 'SumUp Payments needs attention', detail: sumupCheck.message };
 
-  result.email = {
-    status: 'info',
-    label: 'Cloudflare email routing is managed in the domain dashboard'
-  };
+  const emailConfigured=notificationConfig(env).emailReady&&Boolean(emailSender(env,'members'));
+  result.email = recentMemberResetFailures
+    ? {status:'error',label:'Member email delivery needs attention',detail:`${recentMemberResetFailures} password-reset delivery failure${recentMemberResetFailures===1?'':'s'} recorded in the last 24 hours. No recipient addresses or reset tokens are stored in this diagnostic.`}
+    : {status:emailConfigured?'ready':'setup',label:emailConfigured?'Member email provider configured':'Member email provider needs setup',detail:'Password-reset delivery diagnostics contain status metadata only; recipient addresses and reset tokens are excluded.'};
 
   return json(result);
 }
@@ -3785,7 +3788,18 @@ async function memberForgot(request,env){
     paragraphs:['Use the secure link below to choose a new password.','This link expires in 2 hours.'],
     buttons:[{label:'Reset password',href:resetUrl}]
   });
-  await sendTransactionalEmail(env,email,'Reset your Boot Scootin’ password',html,`Reset your password:\n${resetUrl}\n\nThis link expires in 2 hours.`,'members').catch(()=>null);
+  const deliveryKey=`member-reset:${await memberSha256Hex(token)}`;
+  try{
+    const delivered=await sendTransactionalEmail(env,email,'Reset your Boot Scootin’ password',html,`Reset your password:\n${resetUrl}\n\nThis link expires in 2 hours.`,'members',{idempotencyKey:deliveryKey});
+    if(delivered?.skipped)throw new Error('EMAIL_PROVIDER_NOT_CONFIGURED');
+  }catch(error){
+    const message=String(error?.message||error||'');
+    const providerStatus=Number(message.match(/HTTP\s+(\d{3})/i)?.[1]||0)||null;
+    const category=/NOT_CONFIGURED|not configured/i.test(message)?'CONFIGURATION':/connection|fetch|network/i.test(message)?'CONNECTION':providerStatus?'PROVIDER_REJECTED':'UNKNOWN';
+    console.error('MEMBER_PASSWORD_RESET_EMAIL_FAILED',{category,provider_status:providerStatus});
+    await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES('SYSTEM','MEMBER_PASSWORD_RESET_EMAIL_FAILED','member_account',?,?)`)
+      .bind(account.id,JSON.stringify({category,provider_status:providerStatus})).run().catch(()=>{});
+  }
   return generic;
 }
 async function memberReset(request,env){

@@ -1214,13 +1214,21 @@ html.desktop-mode .honky-header .honky-desktop-nav>a.active:after,
 html.desktop-mode .honky-header .desktop-explore.is-current>.desktop-explore-toggle:after{content:"";position:absolute;left:0;right:0;bottom:7px;height:2px;background:#ef202b}
 .desktop-explore{position:relative}.desktop-explore-toggle{position:relative;display:inline-flex;align-items:center;gap:5px}.desktop-explore-toggle span{font-size:.62em;color:#ef3942}
 .desktop-explore-menu{position:absolute;z-index:2000;top:calc(100% + 4px);right:0;width:230px;padding:7px;border:1px solid #772a30;background:#0d0607;box-shadow:0 16px 36px rgba(0,0,0,.58)}
-.desktop-explore-menu[hidden]{display:none!important}.desktop-explore-menu a{display:block!important;padding:11px 12px!important;border-bottom:1px solid rgba(106,43,48,.5);color:#f2e3d8!important;font:600 12px/1.25 Oswald,sans-serif!important;letter-spacing:.04em!important;text-transform:none!important;text-decoration:none}.desktop-explore-menu a:last-child{border-bottom:0}.desktop-explore-menu a:hover,.desktop-explore-menu a:focus-visible,.desktop-explore-menu a.active{background:#251013;color:#fff!important;outline:0}
+.desktop-explore-menu[hidden]{display:none!important}.desktop-explore-menu a{display:block!important;padding:9px 10px!important;border-bottom:1px solid rgba(106,43,48,.4);color:#f2e3d8!important;font:600 11.5px/1.25 Oswald,sans-serif!important;letter-spacing:.035em!important;text-transform:none!important;text-decoration:none}.desktop-explore-menu a:last-child{border-bottom:0}.desktop-explore-menu a:hover,.desktop-explore-menu a:focus-visible,.desktop-explore-menu a.active{background:#251013;color:#fff!important;outline:2px solid #d53b43;outline-offset:-2px}
+html.desktop-mode .desktop-explore-menu{position:fixed;top:clamp(70px,7vw,92px);left:50%;right:auto;width:min(920px,calc(100vw - 32px));max-height:calc(100dvh - 110px);overflow:auto;transform:translateX(-50%);padding:18px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;border-color:#8b3037;background:linear-gradient(145deg,rgba(21,7,8,.99),rgba(6,3,3,.99));box-shadow:0 20px 50px rgba(0,0,0,.72),0 0 24px rgba(190,30,40,.14)}
+.desktop-explore-group{min-width:0}.desktop-explore-group h2{margin:0 0 8px;padding:0 10px 8px;border-bottom:2px solid #b72731;color:#f1c795;font:700 12px/1.2 Oswald,sans-serif;letter-spacing:.09em;text-transform:uppercase}.desktop-explore-group a[aria-current="page"]{background:#301014;color:#fff!important}
 html.desktop-mode .honky-header .honky-account,
 html.desktop-mode .honky-header .honky-book{display:inline-flex!important;align-items:center;justify-content:center;min-height:40px;padding:0 10px;text-align:center;text-decoration:none;text-transform:uppercase;font:600 9px/1.1 Oswald,sans-serif!important;letter-spacing:.08em!important;white-space:nowrap}
 html.desktop-mode .honky-header .honky-account{grid-column:3!important;width:126px!important;min-width:126px!important;border:1px solid #815054;background:#140a0b;color:#fff0e4}
 html.desktop-mode .honky-header .honky-account:hover,html.desktop-mode .honky-header .honky-account:focus-visible{border-color:#e33a43;background:#251012}
 html.desktop-mode .honky-header .honky-book{grid-column:4!important;width:118px!important;min-width:118px!important}
 .menu45-account strong{color:#fff5e9!important}
+
+/* Isolated owner-review typography corrections. */
+#threefives .threefives-visual span{max-width:100%;font-size:clamp(1.65rem,4.2vw,3.2rem)!important;line-height:1!important;overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important}
+#threefives .business-love-copy h2{font-size:clamp(1.85rem,3.7vw,3rem)!important;line-height:1.05!important;overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important}
+.new-home-footer .footer-script{margin:clamp(14px,2vw,24px) auto!important;font-size:clamp(1.45rem,3vw,2.35rem)!important;line-height:1.12!important}
+.home-story-card .handwritten{margin:.65rem 0 1rem!important;font-size:clamp(1.45rem,2.5vw,2.15rem)!important;line-height:1.1!important}
 
 .partnerships-page .partnerships-hero{padding:clamp(40px,5vw,62px) 0 clamp(30px,3.5vw,44px)!important}
 .partnerships-page .partnerships-hero>p{max-width:720px!important}
