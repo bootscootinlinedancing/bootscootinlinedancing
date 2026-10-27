@@ -810,6 +810,14 @@
           <button type="button" class="button secondary compact" id="removeClassPoster" hidden>Remove poster</button>
           <small id="classPosterStatus">No poster selected.</small>
         </section>
+        <section class="hq-class-poster" aria-labelledby="classPromoPosterHeading">
+          <div><p class="kicker red">Promotional poster</p><h3 id="classPromoPosterHeading">Optional second poster</h3><p>Upload a separate prize or campaign poster. It appears beside the main event poster and never overwrites it.</p></div>
+          <input type="hidden" name="promo_poster_url">
+          <label class="hq-poster-file">Choose promotional poster image<input id="classPromoPosterFile" type="file" accept="image/jpeg,image/png,image/webp"></label>
+          <div class="hq-poster-preview-wrap" id="classPromoPosterPreviewWrap" hidden><img id="classPromoPosterPreview" alt="Promotional poster preview"></div>
+          <button type="button" class="button secondary compact" id="removeClassPromoPoster" hidden>Remove promotional poster</button>
+          <small id="classPromoPosterStatus">No promotional poster selected.</small>
+        </section>
         <p id="classEditorMessage" class="form-message" aria-live="polite"></p>
         <div class="hq-modal-actions">
           <button type="button" class="button secondary" data-close-class-modal>Cancel</button>
@@ -836,7 +844,7 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=96.4.108"></script>
+  <script src="ranch.js?v=96.4.121"></script>
 
 
   <script src="honky-theme.js?v=96.0.0"></script>

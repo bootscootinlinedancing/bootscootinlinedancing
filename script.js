@@ -1,4 +1,11 @@
 /* v96.4.30: deterministic desktop mode + one consistent desktop header. */
+if (!document.querySelector('script[src^="google-analytics.js"]')) {
+  const analyticsLoader=document.createElement('script');
+  analyticsLoader.src='google-analytics.js';
+  analyticsLoader.defer=true;
+  document.head.append(analyticsLoader);
+}
+
 (() => {
   const ua = navigator.userAgent || '';
   const platform = navigator.platform || '';
@@ -8,7 +15,7 @@
   if (!desktop) return;
 
   document.documentElement.classList.add('desktop-mode');
-  document.addEventListener('DOMContentLoaded', () => {
+  const installDesktopHeader = () => {
     document.body?.classList.add('desktop-mode');
 
     // Every desktop page now uses the same compact navigation style as the homepage.
@@ -17,7 +24,8 @@
       const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
       const navItems = [
         ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],['class-pass.html','Class Pass'],
-        ['private-events.html','Private Events'],['gallery.html','Gallery'],['reviews.html','Reviews'],['ask-nora.html','Contact']
+        ['private-events.html','Private Events'],['gallery.html','Gallery'],['reviews.html','Reviews'],['ask-nora.html','Contact'],
+        ['country-corner.html','Country Corner'],['businesses.html','Businesses We Love'],['partnerships.html','Partnerships & Advertising']
       ];
       const links = navItems.map(([href,label]) => {
         const active = page === href || (href === 'index.html' && (page === '' || page === '/'));
@@ -30,21 +38,78 @@
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
         <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
-        <a class="honky-book" href="bookings.html">Book a class</a>`;
+        <a class="honky-book" href="bookings.html">Book a class</a>
+        <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>`;
     }
-  }, {once:true});
+  };
+  installDesktopHeader();
 })();
+
+// One approved MP4 powers both Halloween placements. This review branch uses
+// a static Pages asset; production can later point this at the R2 media URL.
+window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '/halloween-hoedown-promo-2026.mp4';
 
 // Homepage promotions and optional mailing-list invitation.
 (() => {
-  const promoLinks = [...document.querySelectorAll('[data-promo-track] > a')];
-  if (promoLinks.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    let promoIndex = 0;
-    window.setInterval(() => {
-      promoLinks[promoIndex].classList.remove('is-active');
-      promoIndex = (promoIndex + 1) % promoLinks.length;
-      promoLinks[promoIndex].classList.add('is-active');
-    }, 6500);
+  const promoTrack = document.querySelector('[data-promo-track]');
+  const promoPause = document.querySelector('[data-promo-pause]');
+  promoPause?.addEventListener('click', () => {
+    const paused = promoTrack?.classList.toggle('is-paused') || false;
+    promoPause.setAttribute('aria-pressed', String(paused));
+    const icon = promoPause.querySelector('[aria-hidden]');
+    const label = promoPause.querySelector('.sr-only');
+    if (icon) icon.textContent = paused ? '▶' : 'Ⅱ';
+    if (label) label.textContent = paused ? 'Play announcements' : 'Pause announcements';
+  });
+
+  const goldenPopup = document.getElementById('goldenTicketPopup');
+  const goldenReopen = document.getElementById('goldenTicketReopen');
+  const goldenReopenWrap = document.getElementById('goldenTicketReopenWrap');
+  const goldenStorageKey = 'bootScootinGoldenTicketHalloween2026Dismissed';
+  let goldenPreviousFocus = null;
+  let mailingReady = false;
+  const londonDate = () => {
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+  const goldenCampaignActive = () => londonDate() <= '2026-10-30';
+  const goldenDismissed = () => { try{return localStorage.getItem(goldenStorageKey)==='1';}catch(_){return false;} };
+  const closeGoldenPopup = (remember=true) => {
+    if(!goldenPopup)return;
+    goldenPopup.hidden=true;
+    document.body.classList.remove('golden-ticket-popup-open');
+    if(remember)try{localStorage.setItem(goldenStorageKey,'1');}catch(_){}
+    goldenPreviousFocus?.focus?.();
+    // The mailing invitation may have reached its nine-second delay while the
+    // higher-priority Golden Ticket dialog was open. Resume it after Golden
+    // Ticket closes instead of silently losing that one-time opportunity.
+    if(mailingReady)window.setTimeout(openPopup,0);
+  };
+  const openGoldenPopup = (manual=false) => {
+    if(!goldenPopup||!goldenCampaignActive()||(!manual&&goldenDismissed())||!goldenPopup.hidden)return;
+    const mailingPopup=document.getElementById('mailingPopup');
+    if(mailingPopup&&!mailingPopup.hidden){
+      mailingReady=true;
+      mailingPopup.hidden=true;
+      document.body.classList.remove('mailing-popup-open');
+    }
+    goldenPreviousFocus=document.activeElement;
+    goldenPopup.hidden=false;
+    document.body.classList.add('golden-ticket-popup-open');
+    goldenPopup.querySelector('.golden-ticket-popup-close')?.focus();
+  };
+  if(goldenReopenWrap)goldenReopenWrap.hidden=!goldenCampaignActive();
+  goldenReopen?.addEventListener('click',()=>openGoldenPopup(true));
+  goldenPopup?.querySelectorAll('[data-golden-ticket-close]').forEach(control=>control.addEventListener('click',()=>closeGoldenPopup()));
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&goldenPopup&&!goldenPopup.hidden)closeGoldenPopup();});
+  if(goldenPopup&&goldenCampaignActive())window.setTimeout(openGoldenPopup,2200);
+
+  const halloweenVideoUrl=window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL;
+  const halloweenVideoFeature=document.querySelector('[data-halloween-video-feature]');
+  if(halloweenVideoFeature&&halloweenVideoUrl&&goldenCampaignActive()){
+    const video=halloweenVideoFeature.querySelector('video');
+    const source=video?.querySelector('source');
+    if(source){source.src=halloweenVideoUrl;video.load();halloweenVideoFeature.hidden=false;}
   }
 
   const popup = document.getElementById('mailingPopup');
@@ -67,6 +132,11 @@
   };
   const openPopup = () => {
     if (recentlyDismissed() || !popup.hidden) return;
+    if (document.body.classList.contains('golden-ticket-popup-open')) {
+      mailingReady = true;
+      return;
+    }
+    mailingReady = false;
     previousFocus = document.activeElement;
     popup.hidden = false;
     document.body.classList.add('mailing-popup-open');
@@ -76,7 +146,7 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !popup.hidden) closePopup();
   });
-  window.setTimeout(openPopup, 9000);
+  window.setTimeout(() => { mailingReady = true; openPopup(); }, 9000);
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
@@ -84,6 +154,7 @@
     const status = document.getElementById('mailingPopupStatus');
     const data = new FormData(form);
     const payload = {name:String(data.get('name') || '').trim(),email:String(data.get('email') || '').trim(),consent:data.get('consent') === 'on'};
+    if (!payload.name) { if (status) status.textContent = 'Please enter your first name.'; form.elements.name?.focus(); return; }
     button.disabled = true;
     if (status) status.textContent = 'Joining…';
     try {
@@ -137,7 +208,6 @@ document.addEventListener('DOMContentLoaded',upgradePublicBranding);
 const intro = document.getElementById('intro');
 const enter = document.getElementById('enterSite');
 const menuButton = document.getElementById('menuButton');
-const desktopExploreButton = document.getElementById('desktopExploreButton');
 const nav = document.getElementById('nav');
 
 function finishIntro(){
@@ -212,6 +282,11 @@ if (intro) {
 function repairPersistentExploreLinks(){
   const panel=document.getElementById('menu45');
   if(!panel) return;
+  panel.querySelectorAll('a[href^="mailto:partnerships@bootscootinlinedancing.co.uk"]').forEach(link => {
+    link.href='partnerships.html';
+    const label=link.querySelector('span');
+    if(label) label.textContent='Partnerships & Advertising';
+  });
   const findSection=(label)=>[...panel.querySelectorAll('details.menu45-section')].find(section =>
     section.querySelector(':scope > summary strong')?.textContent.trim()===label
   );
@@ -273,15 +348,14 @@ const navClose = document.getElementById('navClose');
 let menuScrollY = 0;
 
 function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
-  if (!nav || !menuButton) return;
+  if (!nav) return;
   const wasOpen = nav.classList.contains('open') || document.body.classList.contains('menu-open');
 
   if (open && !wasOpen) menuScrollY = window.scrollY || document.documentElement.scrollTop || 0;
 
   nav.classList.toggle('open', open);
   nav.setAttribute('aria-hidden', String(!open));
-  menuButton.setAttribute('aria-expanded', String(open));
-  desktopExploreButton?.setAttribute('aria-expanded', String(open));
+  menuButton?.setAttribute('aria-expanded', String(open));
   document.body.classList.toggle('menu-open', open);
   document.documentElement.classList.remove('menu-open');
 
@@ -297,7 +371,7 @@ function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
       section.open = false;
     });
     if (restoreScroll && wasOpen) window.scrollTo({top:menuScrollY,left:0,behavior:'instant'});
-    if (restoreFocus) requestAnimationFrame(() => menuButton.focus({preventScroll:true}));
+    if (restoreFocus) requestAnimationFrame(() => menuButton?.focus({preventScroll:true}));
   }
 }
 
@@ -312,14 +386,9 @@ function resetMenuAfterNavigation(){
 window.addEventListener('pagehide', () => setMenuOpen(false,{restoreFocus:false,restoreScroll:true}));
 window.addEventListener('pageshow', resetMenuAfterNavigation);
 
-if (menuButton && nav) {
+if (nav) {
   // A single click handler works for touch, mouse and keyboard.
-  menuButton.addEventListener('click', event => {
-    event.preventDefault();
-    setMenuOpen(!nav.classList.contains('open'));
-  });
-
-  desktopExploreButton?.addEventListener('click', event => {
+  menuButton?.addEventListener('click', event => {
     event.preventDefault();
     setMenuOpen(!nav.classList.contains('open'));
   });
@@ -513,6 +582,7 @@ installGuide?.addEventListener("click", event => {
         email: String(data.get('email') || '').trim(),
         consent: data.get('consent') === 'on'
       };
+      if (!payload.name) { if (status) status.textContent = 'Please enter your first name.'; form.elements.name?.focus(); return; }
       if (!payload.email || !payload.consent) return;
       button.disabled = true;
       if (status) status.textContent = 'Joining…';

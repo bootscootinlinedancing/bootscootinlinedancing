@@ -908,6 +908,25 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     if(status)status.textContent='Poster uploaded and linked to this class.';
     return result.url||'';
   }
+  function setClassPromoPosterPreview(url=''){
+    const form=$('#classEditorForm'),wrap=$('#classPromoPosterPreviewWrap'),img=$('#classPromoPosterPreview'),remove=$('#removeClassPromoPoster'),status=$('#classPromoPosterStatus');
+    if(!form)return;
+    form.elements.promo_poster_url.value=url||'';
+    if(url){if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent='Promotional poster ready to use.';}
+    else{if(img)img.removeAttribute('src');if(wrap)wrap.hidden=true;if(remove)remove.hidden=true;if(status)status.textContent='No promotional poster selected.';}
+  }
+  async function uploadClassPromoPosterIfNeeded(){
+    const input=$('#classPromoPosterFile'),form=$('#classEditorForm'),status=$('#classPromoPosterStatus');
+    const file=input?.files?.[0];
+    if(!file)return form?.elements.promo_poster_url?.value||'';
+    if(status)status.textContent='Uploading promotional poster…';
+    const data=new FormData();data.append('file',file);data.append('title',`${form.elements.title.value||'Boot Scootin class'} promotional poster`);data.append('description','Secondary class/event promotional poster uploaded from Boot Scootin HQ');data.append('placement','class-promo-poster');data.append('published','1');
+    const result=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'POST',body:data},30000);
+    setClassPromoPosterPreview(result.url||'');
+    input.value='';
+    if(status)status.textContent='Promotional poster uploaded and linked to this class.';
+    return result.url||'';
+  }
 
   function openClassEditor(item=null){
     // Opening the editor is a local UI action and must never depend on the
@@ -949,6 +968,8 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     updateTicketFormatFields(form);
     if($('#classPosterFile'))$('#classPosterFile').value='';
     setClassPosterPreview(item?.poster_url||'');
+    if($('#classPromoPosterFile'))$('#classPromoPosterFile').value='';
+    setClassPromoPosterPreview(item?.promo_poster_url||'');
     $('#classEditorTitle').textContent=item?'Edit class':'Create class';
     const existingRecords=Number(item?.booking_count||item?.sold||0)+Number(item?.waiting||0);
     $('#classEditorMessage').textContent=item&&existingRecords
@@ -972,6 +993,8 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     }catch(error){message.textContent=error.message;toast(error.message,'error');return;}
     let posterUrl=form.elements.poster_url.value||'';
     try{posterUrl=await uploadClassPosterIfNeeded();}catch(error){message.textContent=`Poster upload failed: ${error.message}`;toast(message.textContent,'error');return;}
+    let promoPosterUrl=form.elements.promo_poster_url.value||'';
+    try{promoPosterUrl=await uploadClassPromoPosterIfNeeded();}catch(error){message.textContent=`Promotional poster upload failed: ${error.message}`;toast(message.textContent,'error');return;}
     const localProductInstant=time=>classLocalToUtc(`${form.elements.starts_at.value.slice(0,10)}T${time}`,'Ticket time');
     const ticketProducts=form.elements.booking_format.value==='BEGINNER_IMPROVER'?[
       {product_code:'BEGINNER_SOCIAL',enabled:form.elements.beginner_enabled.checked,price_pence:Math.round(Number(form.elements.beginner_price.value)*100),starts_at:localProductInstant(form.elements.beginner_start.value),ends_at:localProductInstant(form.elements.beginner_end.value)},
@@ -983,7 +1006,7 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
       id:id||undefined,title:form.elements.title.value.trim(),venue:form.elements.venue.value.trim(),location:form.elements.location.value.trim(),
       starts_at:startsAt,ends_at:endsAt,
       price_pence:Math.round(Number(form.elements.price_gbp.value||0)*100),capacity:Number(form.elements.capacity.value||0),
-      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl,
+      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl,promo_poster_url:promoPosterUrl,
       social_only_enabled:form.elements.social_only_enabled.checked,
       social_only_price_pence:Math.round(Number(form.elements.social_only_price_gbp.value||0)*100),
       social_only_entry_time:form.elements.social_only_entry_time.value,
@@ -1942,6 +1965,8 @@ Type REFUNDED to continue.`);
   $('#anniversaryAdjustments')?.addEventListener('click',event=>{const button=event.target.closest('[data-cancel-anniversary-ticket]');if(button)cancelAnniversary('CANCEL_TICKETS',button.dataset.cancelAnniversaryTicket,'recorded ticket allocation');});
   $('#classPosterFile')?.addEventListener('change',event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const wrap=$('#classPosterPreviewWrap'),img=$('#classPosterPreview'),remove=$('#removeClassPoster'),status=$('#classPosterStatus');if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent=`Selected: ${file.name}. It will upload when you save the class.`;});
   $('#removeClassPoster')?.addEventListener('click',()=>{const input=$('#classPosterFile');if(input)input.value='';setClassPosterPreview('');});
+  $('#classPromoPosterFile')?.addEventListener('change',event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const wrap=$('#classPromoPosterPreviewWrap'),img=$('#classPromoPosterPreview'),remove=$('#removeClassPromoPoster'),status=$('#classPromoPosterStatus');if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent=`Selected: ${file.name}. It will upload when you save the class.`;});
+  $('#removeClassPromoPoster')?.addEventListener('click',()=>{const input=$('#classPromoPosterFile');if(input)input.value='';setClassPromoPosterPreview('');});
   $('#ranchClassFilter')?.addEventListener('change',renderClasses);
   $('#refreshClassPasses')?.addEventListener('click',loadClassPasses);
   $('#classPassAdminSearch')?.addEventListener('input',()=>{clearTimeout(loadClassPasses.timer);loadClassPasses.timer=setTimeout(loadClassPasses,250);});
