@@ -18,32 +18,67 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
   const installDesktopHeader = () => {
     document.body?.classList.add('desktop-mode');
 
-    // Every desktop page now uses the same compact navigation style as the homepage.
-    const legacyHeader = document.querySelector('header.header:not(.honky-header)');
-    if (legacyHeader) {
+    // Use one compact desktop header everywhere. Secondary destinations live
+    // in one accessible Explore menu instead of an overcrowded 11-link row.
+    const header = document.querySelector('header.honky-header,header.header');
+    if (header) {
       const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-      const navItems = [
+      const primaryItems = [
         ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],['class-pass.html','Class Pass'],
-        ['private-events.html','Private Events'],['gallery.html','Gallery'],['reviews.html','Reviews'],['ask-nora.html','Contact'],
-        ['country-corner.html','Country Corner'],['businesses.html','Businesses We Love'],['partnerships.html','Partnerships & Advertising']
+        ['private-events.html','Private Events'],['reviews.html','Reviews']
       ];
-      const links = navItems.map(([href,label]) => {
-        const active = page === href || (href === 'index.html' && (page === '' || page === '/'));
-        return `<a${active ? ' class="active"' : ''} href="${href}">${label}</a>`;
-      }).join('');
-      legacyHeader.className = 'honky-header unified-desktop-header';
-      legacyHeader.innerHTML = `
+      const exploreItems = [
+        ['gallery.html','Gallery'],['ask-nora.html','Contact'],['country-corner.html','Country Corner'],
+        ['businesses.html','Businesses We Love'],['partnerships.html','Partnerships & Advertising']
+      ];
+      const activeFor = href => page === href || (href === 'index.html' && (page === '' || page === '/'));
+      const links = primaryItems.map(([href,label]) => `<a${activeFor(href)?' class="active"':''} href="${href}">${label}</a>`).join('');
+      const exploreActive=exploreItems.some(([href])=>activeFor(href));
+      const exploreLinks=exploreItems.map(([href,label])=>`<a${activeFor(href)?' class="active" aria-current="page"':''} href="${href}">${label}</a>`).join('');
+      header.className = 'honky-header unified-desktop-header';
+      header.innerHTML = `
         <a class="honky-logo brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
           <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
-        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
+        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<div class="desktop-explore${exploreActive?' is-current':''}"><button class="desktop-explore-toggle" type="button" aria-expanded="false" aria-controls="desktopExploreMenu">Explore <span aria-hidden="true">▼</span></button><div class="desktop-explore-menu" id="desktopExploreMenu" hidden>${exploreLinks}</div></div></nav>
+        <a class="honky-account" href="member-hub.html" data-member-account-link><span aria-hidden="true">👤</span> <b data-member-account-label>My account</b></a>
         <a class="honky-book" href="bookings.html">Book a class</a>
         <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>`;
+      const explore=header.querySelector('.desktop-explore');
+      const toggle=header.querySelector('.desktop-explore-toggle');
+      const menu=header.querySelector('.desktop-explore-menu');
+      const closeExplore=({restoreFocus=false}={})=>{
+        if(!toggle||!menu)return;
+        toggle.setAttribute('aria-expanded','false');menu.hidden=true;explore?.classList.remove('is-open');
+        if(restoreFocus)toggle.focus();
+      };
+      toggle?.addEventListener('click',()=>{
+        const opening=toggle.getAttribute('aria-expanded')!=='true';
+        toggle.setAttribute('aria-expanded',String(opening));menu.hidden=!opening;explore?.classList.toggle('is-open',opening);
+        if(opening)menu.querySelector('a')?.focus();
+      });
+      header.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu?.hidden){event.preventDefault();closeExplore({restoreFocus:true});}});
+      document.addEventListener('click',event=>{if(!explore?.contains(event.target))closeExplore();});
+      refreshMemberNavigation();
     }
   };
   installDesktopHeader();
 })();
+
+let memberNavigationStatusPromise;
+async function refreshMemberNavigation(){
+  memberNavigationStatusPromise??=(async()=>{
+    try{
+      const response=await fetch('/api/member/me',{headers:{Accept:'application/json'},cache:'no-store'});
+      if(response.ok){const result=await response.json();return result?.authenticated===true;}
+    }catch(_){}
+    return false;
+  })();
+  const authenticated=await memberNavigationStatusPromise;
+  document.querySelectorAll('[data-member-account-label]').forEach(label=>{label.textContent=authenticated?'My dashboard':'My account';});
+  document.querySelectorAll('[data-member-account-copy]').forEach(copy=>{copy.textContent=authenticated?'Open your Member Zone dashboard':'Sign in or create a free account';});
+}
 
 // One approved MP4 powers both Halloween placements. This review branch uses
 // a static Pages asset; production can later point this at the R2 media URL.
@@ -306,9 +341,9 @@ function repairPersistentExploreLinks(){
     ['country-guide-festivals.html','Festivals &amp; Country Events',false]
   ]);
   render('My Boot Scootin’',[
-    ['member-hub.html','Member Login &amp; Registration',true],
     ['member-hub.html#class-passes','Class Passes',false],
     ['my-bookings.html','My Bookings',false],
+    ['rewards.html','My Rewards',false],
     ['reviews.html','Reviews &amp; Feedback',false]
   ]);
   render('Shop & Rewards',[
@@ -339,6 +374,16 @@ function repairPersistentExploreLinks(){
     reviewsLink.innerHTML='<span><small>Real words from the dance floor</small><strong>Reviews</strong><em>Read verified dancer feedback</em></span><b aria-hidden="true">›</b>';
     classPassLink.insertAdjacentElement('afterend',reviewsLink);
   }
+  const reviewsLink=panel.querySelector(':scope > .menu45-reviews');
+  if(reviewsLink&&!panel.querySelector(':scope > .menu45-account')){
+    const accountLink=document.createElement('a');
+    accountLink.className='menu45-first menu45-account';
+    accountLink.href='member-hub.html';
+    accountLink.dataset.memberAccountLink='';
+    accountLink.innerHTML='<span><small>Your Boot Scootin’ account</small><strong data-member-account-label>My Account</strong><em data-member-account-copy>Sign in or create a free account</em></span><b aria-hidden="true">›</b>';
+    reviewsLink.insertAdjacentElement('afterend',accountLink);
+  }
+  refreshMemberNavigation();
 }
 
 document.addEventListener('DOMContentLoaded',repairPersistentExploreLinks);

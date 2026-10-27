@@ -1185,3 +1185,73 @@ body.honky-home:not(.intro-open) .home-story-panel .button{margin-top:.55rem!imp
   body.honky-home:not(.intro-open) .home-story-panel h2,
   body.honky-home:not(.intro-open) #first-class-advice-home h2{font-size:clamp(1.65rem,8vw,2.15rem)!important}
 }
+
+/* v96.4.130 — owner-reviewed event details, account access and desktop Explore. */
+.event-details-dialog .event-detail-body.has-poster,
+.event-details-dialog .event-detail-body.has-poster:has(.event-halloween-video){
+  display:grid!important;grid-template-columns:minmax(300px,.92fr) minmax(300px,1.08fr)!important;
+  gap:clamp(22px,4vw,48px)!important;align-items:start!important;
+}
+.event-detail-media{display:grid;gap:clamp(14px,2vw,24px);min-width:0;align-content:start}
+.event-detail-media .event-halloween-video{grid-column:auto!important;grid-row:auto!important;width:100%!important;margin:0!important}
+.event-detail-media .event-halloween-video video{display:block;width:min(100%,280px)!important;max-width:100%;height:auto;margin-inline:auto;aspect-ratio:9/16;object-fit:contain;background:#050303}
+.event-details-dialog .event-detail-copy{grid-column:auto!important;max-width:none!important;min-width:0}
+.event-details-dialog .event-detail-copy h2{margin:.2rem 0 1rem!important}
+.event-description-section{clear:both;margin-top:clamp(26px,4vw,44px);padding-top:clamp(22px,3vw,34px);border-top:1px solid rgba(125,48,54,.72)}
+.event-description-section>h3{margin:0 0 12px;color:#fff2e5;font:600 clamp(1.25rem,2vw,1.65rem)/1.2 Oswald,sans-serif;letter-spacing:.04em;text-transform:uppercase}
+.event-description-section .event-full-description{margin:0!important;padding:clamp(16px,2.4vw,24px)!important;border-left:3px solid #b82a32!important;background:rgba(25,12,13,.72)!important}
+.event-description-important{margin:16px 0 4px;padding:14px 16px;border:1px solid rgba(190,59,67,.55);background:#100707;color:#ead8cc}.event-description-important>strong{display:block;margin-bottom:8px;color:#f0c391;font:700 .78rem/1.2 Oswald,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.event-description-more[hidden]{display:none!important}
+.event-description-toggle{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:11px 15px;border:1px solid #9d3038;background:#16090a;color:#fff0e2;font:700 .78rem/1.1 Oswald,sans-serif;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.event-description-toggle:hover,.event-description-toggle:focus-visible{border-color:#ef303a;background:#2a0d10;outline:2px solid transparent;box-shadow:0 0 0 2px rgba(239,48,58,.28)}
+.event-description-toggle b{color:#ef3942;font-size:1rem}
+
+html.desktop-mode .honky-header.unified-desktop-header{grid-template-columns:minmax(178px,220px) minmax(0,1fr) 126px 118px!important;gap:clamp(8px,1.25vw,18px)!important;padding-inline:clamp(14px,2vw,30px)!important}
+html.desktop-mode .honky-header .honky-desktop-nav{display:flex!important;align-items:center!important;justify-content:center!important;gap:clamp(10px,1.4vw,22px)!important;min-width:0!important;white-space:nowrap!important}
+html.desktop-mode .honky-header .honky-desktop-nav>a,
+html.desktop-mode .honky-header .desktop-explore-toggle{padding:14px 0!important;border:0;background:transparent;color:#e7d9cf;font:600 10.5px/1 Oswald,sans-serif!important;letter-spacing:.09em;text-transform:uppercase;text-decoration:none;cursor:pointer}
+html.desktop-mode .honky-header .honky-desktop-nav>a.active:after,
+html.desktop-mode .honky-header .desktop-explore.is-current>.desktop-explore-toggle:after{content:"";position:absolute;left:0;right:0;bottom:7px;height:2px;background:#ef202b}
+.desktop-explore{position:relative}.desktop-explore-toggle{position:relative;display:inline-flex;align-items:center;gap:5px}.desktop-explore-toggle span{font-size:.62em;color:#ef3942}
+.desktop-explore-menu{position:absolute;z-index:2000;top:calc(100% + 4px);right:0;width:230px;padding:7px;border:1px solid #772a30;background:#0d0607;box-shadow:0 16px 36px rgba(0,0,0,.58)}
+.desktop-explore-menu[hidden]{display:none!important}.desktop-explore-menu a{display:block!important;padding:11px 12px!important;border-bottom:1px solid rgba(106,43,48,.5);color:#f2e3d8!important;font:600 12px/1.25 Oswald,sans-serif!important;letter-spacing:.04em!important;text-transform:none!important;text-decoration:none}.desktop-explore-menu a:last-child{border-bottom:0}.desktop-explore-menu a:hover,.desktop-explore-menu a:focus-visible,.desktop-explore-menu a.active{background:#251013;color:#fff!important;outline:0}
+html.desktop-mode .honky-header .honky-account,
+html.desktop-mode .honky-header .honky-book{display:inline-flex!important;align-items:center;justify-content:center;min-height:40px;padding:0 10px;text-align:center;text-decoration:none;text-transform:uppercase;font:600 9px/1.1 Oswald,sans-serif!important;letter-spacing:.08em!important;white-space:nowrap}
+html.desktop-mode .honky-header .honky-account{grid-column:3!important;width:126px!important;min-width:126px!important;border:1px solid #815054;background:#140a0b;color:#fff0e4}
+html.desktop-mode .honky-header .honky-account:hover,html.desktop-mode .honky-header .honky-account:focus-visible{border-color:#e33a43;background:#251012}
+html.desktop-mode .honky-header .honky-book{grid-column:4!important;width:118px!important;min-width:118px!important}
+.menu45-account strong{color:#fff5e9!important}
+
+.partnerships-page .partnerships-hero{padding:clamp(40px,5vw,62px) 0 clamp(30px,3.5vw,44px)!important}
+.partnerships-page .partnerships-hero>p{max-width:720px!important}
+.partnership-opportunities{grid-template-columns:minmax(260px,.86fr) minmax(0,1.14fr)!important;gap:clamp(28px,4.5vw,58px)!important;padding:clamp(36px,5vw,58px) 0!important;align-items:start}
+.partnership-opportunities>header{position:static!important;padding-right:clamp(0px,1vw,14px)}
+.partnership-editorial-list article{padding-bottom:clamp(18px,2.2vw,26px)!important;margin-bottom:clamp(18px,2.2vw,26px)!important}
+.partnerships-page .advertising-options{padding:clamp(38px,5vw,60px) 0!important}
+.partnerships-page .advertising-options .section-title{margin-bottom:clamp(22px,3vw,32px)!important}
+.advertising-format-list{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px!important}
+.advertising-format-list article,.advertising-format-list article.featured{box-sizing:border-box;display:flex;flex-direction:column;grid-row:auto!important;min-height:0;padding:clamp(20px,2.4vw,28px)!important;border:1px solid rgba(118,45,51,.72)!important;border-left:3px solid #a8252d!important;background:linear-gradient(145deg,rgba(41,13,16,.76),rgba(12,7,7,.72))!important}
+.advertising-format-list article strong{margin-top:auto!important;padding-top:12px}
+.partnerships-page .partnerships-cta{margin-top:clamp(28px,4vw,44px)!important;padding:clamp(24px,4vw,38px)!important}
+
+@media(max-width:1240px){
+  html.desktop-mode .honky-header.unified-desktop-header{grid-template-columns:minmax(174px,210px) minmax(0,1fr) 116px 110px!important;gap:9px!important;padding-inline:14px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav{gap:10px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav>a,html.desktop-mode .honky-header .desktop-explore-toggle{font-size:9px!important;letter-spacing:.055em!important}
+  html.desktop-mode .honky-header .honky-account{width:116px!important;min-width:116px!important}
+  html.desktop-mode .honky-header .honky-book{width:110px!important;min-width:110px!important}
+}
+@media(max-width:1060px){
+  html.desktop-mode .honky-header.unified-desktop-header{grid-template-columns:minmax(170px,1fr) 116px 110px 86px!important}
+  html.desktop-mode .honky-header .honky-desktop-nav{display:none!important}
+  html.desktop-mode .honky-header #menuButton.honky-menu-button{display:inline-flex!important;grid-column:4!important;min-width:86px!important}
+  html.desktop-mode .honky-header .honky-account{grid-column:2!important}
+  html.desktop-mode .honky-header .honky-book{grid-column:3!important}
+}
+@media(max-width:760px){
+  .event-details-dialog .event-detail-body.has-poster,.event-details-dialog .event-detail-body.has-poster:has(.event-halloween-video){grid-template-columns:1fr!important;gap:20px!important}
+  .event-detail-media .event-halloween-video{width:min(100%,430px)!important;margin-inline:auto!important}
+  .event-description-section{margin-top:24px;padding-top:20px}.event-description-toggle{width:100%;justify-content:center}
+  .partnership-opportunities{grid-template-columns:1fr!important;gap:24px!important;padding-block:34px!important}
+  .advertising-format-list{grid-template-columns:1fr!important}
+}

@@ -46,6 +46,27 @@
   function descriptionHtml(text){
     return String(text||'').trim().split(/\n\s*\n/).filter(Boolean).map(paragraph=>`<p>${esc(paragraph).replace(/\n/g,'<br>')}</p>`).join('');
   }
+  function eventDescriptionMarkup(text,eventId){
+    const paragraphs=String(text||'').trim().split(/\n\s*\n/).map(paragraph=>paragraph.trim()).filter(Boolean);
+    if(!paragraphs.length)return '';
+    const totalLength=paragraphs.reduce((sum,paragraph)=>sum+paragraph.length,0);
+    const sectionId=`event-description-${String(eventId).replace(/[^a-z0-9_-]/gi,'')}`;
+    if(totalLength<=560||paragraphs.length<3){
+      return `<section class="event-description-section" aria-labelledby="${sectionId}-title"><h3 id="${sectionId}-title">About this event</h3><div class="event-full-description">${descriptionHtml(text)}</div></section>`;
+    }
+    let visibleCount=0,visibleLength=0;
+    while(visibleCount<paragraphs.length-1&&(visibleCount<2||visibleLength<420)){
+      visibleLength+=paragraphs[visibleCount].length;
+      visibleCount++;
+    }
+    const introduction=paragraphs.slice(0,visibleCount);
+    const essentialPattern=/\b(class pass|non-refundable|refunds?|age restriction|under 18|18\+|entry (?:from|time)|doors? (?:open|close)|not (?:included|permitted|eligible|available)|must (?:be|have|bring|arrive)|tickets? (?:must|cannot))/i;
+    const essential=paragraphs.slice(visibleCount).filter(paragraph=>essentialPattern.test(paragraph));
+    const remainder=paragraphs.slice(visibleCount).filter(paragraph=>!essentialPattern.test(paragraph));
+    if(!remainder.length)return `<section class="event-description-section" aria-labelledby="${sectionId}-title"><h3 id="${sectionId}-title">About this event</h3><div class="event-full-description">${descriptionHtml(text)}</div></section>`;
+    const important=essential.length?`<aside class="event-description-important" aria-label="Important event information"><strong>Important information</strong>${descriptionHtml(essential.join('\n\n'))}</aside>`:'';
+    return `<section class="event-description-section is-collapsible" aria-labelledby="${sectionId}-title"><h3 id="${sectionId}-title">About this event</h3><div class="event-full-description"><div class="event-description-introduction">${descriptionHtml(introduction.join('\n\n'))}</div>${important}<div class="event-description-more" id="${sectionId}-more" hidden>${descriptionHtml(remainder.join('\n\n'))}</div></div><button class="event-description-toggle" type="button" aria-expanded="false" aria-controls="${sectionId}-more"><span>Read more about this event</span> <b aria-hidden="true">↓</b></button></section>`;
+  }
   function eventUrl(c){return `${location.origin}${location.pathname}?event=${encodeURIComponent(c.id)}`;}
   function selectedTicketType(){return form.querySelector('input[name="ticket_product_code"]:checked')?.value||(selectedClass?.booking_format==='BEGINNER_IMPROVER'?'':'CLASS_SOCIAL');}
   function ticketProduct(c,code=selectedTicketType()){return (c.ticket_products||[]).find(product=>product.code===code)||null;}
@@ -136,7 +157,16 @@
     const posterGallery=posters.length?`<div class="event-detail-poster-gallery ${posters.length>1?'has-two-posters':''}">${posters.map(poster=>`<a class="event-detail-poster-shell" href="${esc(poster.url)}" target="_blank" rel="noopener" aria-label="Open ${esc(poster.label)} at full size"><img class="event-detail-poster" src="${esc(poster.url)}" alt="${esc(poster.label)}"></a>`).join('')}</div>`:'';
     const halloweenVideoUrl=window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL||'';
     const halloweenVideo=String(c.id)==='4a5fe2de-52ab-44f5-a0c5-187cd58a13a2'&&halloweenVideoUrl?`<section class="event-halloween-video" aria-labelledby="eventHalloweenVideoTitle"><h3 id="eventHalloweenVideoTitle">👻 Take a sneak peek at our Halloween Hoedown!</h3><video controls playsinline preload="none" poster="dead-or-dancing-golden-ticket.png" aria-label="Halloween Hoedown promotional video"><source src="${esc(halloweenVideoUrl)}" type="video/mp4"></video><div class="event-halloween-prize"><strong>🏆 Dead or Dancing Golden Ticket</strong><span>Win 12 FREE Boot Scootin’ line dancing classes!</span><span>Worth £72, valid for four months from activation.</span><span>Awarded to the Best Dressed Competition winner.</span></div><button class="button book-class event-book" type="button" data-id="${esc(c.id)}">🎟️ Book your Halloween tickets</button></section>`:'';
-    box.innerHTML=`<p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2><div class="event-detail-body ${posters.length?'has-poster':''}">${posterGallery}${halloweenVideo}<div class="event-detail-copy"><p class="event-detail-meta"><strong>${esc(schedule)}</strong><br>${esc(venueLabel(c.venue))}${c.location?` · ${esc(c.location)}`:''}<br>${availability}${overall!=null?` · ${esc(overall)} event places overall`:''}</p>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<div class="anniversary-public-release"><strong>Current release: ${esc(c.ticket_release.name)}</strong><span>${money(c.ticket_release.price_pence/100)} per ticket · ${esc(c.ticket_release.remaining)} tickets remain in this release</span></div>`:products?`<div class="anniversary-public-release"><strong>Ticket options</strong><span>${products}</span></div>`:''}${(c.ticket_products||[]).some(product=>product.class_pass_eligible)?`<p class="event-class-pass-note"><strong>Class Pass available on eligible ticket options.</strong> Social Only is not included.</p>`:''}${c.public_notes?`<div class="event-full-description">${descriptionHtml(c.public_notes)}</div>`:''}<div class="event-detail-actions">${closed?'':`<button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button>`}<button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p></div></div>`;
+    const media=posterGallery||halloweenVideo?`<div class="event-detail-media">${posterGallery}${halloweenVideo}</div>`:'';
+    box.innerHTML=`<div class="event-detail-body ${media?'has-poster':''}">${media}<div class="event-detail-copy"><p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2><p class="event-detail-meta"><strong>${esc(schedule)}</strong><br>${esc(venueLabel(c.venue))}${c.location?` · ${esc(c.location)}`:''}<br>${availability}${overall!=null?` · ${esc(overall)} event places overall`:''}</p>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<div class="anniversary-public-release"><strong>Current release: ${esc(c.ticket_release.name)}</strong><span>${money(c.ticket_release.price_pence/100)} per ticket · ${esc(c.ticket_release.remaining)} tickets remain in this release</span></div>`:products?`<div class="anniversary-public-release"><strong>Ticket options</strong><span>${products}</span></div>`:''}${(c.ticket_products||[]).some(product=>product.class_pass_eligible)?`<p class="event-class-pass-note"><strong>Class Pass available on eligible ticket options.</strong> Social Only is not included.</p>`:''}<div class="event-detail-actions">${closed?'':`<button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button>`}<button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p></div></div>${eventDescriptionMarkup(c.public_notes,c.id)}`;
+    box.querySelector('.event-description-toggle')?.addEventListener('click',event=>{
+      const button=event.currentTarget,more=document.getElementById(button.getAttribute('aria-controls'));
+      const expanded=button.getAttribute('aria-expanded')==='true';
+      button.setAttribute('aria-expanded',String(!expanded));
+      if(more)more.hidden=expanded;
+      button.querySelector('span').textContent=expanded?'Read more about this event':'Show less';
+      button.querySelector('b').textContent=expanded?'↓':'↑';
+    });
     if(typeof d.showModal==='function')d.showModal();
   }
 
