@@ -967,7 +967,8 @@ async function classCreditOptions(request,env,url){
     SELECT c.*,COALESCE(e.eligible,0) pass_eligible,
       c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
       -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND julianday(h.expires_at)>julianday('now')),0)
-      -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) spaces_remaining
+      -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
+      -COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0) spaces_remaining
     FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id WHERE c.id=?
   `).bind(classId).first():null;
   if(!klass||klass.status!=='open'||new Date(klass.starts_at).getTime()<=Date.now())return json({authenticated:true,can_use_credit:false});
@@ -1035,6 +1036,7 @@ async function createClassCreditBooking(request,env){
         -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
         -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
+        -COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0)
   `).bind(holdId,holdExpiry,Number(product.price_pence),product.code,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null,classId,now,now).run();
   if(Number(held?.meta?.changes||0)===0){
     const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
@@ -1818,6 +1820,7 @@ async function publicClasses(env, includeHistory = false) {
             WHERE h.class_id=c.id AND h.expires_at>?
           ),0)
         - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
+        - COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0)
       ) AS spaces_remaining
       FROM classes c LEFT JOIN class_pass_class_eligibility pe ON pe.class_id=c.id
       WHERE c.status='open' AND (?=1 OR c.starts_at>=?) ORDER BY c.starts_at
@@ -2843,12 +2846,13 @@ async function createClassReservation(request, env) {
         SELECT SUM(h.quantity) FROM booking_holds h
         WHERE h.class_id=? AND h.expires_at>?
       ),0) held,
-      COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=? AND g.status='ACTIVE'),0) guests
-  `).bind(classId,classId,new Date().toISOString(),classId).first();
+      COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=? AND g.status='ACTIVE'),0) guests,
+      COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=? AND x.status='ACTIVE'),0) external
+  `).bind(classId,classId,new Date().toISOString(),classId,classId).first();
 
   const spaces = anniversaryRelease ? Number(anniversaryRelease.remaining) : Math.max(
     0,
-    Number(classRow.capacity || 0) - Number(occupancy?.booked || 0) - Number(occupancy?.held || 0) - Number(occupancy?.guests || 0)
+    Number(classRow.capacity || 0) - Number(occupancy?.booked || 0) - Number(occupancy?.held || 0) - Number(occupancy?.guests || 0) - Number(occupancy?.external || 0)
   );
 
   const id = crypto.randomUUID();
@@ -2926,6 +2930,7 @@ async function createClassReservation(request, env) {
         - COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         - COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
         - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
+        - COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0)
     `).bind(holdId,classId,quantity,holdExpiry,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,unitPrice,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
 
   if(Number(holdResult?.meta?.changes||0)===0){
@@ -4711,10 +4716,108 @@ async function classGuestListState(env,classId){
       COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0) booked,
       COALESCE((SELECT SUM(quantity) FROM booking_holds WHERE class_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) held,
       COALESCE((SELECT SUM(places) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) guest_places,
-      COALESCE((SELECT COUNT(*) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) guest_entries`).bind(classId,classId,classId,classId).first()
+      COALESCE((SELECT COUNT(*) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) guest_entries,
+      COALESCE((SELECT SUM(quantity) FROM external_ticket_orders WHERE class_id=? AND status='ACTIVE'),0) external_places`).bind(classId,classId,classId,classId,classId).first()
   ]);
-  const occupied=Number(usage?.booked||0)+Number(usage?.held||0)+Number(usage?.guest_places||0);
-  return {anniversary:false,class:klass,guests:rows.results||[],summary:{booked:Number(usage?.booked||0),held:Number(usage?.held||0),guest_places:Number(usage?.guest_places||0),guest_entries:Number(usage?.guest_entries||0),capacity:Number(klass.capacity||0),remaining:Math.max(0,Number(klass.capacity||0)-occupied)}};
+  const occupied=Number(usage?.booked||0)+Number(usage?.held||0)+Number(usage?.guest_places||0)+Number(usage?.external_places||0);
+  return {anniversary:false,class:klass,guests:rows.results||[],summary:{booked:Number(usage?.booked||0),held:Number(usage?.held||0),guest_places:Number(usage?.guest_places||0),guest_entries:Number(usage?.guest_entries||0),external_places:Number(usage?.external_places||0),capacity:Number(klass.capacity||0),remaining:Math.max(0,Number(klass.capacity||0)-occupied)}};
+}
+
+const EXTERNAL_TICKET_SOURCES=Object.freeze(['EVENTBRITE','SKIDDLE','MANUAL','COMPLIMENTARY']);
+function externalTicketSnapshot(row){return {source:row.source,ticket_type:row.ticket_type,purchaser_name:row.purchaser_name,purchaser_email:row.purchaser_email||null,quantity:Number(row.quantity),amount_paid_pence:Number(row.amount_paid_pence),external_reference:row.external_reference,purchased_at:row.purchased_at||null,notes:row.notes||null,status:row.status};}
+async function externalTicketState(env,classId){
+  const klass=await env.BOOKINGS_DB.prepare(`SELECT id,title,venue,starts_at,capacity FROM classes WHERE id=?`).bind(classId).first();
+  if(!klass)return null;
+  const [orders,admissions,usage]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT id,class_id,source,ticket_type,purchaser_name,purchaser_email,quantity,amount_paid_pence,external_reference,purchased_at,notes,payment_collected_externally,status,created_by,updated_by,last_operation_id,created_at,updated_at FROM external_ticket_orders WHERE class_id=? ORDER BY CASE status WHEN 'ACTIVE' THEN 0 ELSE 1 END,created_at DESC`).bind(classId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT a.id,a.order_id,a.admission_number,a.guest_name,a.status,a.checked_in_at,a.checked_in_by,o.source,o.external_reference FROM external_ticket_admissions a JOIN external_ticket_orders o ON o.id=a.order_id WHERE a.class_id=? ORDER BY o.created_at,a.admission_number`).bind(classId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT
+      COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0) website,
+      COALESCE((SELECT SUM(quantity) FROM booking_holds WHERE class_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) held,
+      COALESCE((SELECT SUM(places) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) guest_places,
+      COALESCE((SELECT SUM(quantity) FROM external_ticket_orders WHERE class_id=? AND source='EVENTBRITE' AND status='ACTIVE'),0) eventbrite,
+      COALESCE((SELECT SUM(quantity) FROM external_ticket_orders WHERE class_id=? AND source='SKIDDLE' AND status='ACTIVE'),0) skiddle,
+      COALESCE((SELECT SUM(quantity) FROM external_ticket_orders WHERE class_id=? AND source='MANUAL' AND status='ACTIVE'),0) manual,
+      COALESCE((SELECT SUM(quantity) FROM external_ticket_orders WHERE class_id=? AND source='COMPLIMENTARY' AND status='ACTIVE'),0) complimentary,
+      COALESCE((SELECT SUM(amount_paid_pence) FROM external_ticket_orders WHERE class_id=? AND status='ACTIVE'),0) external_revenue_pence
+    `).bind(classId,classId,classId,classId,classId,classId,classId,classId).first()
+  ]);
+  const summary={website:Number(usage?.website||0),eventbrite:Number(usage?.eventbrite||0),skiddle:Number(usage?.skiddle||0),manual:Number(usage?.manual||0),complimentary:Number(usage?.complimentary||0),held:Number(usage?.held||0),guest_places:Number(usage?.guest_places||0),external_revenue_pence:Number(usage?.external_revenue_pence||0),capacity:Number(klass.capacity||0)};
+  summary.external_total=summary.eventbrite+summary.skiddle+summary.manual+summary.complimentary;
+  summary.total_valid_tickets=summary.website+summary.external_total;
+  summary.remaining=Math.max(0,summary.capacity-summary.total_valid_tickets-summary.held-summary.guest_places);
+  return {class:klass,orders:orders.results||[],admissions:admissions.results||[],summary};
+}
+
+async function adminExternalTickets(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  await ensureBookingSchema(env);
+  const url=new URL(request.url),classId=clean(url.searchParams.get('class_id'),120);
+  if(!classId)return json({error:'Choose an event.'},400);
+  const current=await externalTicketState(env,classId).catch(error=>null);
+  if(!current)return json({error:'External ticket recording is unavailable until migration 0028 has been applied to this environment, or the event does not exist.'},503);
+  if(request.method==='GET')return json(current);
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  if(!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+  const body=await request.json().catch(()=>null),action=clean(body?.action,40),reason=clean(body?.reason,500),operationId=clean(body?.operation_id,100),actor=check.state.email;
+  if(!body||!reason||!/^[A-Za-z0-9_-]{12,100}$/.test(operationId))return json({error:'An audit reason and valid operation reference are required.'},400);
+  const prior=await env.BOOKINGS_DB.prepare(`SELECT order_id,action FROM external_ticket_audit WHERE operation_id=?`).bind(operationId).first();
+  if(prior)return json({ok:true,idempotent:true,external_tickets:await externalTicketState(env,classId)});
+  if(action==='RECORD_EXTERNAL_ORDER'){
+    const source=clean(body.source,30).toUpperCase(),ticketType=clean(body.ticket_type,120),name=clean(body.purchaser_name,140),email=clean(body.purchaser_email,160).toLowerCase(),quantity=Math.floor(Number(body.quantity)),amount=Math.round(Number(body.amount_paid_pence)),reference=clean(body.external_reference,160),purchasedAt=clean(body.purchased_at,40),notes=clean(body.notes,1000),id=crypto.randomUUID();
+    if(!EXTERNAL_TICKET_SOURCES.includes(source)||!ticketType||!name||!Number.isInteger(quantity)||quantity<1||quantity>100||!Number.isInteger(amount)||amount<0||!reference||(email&&!emailOk(email)))return json({error:'Enter a valid source, ticket type, purchaser, quantity, amount and unique external reference.'},400);
+    if(source==='COMPLIMENTARY'&&amount!==0)return json({error:'Complimentary tickets must have an amount paid of £0.'},400);
+    const statements=[env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO external_ticket_orders(id,class_id,source,ticket_type,purchaser_name,purchaser_email,quantity,amount_paid_pence,external_reference,purchased_at,notes,payment_collected_externally,created_by,updated_by,last_operation_id)
+      SELECT ?,c.id,?,?,?,?,?,?,?,?,?,1,?,?,? FROM classes c WHERE c.id=? AND ?<=c.capacity
+        -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
+        -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
+        -COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0)`)
+      .bind(id,source,ticketType,name,email||null,quantity,amount,reference,purchasedAt||null,notes||null,actor,actor,operationId,classId,quantity)];
+    for(let number=1;number<=quantity;number++)statements.push(env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO external_ticket_admissions(id,order_id,class_id,admission_number,guest_name) SELECT ?,o.id,o.class_id,?,? FROM external_ticket_orders o WHERE o.id=?`).bind(crypto.randomUUID(),number,quantity===1?name:`${name} — guest ${number}`,id));
+    const next={source,ticket_type:ticketType,purchaser_name:name,purchaser_email:email||null,quantity,amount_paid_pence:amount,external_reference:reference,purchased_at:purchasedAt||null,notes:notes||null,status:'ACTIVE'};
+    statements.push(env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO external_ticket_audit(id,class_id,order_id,action,actor,reason,next_json,operation_id) SELECT ?,class_id,id,'ORDER_RECORDED',?,?,?,? FROM external_ticket_orders WHERE id=? AND last_operation_id=?`).bind(crypto.randomUUID(),actor,reason,JSON.stringify(next),operationId,id,operationId));
+    const results=await env.BOOKINGS_DB.batch(statements);
+    if(Number(results?.[0]?.meta?.changes||0)!==1){
+      const duplicate=await env.BOOKINGS_DB.prepare(`SELECT id FROM external_ticket_orders WHERE class_id=? AND source=? AND lower(external_reference)=lower(?)`).bind(classId,source,reference).first();
+      return json({error:duplicate?'That external booking reference is already recorded for this event and source.':'Not enough event capacity remains for these tickets.'},409);
+    }
+  }else if(action==='CORRECT_EXTERNAL_ORDER'){
+    const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM external_ticket_orders WHERE id=? AND class_id=?`).bind(id,classId).first();
+    if(!row)return json({error:'External order not found.'},404);if(row.status!=='ACTIVE')return json({error:'Cancelled external orders cannot be corrected.'},409);
+    const source=clean(body.source,30).toUpperCase(),ticketType=clean(body.ticket_type,120),name=clean(body.purchaser_name,140),email=clean(body.purchaser_email,160).toLowerCase(),quantity=Math.floor(Number(body.quantity)),amount=Math.round(Number(body.amount_paid_pence)),reference=clean(body.external_reference,160),purchasedAt=clean(body.purchased_at,40),notes=clean(body.notes,1000);
+    if(!EXTERNAL_TICKET_SOURCES.includes(source)||!ticketType||!name||!Number.isInteger(quantity)||quantity<1||quantity>100||!Number.isInteger(amount)||amount<0||!reference||(email&&!emailOk(email)))return json({error:'Enter valid corrected ticket details.'},400);
+    if(source==='COMPLIMENTARY'&&amount!==0)return json({error:'Complimentary tickets must have an amount paid of £0.'},400);
+    const attended=await env.BOOKINGS_DB.prepare(`SELECT COUNT(*) count FROM external_ticket_admissions WHERE order_id=? AND status='ATTENDED'`).bind(id).first();
+    if(quantity<Number(attended?.count||0))return json({error:'Quantity cannot be lower than the number of admissions already checked in.'},409);
+    const admissions=(await env.BOOKINGS_DB.prepare(`SELECT id,admission_number,status FROM external_ticket_admissions WHERE order_id=? ORDER BY admission_number`).bind(id).all()).results||[],active=admissions.filter(item=>item.status!=='CANCELLED'),delta=quantity-active.length;
+    const statements=[env.BOOKINGS_DB.prepare(`UPDATE external_ticket_orders SET source=?,ticket_type=?,purchaser_name=?,purchaser_email=?,quantity=?,amount_paid_pence=?,external_reference=?,purchased_at=?,notes=?,updated_by=?,last_operation_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=? AND ?<=(SELECT c.capacity
+      -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+      -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
+      -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
+      -COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE' AND x.id<>?),0) FROM classes c WHERE c.id=?)`)
+      .bind(source,ticketType,name,email||null,quantity,amount,reference,purchasedAt||null,notes||null,actor,operationId,id,classId,row.last_operation_id,quantity,id,classId)];
+    if(delta>0){let next=Math.max(0,...admissions.map(item=>Number(item.admission_number)));for(let offset=1;offset<=delta;offset++)statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO external_ticket_admissions(id,order_id,class_id,admission_number,guest_name) VALUES(?,?,?,?,?)`).bind(crypto.randomUUID(),id,classId,next+offset,`${name} — guest ${active.length+offset}`));}
+    if(delta<0){for(const admission of active.filter(item=>item.status==='EXPECTED').slice(delta))statements.push(env.BOOKINGS_DB.prepare(`UPDATE external_ticket_admissions SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='EXPECTED'`).bind(admission.id));}
+    const next={source,ticket_type:ticketType,purchaser_name:name,purchaser_email:email||null,quantity,amount_paid_pence:amount,external_reference:reference,purchased_at:purchasedAt||null,notes:notes||null,status:'ACTIVE'};
+    statements.push(env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO external_ticket_audit(id,class_id,order_id,action,actor,reason,previous_json,next_json,operation_id) SELECT ?,class_id,id,'ORDER_CORRECTED',?,?,?,?,? FROM external_ticket_orders WHERE id=? AND last_operation_id=?`).bind(crypto.randomUUID(),actor,reason,JSON.stringify(externalTicketSnapshot(row)),JSON.stringify(next),operationId,id,operationId));
+    const results=await env.BOOKINGS_DB.batch(statements);if(Number(results?.[0]?.meta?.changes||0)!==1)return json({error:'The order changed, its reference conflicts, or there is not enough event capacity. Refresh and try again.'},409);
+  }else if(action==='CANCEL_EXTERNAL_ORDER'){
+    const id=clean(body.id,120),row=await env.BOOKINGS_DB.prepare(`SELECT * FROM external_ticket_orders WHERE id=? AND class_id=?`).bind(id,classId).first();if(!row)return json({error:'External order not found.'},404);
+    if(row.status==='ACTIVE')await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE external_ticket_orders SET status='CANCELLED',updated_by=?,last_operation_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=?`).bind(actor,operationId,id,classId,row.last_operation_id),
+      env.BOOKINGS_DB.prepare(`UPDATE external_ticket_admissions SET status='CANCELLED',updated_at=CURRENT_TIMESTAMP WHERE order_id=? AND status<>'CANCELLED'`).bind(id),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO external_ticket_audit(id,class_id,order_id,action,actor,reason,previous_json,next_json,operation_id) SELECT ?,class_id,id,'ORDER_CANCELLED',?,?,?,?,? FROM external_ticket_orders WHERE id=? AND last_operation_id=?`).bind(crypto.randomUUID(),actor,reason,JSON.stringify(externalTicketSnapshot(row)),JSON.stringify({...externalTicketSnapshot(row),status:'CANCELLED'}),operationId,id,operationId)
+    ]);
+  }else if(action==='CHECK_IN_EXTERNAL_ADMISSION'){
+    const admissionId=clean(body.admission_id,120),admission=await env.BOOKINGS_DB.prepare(`SELECT a.*,o.status order_status FROM external_ticket_admissions a JOIN external_ticket_orders o ON o.id=a.order_id WHERE a.id=? AND a.class_id=?`).bind(admissionId,classId).first();
+    if(!admission)return json({error:'External admission not found.'},404);if(admission.order_status!=='ACTIVE'||admission.status==='CANCELLED')return json({error:'Cancelled admissions cannot be checked in.'},409);
+    if(admission.status==='EXPECTED')await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE external_ticket_admissions SET status='ATTENDED',checked_in_at=CURRENT_TIMESTAMP,checked_in_by=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='EXPECTED'`).bind(actor,admissionId),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO external_ticket_audit(id,class_id,order_id,admission_id,action,actor,reason,previous_json,next_json,operation_id) SELECT ?,class_id,order_id,id,'ADMISSION_CHECKED_IN',?,?,?, ?,? FROM external_ticket_admissions WHERE id=? AND status='ATTENDED'`).bind(crypto.randomUUID(),actor,reason,JSON.stringify({status:'EXPECTED'}),JSON.stringify({status:'ATTENDED'}),operationId,admissionId)
+    ]);
+  }else return json({error:'Unsupported external-ticket action.'},400);
+  return json({ok:true,external_tickets:await externalTicketState(env,classId)});
 }
 
 async function adminClassGuests(request,env){
@@ -4758,7 +4861,8 @@ async function adminClassGuests(request,env){
         SELECT ?,c.id,?,?,?,?,?,?,? FROM classes c WHERE c.id=? AND ?>0 AND ?<=c.capacity
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
-          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,operationId,classId,places,places),
+          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
+          -COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,operationId,classId,places,places),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,next_json,operation_id)
         SELECT ?,?,?,'GUEST_ADDED',?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
     ]);
@@ -4781,6 +4885,7 @@ async function adminClassGuests(request,env){
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
           -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE' AND g.id<>?),0)
+          -COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0)
           FROM classes c WHERE c.id=?)`).bind(name,places,category,notes||null,actor,operationId,id,classId,row.last_operation_id,places,id,classId),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
         SELECT ?,?,?,'GUEST_UPDATED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:row.guest_name,places:row.places,category:row.category,notes:row.notes}),JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
@@ -4836,10 +4941,19 @@ async function adminClasses(request, env) {
         ORDER BY CASE ba.role WHEN 'COMPLIMENTARY' THEN 1 ELSE 0 END,ba.booking_id,ba.place_number,lower(ba.snapshot_name)
       `).bind(registerClassId).all():{results:[]};
       const attendees=attendeeResult.results||[];
-      return json({class:classItem,bookings,attendees,stats:{
+      const externalResult=await env.BOOKINGS_DB.prepare(`
+        SELECT a.id,a.order_id,a.admission_number,a.guest_name,a.status,a.checked_in_at,a.checked_in_by,
+          o.source,o.ticket_type,o.purchaser_name,o.purchaser_email,o.external_reference,o.amount_paid_pence,o.quantity
+        FROM external_ticket_admissions a JOIN external_ticket_orders o ON o.id=a.order_id
+        WHERE a.class_id=? AND o.status='ACTIVE' AND a.status<>'CANCELLED'
+        ORDER BY o.created_at,a.admission_number
+      `).bind(registerClassId).all();
+      const external_admissions=externalResult.results||[];
+      return json({class:classItem,bookings,attendees,external_admissions,stats:{
         checked_in_bookings:bookings.filter(b=>Number(b.checked_in)).length,
-        checked_in_people:attendees.filter(a=>a.attendance_status==='ATTENDED').length,
-        known_people:attendees.length,
+        checked_in_people:attendees.filter(a=>a.attendance_status==='ATTENDED').length+external_admissions.filter(a=>a.status==='ATTENDED').length,
+        known_people:attendees.length+external_admissions.length,
+        external_places:external_admissions.length,
         total_bookings:bookings.length,
         checked_in_places:bookings.filter(b=>Number(b.checked_in)).reduce((n,b)=>n+Number(b.quantity||1),0),
         total_places:bookings.reduce((n,b)=>n+Number(b.quantity||1),0),
@@ -4869,6 +4983,7 @@ async function adminClasses(request, env) {
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,
           COALESCE((SELECT COUNT(*) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PENDING','PAID')),0) AS booking_count,
           COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) AS guest_places,
+          COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0) AS external_places,
           CASE WHEN EXISTS(SELECT 1 FROM anniversary_events e WHERE e.class_id=c.id AND e.active=1) THEN 'ANNIVERSARY' ELSE 'CLASS' END AS event_type
         FROM classes c
         ORDER BY c.starts_at
@@ -4881,7 +4996,7 @@ async function adminClasses(request, env) {
         ticket_products:await classTicketProducts(env,row,{includeDisabled:true}),
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
-          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
+          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0)-Number(row.external_places||0))
       },currentInstant,true))),200);
     } catch (error) {
       return json({
@@ -4947,10 +5062,11 @@ async function adminClasses(request, env) {
       SELECT
         (SELECT COUNT(*) FROM bookings WHERE class_id=?) +
         (SELECT COUNT(*) FROM waiting_list WHERE class_id=?) +
-        (SELECT COUNT(*) FROM class_guest_list WHERE class_id=?) AS linked
-    `).bind(id,id,id).first();
+        (SELECT COUNT(*) FROM class_guest_list WHERE class_id=?) +
+        (SELECT COUNT(*) FROM external_ticket_orders WHERE class_id=?) AS linked
+    `).bind(id,id,id,id).first();
     if(Number(linked?.linked||0)>0){
-      return json({error:'This class already has bookings, waiting-list or guest-list entries. Cancel it instead of deleting it.'},409);
+      return json({error:'This class already has bookings, waiting-list, guest-list or external-ticket entries. Cancel it instead of deleting it.'},409);
     }
     await env.BOOKINGS_DB.prepare(`DELETE FROM classes WHERE id=?`).bind(id).run();
     return json({ok:true});
@@ -5023,7 +5139,8 @@ async function adminClasses(request, env) {
     const occupied=await env.BOOKINGS_DB.prepare(`SELECT
       COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0)
       +COALESCE((SELECT SUM(quantity) FROM booking_holds WHERE class_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
-      +COALESCE((SELECT SUM(places) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0) total`).bind(id,id,id).first();
+      +COALESCE((SELECT SUM(places) FROM class_guest_list WHERE class_id=? AND status='ACTIVE'),0)
+      +COALESCE((SELECT SUM(quantity) FROM external_ticket_orders WHERE class_id=? AND status='ACTIVE'),0) total`).bind(id,id,id,id).first();
     if(Number(b.capacity)<Number(occupied?.total||0)){
       return json({error:`Capacity cannot be lower than the ${occupied.total} occupied or held places.`},409);
     }
@@ -5145,6 +5262,7 @@ async function adminBootstrap(request, env) {
           ),0) AS sold,
           COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0) AS held,
           COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) AS guest_places,
+          COALESCE((SELECT SUM(x.quantity) FROM external_ticket_orders x WHERE x.class_id=c.id AND x.status='ACTIVE'),0) AS external_places,
           c.status,c.level,c.public_notes
         FROM classes c
         WHERE c.starts_at >= ? AND c.status IN ('open','draft')
@@ -5156,7 +5274,7 @@ async function adminBootstrap(request, env) {
         ...row,
         spaces_remaining:anniversary?.event?.class_id===row.id
           ? Number(anniversary.remaining||0)
-          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0))
+          : Math.max(0,Number(row.capacity||0)-Number(row.sold||0)-Number(row.held||0)-Number(row.guest_places||0)-Number(row.external_places||0))
       },currentInstant,true));
       result.summary.upcoming_classes = result.classes.filter(row => row.status === 'open').length;
     } catch (error) {
@@ -7251,6 +7369,7 @@ export default {
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/class-guests') return adminClassGuests(request, env);
+      if (path === '/api/admin/external-tickets') return adminExternalTickets(request, env);
       if (path === '/api/admin/anniversary') return adminAnniversary(request, env);
       if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
       if (path === '/api/admin/reviews') return adminReviews(request, env);

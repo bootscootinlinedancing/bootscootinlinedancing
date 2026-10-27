@@ -20,7 +20,8 @@
     diagnostics:[],
     frontendErrors:0,
     requestSequence:0,
-    guestListRequestSequence:0
+    guestListRequestSequence:0,
+    externalTickets:null
   };
 
   const $=selector=>document.querySelector(selector);
@@ -741,7 +742,10 @@
         if(ordinary)ordinary.hidden=true;if(anniversary)anniversary.hidden=false;await loadAnniversary(requestedClassId,requestSequence);
       }else{
         if(anniversary)anniversary.hidden=true;if(ordinary)ordinary.hidden=false;
-        const data=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{cache:'no-store'});if(requestSequence!==state.guestListRequestSequence||state.guestListClass?.id!==requestedClassId)return;state.classGuestList=data;renderClassGuests(data);
+        const [data,external]=await Promise.all([
+          jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{cache:'no-store'}),
+          jsonFetch(`${ADMIN_API_PREFIX}/external-tickets?class_id=${encodeURIComponent(item.id)}`,{cache:'no-store'})
+        ]);if(requestSequence!==state.guestListRequestSequence||state.guestListClass?.id!==requestedClassId)return;state.classGuestList=data;state.externalTickets=external;renderClassGuests(data);renderExternalTickets(external);resetExternalTicketForm();
       }
     }catch(error){if(requestSequence===state.guestListRequestSequence)toast(error.message,'error');}
   }
@@ -769,26 +773,60 @@
     try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'CANCEL_GUEST',id,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(currentGuestContext(item.id,requestSequence)){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);toast('Guest entry cancelled; capacity returned.','success');}await loadClasses();}
     catch(error){if(currentGuestContext(item.id,requestSequence))toast(error.message,'error');}
   }
+  const externalSourceLabel=value=>({EVENTBRITE:'Eventbrite',SKIDDLE:'Skiddle',MANUAL:'Manual',COMPLIMENTARY:'Complimentary',WEBSITE:'Website'})[value]||value;
+  function renderExternalTickets(data){
+    const summary=$('#externalTicketSummary'),orders=$('#externalTicketOrders'),s=data?.summary||{},admissions=data?.admissions||[];
+    if(summary)summary.innerHTML=`<article><span>Website</span><strong>${Number(s.website||0)}</strong></article><article><span>Eventbrite</span><strong>${Number(s.eventbrite||0)}</strong></article><article><span>Skiddle</span><strong>${Number(s.skiddle||0)}</strong></article><article><span>Manual</span><strong>${Number(s.manual||0)}</strong></article><article><span>Complimentary</span><strong>${Number(s.complimentary||0)}</strong></article><article><span>Valid tickets</span><strong>${Number(s.total_valid_tickets||0)}</strong></article><article><span>Remaining</span><strong>${Number(s.remaining||0)}</strong></article><article><span>External revenue</span><strong>${money(s.external_revenue_pence||0)}</strong><small>Separate from SumUp</small></article>`;
+    if(orders)orders.innerHTML=(data?.orders||[]).length?(data.orders||[]).map(order=>{const people=admissions.filter(item=>item.order_id===order.id);return `<article class="ranch-list-row external-ticket-order ${order.status==='CANCELLED'?'is-cancelled':''}"><div><strong>${esc(order.purchaser_name)} · ${Number(order.quantity)} ticket${Number(order.quantity)===1?'':'s'}</strong><small>${esc(externalSourceLabel(order.source))} · ${esc(order.ticket_type)} · ${esc(order.external_reference)} · ${esc(order.status)}</small><small>${money(order.amount_paid_pence)} collected externally${order.purchased_at?` · ${esc(order.purchased_at)}`:''}${order.purchaser_email?` · ${esc(order.purchaser_email)}`:''}</small>${order.notes?`<p>${esc(order.notes)}</p>`:''}<div class="external-admission-list">${people.map(person=>`<div class="external-admission ${person.status==='ATTENDED'?'is-checked-in':''}"><span>${esc(person.guest_name)} · Admission ${Number(person.admission_number)} · ${esc(person.status)}</span>${person.status==='EXPECTED'&&order.status==='ACTIVE'?`<button type="button" class="button compact" data-check-in-external="${esc(person.id)}">Check in</button>`:''}</div>`).join('')}</div></div>${order.status==='ACTIVE'?`<div class="ranch-actions"><button type="button" class="button secondary compact" data-edit-external="${esc(order.id)}">Correct</button><button type="button" class="button secondary compact" data-cancel-external="${esc(order.id)}">Cancel order</button></div>`:''}</article>`;}).join(''):emptyPanel('No external ticket orders recorded for this event.');
+    orders?.querySelectorAll('[data-edit-external]').forEach(button=>button.addEventListener('click',()=>editExternalTicket(button.dataset.editExternal)));
+    orders?.querySelectorAll('[data-cancel-external]').forEach(button=>button.addEventListener('click',()=>cancelExternalTicket(button.dataset.cancelExternal)));
+    orders?.querySelectorAll('[data-check-in-external]').forEach(button=>button.addEventListener('click',()=>checkInExternalAdmission(button.dataset.checkInExternal)));
+  }
+  function resetExternalTicketForm(){
+    const form=$('#externalTicketForm');if(!form)return;form.reset();form.elements.id.value='';form.elements.quantity.value=1;form.elements.amount_paid_gbp.value='0.00';form.elements.payment_collected_externally.checked=true;form.querySelector('button[type="submit"]').textContent='Record tickets';$('#cancelExternalTicketEdit').hidden=true;
+  }
+  function editExternalTicket(id){
+    const form=$('#externalTicketForm'),order=state.externalTickets?.orders?.find(item=>item.id===id);if(!form||!order)return;
+    form.elements.id.value=order.id;form.elements.source.value=order.source;form.elements.ticket_type.value=order.ticket_type;form.elements.purchaser_name.value=order.purchaser_name;form.elements.purchaser_email.value=order.purchaser_email||'';form.elements.quantity.value=order.quantity;form.elements.amount_paid_gbp.value=(Number(order.amount_paid_pence||0)/100).toFixed(2);form.elements.external_reference.value=order.external_reference;form.elements.purchased_at.value=String(order.purchased_at||'').slice(0,10);form.elements.notes.value=order.notes||'';form.elements.reason.value='';form.elements.payment_collected_externally.checked=true;form.querySelector('button[type="submit"]').textContent='Save correction';$('#cancelExternalTicketEdit').hidden=false;form.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  async function submitExternalTicket(event){
+    event.preventDefault();const form=event.currentTarget,item=state.guestListClass,button=form.querySelector('button[type="submit"]'),message=$('#externalTicketMessage');if(!item)return;
+    if(!form.elements.payment_collected_externally.checked)return toast('Confirm that payment was collected externally.','error');
+    const payload=Object.fromEntries(new FormData(form));payload.action=payload.id?'CORRECT_EXTERNAL_ORDER':'RECORD_EXTERNAL_ORDER';payload.quantity=Number(payload.quantity);payload.amount_paid_pence=Math.round(Number(payload.amount_paid_gbp||0)*100);delete payload.amount_paid_gbp;payload.operation_id=crypto.randomUUID();button.disabled=true;if(message)message.textContent='Saving without contacting SumUp…';
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/external-tickets?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify(payload)});state.externalTickets=result.external_tickets;renderExternalTickets(result.external_tickets);resetExternalTicketForm();if(message)message.textContent='Saved with an immutable audit record. No SumUp payment was created.';toast('External tickets recorded.','success');await Promise.all([loadClasses(),loadClassRegisterIfOpen(item.id)]);}
+    catch(error){if(message)message.textContent=error.message;toast(error.message,'error');}finally{button.disabled=false;}
+  }
+  async function cancelExternalTicket(id){
+    const item=state.guestListClass;if(!item)return;const reason=window.prompt('Why is this external order being cancelled?');if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/external-tickets?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'CANCEL_EXTERNAL_ORDER',id,reason:reason.trim(),operation_id:crypto.randomUUID()})});state.externalTickets=result.external_tickets;renderExternalTickets(result.external_tickets);toast('External order cancelled; capacity returned.','success');await loadClasses();}catch(error){toast(error.message,'error');}
+  }
+  async function checkInExternalAdmission(id){
+    const item=state.guestListClass||state.classRegister?.class;if(!item)return;
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/external-tickets?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'CHECK_IN_EXTERNAL_ADMISSION',admission_id:id,reason:'HQ event check-in',operation_id:crypto.randomUUID()})});if(state.guestListClass?.id===item.id){state.externalTickets=result.external_tickets;renderExternalTickets(result.external_tickets);}if(state.classRegister?.class?.id===item.id)await loadClassRegister(item.id);toast('External admission checked in. No loyalty stamp was added automatically.','success');}catch(error){toast(error.message,'error');}
+  }
+  async function loadClassRegisterIfOpen(classId){if(state.classRegister?.class?.id===classId)await loadClassRegister(classId);}
   function renderClassRegister(){
     const panel=$('#classRegisterPanel'),data=state.classRegister;
     if(!panel||!data)return;
-    const c=data.class||{},rows=data.bookings||[],attendees=data.attendees||[],stats=data.stats||{};
+    const c=data.class||{},rows=data.bookings||[],attendees=data.attendees||[],externalAdmissions=data.external_admissions||[],stats=data.stats||{};
     const attendeeControl=a=>`<div class="class-register-attendee ${a.attendance_status==='ATTENDED'?'is-checked-in':''}"><div class="class-register-attendee-copy"><strong>${esc(a.snapshot_name||'Unnamed attendee')}</strong><small>${esc(a.role==='LEAD'?'Lead booker':a.role==='COMPLIMENTARY'?'Complimentary / support':'Guest')}${a.snapshot_email?` · ${esc(a.snapshot_email)}`:''}${a.customer_id?' · identity matched':' · snapshot only'}${Number(a.loyalty_credited)?' · loyalty credited':''}</small></div>${a.attendance_status==='ATTENDED'?`<span class="checked-in-label">✓ Checked in</span>`:`<button type="button" class="button compact" data-attendee-check-in="${esc(a.id)}">Check in person</button>`}</div>`;
     panel.hidden=false;
     panel.innerHTML=`<header class="class-register-head">
       <div><p class="kicker red">Class register</p><h2>${esc(c.title||'Class')}</h2><p><strong>${esc(fmt(c.starts_at))}</strong> · ${esc(c.venue||'Venue not supplied')}</p></div>
       <div class="class-register-tools"><button type="button" class="button secondary compact" id="printClassRegister">Print</button><button type="button" class="button secondary compact" id="exportClassRegister">Export CSV</button><button type="button" class="button secondary compact" id="closeClassRegister">Close</button></div>
     </header>
-    <div class="class-register-summary"><article><span>People checked in</span><strong>${Number(stats.checked_in_people||0)} / ${Number(stats.known_people||0)}</strong></article><article><span>Ticket places</span><strong>${Number(stats.total_places||0)}</strong></article><article><span>Beginner participation</span><strong>${Number(stats.beginner_places||0)}</strong></article><article><span>Improver participation</span><strong>${Number(stats.improver_places||0)}</strong></article><article><span>Both classes</span><strong>${Number(stats.combined_places||0)}</strong></article><article><span>Social Only</span><strong>${Number(stats.social_only_places||0)}</strong></article></div>
+    <div class="class-register-summary"><article><span>People checked in</span><strong>${Number(stats.checked_in_people||0)} / ${Number(stats.known_people||0)}</strong></article><article><span>Website places</span><strong>${Number(stats.total_places||0)}</strong></article><article><span>External places</span><strong>${Number(stats.external_places||0)}</strong></article><article><span>Beginner participation</span><strong>${Number(stats.beginner_places||0)}</strong></article><article><span>Improver participation</span><strong>${Number(stats.improver_places||0)}</strong></article><article><span>Both classes</span><strong>${Number(stats.combined_places||0)}</strong></article><article><span>Social Only</span><strong>${Number(stats.social_only_places||0)}</strong></article></div>
     <section class="class-register-complimentary"><h3>Add complimentary attendance</h3><p>For an existing customer who attended as teaching/support without a paid booking. Exact email matching is required.</p><form id="complimentaryAttendanceForm"><label>Existing customer email<input name="customer_email" type="email" required></label><label class="wide">Audit reason<input name="reason" required maxlength="500" placeholder="Complimentary teaching/support attendance"></label><button class="button compact wide" type="submit">Record attendance + one loyalty stamp</button></form></section>
     <div class="class-register-list">${rows.length?rows.map(b=>`<article class="class-register-row ${Number(b.checked_in)?'is-checked-in':''}" data-register-booking="${esc(b.id)}">
       <div class="class-register-person"><strong>${esc(b.customer_name||'Name not supplied')}</strong><span class="class-register-email">${esc(b.customer_email||'Email not supplied')}</span><small>${esc(b.reference||'')} · <b>${Number(b.quantity||1)} ticket${Number(b.quantity||1)===1?'':'s'}</b></small>${(()=>{const people=attendees.filter(a=>a.booking_id===b.id),unnamed=Math.max(0,Number(b.quantity||1)-people.length);return people.length||unnamed?`<div class="class-register-attendees">${people.map(attendeeControl).join('')}${unnamed?`<div class="class-register-attendee"><div class="class-register-attendee-copy"><strong>${unnamed} unnamed guest place${unnamed===1?'':'s'}</strong><small>Counts toward capacity · no person-level loyalty without identity</small></div></div>`:''}</div>`:''})()}</div>
       <div class="class-register-payment"><span class="booking-status">${esc(b.status)}</span><small>${money(b.amount_pence)} · ${esc(b.payment_provider||'')}</small><small>${esc(ticketLabel(b))}</small></div>
       <div class="class-register-attendance">${attendees.some(a=>a.booking_id===b.id)?'<small>Use the person-level controls shown with this booking.</small>':Number(b.checked_in)?`<strong class="checked-in-label">✓ Legacy booking check-in</strong><small>${esc(fmt(b.checked_in_at))}</small><button type="button" class="class-register-correct" data-register-undo="${esc(b.id)}">Correct</button>`:`<button type="button" class="button class-check-in-button" data-register-check-in="${esc(b.id)}">Check in lead</button><small>${b.status==='PENDING'?'Attendance only — no loyalty credit while pending':'Historical booking-level attendance'}</small>`}</div>
-    </article>`).join(''):emptyPanel('No active paid or pending bookings are attached to this class.')}</div>`;
+    </article>`).join(''):emptyPanel('No active paid or pending website bookings are attached to this class.')}</div>
+    <section class="external-register-section"><h3>External admissions</h3><p>Eventbrite, Skiddle, manual and complimentary admissions. Check-in here never creates a customer or loyalty stamp.</p><div class="class-register-list">${externalAdmissions.length?externalAdmissions.map(person=>`<article class="class-register-row ${person.status==='ATTENDED'?'is-checked-in':''}"><div class="class-register-person"><strong>${esc(person.guest_name)}</strong><small>${esc(externalSourceLabel(person.source))} · ${esc(person.ticket_type)} · ${esc(person.external_reference)} · admission ${Number(person.admission_number)}</small></div><div class="class-register-payment"><span class="booking-status">PAID ELSEWHERE</span><small>${money(person.amount_paid_pence)} order total · no SumUp charge</small></div><div class="class-register-attendance">${person.status==='ATTENDED'?`<strong class="checked-in-label">✓ Checked in</strong><small>${esc(fmt(person.checked_in_at))}</small>`:`<button type="button" class="button class-check-in-button" data-register-external-check-in="${esc(person.id)}">Check in person</button>`}</div></article>`).join(''):emptyPanel('No active external admissions are attached to this event.')}</div></section>`;
     panel.querySelectorAll('[data-register-check-in]').forEach(button=>button.addEventListener('click',()=>checkInFromRegister(button)));
     panel.querySelectorAll('[data-attendee-check-in]').forEach(button=>button.addEventListener('click',()=>checkInAttendeeFromRegister(button)));
     panel.querySelectorAll('[data-register-undo]').forEach(button=>button.addEventListener('click',()=>undoCheckInFromRegister(button)));
+    panel.querySelectorAll('[data-register-external-check-in]').forEach(button=>button.addEventListener('click',()=>checkInExternalAdmission(button.dataset.registerExternalCheckIn)));
     $('#closeClassRegister')?.addEventListener('click',()=>{panel.hidden=true;state.classRegister=null;});
     $('#printClassRegister')?.addEventListener('click',()=>{document.body.classList.add('printing-class-register');window.print();});
     $('#exportClassRegister')?.addEventListener('click',exportClassRegisterCsv);
@@ -831,11 +869,14 @@
     catch(error){button.disabled=false;toast(error.message,'error');}
   }
   function exportClassRegisterCsv(){
-    const data=state.classRegister,rows=data?.bookings||[];if(!data||!rows.length)return toast('There are no bookings to export.','error');
+    const data=state.classRegister,rows=data?.bookings||[],external=data?.external_admissions||[];if(!data||(!rows.length&&!external.length))return toast('There are no admissions to export.','error');
     const date=String(data.class?.starts_at||'class').slice(0,10),slug=String(data.class?.title||'class').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
     downloadCsv(`boot-scootin-register-${date}-${slug||'class'}.csv`,
       ['Customer name','Email','Booking reference','Ticket type','Entry time','Places','Booking/payment status','Amount GBP','Payment provider','Attendance status','Checked in at'],
-      rows.map(b=>[b.customer_name,b.customer_email,b.reference,ticketLabel(b),b.ticket_entry_at||b.ticket_starts_at||b.ticket_entry_time||'',b.quantity,b.status,(Number(b.amount_pence||0)/100).toFixed(2),b.payment_provider,Number(b.checked_in)?'Checked in':'Not checked in',b.checked_in_at||'']));
+      [
+        ...rows.map(b=>[b.customer_name,b.customer_email,b.reference,ticketLabel(b),b.ticket_entry_at||b.ticket_starts_at||b.ticket_entry_time||'',b.quantity,b.status,(Number(b.amount_pence||0)/100).toFixed(2),b.payment_provider,Number(b.checked_in)?'Checked in':'Not checked in',b.checked_in_at||'']),
+        ...external.map(person=>[person.guest_name,'',person.external_reference,person.ticket_type,'',1,person.status,(Number(person.amount_paid_pence||0)/100).toFixed(2),externalSourceLabel(person.source),person.status==='ATTENDED'?'Checked in':'Not checked in',person.checked_in_at||''])
+      ]);
     toast('Class register CSV downloaded.');
   }
   const CLASS_VENUE_TEMPLATES={
@@ -1935,6 +1976,8 @@ Type REFUNDED to continue.`);
   $('#refreshGuestList')?.addEventListener('click',loadClassGuestList);
   $('#closeGuestList')?.addEventListener('click',()=>{const panel=$('#classGuestListPanel');if(panel)panel.hidden=true;state.guestListClass=null;state.guestListRequestSequence++;resetGuestListControls();});
   $('#classGuestForm')?.addEventListener('submit',submitClassGuest);
+  $('#externalTicketForm')?.addEventListener('submit',submitExternalTicket);
+  $('#cancelExternalTicketEdit')?.addEventListener('click',resetExternalTicketForm);
   $('#classGuests')?.addEventListener('click',event=>{const edit=event.target.closest('[data-edit-class-guest]'),cancel=event.target.closest('[data-cancel-class-guest]');if(edit)editClassGuest(edit.dataset.editClassGuest);else if(cancel)cancelClassGuest(cancel.dataset.cancelClassGuest);});
   $('#anniversaryGuestForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'ADD_GUEST');});
   $('#anniversaryTicketForm')?.addEventListener('submit',event=>{event.preventDefault();submitAnniversary(event.currentTarget,'RECORD_TICKETS');});

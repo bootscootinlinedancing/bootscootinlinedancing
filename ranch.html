@@ -294,6 +294,30 @@
                 <section><h4>Guest List</h4><div id="classGuests" class="ranch-list"></div></section>
               </div>
               <p class="form-message" id="classGuestMessage" aria-live="polite"></p>
+              <section class="external-ticket-admin" aria-labelledby="externalTicketHeading">
+                <div class="ranch-panel-head"><div><p class="kicker red">Paid elsewhere</p><h4 id="externalTicketHeading">External ticket sales</h4><p>Record Eventbrite, Skiddle, manual or complimentary orders without creating a SumUp charge. Website bookings appear automatically in the source totals.</p></div></div>
+                <div class="anniversary-summary external-ticket-summary" id="externalTicketSummary"></div>
+                <div class="anniversary-admin-grid external-ticket-grid">
+                  <form id="externalTicketForm" class="ranch-form-grid">
+                    <h4 class="wide">Record external order</h4>
+                    <input name="id" type="hidden">
+                    <label>Ticket source<select name="source" required><option value="EVENTBRITE">Eventbrite</option><option value="SKIDDLE">Skiddle</option><option value="MANUAL">Manual</option><option value="COMPLIMENTARY">Complimentary</option><option value="WEBSITE" disabled>Website — recorded automatically</option></select></label>
+                    <label>Ticket type<input name="ticket_type" required maxlength="120" placeholder="General admission"></label>
+                    <label>Customer / guest name<input name="purchaser_name" required maxlength="140"></label>
+                    <label>Email, if available<input name="purchaser_email" type="email" maxlength="160"></label>
+                    <label>Quantity<input name="quantity" type="number" min="1" max="100" value="1" required></label>
+                    <label>Amount paid (£)<input name="amount_paid_gbp" type="number" min="0" step="0.01" value="0.00" required></label>
+                    <label>External booking reference<input name="external_reference" required maxlength="160" placeholder="Platform order/reference"></label>
+                    <label>Purchase date, if known<input name="purchased_at" type="date"></label>
+                    <label class="wide external-payment-confirm"><input name="payment_collected_externally" type="checkbox" checked required> Payment was collected externally — do not charge through SumUp</label>
+                    <label class="wide">Notes<textarea name="notes" rows="2" maxlength="1000"></textarea></label>
+                    <label class="wide">Audit reason<input name="reason" required maxlength="500" placeholder="Why this order is being recorded or corrected"></label>
+                    <div class="wide ranch-actions"><button class="button" type="submit">Record tickets</button><button class="button secondary compact" id="cancelExternalTicketEdit" type="button" hidden>Cancel edit</button></div>
+                  </form>
+                  <section><h4>Orders &amp; individual admissions</h4><div id="externalTicketOrders" class="ranch-list"></div></section>
+                </div>
+                <p class="form-message" id="externalTicketMessage" aria-live="polite"></p>
+              </section>
             </div>
             <div class="anniversary-admin" id="anniversaryAdmin" hidden>
             <div class="ranch-panel-head"><div><p class="kicker red">6 November 2026</p><h3>Anniversary Tickets &amp; Guest List</h3><p>One controlled 100-place inventory across website tickets, recorded Eventbrite sales and complimentary guests.</p></div></div>
