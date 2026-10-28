@@ -25,7 +25,8 @@ const BOOT_SCOOTIN_PUBLIC_NAVIGATION = Object.freeze([
     ['country-map.html','Country Map']
   ]},
   {title:'Businesses & Partners',subtitle:'Recommendations, merchandise and partnerships',items:[
-    ['businesses.html','Businesses We Love'],['businesses.html#threefives','Official Merchandise · ThreeFives'],
+    ['community.html#merchandise','SHOP & MERCHANDISE'],['businesses.html','Businesses We Love'],
+    ['businesses.html#threefives','Official Merchandise Partner · ThreeFives'],
     ['businesses.html#recommendations','Local Recommendations'],['businesses.html#affiliate-partners','Affiliate Recommendations'],
     ['partnerships.html','Partnerships & Advertising'],['partnerships.html#sponsorship-enquiries','Sponsorship Enquiries']
   ]}
