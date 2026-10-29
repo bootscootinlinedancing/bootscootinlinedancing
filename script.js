@@ -1,50 +1,226 @@
 /* v96.4.30: deterministic desktop mode + one consistent desktop header. */
+if (!document.querySelector('script[src^="google-analytics.js"]')) {
+  const analyticsLoader=document.createElement('script');
+  analyticsLoader.src='google-analytics.js';
+  analyticsLoader.defer=true;
+  document.head.append(analyticsLoader);
+}
+
+const BOOT_SCOOTIN_PUBLIC_NAVIGATION = Object.freeze([
+  {title:'Discover',subtitle:'Start here and explore Boot Scootin’',items:[
+    ['bookings.html','CLASSES'],['class-pass.html','CLASS PASS'],
+    ['about.html','About Boot Scootin’'],['gallery.html','Gallery'],['ask-nora.html','Contact'],
+    ['dance-library.html','Dance Library'],['dance-diary.html','Dance Diary']
+  ]},
+  {title:'Community',subtitle:'Find your people and country events',items:[
+    ['community.html','Community Hub'],['whatsapp-community.html','WhatsApp Community'],
+    ['moonshine.html','Moonshine & Good Times Gang'],['long-road-handbook.html','Long Road Handbook'],
+    ['country-guide-festivals.html','Festivals & Country Events']
+  ]},
+  {title:'Country Corner',subtitle:'Music, dancing, places and adventures',items:[
+    ['country-corner.html','Nora’s Country Corner'],['country-guide.html','Nora’s Country Guide'],
+    ['country-guide-music.html','Country Music'],['country-guide-line-dancing.html','UK Line Dancing'],
+    ['country-guide-fashion.html','Western Fashion'],['country-guide-festivals.html','Country Festivals'],
+    ['country-guide-food-drink.html','Food & Drink'],['country-guide-places.html','Places'],
+    ['country-guide-inspirations.html','Inspirations'],['country-guide-adventures.html','Adventures & Summer Stomp'],
+    ['country-map.html','Country Map']
+  ]},
+  {title:'Businesses & Partners',subtitle:'Recommendations, merchandise and partnerships',items:[
+    ['community.html?shop=1#merchandise','SHOP & MERCHANDISE'],['businesses.html','Businesses We Love'],
+    ['businesses.html#threefives','Official Merchandise Partner · ThreeFives'],
+    ['businesses.html#recommendations','Local Recommendations'],['businesses.html#affiliate-partners','Affiliate Recommendations'],
+    ['partnerships.html','Partnerships & Advertising'],['partnerships.html#sponsorship-enquiries','Sponsorship Enquiries']
+  ]}
+]);
+window.BOOT_SCOOTIN_PUBLIC_NAVIGATION=BOOT_SCOOTIN_PUBLIC_NAVIGATION;
+let memberNavigationStatusPromise;
+
+function publicNavPath(value=''){
+  try{return (new URL(value,location.href).pathname.split('/').pop()?.toLowerCase()||'index').replace(/\.html$/,'');}catch(_){return '';}
+}
+function publicNavActive(href){
+  try{
+    const current=new URL(location.href),target=new URL(href,location.href);
+    if(publicNavPath(current.pathname)!==publicNavPath(target.pathname))return false;
+    // Section destinations are only current when their full query/hash target
+    // matches. This prevents every link sharing a page from appearing active.
+    if(target.search&&current.search!==target.search)return false;
+    if(target.hash&&current.hash!==target.hash)return false;
+    return target.search||target.hash?true:!current.search&&!current.hash;
+  }catch(_){return false;}
+}
+function publicNavLinks(items,{desktop=false}={}){
+  return items.map(([href,label])=>desktop
+    ? `<a${publicNavActive(href)?' class="active" aria-current="page"':''} href="${href}">${label}</a>`
+    : `<a${publicNavActive(href)?' aria-current="page"':''} href="${href}"><span>${label}</span><b aria-hidden="true">›</b></a>`
+  ).join('');
+}
+function installMobileNavigationInventory(){
+  const sections=document.querySelector('.menu45-sections');
+  if(!sections||sections.dataset.sharedNavigation==='true')return;
+  sections.innerHTML=BOOT_SCOOTIN_PUBLIC_NAVIGATION.map(group=>`<details class="menu45-section"><summary><span class="menu45-summary-copy"><strong>${group.title}</strong><small>${group.subtitle}</small></span><b aria-hidden="true"></b></summary><div class="menu45-submenu">${publicNavLinks(group.items)}</div></details>`).join('');
+  sections.dataset.sharedNavigation='true';
+}
+
 (() => {
   const ua = navigator.userAgent || '';
   const platform = navigator.platform || '';
   const isPhoneTablet = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) && !/Macintosh/i.test(ua);
   const isDesktopOS = /Mac|Win|Linux/i.test(platform) && !isPhoneTablet;
   const desktop = isDesktopOS || (!isPhoneTablet && Math.max(screen.width || 0, screen.height || 0) >= 900);
+  installMobileNavigationInventory();
   if (!desktop) return;
 
   document.documentElement.classList.add('desktop-mode');
-  document.addEventListener('DOMContentLoaded', () => {
+  const installDesktopHeader = () => {
     document.body?.classList.add('desktop-mode');
 
-    // Every desktop page now uses the same compact navigation style as the homepage.
-    const legacyHeader = document.querySelector('header.header:not(.honky-header)');
-    if (legacyHeader) {
-      const page = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-      const navItems = [
-        ['index.html','Home'],['about.html','About'],['bookings.html','Classes'],['class-pass.html','Class Pass'],
-        ['private-events.html','Private Events'],['gallery.html','Gallery'],['reviews.html','Reviews'],['ask-nora.html','Contact']
+    // Use one compact desktop header everywhere. Secondary destinations live
+    // in one accessible Explore menu instead of an overcrowded 11-link row.
+    const header = document.querySelector('header.honky-header,header.header');
+    if (header) {
+      const primaryItems = [
+        ['index.html','Home'],['bookings.html','Classes'],['class-pass.html','Class Pass'],
+        ['private-events.html','Private Events'],['reviews.html','Reviews']
       ];
-      const links = navItems.map(([href,label]) => {
-        const active = page === href || (href === 'index.html' && (page === '' || page === '/'));
-        return `<a${active ? ' class="active"' : ''} href="${href}">${label}</a>`;
-      }).join('');
-      legacyHeader.className = 'honky-header unified-desktop-header';
-      legacyHeader.innerHTML = `
+      const links = primaryItems.map(([href,label]) => `<a${publicNavActive(href)?' class="active" aria-current="page"':''} href="${href}">${label}</a>`).join('');
+      const exploreActive=BOOT_SCOOTIN_PUBLIC_NAVIGATION.some(group=>group.items.some(([href])=>publicNavActive(href)));
+      const exploreGroups=BOOT_SCOOTIN_PUBLIC_NAVIGATION.map(group=>`<section class="desktop-explore-group"><h2>${group.title}</h2>${publicNavLinks(group.items,{desktop:true})}</section>`).join('');
+      header.className = 'honky-header unified-desktop-header';
+      header.dataset.publicNavigation='true';
+      header.innerHTML = `
         <a class="honky-logo brand-lockup" href="index.html" aria-label="Boot Scootin' Line Dancing home">
           <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
-        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}</nav>
-        <a class="honky-book" href="bookings.html">Book a class</a>`;
+        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<div class="desktop-explore${exploreActive?' is-current':''}"><button class="desktop-explore-toggle" type="button" aria-expanded="false" aria-controls="desktopExploreMenu">Explore <span aria-hidden="true">▼</span></button><div class="desktop-explore-menu" id="desktopExploreMenu" hidden><div class="desktop-explore-head"><strong>Explore Boot Scootin’</strong><button class="desktop-explore-close" type="button" aria-label="Close Explore menu">✕ Close</button></div>${exploreGroups}</div></div></nav>
+        <a class="honky-account" href="member-hub.html" data-member-account-link><svg class="account-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg><b data-member-account-label>My account</b></a>
+        <a class="honky-book" href="bookings.html">Book a class</a>
+        <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>`;
+      const explore=header.querySelector('.desktop-explore');
+      const toggle=header.querySelector('.desktop-explore-toggle');
+      const menu=header.querySelector('.desktop-explore-menu');
+      const closeButton=header.querySelector('.desktop-explore-close');
+      const closeExplore=({restoreFocus=false}={})=>{
+        if(!toggle||!menu)return;
+        toggle.setAttribute('aria-expanded','false');menu.hidden=true;explore?.classList.remove('is-open');
+        if(restoreFocus)toggle.focus();
+      };
+      toggle?.addEventListener('click',()=>{
+        const opening=toggle.getAttribute('aria-expanded')!=='true';
+        toggle.setAttribute('aria-expanded',String(opening));menu.hidden=!opening;explore?.classList.toggle('is-open',opening);
+        if(opening)closeButton?.focus();
+      });
+      closeButton?.addEventListener('click',()=>closeExplore({restoreFocus:true}));
+      menu?.addEventListener('click',event=>{if(event.target.closest('a'))closeExplore();});
+      header.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu?.hidden){event.preventDefault();closeExplore({restoreFocus:true});}});
+      menu?.addEventListener('keydown',event=>{
+        if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+        const links=[...menu.querySelectorAll('a')];if(!links.length)return;
+        event.preventDefault();
+        const current=Math.max(0,links.indexOf(document.activeElement));
+        const next=event.key==='Home'?0:event.key==='End'?links.length-1:event.key==='ArrowDown'?(current+1)%links.length:(current-1+links.length)%links.length;
+        links[next].focus();
+      });
+      document.addEventListener('click',event=>{if(!explore?.contains(event.target))closeExplore();});
+      refreshMemberNavigation();
     }
-  }, {once:true});
+  };
+  installDesktopHeader();
+  window.addEventListener('pageshow',()=>{
+    const toggle=document.querySelector('.desktop-explore-toggle'),menu=document.querySelector('.desktop-explore-menu');
+    if(toggle&&menu){toggle.setAttribute('aria-expanded','false');menu.hidden=true;toggle.closest('.desktop-explore')?.classList.remove('is-open');}
+    installMobileNavigationInventory();
+    memberNavigationStatusPromise=undefined;
+    refreshMemberNavigation();
+  });
 })();
+
+// The shop view reuses the authoritative merchandise markup and checkout code,
+// but removes unrelated Community sections from the customer journey.
+if(new URLSearchParams(location.search).get('shop')==='1'){
+  document.body?.classList.add('shop-view');
+  document.querySelector('#merchandise')?.setAttribute('aria-label','Boot Scootin’ Shop & Merchandise');
+}
+
+async function refreshMemberNavigation(){
+  memberNavigationStatusPromise??=(async()=>{
+    try{
+      const response=await fetch('/api/member/me',{headers:{Accept:'application/json'},cache:'no-store'});
+      if(response.ok){const result=await response.json();return result?.authenticated===true;}
+    }catch(_){}
+    return false;
+  })();
+  const authenticated=await memberNavigationStatusPromise;
+  document.querySelectorAll('[data-member-account-label]').forEach(label=>{label.textContent=authenticated?'My dashboard':'My account';});
+  document.querySelectorAll('[data-member-account-copy]').forEach(copy=>{copy.textContent=authenticated?'Open your Member Zone dashboard':'Sign in or create a free account';});
+}
+
+// One approved MP4 powers both Halloween placements. This review branch uses
+// a static Pages asset; production can later point this at the R2 media URL.
+window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '/halloween-hoedown-promo-2026.mp4';
 
 // Homepage promotions and optional mailing-list invitation.
 (() => {
-  const promoLinks = [...document.querySelectorAll('[data-promo-track] > a')];
-  if (promoLinks.length > 1 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    let promoIndex = 0;
-    window.setInterval(() => {
-      promoLinks[promoIndex].classList.remove('is-active');
-      promoIndex = (promoIndex + 1) % promoLinks.length;
-      promoLinks[promoIndex].classList.add('is-active');
-    }, 6500);
+  const promoTrack = document.querySelector('[data-promo-track]');
+  const promoPause = document.querySelector('[data-promo-pause]');
+  promoPause?.addEventListener('click', () => {
+    const paused = promoTrack?.classList.toggle('is-paused') || false;
+    promoPause.setAttribute('aria-pressed', String(paused));
+    const icon = promoPause.querySelector('[aria-hidden]');
+    const label = promoPause.querySelector('.sr-only');
+    if (icon) icon.textContent = paused ? '▶' : 'Ⅱ';
+    if (label) label.textContent = paused ? 'Play announcements' : 'Pause announcements';
+  });
+
+  const goldenPopup = document.getElementById('goldenTicketPopup');
+  const goldenReopen = document.getElementById('goldenTicketReopen');
+  const goldenReopenWrap = document.getElementById('goldenTicketReopenWrap');
+  const goldenStorageKey = 'bootScootinGoldenTicketHalloween2026Dismissed';
+  let goldenPreviousFocus = null;
+  let mailingReady = false;
+  const londonDate = () => {
+    const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()).map(part=>[part.type,part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+  const goldenCampaignActive = () => londonDate() <= '2026-10-30';
+  const goldenDismissed = () => { try{return localStorage.getItem(goldenStorageKey)==='1';}catch(_){return false;} };
+  const closeGoldenPopup = (remember=true) => {
+    if(!goldenPopup)return;
+    goldenPopup.hidden=true;
+    document.body.classList.remove('golden-ticket-popup-open');
+    if(remember)try{localStorage.setItem(goldenStorageKey,'1');}catch(_){}
+    goldenPreviousFocus?.focus?.();
+    // The mailing invitation may have reached its nine-second delay while the
+    // higher-priority Golden Ticket dialog was open. Resume it after Golden
+    // Ticket closes instead of silently losing that one-time opportunity.
+    if(mailingReady)window.setTimeout(openPopup,0);
+  };
+  const openGoldenPopup = (manual=false) => {
+    if(!goldenPopup||!goldenCampaignActive()||(!manual&&goldenDismissed())||!goldenPopup.hidden)return;
+    const mailingPopup=document.getElementById('mailingPopup');
+    if(mailingPopup&&!mailingPopup.hidden){
+      mailingReady=true;
+      mailingPopup.hidden=true;
+      document.body.classList.remove('mailing-popup-open');
+    }
+    goldenPreviousFocus=document.activeElement;
+    goldenPopup.hidden=false;
+    document.body.classList.add('golden-ticket-popup-open');
+    goldenPopup.querySelector('.golden-ticket-popup-close')?.focus();
+  };
+  if(goldenReopenWrap)goldenReopenWrap.hidden=!goldenCampaignActive();
+  goldenReopen?.addEventListener('click',()=>openGoldenPopup(true));
+  goldenPopup?.querySelectorAll('[data-golden-ticket-close]').forEach(control=>control.addEventListener('click',()=>closeGoldenPopup()));
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&goldenPopup&&!goldenPopup.hidden)closeGoldenPopup();});
+  if(goldenPopup&&goldenCampaignActive())window.setTimeout(openGoldenPopup,2200);
+
+  const halloweenVideoUrl=window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL;
+  const halloweenVideoFeature=document.querySelector('[data-halloween-video-feature]');
+  if(halloweenVideoFeature&&halloweenVideoUrl&&goldenCampaignActive()){
+    const video=halloweenVideoFeature.querySelector('video');
+    const source=video?.querySelector('source');
+    if(source){source.src=halloweenVideoUrl;video.load();halloweenVideoFeature.hidden=false;}
   }
 
   const popup = document.getElementById('mailingPopup');
@@ -67,6 +243,11 @@
   };
   const openPopup = () => {
     if (recentlyDismissed() || !popup.hidden) return;
+    if (document.body.classList.contains('golden-ticket-popup-open')) {
+      mailingReady = true;
+      return;
+    }
+    mailingReady = false;
     previousFocus = document.activeElement;
     popup.hidden = false;
     document.body.classList.add('mailing-popup-open');
@@ -76,7 +257,7 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !popup.hidden) closePopup();
   });
-  window.setTimeout(openPopup, 9000);
+  window.setTimeout(() => { mailingReady = true; openPopup(); }, 9000);
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
@@ -84,6 +265,7 @@
     const status = document.getElementById('mailingPopupStatus');
     const data = new FormData(form);
     const payload = {name:String(data.get('name') || '').trim(),email:String(data.get('email') || '').trim(),consent:data.get('consent') === 'on'};
+    if (!payload.name) { if (status) status.textContent = 'Please enter your first name.'; form.elements.name?.focus(); return; }
     button.disabled = true;
     if (status) status.textContent = 'Joining…';
     try {
@@ -137,7 +319,6 @@ document.addEventListener('DOMContentLoaded',upgradePublicBranding);
 const intro = document.getElementById('intro');
 const enter = document.getElementById('enterSite');
 const menuButton = document.getElementById('menuButton');
-const desktopExploreButton = document.getElementById('desktopExploreButton');
 const nav = document.getElementById('nav');
 
 function finishIntro(){
@@ -212,6 +393,11 @@ if (intro) {
 function repairPersistentExploreLinks(){
   const panel=document.getElementById('menu45');
   if(!panel) return;
+  panel.querySelectorAll('a[href^="mailto:partnerships@bootscootinlinedancing.co.uk"]').forEach(link => {
+    link.href='partnerships.html';
+    const label=link.querySelector('span');
+    if(label) label.textContent='Partnerships & Advertising';
+  });
   const findSection=(label)=>[...panel.querySelectorAll('details.menu45-section')].find(section =>
     section.querySelector(':scope > summary strong')?.textContent.trim()===label
   );
@@ -231,13 +417,13 @@ function repairPersistentExploreLinks(){
     ['country-guide-festivals.html','Festivals &amp; Country Events',false]
   ]);
   render('My Boot Scootin’',[
-    ['member-hub.html','Member Login &amp; Registration',true],
     ['member-hub.html#class-passes','Class Passes',false],
     ['my-bookings.html','My Bookings',false],
+    ['rewards.html','My Rewards',false],
     ['reviews.html','Reviews &amp; Feedback',false]
   ]);
   render('Shop & Rewards',[
-    ['community.html#merchandise','Official Merchandise',true],
+    ['community.html?shop=1#merchandise','Official Merchandise',true],
     ['rewards.html','Boot Scootin’ Rewards',true],
     ['passport.html#trail-rewards','Trail & Rewards',false]
   ]);
@@ -264,6 +450,16 @@ function repairPersistentExploreLinks(){
     reviewsLink.innerHTML='<span><small>Real words from the dance floor</small><strong>Reviews</strong><em>Read verified dancer feedback</em></span><b aria-hidden="true">›</b>';
     classPassLink.insertAdjacentElement('afterend',reviewsLink);
   }
+  const reviewsLink=panel.querySelector(':scope > .menu45-reviews');
+  if(reviewsLink&&!panel.querySelector(':scope > .menu45-account')){
+    const accountLink=document.createElement('a');
+    accountLink.className='menu45-first menu45-account';
+    accountLink.href='member-hub.html';
+    accountLink.dataset.memberAccountLink='';
+    accountLink.innerHTML='<span><small>Your Boot Scootin’ account</small><strong data-member-account-label>My Account</strong><em data-member-account-copy>Sign in or create a free account</em></span><b aria-hidden="true">›</b>';
+    reviewsLink.insertAdjacentElement('afterend',accountLink);
+  }
+  refreshMemberNavigation();
 }
 
 document.addEventListener('DOMContentLoaded',repairPersistentExploreLinks);
@@ -273,15 +469,14 @@ const navClose = document.getElementById('navClose');
 let menuScrollY = 0;
 
 function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
-  if (!nav || !menuButton) return;
+  if (!nav) return;
   const wasOpen = nav.classList.contains('open') || document.body.classList.contains('menu-open');
 
   if (open && !wasOpen) menuScrollY = window.scrollY || document.documentElement.scrollTop || 0;
 
   nav.classList.toggle('open', open);
   nav.setAttribute('aria-hidden', String(!open));
-  menuButton.setAttribute('aria-expanded', String(open));
-  desktopExploreButton?.setAttribute('aria-expanded', String(open));
+  menuButton?.setAttribute('aria-expanded', String(open));
   document.body.classList.toggle('menu-open', open);
   document.documentElement.classList.remove('menu-open');
 
@@ -297,7 +492,7 @@ function setMenuOpen(open, {restoreFocus=true, restoreScroll=true}={}) {
       section.open = false;
     });
     if (restoreScroll && wasOpen) window.scrollTo({top:menuScrollY,left:0,behavior:'instant'});
-    if (restoreFocus) requestAnimationFrame(() => menuButton.focus({preventScroll:true}));
+    if (restoreFocus) requestAnimationFrame(() => menuButton?.focus({preventScroll:true}));
   }
 }
 
@@ -312,14 +507,9 @@ function resetMenuAfterNavigation(){
 window.addEventListener('pagehide', () => setMenuOpen(false,{restoreFocus:false,restoreScroll:true}));
 window.addEventListener('pageshow', resetMenuAfterNavigation);
 
-if (menuButton && nav) {
+if (nav) {
   // A single click handler works for touch, mouse and keyboard.
-  menuButton.addEventListener('click', event => {
-    event.preventDefault();
-    setMenuOpen(!nav.classList.contains('open'));
-  });
-
-  desktopExploreButton?.addEventListener('click', event => {
+  menuButton?.addEventListener('click', event => {
     event.preventDefault();
     setMenuOpen(!nav.classList.contains('open'));
   });
@@ -497,7 +687,7 @@ installGuide?.addEventListener("click", event => {
     ensureFirstLink(findSection('Community'), 'community.html', 'Boot Scootin’ Community');
     ensureFirstLink(findSection('Community'), 'moonshine.html', 'Moonshine & Good Times Gang');
     ensureFirstLink(findSection('Shop & Rewards'), 'rewards.html', 'Boot Scootin’ Rewards');
-    ensureFirstLink(findSection('Shop & Rewards'), 'community.html#merchandise', 'Official Merchandise');
+    ensureFirstLink(findSection('Shop & Rewards'), 'community.html?shop=1#merchandise', 'Official Merchandise');
   }
 
   const form = document.getElementById('homeMailingPreview');
@@ -513,6 +703,7 @@ installGuide?.addEventListener("click", event => {
         email: String(data.get('email') || '').trim(),
         consent: data.get('consent') === 'on'
       };
+      if (!payload.name) { if (status) status.textContent = 'Please enter your first name.'; form.elements.name?.focus(); return; }
       if (!payload.email || !payload.consent) return;
       button.disabled = true;
       if (status) status.textContent = 'Joining…';
