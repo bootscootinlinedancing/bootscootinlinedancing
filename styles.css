@@ -10093,6 +10093,16 @@ body.legal-page{
 .anniversary-admin-grid>form,.anniversary-admin-grid>section{padding:1rem;border:1px solid rgba(192,37,37,.45);border-radius:10px;background:rgba(12,4,5,.42)}
 .anniversary-ticket-release,.anniversary-public-release{margin:.75rem 0;padding:.7rem .85rem;border:1px solid rgba(214,44,44,.75);border-radius:8px;background:rgba(35,5,7,.55);color:var(--cream,#f4ead7)}
 .anniversary-public-release{display:flex;flex-direction:column;gap:.25rem}
+.anniversary-release-ladder{display:grid;gap:.55rem;margin:1rem 0;padding:1rem;border:1px solid rgba(211,39,50,.55);background:rgba(8,4,4,.74)}
+.anniversary-release-ladder>.eyebrow{margin:0 0 .15rem}
+.anniversary-release-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.18rem 1rem;align-items:center;padding:.7rem .75rem;border-left:3px solid rgba(245,233,216,.28);background:rgba(255,255,255,.035)}
+.anniversary-release-row.is-current{border-left-color:var(--red);background:rgba(211,39,50,.11)}
+.anniversary-release-row span,.anniversary-release-row small,.anniversary-release-row em{display:block}
+.anniversary-release-row small,.anniversary-release-row em{font-size:.82rem;color:var(--cream-muted)}
+.anniversary-release-row em{grid-column:1/-1;font-style:normal}
+.anniversary-capacity-note{margin:.35rem 0 0;font-size:.9rem}
+.shotgun-jenny-demos{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:620px){.shotgun-jenny-demos{grid-template-columns:1fr}.anniversary-release-row{grid-template-columns:minmax(0,1fr) auto}}
 @media(max-width:760px){.anniversary-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.anniversary-release-grid,.anniversary-admin-grid{grid-template-columns:1fr}}
 
 /* Public menu label: keep the existing trigger and add its familiar three-dot cue. */

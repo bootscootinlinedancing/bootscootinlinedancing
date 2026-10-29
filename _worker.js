@@ -1847,7 +1847,7 @@ async function publicClasses(env, includeHistory = false, request = null) {
       if(anniversary&&row.id===anniversary.event.class_id){
         const price=anniversary.current_release?.price_pence??row.price_pence;
         const ticketProduct=anniversaryTicketProduct(row,anniversary.current_release);
-        return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,ticket_products:ticketProduct?[ticketProduct]:[],releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant,true);
+        return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,overall_spaces_remaining:anniversary.remaining,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,ticket_products:ticketProduct?[ticketProduct]:[],releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant,true);
       }
       return withClassCalendarStatus({ ...row, price: row.price_pence / 100,ticket_products:await classTicketProducts(env,row) },currentInstant,true);
     })));

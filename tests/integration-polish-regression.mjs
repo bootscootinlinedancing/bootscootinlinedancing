@@ -59,5 +59,13 @@ assert.match(repair, /v96\.4\.128 — two-row homepage storytelling composition/
 assert.match(repair, /v96\.4\.129 — compact square homepage media and editorial partnerships/, 'final compact editorial refinement layer is present');
 assert.match(repair, /home-story-panel figure\{align-self:start!important;aspect-ratio:1\/1!important\}/, 'homepage feature photographs use square frames');
 assert.match(index, /Bring line dancing to your event/, 'homepage private-event copy is direct and natural');
+assert.match(bookings, /overall_spaces_remaining/, 'Anniversary presentation consumes an explicit overall-capacity value');
+assert.match(bookings, /Opens automatically after the current release/, 'future Anniversary releases are informational only');
+assert.match(bookings, /places remain across the whole event/, 'overall event capacity is distinguished from current-release availability');
+const library = read('dance-library.html');
+const shotgunCard = library.match(/id="dance-shotgun-jenny"[\s\S]*?<\/article>/)?.[0] || '';
+assert.equal((library.match(/id="dance-shotgun-jenny"/g)||[]).length,1,'Shotgun Jenny remains one canonical dance card');
+for (const target of ['a3m7DgOvMAo','SluAShGT_RA','Th6nYqJutnY','7muhgmfGnXg']) assert.match(shotgunCard,new RegExp(target),`Shotgun Jenny includes ${target}`);
+assert.doesNotMatch(shotgunCard,/Original-style demonstration/, 'no unavailable original-style link is invented');
 
 console.log('PASS compact mailing popup, footer cookie settings, stable navigation and safely gated Halloween video surfaces');
