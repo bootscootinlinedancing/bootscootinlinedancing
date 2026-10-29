@@ -9,6 +9,7 @@ const css=read('repair-v96.4.56.css');
 const worker=read('_worker.js');
 const businesses=read('businesses.html');
 const partnerships=read('partnerships.html');
+const community=read('community.html');
 
 for(const label of ['Discover','Community','Country Corner','Businesses & Partners']){
   assert.match(script,new RegExp(`title:'${label.replace(/[&]/g,'\\&')}`),`${label} is in the shared navigation inventory`);
@@ -29,6 +30,11 @@ assert.match(script,/closeExplore\(\{restoreFocus:true\}\)/,'closing Explore res
 assert.match(script,/target\.hash&&current\.hash!==target\.hash/,'active navigation state distinguishes section destinations');
 assert.match(script,/classList\.add\('shop-view'\)/,'the merchandise destination reuses an isolated public shop presentation');
 assert.match(css,/body\.shop-view \.community-page>section:not\(#merchandise\)/,'shop mode hides unrelated Community sections');
+assert.match(css,/body:not\(\.shop-view\) \.community-page>#merchandise/,'ordinary Community Hub hides the full merchandise catalogue');
+assert.match(community,/class="community-shop-promo" href="community\.html\?shop=1#merchandise"/,'Community Hub retains a small shop invitation');
+assert.doesNotMatch(css,/\.desktop-explore-menu a\[href="community\.html\?shop=1#merchandise"\]\s*\{[^}]*border/,'Shop is not permanently styled as selected in desktop Explore');
+assert.match(script,/class="account-icon"[^>]+viewBox="0 0 24 24"/,'desktop account action uses a deterministic vector icon');
+assert.match(css,/\.honky-account \.account-icon\{[^}]*width:20px[^}]*height:20px/,'account icon dimensions are fixed consistently');
 
 assert.match(script,/window\.addEventListener\('pageshow'/,'Safari bfcache restoration reinitialises navigation state');
 assert.match(script,/sections\.dataset\.sharedNavigation==='true'/,'mobile navigation installation is idempotent');
@@ -50,6 +56,6 @@ for(const file of htmlFiles){
   if(match)scriptVersions.push([file,match[1]]);
 }
 assert.ok(scriptVersions.length>20,'public pages reference the shared script');
-assert.deepEqual([...new Set(scriptVersions.map(([,version])=>version))],['96.4.132'],'public script cache version is consistent');
+assert.deepEqual([...new Set(scriptVersions.map(([,version])=>version))],['96.4.133'],'public script cache version is consistent');
 
 console.log('PR #41 navigation recovery regression checks passed.');

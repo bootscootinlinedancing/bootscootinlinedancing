@@ -94,7 +94,7 @@ function installMobileNavigationInventory(){
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
         <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<div class="desktop-explore${exploreActive?' is-current':''}"><button class="desktop-explore-toggle" type="button" aria-expanded="false" aria-controls="desktopExploreMenu">Explore <span aria-hidden="true">▼</span></button><div class="desktop-explore-menu" id="desktopExploreMenu" hidden><div class="desktop-explore-head"><strong>Explore Boot Scootin’</strong><button class="desktop-explore-close" type="button" aria-label="Close Explore menu">✕ Close</button></div>${exploreGroups}</div></div></nav>
-        <a class="honky-account" href="member-hub.html" data-member-account-link><span aria-hidden="true">👤</span> <b data-member-account-label>My account</b></a>
+        <a class="honky-account" href="member-hub.html" data-member-account-link><svg class="account-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="4"></circle><path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path></svg><b data-member-account-label>My account</b></a>
         <a class="honky-book" href="bookings.html">Book a class</a>
         <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>`;
       const explore=header.querySelector('.desktop-explore');
