@@ -1280,7 +1280,9 @@ async function ensureBookingSchema(env) {
       microphone_provided INTEGER NOT NULL DEFAULT 0, dance_floor_confirmed INTEGER NOT NULL DEFAULT 0,
       power_available INTEGER NOT NULL DEFAULT 0, parking_loading_available INTEGER NOT NULL DEFAULT 0,
       equipment_notes TEXT, accessibility_notes TEXT, additional_notes TEXT, status TEXT NOT NULL DEFAULT 'NEW_INQUIRY',
-      customer_change_request TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      customer_change_request TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      received_at TEXT, workflow_status TEXT NOT NULL DEFAULT 'NEW' CHECK(workflow_status IN ('NEW','CONTACTED','QUOTED','BOOKED','CLOSED')),
+      is_unread INTEGER NOT NULL DEFAULT 1 CHECK(is_unread IN (0,1)), last_contacted_at TEXT
     )`,
     `CREATE TABLE IF NOT EXISTS private_event_quotes (
       id TEXT PRIMARY KEY, inquiry_id TEXT NOT NULL REFERENCES private_event_inquiries(id) ON DELETE CASCADE,
@@ -1301,6 +1303,17 @@ async function ensureBookingSchema(env) {
     `CREATE TABLE IF NOT EXISTS private_event_timeline (
       id INTEGER PRIMARY KEY AUTOINCREMENT, inquiry_id TEXT NOT NULL REFERENCES private_event_inquiries(id) ON DELETE CASCADE,
       actor_type TEXT NOT NULL, actor_label TEXT, action TEXT NOT NULL, details_json TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS private_event_notification_jobs (
+      id TEXT PRIMARY KEY, inquiry_id TEXT NOT NULL UNIQUE REFERENCES private_event_inquiries(id) ON DELETE CASCADE,
+      idempotency_key TEXT NOT NULL UNIQUE, status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','PROCESSING','RETRY','SENT','FAILED')),
+      attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts>=0), next_attempt_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_error TEXT, provider_id TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, sent_at TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS private_event_notification_attempts (
+      id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES private_event_notification_jobs(id) ON DELETE CASCADE,
+      attempt_number INTEGER NOT NULL, outcome TEXT NOT NULL CHECK(outcome IN ('SENT','RETRY','FAILED')),
+      provider_id TEXT, error_message TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(job_id,attempt_number)
     )`,
 
     `CREATE TABLE IF NOT EXISTS member_profiles (
@@ -1404,6 +1417,8 @@ async function ensureBookingSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_private_event_status ON private_event_inquiries(status,created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_private_event_token ON private_event_inquiries(secure_token)`,
     `CREATE INDEX IF NOT EXISTS idx_private_quote_inquiry ON private_event_quotes(inquiry_id,version)`,
+    `CREATE INDEX IF NOT EXISTS idx_private_event_workflow_received ON private_event_inquiries(workflow_status,is_unread,received_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_private_event_notification_due ON private_event_notification_jobs(status,next_attempt_at)`,
     `CREATE TABLE IF NOT EXISTS member_accounts (
       id TEXT PRIMARY KEY,
       customer_id TEXT NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
@@ -2392,6 +2407,56 @@ async function sendTransactionalEmail(env, to, subject, html, text, senderType='
     throw new Error(`Resend rejected the email (HTTP ${response.status}): ${providerMessage}`);
   }
   return { id: clean(data?.id, 160), from };
+}
+
+function privateEnquiryNotificationCopy(inquiry,origin='https://www.bootscootinlinedancing.co.uk'){
+  const hqUrl=`${origin}/ranch`;
+  const timeLabel=[clean(inquiry.start_time,8),clean(inquiry.end_time,8)].filter(Boolean).join('–')||'Not supplied';
+  const subject=`New private event inquiry — ${clean(inquiry.reference,80)}`;
+  const text=`New private-event inquiry received.\n\nReference: ${clean(inquiry.reference,80)}\nCustomer: ${clean(inquiry.customer_name,100)}\nEmail: ${clean(inquiry.customer_email,160)}\nPhone: ${clean(inquiry.customer_phone,30)||'Not supplied'}\nEvent: ${clean(inquiry.event_type,60)}\nPreferred date: ${clean(inquiry.preferred_date,10)}\nTime: ${timeLabel}\nGuests: ${Number(inquiry.guest_count)||0}\nVenue: ${clean(inquiry.venue_name,160)||'Not supplied'}\nAddress: ${clean(inquiry.venue_address,300)}, ${clean(inquiry.venue_postcode,16)}\n\nOpen Boot Scootin’ HQ to review and quote:\n${hqUrl}`;
+  const html=`<div style="font-family:Arial,sans-serif;line-height:1.55;color:#1a1111"><h2>New private event inquiry</h2><p><strong>${htmlEscape(inquiry.reference)}</strong></p><p><strong>Customer:</strong> ${htmlEscape(inquiry.customer_name)}<br><strong>Email:</strong> ${htmlEscape(inquiry.customer_email)}<br><strong>Phone:</strong> ${htmlEscape(inquiry.customer_phone||'Not supplied')}<br><strong>Event:</strong> ${htmlEscape(inquiry.event_type)}<br><strong>Preferred date:</strong> ${htmlEscape(inquiry.preferred_date)}<br><strong>Time:</strong> ${htmlEscape(timeLabel)}<br><strong>Guests:</strong> ${Number(inquiry.guest_count)||0}<br><strong>Venue:</strong> ${htmlEscape(inquiry.venue_name||'Not supplied')}<br><strong>Address:</strong> ${htmlEscape(inquiry.venue_address)}, ${htmlEscape(inquiry.venue_postcode)}</p><p><a href="${hqUrl}" style="display:inline-block;padding:14px 20px;background:#c81924;color:#fff;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
+  return {subject,text,html};
+}
+
+async function processPrivateEnquiryNotificationJob(env,inquiryId){
+  if(!env.BOOKINGS_DB)return {status:'FAILED',reason:'Database unavailable'};
+  const id=clean(inquiryId,120),now=new Date().toISOString();
+  const claim=await env.BOOKINGS_DB.prepare(`UPDATE private_event_notification_jobs SET status='PROCESSING',updated_at=? WHERE inquiry_id=? AND status IN ('PENDING','RETRY') AND next_attempt_at<=? AND attempts<6`).bind(now,id,now).run();
+  if(Number(claim?.meta?.changes||0)!==1){
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT status,attempts FROM private_event_notification_jobs WHERE inquiry_id=?`).bind(id).first();
+    return {status:existing?.status||'MISSING',attempts:Number(existing?.attempts||0)};
+  }
+  const job=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_notification_jobs WHERE inquiry_id=?`).bind(id).first();
+  const inquiry=await env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_inquiries WHERE id=?`).bind(id).first();
+  const attempt=Number(job?.attempts||0)+1;
+  let outcome='RETRY',providerId='',errorMessage='';
+  try{
+    if(!inquiry)throw new Error('The enquiry no longer exists.');
+    const recipient=clean(env.ADMIN_EMAIL||env.EVENTS_NOTIFY_EMAIL||'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
+    if(!emailOk(recipient))throw new Error('The business notification recipient is not configured.');
+    const copy=privateEnquiryNotificationCopy(inquiry,'https://www.bootscootinlinedancing.co.uk');
+    const sent=await sendTransactionalEmail(env,recipient,copy.subject,copy.html,copy.text,'events',{idempotencyKey:job.idempotency_key});
+    if(sent?.skipped)throw new Error(sent.reason||'Email provider is not configured.');
+    providerId=clean(sent?.id,160);outcome='SENT';
+  }catch(error){
+    errorMessage=clean(error?.message||error,400);
+    outcome=attempt>=6?'FAILED':'RETRY';
+  }
+  const retryAt=new Date(Date.now()+Math.min(360,5*(2**Math.max(0,attempt-1)))*60000).toISOString();
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE private_event_notification_jobs SET status=?,attempts=?,next_attempt_at=?,last_error=?,provider_id=?,sent_at=CASE WHEN ?='SENT' THEN ? ELSE sent_at END,updated_at=? WHERE id=?`).bind(outcome,attempt,outcome==='RETRY'?retryAt:now,errorMessage||null,providerId||null,outcome,now,now,job.id),
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO private_event_notification_attempts(id,job_id,attempt_number,outcome,provider_id,error_message) VALUES(?,?,?,?,?,?)`).bind(crypto.randomUUID(),job.id,attempt,outcome,providerId||null,errorMessage||null),
+    env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'SYSTEM','notification worker','ADMIN_INQUIRY_NOTIFICATION',JSON.stringify({outcome,attempt,provider_id:providerId||null,retry_at:outcome==='RETRY'?retryAt:null}))
+  ]);
+  return {status:outcome,attempt,provider_id:providerId||null};
+}
+
+async function processPrivateEnquiryNotifications(env,limit=20){
+  if(!env.BOOKINGS_DB)return {processed:0};
+  await ensureBookingSchema(env);
+  const due=await env.BOOKINGS_DB.prepare(`SELECT inquiry_id FROM private_event_notification_jobs WHERE status IN ('PENDING','RETRY') AND next_attempt_at<=? AND attempts<6 ORDER BY next_attempt_at LIMIT ?`).bind(new Date().toISOString(),Math.max(1,Math.min(50,Number(limit)||20))).all();
+  const results=[];for(const row of due.results||[])results.push(await processPrivateEnquiryNotificationJob(env,row.inquiry_id));
+  return {processed:results.length,results};
 }
 
 async function sendTransactionalSms(env, to, body) {
@@ -4050,35 +4115,15 @@ async function privateEventInquiry(request, env) {
   if(!name||!emailOk(email)||!type||!dateOk(preferred)||!address||!postcode||!guests) return json({error:'Please complete your contact details, event type, preferred date, venue address, postcode and guest number.'},400);
   const id=crypto.randomUUID(), token=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''), customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const reference=`PE-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,5).toUpperCase()}`;
-  const values=[id,reference,token,name,email,phone,type,clean(b.event_type_other,80),preferred,clean(b.alternative_date,10),clean(b.start_time,8),clean(b.end_time,8),clean(b.venue_name,160),address,postcode,guests,clean(b.age_range,120),clean(b.experience_level,80),clean(b.session_length,80),clean(b.format_requested,120),clean(b.music_requests,600),Number(Boolean(b.sound_system_provided)),Number(Boolean(b.microphone_provided)),Number(Boolean(b.dance_floor_confirmed)),Number(Boolean(b.power_available)),Number(Boolean(b.parking_loading_available)),clean(b.equipment_notes,600),clean(b.accessibility_notes,600),clean(b.additional_notes,1200)];
+  const receivedAt=new Date().toISOString(),jobId=crypto.randomUUID(),idempotencyKey=`private-enquiry:${id}:owner-notification`;
+  const values=[id,reference,token,name,email,phone,type,clean(b.event_type_other,80),preferred,clean(b.alternative_date,10),clean(b.start_time,8),clean(b.end_time,8),clean(b.venue_name,160),address,postcode,guests,clean(b.age_range,120),clean(b.experience_level,80),clean(b.session_length,80),clean(b.format_requested,120),clean(b.music_requests,600),Number(Boolean(b.sound_system_provided)),Number(Boolean(b.microphone_provided)),Number(Boolean(b.dance_floor_confirmed)),Number(Boolean(b.power_available)),Number(Boolean(b.parking_loading_available)),clean(b.equipment_notes,600),clean(b.accessibility_notes,600),clean(b.additional_notes,1200),receivedAt];
   await env.BOOKINGS_DB.batch([
-    env.BOOKINGS_DB.prepare(`INSERT INTO private_event_inquiries(id,reference,secure_token,customer_name,customer_email,customer_phone,event_type,event_type_other,preferred_date,alternative_date,start_time,end_time,venue_name,venue_address,venue_postcode,guest_count,age_range,experience_level,session_length,format_requested,music_requests,sound_system_provided,microphone_provided,dance_floor_confirmed,power_available,parking_loading_available,equipment_notes,accessibility_notes,additional_notes) VALUES(${Array(29).fill('?').join(',')})`).bind(...values),
-    env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'CUSTOMER',email,'INQUIRY_SUBMITTED',JSON.stringify({preferred_date:preferred,postcode}))
+    env.BOOKINGS_DB.prepare(`INSERT INTO private_event_inquiries(id,reference,secure_token,customer_name,customer_email,customer_phone,event_type,event_type_other,preferred_date,alternative_date,start_time,end_time,venue_name,venue_address,venue_postcode,guest_count,age_range,experience_level,session_length,format_requested,music_requests,sound_system_provided,microphone_provided,dance_floor_confirmed,power_available,parking_loading_available,equipment_notes,accessibility_notes,additional_notes,received_at) VALUES(${Array(30).fill('?').join(',')})`).bind(...values),
+    env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'CUSTOMER','public inquiry form','INQUIRY_SUBMITTED',JSON.stringify({preferred_date:preferred,postcode})),
+    env.BOOKINGS_DB.prepare(`INSERT INTO private_event_notification_jobs(id,inquiry_id,idempotency_key,status,next_attempt_at) VALUES(?,?,?,'PENDING',?)`).bind(jobId,id,idempotencyKey,receivedAt)
   ]);
-
-  // Notify Nora/HQ about every new private-event inquiry. This is deliberately
-  // non-blocking: the customer's inquiry remains safely stored even if email
-  // delivery is temporarily unavailable.
-  let adminEmailSent=false, adminEmailWarning='';
-  const adminEmail=clean(env.ADMIN_EMAIL || env.EVENTS_NOTIFY_EMAIL || 'nora@bootscootinlinedancing.co.uk',254).toLowerCase();
-  if(emailOk(adminEmail)){
-    try{
-      const origin=new URL(request.url).origin;
-      const hqUrl=`${origin}/ranch`;
-      const subject=`New private event inquiry — ${reference}`;
-      const timeLabel=[clean(b.start_time,8),clean(b.end_time,8)].filter(Boolean).join('–') || 'Not supplied';
-      const textBody=`New private-event inquiry received.\n\nReference: ${reference}\nCustomer: ${name}\nEmail: ${email}\nPhone: ${phone||'Not supplied'}\nEvent: ${type}\nPreferred date: ${preferred}\nTime: ${timeLabel}\nGuests: ${guests}\nVenue: ${clean(b.venue_name,160)||'Not supplied'}\nAddress: ${address}, ${postcode}\n\nOpen Boot Scootin’ HQ to review and quote:\n${hqUrl}`;
-      const htmlBody=`<div style="font-family:Arial,sans-serif;line-height:1.55;color:#1a1111"><h2>New private event inquiry</h2><p><strong>${reference}</strong></p><p><strong>Customer:</strong> ${name}<br><strong>Email:</strong> ${email}<br><strong>Phone:</strong> ${phone||'Not supplied'}<br><strong>Event:</strong> ${type}<br><strong>Preferred date:</strong> ${preferred}<br><strong>Time:</strong> ${timeLabel}<br><strong>Guests:</strong> ${guests}<br><strong>Venue:</strong> ${clean(b.venue_name,160)||'Not supplied'}<br><strong>Address:</strong> ${address}, ${postcode}</p><p><a href="${hqUrl}" style="display:inline-block;padding:14px 20px;background:#c81924;color:#fff;text-decoration:none;font-weight:700">OPEN HQ</a></p></div>`;
-      const sent=await sendTransactionalEmail(env,adminEmail,subject,htmlBody,textBody,'events');
-      adminEmailSent=!sent?.skipped;
-      if(sent?.skipped) adminEmailWarning=sent.reason||'Email provider is not configured.';
-    }catch(error){adminEmailWarning=clean(error?.message||error,300);}
-  }else{
-    adminEmailWarning='ADMIN_EMAIL is not configured with a valid notification address.';
-  }
-  await env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(id,'SYSTEM','email','ADMIN_INQUIRY_EMAIL',JSON.stringify({sent:adminEmailSent,warning:adminEmailWarning,recipient:adminEmail||null})).run().catch(()=>{});
-
-  return json({ok:true,reference,status_url:`/private-quote.html?token=${encodeURIComponent(token)}`,message:'Your inquiry has been sent. This is not a confirmed booking.',admin_email_sent:adminEmailSent},201);
+  const delivery=await processPrivateEnquiryNotificationJob(env,id).catch(error=>({status:'RETRY',reason:clean(error?.message||error,200)}));
+  return json({ok:true,reference,status_url:`/private-quote.html?token=${encodeURIComponent(token)}`,message:'Your inquiry has been sent. This is not a confirmed booking.',notification_status:delivery.status},201);
 }
 
 async function publicPrivateQuote(request, env, url) {
@@ -4148,7 +4193,7 @@ async function syncPrivateEventPayment(env, payment, inquiry, quote, actor='PRIV
     const nextInquiry=kind==='DEPOSIT'?'CONFIRMED_DEPOSIT':'CONFIRMED_PAID';
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`UPDATE private_event_payments SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),provider_reference=? WHERE id=?`).bind(payment.provider_reference,payment.id),
-      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(nextInquiry,inquiry.id),
+      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,workflow_status='BOOKED',last_contacted_at=COALESCE(last_contacted_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(nextInquiry,inquiry.id),
       env.BOOKINGS_DB.prepare(`UPDATE private_event_quotes SET status='QUOTE_ACCEPTED',updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(quote.id),
       env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiry.id,'SYSTEM',actor,kind==='DEPOSIT'?'DEPOSIT_PAID':'FULL_PAYMENT_PAID',JSON.stringify({payment_id:payment.id,checkout_id:payment.provider_reference,transaction_id:tx,amount_pence:payment.amount_pence}))
     ]);
@@ -6872,9 +6917,13 @@ async function adminMerchOrders(request,env){
 
 async function adminPrivateEvents(request, env) {
   const check=requireAccessAdmin(request,env); if(check.response)return check.response; await ensureBookingSchema(env);
-  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,q.id quote_id,q.total_pence,q.deposit_pence,q.balance_due_pence,q.status quote_status,q.quote_expires_at, COALESCE((SELECT SUM(p.amount_pence) FROM private_event_payments p WHERE p.inquiry_id=i.id AND p.status='PAID'),0) paid_pence, (SELECT p.payment_kind FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_kind, (SELECT p.status FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_status, (SELECT p.provider_reference FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_reference, (SELECT p.paid_at FROM private_event_payments p WHERE p.inquiry_id=i.id AND p.status='PAID' ORDER BY p.paid_at DESC LIMIT 1) latest_paid_at FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) ORDER BY i.created_at DESC`).all();return json({items:results});}
+  if(request.method==='GET'){const {results}=await env.BOOKINGS_DB.prepare(`SELECT i.*,COALESCE(i.received_at,i.created_at) received_at,q.id quote_id,q.total_pence,q.deposit_pence,q.balance_due_pence,q.status quote_status,q.quote_expires_at, COALESCE((SELECT SUM(p.amount_pence) FROM private_event_payments p WHERE p.inquiry_id=i.id AND p.status='PAID'),0) paid_pence, (SELECT p.payment_kind FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_kind, (SELECT p.status FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_status, (SELECT p.provider_reference FROM private_event_payments p WHERE p.inquiry_id=i.id ORDER BY p.created_at DESC LIMIT 1) latest_payment_reference, (SELECT p.paid_at FROM private_event_payments p WHERE p.inquiry_id=i.id AND p.status='PAID' ORDER BY p.paid_at DESC LIMIT 1) latest_paid_at, n.status notification_status,n.attempts notification_attempts,n.sent_at notification_sent_at,n.last_error notification_last_error FROM private_event_inquiries i LEFT JOIN private_event_quotes q ON q.id=(SELECT id FROM private_event_quotes WHERE inquiry_id=i.id ORDER BY version DESC LIMIT 1) LEFT JOIN private_event_notification_jobs n ON n.inquiry_id=i.id ORDER BY COALESCE(i.received_at,i.created_at) DESC`).all();return json({items:results});}
   const b=await request.json().catch(()=>null);if(!b)return json({error:'Invalid private event request.'},400);
-  if(request.method==='PATCH'&&b.action==='STATUS'){const status=clean(b.status,40);if(!privateStatuses.has(status))return json({error:'Invalid status.'},400);await env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,clean(b.id,120)).run();return json({ok:true});}
+  if(request.method==='PATCH'&&b.action==='MARK_READ'){await env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET is_unread=0,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(clean(b.id,120)).run();return json({ok:true});}
+  if(request.method==='PATCH'&&b.action==='WORKFLOW_STATUS'){
+    const status=clean(b.status,20);if(!['NEW','CONTACTED','QUOTED','BOOKED','CLOSED'].includes(status))return json({error:'Invalid enquiry status.'},400);
+    await env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET workflow_status=?,is_unread=0,last_contacted_at=CASE WHEN ? IN ('CONTACTED','QUOTED','BOOKED') THEN CURRENT_TIMESTAMP ELSE last_contacted_at END,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(status,status,clean(b.id,120)).run();return json({ok:true});
+  }
   if(request.method==='DELETE'&&b.action==='DELETE'){
     const inquiryId=clean(b.id,120);
     const inquiry=await env.BOOKINGS_DB.prepare(`SELECT id,reference,customer_name,status FROM private_event_inquiries WHERE id=?`).bind(inquiryId).first();
@@ -6894,7 +6943,7 @@ async function adminPrivateEvents(request, env) {
     const quoteId=crypto.randomUUID();
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`INSERT INTO private_event_quotes(id,inquiry_id,version,agreed_date,agreed_start_time,agreed_end_time,agreed_venue,agreed_address,package_description,base_fee_pence,travel_fee_pence,equipment_fee_pence,extra_fee_pence,discount_pence,total_pence,deposit_pence,balance_due_pence,balance_due_date,quote_expires_at,cancellation_terms,customer_notes,internal_notes,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'QUOTE_SENT')`).bind(quoteId,inquiryId,version,clean(b.agreed_date,10),clean(b.agreed_start_time,8),clean(b.agreed_end_time,8),clean(b.agreed_venue,160),clean(b.agreed_address,300),clean(b.package_description,1000),base,travel,equipment,extra,discount,total,deposit,total-deposit,clean(b.balance_due_date,10),clean(b.quote_expires_at,30),clean(b.cancellation_terms,1200),clean(b.customer_notes,1200),clean(b.internal_notes,1200)),
-      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status='QUOTE_SENT',updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(inquiryId),
+      env.BOOKINGS_DB.prepare(`UPDATE private_event_inquiries SET status='QUOTE_SENT',workflow_status='QUOTED',is_unread=0,last_contacted_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(inquiryId),
       env.BOOKINGS_DB.prepare(`INSERT INTO private_event_timeline(inquiry_id,actor_type,actor_label,action,details_json) VALUES(?,?,?,?,?)`).bind(inquiryId,'ADMIN',check.state.email,'QUOTE_SENT',JSON.stringify({quote_id:quoteId,total_pence:total,deposit_pence:deposit}))
     ]);
     let emailSent=false,emailWarning='';
@@ -7189,7 +7238,7 @@ async function serveMedia(request, env, pathname) {
 }
 
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env)])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),processPrivateEnquiryNotifications(env)])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
