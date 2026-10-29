@@ -379,8 +379,8 @@ async function bookingAttendeeRows(env,{bookingId,classId,lead,quantity,guests=[
   return rows;
 }
 function bookingAttendeeInsert(env,row){
-  return env.BOOKINGS_DB.prepare(`INSERT INTO booking_attendees(id,booking_id,class_id,place_number,role,snapshot_name,snapshot_email,normalized_email,customer_id) VALUES(?,?,?,?,?,?,?,?,?)`)
-    .bind(row.id,row.booking_id,row.class_id,row.place_number,row.role,row.snapshot_name,row.snapshot_email,row.normalized_email,row.customer_id);
+  return env.BOOKINGS_DB.prepare(`INSERT INTO booking_attendees(id,booking_id,class_id,place_number,role,snapshot_name,snapshot_email,normalized_email,customer_id,admission_category) VALUES(?,?,?,?,?,?,?,?,?,?)`)
+    .bind(row.id,row.booking_id,row.class_id,row.place_number,row.role,row.snapshot_name,row.snapshot_email,row.normalized_email,row.customer_id,row.admission_category||null);
 }
 async function checkInBookingAttendee(env,{attendeeId,actor,operationId,reason='Class register check-in'}){
   const attendee=await env.BOOKINGS_DB.prepare(`SELECT ba.*,b.status booking_status,b.amount_pence,b.payment_provider FROM booking_attendees ba LEFT JOIN bookings b ON b.id=ba.booking_id WHERE ba.id=?`).bind(attendeeId).first();
@@ -576,6 +576,17 @@ function sundaySessionProducts(){return [
 function sundaySessionDetailInsert(env,bookingId,classId,details){return env.BOOKINGS_DB.prepare(`INSERT INTO sunday_session_booking_details(
   booking_id,class_id,selection_code,adult_count,child_10_17_count,child_5_9_count,under_5_count,total_people,calculated_amount_pence,price_breakdown_json
 ) VALUES(?,?,?,?,?,?,?,?,?,?)`).bind(bookingId,classId,details.selection_code,details.adult_count,details.child_10_17_count,details.child_5_9_count,details.under_5_count,details.total_people,details.calculated_amount_pence,JSON.stringify(details.price_breakdown));}
+function sundaySessionWaitingInsert(env,waitingId,classId,details){return env.BOOKINGS_DB.prepare(`INSERT INTO sunday_session_waiting_details(
+  waiting_id,class_id,selection_code,adult_count,child_10_17_count,child_5_9_count,under_5_count,total_people,calculated_amount_pence,price_breakdown_json
+) VALUES(?,?,?,?,?,?,?,?,?,?)`).bind(waitingId,classId,details.selection_code,details.adult_count,details.child_10_17_count,details.child_5_9_count,details.under_5_count,details.total_people,details.calculated_amount_pence,JSON.stringify(details.price_breakdown));}
+function sundaySessionCompositionText(row){
+  if(!row?.sunday_selection_code)return '';
+  return `${Number(row.sunday_adult_count||0)} adult · ${Number(row.sunday_child_10_17_count||0)} age 10–17 · ${Number(row.sunday_child_5_9_count||0)} age 5–9 · ${Number(row.sunday_under_5_count||0)} under 5`;
+}
+function sundayAdmissionCategories(details){return [
+  ...Array(details.adult_count).fill('ADULT'),...Array(details.child_10_17_count).fill('CHILD_10_17'),
+  ...Array(details.child_5_9_count).fill('CHILD_5_9'),...Array(details.under_5_count).fill('UNDER_5')
+];}
 
 function ticketDefinition(code){return CLASS_TICKET_DEFINITIONS[String(code||'')]||null;}
 function ticketSnapshotCode(row){return row?.ticket_product_code||row?.ticket_type||'CLASS_SOCIAL';}
@@ -587,6 +598,8 @@ function ticketTimeText(value){
 }
 function ticketSnapshotText(row){
   const label=ticketSnapshotLabel(row),code=ticketSnapshotCode(row);
+  const sunday=sundaySessionCompositionText(row);
+  if(sunday)return `${label} · ${sunday}`;
   if(code==='SOCIAL_ONLY'){
     const entry=row?.ticket_entry_at||row?.ticket_entry_time;
     return `${label}${entry?` · Entry from ${ticketTimeText(entry)}`:''}`;
@@ -2723,7 +2736,11 @@ async function deliverBookingNotification(env, booking, eventType) {
 }
 
 async function bookingWithClass(env, bookingId) {
-  return env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.id=?`).bind(bookingId).first();
+  return env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location,
+    sd.selection_code sunday_selection_code,sd.adult_count sunday_adult_count,sd.child_10_17_count sunday_child_10_17_count,
+    sd.child_5_9_count sunday_child_5_9_count,sd.under_5_count sunday_under_5_count,sd.total_people sunday_total_people,
+    sd.calculated_amount_pence sunday_calculated_amount_pence
+    FROM bookings b JOIN classes c ON c.id=b.class_id LEFT JOIN sunday_session_booking_details sd ON sd.booking_id=b.id WHERE b.id=?`).bind(bookingId).first();
 }
 
 async function reconcileClassSold(env, classId) {
@@ -2873,7 +2890,7 @@ async function createClassReservation(request, env) {
     ?[...(anniversary?.releases||[])].reverse().find(release=>Number(release.active)!==0)||null:null;
   if(anniversaryClass&&!anniversaryRelease&&!requestedWaitlist)return json({error:'Anniversary tickets are currently sold out.'},409);
   const resolved=sundaySession
-    ?{product:{...ticketDefinition('CLASS_SOCIAL'),code:'CLASS_SOCIAL',label:`Sunday Sessions — ${sundayDetails.selection_code.replaceAll('_',' ')}`,sumup_description:`Sunday Sessions — ${sundayDetails.selection_code.replaceAll('_',' ')}`,price_pence:sundayDetails.calculated_amount_pence/quantity,starts_at:classRow.starts_at,ends_at:classRow.ends_at,class_pass_eligible:false}}
+    ?{product:{...ticketDefinition('CLASS_SOCIAL'),code:'CLASS_SOCIAL',label:`Sunday Sessions — ${sundayDetails.selection_code.replaceAll('_',' ')}`,sumup_description:`Sunday Sessions — ${sundayDetails.selection_code.replaceAll('_',' ')}`,price_pence:sundayDetails.calculated_amount_pence,starts_at:classRow.starts_at,ends_at:classRow.ends_at,class_pass_eligible:false}}
     :await resolveTicketProduct(env,classRow,body,{anniversary:anniversaryClass,anniversaryRelease:anniversaryRelease||anniversaryWaitlistRelease});
   if(resolved.error)return json({error:resolved.error},resolved.status);
   const product=resolved.product,ticketType=product.code;
@@ -2903,10 +2920,11 @@ async function createClassReservation(request, env) {
   const reference = `BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
 
   if (requestedWaitlist || spaces < quantity) {
-    await env.BOOKINGS_DB.prepare(
+    const waitInsert=env.BOOKINGS_DB.prepare(
       `INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token,ticket_type,ticket_price_pence,ticket_entry_time,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
        VALUES(?,?,?,?,?,'WAITING',?,?,?,?,?,?,?,?,?)`
-    ).bind(id,classId,name,email,quantity,secureToken,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,Number(product.price_pence),ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null).run();
+    ).bind(id,classId,name,email,quantity,secureToken,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,Number(product.price_pence),ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null);
+    const waitStatements=[waitInsert];if(sundayDetails)waitStatements.push(sundaySessionWaitingInsert(env,id,classId,sundayDetails));await env.BOOKINGS_DB.batch(waitStatements);
 
     return json({
       ok: true,
@@ -2931,6 +2949,7 @@ async function createClassReservation(request, env) {
   let attendeeRows=[];
   try{
     if(await attendeeSchemaAvailable(env))attendeeRows=await bookingAttendeeRows(env,{bookingId:id,classId,quantity,lead:{name,email,customerId:customer.id},guests:guestInputs});
+    if(sundayDetails){const categories=sundayAdmissionCategories(sundayDetails);attendeeRows=attendeeRows.map(row=>({...row,admission_category:categories[Number(row.place_number)-1]||null}));}
   }catch(error){
     return json({error:error?.message||'Guest ticket details are invalid.'},400);
   }
@@ -2976,10 +2995,11 @@ async function createClassReservation(request, env) {
     `).bind(holdId,classId,quantity,holdExpiry,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,unitPrice,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
 
   if(Number(holdResult?.meta?.changes||0)===0){
-    await env.BOOKINGS_DB.prepare(
+    const waitInsert=env.BOOKINGS_DB.prepare(
       `INSERT INTO waiting_list(id,class_id,customer_name,customer_email,quantity,status,secure_token,ticket_type,ticket_price_pence,ticket_entry_time,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
        VALUES(?,?,?,?,?,'WAITING',?,?,?,?,?,?,?,?,?)`
-    ).bind(id,classId,name,email,quantity,secureToken,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,unitPrice,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null).run();
+    ).bind(id,classId,name,email,quantity,secureToken,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,unitPrice,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null);
+    const waitStatements=[waitInsert];if(sundayDetails)waitStatements.push(sundaySessionWaitingInsert(env,id,classId,sundayDetails));await env.BOOKINGS_DB.batch(waitStatements);
     return json({
       ok:true,waitlisted:true,reference,status:'WAITLISTED',secure_token:secureToken,customer_token:customerToken,
       message:'You have been added to the waiting list. No payment has been taken.'
@@ -3045,8 +3065,9 @@ async function createClassReservation(request, env) {
   }
 
   try{
-    if(attendeeRows.length)await env.BOOKINGS_DB.batch(attendeeRows.map(row=>bookingAttendeeInsert(env,row)));
-    if(sundayDetails&&!paymentReady)await sundaySessionDetailInsert(env,id,classId,sundayDetails).run();
+    const setupStatements=attendeeRows.map(row=>bookingAttendeeInsert(env,row));
+    if(sundayDetails)setupStatements.push(sundaySessionDetailInsert(env,id,classId,sundayDetails));
+    if(setupStatements.length)await env.BOOKINGS_DB.batch(setupStatements);
   }catch(error){
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
@@ -3111,9 +3132,7 @@ async function createClassReservation(request, env) {
       } catch (_) {}
 
       if (sumup.ok && checkout.id && checkoutUrl) {
-        const checkoutStatements=[env.BOOKINGS_DB.prepare(`UPDATE bookings SET provider_checkout_id=? WHERE id=?`).bind(checkout.id,id)];
-        if(sundayDetails)checkoutStatements.push(sundaySessionDetailInsert(env,id,classId,sundayDetails));
-        await env.BOOKINGS_DB.batch(checkoutStatements);
+        await env.BOOKINGS_DB.prepare(`UPDATE bookings SET provider_checkout_id=? WHERE id=?`).bind(checkout.id,id).run();
 
         return json({
           ok: true,
@@ -3129,7 +3148,7 @@ async function createClassReservation(request, env) {
       const providerMessage = clean(checkout?.message || checkout?.error_message || checkout?.error || '', 180);
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId),
-        env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
+        sundayDetails?env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='FAILED',admin_notes='SumUp checkout creation failed; no payment was taken.' WHERE id=? AND status='PENDING'`).bind(id):env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id),
         env.BOOKINGS_DB.prepare(
           `INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`
         ).bind(email, 'SUMUP_CHECKOUT_FAILED', 'booking', id, JSON.stringify({ status: sumup.status, providerMessage }))
@@ -3142,7 +3161,7 @@ async function createClassReservation(request, env) {
     } catch (error) {
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId),
-        env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id)
+        sundayDetails?env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='FAILED',admin_notes='Payment provider unavailable; no payment was taken.' WHERE id=? AND status='PENDING'`).bind(id):env.BOOKINGS_DB.prepare(`DELETE FROM bookings WHERE id=?`).bind(id)
       ]);
       if(welcomePromotionClaimed)await releaseWelcomePromotion(env,promotion.promotion_code_id);
       return json({
@@ -3404,7 +3423,13 @@ function bookingConfirmedSummaryHtml(booking){
 async function serveBookingConfirmed(request,env){
   if(!env.BOOKINGS_DB)return Response.redirect(new URL('/bookings.html',request.url).toString(),302);
   const token=clean(requestCookie(request,BOOKING_CONFIRMED_COOKIE),160);
-  const booking=token?await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.secure_token=? AND b.status='PAID' AND b.payment_provider='SUMUP' AND b.amount_pence>0`).bind(token).first():null;
+  const booking=token?await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location,
+    sd.selection_code sunday_selection_code,sd.adult_count sunday_adult_count,sd.child_10_17_count sunday_child_10_17_count,
+    sd.child_5_9_count sunday_child_5_9_count,sd.under_5_count sunday_under_5_count,sd.total_people sunday_total_people,
+    sd.calculated_amount_pence sunday_calculated_amount_pence
+    FROM bookings b JOIN classes c ON c.id=b.class_id
+    LEFT JOIN sunday_session_booking_details sd ON sd.booking_id=b.id
+    WHERE b.secure_token=? AND b.status='PAID' AND b.payment_provider='SUMUP' AND b.amount_pence>0`).bind(token).first():null;
   if(!booking)return Response.redirect(new URL('/bookings.html',request.url).toString(),302);
   const asset=await env.ASSETS.fetch(new Request(new URL('/booking-confirmed.html',request.url),{method:'GET',headers:request.headers}));
   const headers=new Headers(asset.headers);
@@ -4749,12 +4774,12 @@ async function publicReviews(request,env){
 }
 
 async function classGuestListState(env,classId){
-  const klass=await env.BOOKINGS_DB.prepare(`SELECT id,title,venue,starts_at,capacity FROM classes WHERE id=?`).bind(classId).first();
+  const klass=await env.BOOKINGS_DB.prepare(`SELECT id,title,venue,starts_at,capacity,special_booking_format FROM classes WHERE id=?`).bind(classId).first();
   if(!klass)return null;
   const anniversary=await env.BOOKINGS_DB.prepare(`SELECT id FROM anniversary_events WHERE class_id=? AND active=1`).bind(classId).first().catch(()=>null);
   if(anniversary)return {anniversary:true,class:klass};
   const [rows,usage]=await Promise.all([
-    env.BOOKINGS_DB.prepare(`SELECT id,guest_name,places,category,notes,status,created_by,updated_by,created_at,updated_at FROM class_guest_list WHERE class_id=? ORDER BY status,created_at DESC`).bind(classId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT id,guest_name,places,category,notes,status,created_by,updated_by,created_at,updated_at,sunday_adult_count,sunday_child_10_17_count,sunday_child_5_9_count,sunday_under_5_count FROM class_guest_list WHERE class_id=? ORDER BY status,created_at DESC`).bind(classId).all(),
     env.BOOKINGS_DB.prepare(`SELECT
       COALESCE((SELECT SUM(quantity) FROM bookings WHERE class_id=? AND (status='PAID' OR (status='PENDING' AND payment_provider='MANUAL'))),0) booked,
       COALESCE((SELECT SUM(quantity) FROM booking_holds WHERE class_id=? AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) held,
@@ -4787,7 +4812,8 @@ async function adminClassGuests(request,env){
       next.guest_name===clean(body.guest_name,140)&&
       Number(next.places)===Math.floor(Number(body.places))&&
       next.category===(clean(body.category,40)||(action==='ADD_GUEST'?'GUEST':''))&&
-      String(next.notes||'')===clean(body.notes,600)
+      String(next.notes||'')===clean(body.notes,600)&&
+      ['sunday_adult_count','sunday_child_10_17_count','sunday_child_5_9_count','sunday_under_5_count'].every(key=>next[key]==null||Number(next[key])===Math.floor(Number(body[key]||0)))
     );
     return sameBase&&sameTarget&&samePayload;
   };
@@ -4799,16 +4825,18 @@ async function adminClassGuests(request,env){
   }
   if(action==='ADD_GUEST'){
     const name=clean(body.guest_name,140),places=Math.floor(Number(body.places)),category=clean(body.category,40)||'GUEST',notes=clean(body.notes,600),id=crypto.randomUUID();
+    const sundayCounts=current.class.special_booking_format==='SUNDAY_SESSIONS'?['sunday_adult_count','sunday_child_10_17_count','sunday_child_5_9_count','sunday_under_5_count'].map(key=>Math.floor(Number(body[key]||0))):[null,null,null,null];
     const categories=['GUEST','COMPLIMENTARY','INSTRUCTOR_STAFF','VENDOR','ARTIST_PERFORMER','OTHER'];
     if(!name||!Number.isInteger(places)||places<1||places>100||!categories.includes(category))return json({error:'Enter a guest, valid number of places and category.'},400);
+    if(current.class.special_booking_format==='SUNDAY_SESSIONS'&&(sundayCounts.some(value=>!Number.isInteger(value)||value<0)||sundayCounts.reduce((sum,value)=>sum+value,0)!==places))return json({error:'Sunday guest age categories must add up exactly to the number of places.'},400);
     const results=await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list(id,class_id,guest_name,places,category,notes,created_by,updated_by,last_operation_id)
-        SELECT ?,c.id,?,?,?,?,?,?,? FROM classes c WHERE c.id=? AND ?>0 AND ?<=c.capacity
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list(id,class_id,guest_name,places,category,notes,created_by,updated_by,last_operation_id,sunday_adult_count,sunday_child_10_17_count,sunday_child_5_9_count,sunday_under_5_count)
+        SELECT ?,c.id,?,?,?,?,?,?,?,?,?,?,?,? FROM classes c WHERE c.id=? AND ?>0 AND ?<=c.capacity
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
-          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,operationId,classId,places,places),
+          -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,operationId,...sundayCounts,classId,places,places),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,next_json,operation_id)
-        SELECT ?,?,?,'GUEST_ADDED',?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
+        SELECT ?,?,?,'GUEST_ADDED',?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:name,places,category,notes:notes||null,sunday_adult_count:sundayCounts[0],sunday_child_10_17_count:sundayCounts[1],sunday_child_5_9_count:sundayCounts[2],sunday_under_5_count:sundayCounts[3]}),operationId,id,operationId)
     ]);
     if(Number(results?.[0]?.meta?.changes||0)!==1){
       const completed=await completedOperation();
@@ -4821,17 +4849,19 @@ async function adminClassGuests(request,env){
     if(!row)return json({error:'Guest entry not found.'},404);
     if(row.status!=='ACTIVE')return json({error:'Cancelled guest entries cannot be edited.'},409);
     const name=clean(body.guest_name,140),places=Math.floor(Number(body.places)),category=clean(body.category,40),notes=clean(body.notes,600);
+    const sundayCounts=current.class.special_booking_format==='SUNDAY_SESSIONS'?['sunday_adult_count','sunday_child_10_17_count','sunday_child_5_9_count','sunday_under_5_count'].map(key=>Math.floor(Number(body[key]||0))):[row.sunday_adult_count,row.sunday_child_10_17_count,row.sunday_child_5_9_count,row.sunday_under_5_count];
     const categories=['GUEST','COMPLIMENTARY','INSTRUCTOR_STAFF','VENDOR','ARTIST_PERFORMER','OTHER'];
     if(!name||!Number.isInteger(places)||places<1||places>100||!categories.includes(category))return json({error:'Enter a guest, valid number of places and category.'},400);
+    if(current.class.special_booking_format==='SUNDAY_SESSIONS'&&(sundayCounts.some(value=>!Number.isInteger(value)||value<0)||sundayCounts.reduce((sum,value)=>sum+value,0)!==places))return json({error:'Sunday guest age categories must add up exactly to the number of places.'},400);
     const results=await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET guest_name=?,places=?,category=?,notes=?,updated_by=?,last_operation_id=?,updated_at=CURRENT_TIMESTAMP
+      env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET guest_name=?,places=?,category=?,notes=?,updated_by=?,last_operation_id=?,sunday_adult_count=?,sunday_child_10_17_count=?,sunday_child_5_9_count=?,sunday_under_5_count=?,updated_at=CURRENT_TIMESTAMP
         WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=? AND ?<=(SELECT c.capacity
           -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
           -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE' AND g.id<>?),0)
-          FROM classes c WHERE c.id=?)`).bind(name,places,category,notes||null,actor,operationId,id,classId,row.last_operation_id,places,id,classId),
+          FROM classes c WHERE c.id=?)`).bind(name,places,category,notes||null,actor,operationId,...sundayCounts,id,classId,row.last_operation_id,places,id,classId),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,previous_json,next_json,operation_id)
-        SELECT ?,?,?,'GUEST_UPDATED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:row.guest_name,places:row.places,category:row.category,notes:row.notes}),JSON.stringify({guest_name:name,places,category,notes:notes||null}),operationId,id,operationId)
+        SELECT ?,?,?,'GUEST_UPDATED',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM class_guest_list WHERE id=? AND last_operation_id=?)`).bind(crypto.randomUUID(),classId,id,actor,reason,JSON.stringify({guest_name:row.guest_name,places:row.places,category:row.category,notes:row.notes,sunday_adult_count:row.sunday_adult_count,sunday_child_10_17_count:row.sunday_child_10_17_count,sunday_child_5_9_count:row.sunday_child_5_9_count,sunday_under_5_count:row.sunday_under_5_count}),JSON.stringify({guest_name:name,places,category,notes:notes||null,sunday_adult_count:sundayCounts[0],sunday_child_10_17_count:sundayCounts[1],sunday_child_5_9_count:sundayCounts[2],sunday_under_5_count:sundayCounts[3]}),operationId,id,operationId)
     ]);
     if(Number(results?.[0]?.meta?.changes||0)!==1){
       const completed=await completedOperation();
@@ -4870,14 +4900,16 @@ async function adminClasses(request, env) {
       const response=await env.BOOKINGS_DB.prepare(`
         SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,b.ticket_type,b.ticket_entry_time,
           b.ticket_product_code,b.ticket_product_label,b.ticket_unit_price_pence,b.ticket_starts_at,b.ticket_ends_at,b.ticket_entry_at,
+          sd.selection_code sunday_selection_code,sd.adult_count sunday_adult_count,sd.child_10_17_count sunday_child_10_17_count,
+          sd.child_5_9_count sunday_child_5_9_count,sd.under_5_count sunday_under_5_count,sd.total_people sunday_total_people,
           CASE WHEN a.id IS NULL THEN 0 ELSE 1 END checked_in,a.checked_in_at,a.recorded_at
-        FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id
+        FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id LEFT JOIN sunday_session_booking_details sd ON sd.booking_id=b.id
         WHERE b.class_id=? AND b.status IN ('PAID','PENDING')
         ORDER BY lower(b.customer_name),b.created_at
       `).bind(registerClassId).all();
       const bookings=response.results||[];
       const attendeeResult=await attendeeSchemaAvailable(env)?await env.BOOKINGS_DB.prepare(`
-        SELECT ba.id,ba.booking_id,ba.class_id,ba.place_number,ba.role,ba.snapshot_name,ba.snapshot_email,ba.customer_id,ba.attendance_status,ba.checked_in_at,ba.checked_in_by,
+        SELECT ba.id,ba.booking_id,ba.class_id,ba.place_number,ba.role,ba.snapshot_name,ba.snapshot_email,ba.customer_id,ba.admission_category,ba.attendance_status,ba.checked_in_at,ba.checked_in_by,
           CASE WHEN alc.id IS NULL THEN 0 ELSE 1 END loyalty_credited
         FROM booking_attendees ba LEFT JOIN attendee_loyalty_credits alc ON alc.attendee_id=ba.id
         WHERE ba.class_id=? AND ba.attendance_status<>'CANCELLED'
