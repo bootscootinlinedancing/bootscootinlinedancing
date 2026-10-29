@@ -287,6 +287,7 @@
                   <label>Guest / name<input name="guest_name" required maxlength="140"></label>
                   <label>Places<input name="places" type="number" min="1" max="100" value="1" required></label>
                   <label>Category<select name="category"><option value="GUEST">Guest</option><option value="COMPLIMENTARY">Complimentary</option><option value="INSTRUCTOR_STAFF">Instructor/Staff</option><option value="VENDOR">Vendor</option><option value="ARTIST_PERFORMER">Artist/Performer</option><option value="OTHER">Other</option></select></label>
+                  <fieldset class="wide sunday-guest-composition" id="sundayGuestComposition" hidden><legend>Sunday Sessions age categories</legend><div class="hq-form-grid"><label>Adults<input name="sunday_adult_count" type="number" min="0" max="100" value="0"></label><label>Age 10–17<input name="sunday_child_10_17_count" type="number" min="0" max="100" value="0"></label><label>Age 5–9<input name="sunday_child_5_9_count" type="number" min="0" max="100" value="0"></label><label>Under 5<input name="sunday_under_5_count" type="number" min="0" max="100" value="0"></label></div><small>These four values must add up to Places.</small></fieldset>
                   <label class="wide">Notes<textarea name="notes" rows="2" maxlength="600"></textarea></label>
                   <label class="wide">Audit reason<input name="reason" required maxlength="500" placeholder="Why this guest is being added"></label>
                   <div class="wide"><button class="button" type="submit">Save</button></div>

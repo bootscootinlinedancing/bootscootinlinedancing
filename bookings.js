@@ -48,6 +48,25 @@
   }
   function eventUrl(c){return `${location.origin}${location.pathname}?event=${encodeURIComponent(c.id)}`;}
   function selectedTicketType(){return form.querySelector('input[name="ticket_product_code"]:checked')?.value||(selectedClass?.booking_format==='BEGINNER_IMPROVER'?'':'CLASS_SOCIAL');}
+  const isSundaySession=()=>selectedClass?.special_booking_format==='SUNDAY_SESSIONS';
+  function sundayComposition(){
+    const selection_code=document.getElementById('sundaySelection').value;
+    const values={selection_code,adult_count:Number(document.getElementById('sundayAdults').value||0),child_10_17_count:Number(document.getElementById('sundayOlderChildren').value||0),child_5_9_count:Number(document.getElementById('sundayYoungerChildren').value||0),under_5_count:Number(document.getElementById('sundayUnder5').value||0)};
+    values.total_people=values.adult_count+values.child_10_17_count+values.child_5_9_count+values.under_5_count;
+    const bundles={FAMILY_1A1C:[1,1,800],FAMILY_1A2C:[1,2,1000],FAMILY_2A1C:[2,1,1300],FAMILY_2A2C:[2,2,1500]};
+    values.amount_pence=selection_code==='INDIVIDUAL'?values.adult_count*600+values.child_10_17_count*400+values.child_5_9_count*300:(bundles[selection_code]?.[2]||0)+values.child_10_17_count*100;
+    return values;
+  }
+  function updateSundayComposition(resetBundle=false){
+    if(!isSundaySession())return;
+    const selection=document.getElementById('sundaySelection').value,bundle={FAMILY_1A1C:[1,1],FAMILY_1A2C:[1,2],FAMILY_2A1C:[2,1],FAMILY_2A2C:[2,2]}[selection];
+    const adults=document.getElementById('sundayAdults'),older=document.getElementById('sundayOlderChildren'),younger=document.getElementById('sundayYoungerChildren');
+    if(bundle){adults.value=bundle[0];adults.disabled=true;if(resetBundle){older.value=0;younger.value=bundle[1];}older.max=bundle[1];younger.max=bundle[1];}
+    else{adults.disabled=false;older.max=10;younger.max=10;}
+    const composition=sundayComposition();form.elements.quantity.value=composition.total_people;
+    document.getElementById('sundayPriceSummary').textContent=`${composition.total_people} ${composition.total_people===1?'person':'people'} · ${money(composition.amount_pence/100)} total`;
+    updateGuestFields();updateTicketChoice();
+  }
   function ticketProduct(c,code=selectedTicketType()){return (c.ticket_products||[]).find(product=>product.code===code)||null;}
   function ticketUnitPrice(c,type=selectedTicketType()){const product=ticketProduct(c,type);return product?Number(product.price_pence||0)/100:Number(c.price||0);}
   function productTime(product){
@@ -67,11 +86,11 @@
     submit.disabled=!waitlist&&productRequired&&!product;
     submit.textContent=!waitlist&&!product&&productRequired
       ?'Choose a ticket to continue'
-      :waitlist?'Join Waiting List':`Continue to Secure Payment — ${money(ticketUnitPrice(selectedClass)*Number(form.elements.quantity.value||1))}`;
+      :waitlist?'Join Waiting List':`Continue to Secure Payment — ${money(isSundaySession()?sundayComposition().amount_pence/100:ticketUnitPrice(selectedClass)*Number(form.elements.quantity.value||1))}`;
     appliedPromo=null;showPromoTotals(null);document.getElementById('promoMessage').textContent='';
   }
   function updateGuestFields(){
-    const quantity=Math.max(1,Math.min(4,Number(form.elements.quantity.value)||1));
+    const quantity=Math.max(1,Math.min(isSundaySession()?10:4,Number(form.elements.quantity.value)||1));
     const section=document.getElementById('bookingGuestDetails'),box=document.getElementById('bookingGuestFields');
     const prior=new Map([...box.querySelectorAll('[data-guest-place]')].map(row=>[Number(row.dataset.guestPlace),{
       name:row.querySelector('[name$="[name]"]')?.value||'',email:row.querySelector('[name$="[email]"]')?.value||''
@@ -117,7 +136,7 @@
         <div class="class-info">
           <p class="class-venue">${esc(venueLabel(c.venue))}</p><h3>${esc(c.title)}</h3>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<p class="anniversary-ticket-release"><strong>${esc(c.ticket_release.name)}</strong> · ${money(c.ticket_release.price_pence/100)} · ${esc(c.ticket_release.remaining)} release tickets available</p>`:c.booking_format==='BEGINNER_IMPROVER'?`<p class="social-ticket-note"><strong>Beginner, Improver, Full Evening or Social Only</strong></p>`:Number(c.social_only_enabled)===1?`<p class="social-ticket-note"><strong>Class + Social or Social Only</strong> · Social entry from ${esc(c.social_only_entry_time)}</p>`:''}
           <p>${esc(dateFmt(c.starts_at))}</p><p>${esc(c.location)}</p>
-          <div class="class-footer"><span><b>${money(c.price)}</b> per person</span>
+          <div class="class-footer"><span><b>${c.special_booking_format==='SUNDAY_SESSIONS'?'From £3 · Under 5s free':`${money(c.price)} per person`}</b></span>
           <span class="spaces ${nearly?'low':''} ${full?'full':''}">${closed?'Booking closed':full?'Class full':`${c.spaces_remaining} spaces left`}</span></div>
           <div class="class-card-actions"><button type="button" class="button secondary view-event" data-id="${esc(c.id)}">View details</button><button class="button book-class" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}" ${closed?'disabled aria-disabled="true"':''}>${closed?'Booking closed':full?'Join waiting list':'Book now'}</button></div>
         </div>
@@ -183,12 +202,18 @@
     document.getElementById('classId').value=c.id;
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
     const picker=document.getElementById('ticketTypePicker'),choices=document.getElementById('ticketProductChoices'),products=c.ticket_products||[];
+    const sundayPicker=document.getElementById('sundaySessionPicker'),sunday=c.special_booking_format==='SUNDAY_SESSIONS';
+    sundayPicker.hidden=!sunday;
+    form.elements.quantity.closest('label').hidden=sunday;
+    [...form.elements.quantity.options].forEach(option=>{if(Number(option.value)>4){option.disabled=!sunday;option.hidden=!sunday;}});
+    document.getElementById('promoBox').hidden=sunday;
     const showSingleAnniversaryProduct=c.event_type==='ANNIVERSARY'&&products.length===1;
-    picker.hidden=products.length===0||(!showSingleAnniversaryProduct&&products.length<2&&c.booking_format!=='BEGINNER_IMPROVER');
+    picker.hidden=sunday||products.length===0||(!showSingleAnniversaryProduct&&products.length<2&&c.booking_format!=='BEGINNER_IMPROVER');
     choices.innerHTML=products.map((product,index)=>`<label class="ticket-product-card"><input type="radio" name="ticket_product_code" value="${esc(product.code)}" ${c.booking_format!=='BEGINNER_IMPROVER'&&index===0?'checked':''} required><span>${product.badge?`<em>${esc(product.badge)}</em>`:''}<strong>${esc(product.label)} — ${money(Number(product.price_pence)/100)}</strong><small>${esc(productTime(product))}</small><small>${esc(product.description||'')}</small>${product.class_pass_eligible?'<b>Class Pass eligible</b>':''}</span></label>`).join('');
     choices.querySelectorAll('input').forEach(input=>input.addEventListener('change',()=>{updateTicketChoice();loadClassCreditOption(c);}));
     document.getElementById('bookingSubmit').textContent=waitlist?'Join Waiting List':'Continue to Secure Payment';
     updateTicketChoice();
+    if(sunday)updateSundayComposition(true);
     dialog.showModal();
     creditOperationId=crypto.randomUUID();
     loadClassCreditOption(c);
@@ -246,6 +271,12 @@
     const button=document.getElementById('bookingSubmit');
     button.disabled=true;msg.textContent='Securing your place…';
     const data=Object.fromEntries(new FormData(form));
+    if(isSundaySession()){
+      const composition=sundayComposition();
+      data.quantity=composition.total_people;
+      data.sunday_session={selection_code:composition.selection_code,adult_count:composition.adult_count,child_10_17_count:composition.child_10_17_count,child_5_9_count:composition.child_5_9_count,under_5_count:composition.under_5_count};
+      delete data.promo_code;
+    }
     data.guests=submittedGuests();
     data.terms_accepted=Boolean(data.terms);
     data.marketing_consent=Boolean(data.marketing_consent);
@@ -259,6 +290,9 @@
       location.href=`booking-confirmation.html?reference=${encodeURIComponent(out.reference)}&token=${encodeURIComponent(out.secure_token||'')}&customer=${encodeURIComponent(out.customer_token||'')}`;
     }catch(e){msg.textContent=(e&&e.message&&e.message!=='The string did not match the expected pattern.')?e.message:bookingFailureMessage;button.disabled=false;}
   });
+
+  document.getElementById('sundaySelection')?.addEventListener('change',()=>updateSundayComposition(true));
+  ['sundayAdults','sundayOlderChildren','sundayYoungerChildren','sundayUnder5'].forEach(id=>document.getElementById(id)?.addEventListener('change',()=>updateSundayComposition(false)));
 
   load();loadClassPassDiscovery();
 })();
