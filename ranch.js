@@ -36,6 +36,10 @@
     if(Number.isNaN(d.getTime()))return String(value);
     return new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(d);
   };
+  const fmtLondon=value=>{
+    if(!value)return '—';const d=new Date(value);if(Number.isNaN(d.getTime()))return String(value);
+    return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'}).format(d);
+  };
 
 
   const BOOTSTRAP_CACHE_KEY='boot-scootin-hq-bootstrap-v96-4-118-access';
@@ -1493,12 +1497,12 @@ Type REFUNDED to continue.`);
     try{
       const data=await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{cache:'no-store'});
       state.privateEvents=data.items||[];
-      box.innerHTML=state.privateEvents.length?state.privateEvents.map(i=>`<button type="button" class="private-admin-card private-admin-open" data-private-event-id="${esc(i.id)}" aria-label="Open ${esc(i.reference)}"><header><div><span class="private-status">${esc(String(i.status).replaceAll('_',' '))}</span><h3>${esc(i.event_type)} · ${esc(i.reference)}</h3></div><strong>${esc(i.customer_name)}</strong></header><p>${esc(i.preferred_date)} · ${esc(i.venue_postcode)}</p><span class="private-open-hint">Open inquiry →</span></button>`).join(''):emptyPanel('No private-event inquiries yet.');
+      box.innerHTML=state.privateEvents.length?state.privateEvents.map(i=>`<button type="button" class="private-admin-card private-admin-open ${Number(i.is_unread)===1?'is-unread':''}" data-private-event-id="${esc(i.id)}" aria-label="Open ${esc(i.reference)}"><header><div><span class="private-status">${esc(i.workflow_status||'NEW')}</span>${Number(i.is_unread)===1?'<span class="private-unread-badge">NEW</span>':''}<h3>${esc(i.event_type)} · ${esc(i.reference)}</h3></div><strong>${esc(i.customer_name)}</strong></header><p><strong>Received:</strong> ${esc(fmtLondon(i.received_at||i.created_at))}<br>${esc(i.preferred_date)} · ${esc(i.venue_postcode)}</p><span class="private-notification-state ${esc(String(i.notification_status||'PENDING').toLowerCase())}">Owner notification: ${esc(i.notification_status||'PENDING')}${i.notification_sent_at?` · ${esc(fmtLondon(i.notification_sent_at))}`:''}</span><span class="private-open-hint">Open inquiry →</span></button>`).join(''):emptyPanel('No private-event inquiries yet.');
     }catch(error){box.innerHTML=lockedPanel('Private events unavailable',error.message);}
   }
 
 
-  function privateStatusLabel(value){return String(value||'NEW_INQUIRY').replaceAll('_',' ');}
+  function privateStatusLabel(value){return String(value||'NEW').replaceAll('_',' ');}
   function privateMoneyInput(pence){return ((Number(pence||0))/100).toFixed(2);}
   function privatePence(value){const n=Number.parseFloat(String(value||'0').replace(/[^0-9.-]/g,''));return Number.isFinite(n)?Math.max(0,Math.round(n*100)):0;}
   function privateField(label,value){return `<div class="private-detail-field"><span>${esc(label)}</span><strong>${esc(value||'—')}</strong></div>`;}
@@ -1509,8 +1513,9 @@ Type REFUNDED to continue.`);
     const phone=item.customer_phone?`<a href="tel:${esc(item.customer_phone)}">${esc(item.customer_phone)}</a>`:'—';
     const email=item.customer_email?`<a href="mailto:${esc(item.customer_email)}">${esc(item.customer_email)}</a>`:'—';
     box.innerHTML=`<section class="private-detail" data-private-id="${esc(item.id)}">
-      <div class="private-detail-head"><div><p class="kicker red">Private event inquiry</p><h2>${esc(item.event_type)} · ${esc(item.reference)}</h2><p>${esc(item.customer_name)} · ${email} · ${phone}</p></div><span class="private-status large">${esc(privateStatusLabel(item.status))}</span></div>
+      <div class="private-detail-head"><div><p class="kicker red">Private event inquiry</p><h2>${esc(item.event_type)} · ${esc(item.reference)}</h2><p>${esc(item.customer_name)} · ${email} · ${phone}</p></div><span class="private-status large">${esc(privateStatusLabel(item.workflow_status))}</span></div>
       <div class="private-detail-grid">
+        ${privateField('Received (London)',fmtLondon(item.received_at||item.created_at))}${privateField('Last contacted (London)',fmtLondon(item.last_contacted_at))}${privateField('Owner notification',`${item.notification_status||'PENDING'}${item.notification_attempts?` · ${item.notification_attempts} attempt${Number(item.notification_attempts)===1?'':'s'}`:''}`)}${privateField('Notification delivered',fmtLondon(item.notification_sent_at))}
         ${privateField('Preferred date',item.preferred_date)}${privateField('Alternative date',item.alternative_date)}${privateField('Time',[item.start_time,item.end_time].filter(Boolean).join(' – '))}${privateField('Guests',item.guest_count)}
         ${privateField('Venue',item.venue_name)}${privateField('Postcode',item.venue_postcode)}${privateField('Experience',item.experience_level)}${privateField('Session length',item.session_length)}
       </div>
@@ -1522,11 +1527,9 @@ Type REFUNDED to continue.`);
       ${item.quote_id?`<section class="private-payment-summary"><h3>Payment status</h3><div class="private-detail-grid">${privateField('Quote total',money(item.total_pence||0))}${privateField('Paid',money(item.paid_pence||0))}${privateField('Remaining',money(Math.max(0,Number(item.total_pence||0)-Number(item.paid_pence||0))))}${privateField('Latest payment',item.latest_payment_status?`${privateStatusLabel(item.latest_payment_kind)} · ${privateStatusLabel(item.latest_payment_status)}`:'No payment yet')}</div>${item.latest_payment_reference?`<p class="private-payment-ref">SumUp checkout: ${esc(item.latest_payment_reference)}</p>`:''}${item.latest_paid_at?`<p class="private-payment-ref">Last paid: ${esc(fmt(item.latest_paid_at))}</p>`:''}</section>`:''}
 
       <section class="private-workflow-box">
-        <h3>Review decision</h3>
+        <h3>Enquiry status</h3>
         <div class="private-status-actions">
-          <button type="button" class="button secondary" data-private-status="REVIEWING">Mark reviewing</button>
-          <button type="button" class="button" data-private-status="AWAITING_CUSTOMER">Approve for quote</button>
-          <button type="button" class="button danger" data-private-status="DECLINED">Decline inquiry</button>
+          ${['NEW','CONTACTED','QUOTED','BOOKED','CLOSED'].map(status=>`<button type="button" class="button ${status===item.workflow_status?'':'secondary'}" data-private-status="${status}">${status}</button>`).join('')}
           <button type="button" class="button danger private-delete-inquiry" data-private-delete="1">Delete test / unwanted inquiry</button>
         </div>
       </section>
@@ -1556,6 +1559,7 @@ Type REFUNDED to continue.`);
       </form>
     </section>`;
     dialog.showModal();
+    if(Number(item.is_unread)===1){item.is_unread=0;jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'MARK_READ',id:item.id})}).catch(()=>{});}
     updatePrivateQuoteTotal();
   }
   function updatePrivateQuoteTotal(){
@@ -1564,7 +1568,7 @@ Type REFUNDED to continue.`);
     out.textContent=`Quote total: ${money(Math.max(0,total))}`;
   }
   async function setPrivateEventStatus(id,status){
-    try{await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'STATUS',id,status})});toast(`Inquiry marked ${privateStatusLabel(status).toLowerCase()}.`,'success');$('#privateEventDialog')?.close();await loadPrivateEvents();}
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/private-events`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'WORKFLOW_STATUS',id,status})});toast(`Inquiry marked ${privateStatusLabel(status).toLowerCase()}.`,'success');$('#privateEventDialog')?.close();await loadPrivateEvents();}
     catch(error){toast(error.message,'error');}
   }
   async function deletePrivateEvent(id){

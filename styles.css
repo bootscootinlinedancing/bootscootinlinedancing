@@ -8354,6 +8354,9 @@ body.ranch-v91 .hq-class-description-field small{color:#bda99c;font-weight:400;l
 .private-admin-card.private-admin-open{display:block;width:100%;appearance:none;text-align:left;font:inherit;cursor:pointer;background:#120909!important;color:#f7eee5!important;border:1px solid #743137!important;border-left:5px solid #d52631!important;border-radius:0!important;padding:1rem!important}
 .private-admin-card.private-admin-open:hover,.private-admin-card.private-admin-open:focus{border-color:#e13a43!important;box-shadow:0 0 20px rgba(213,38,49,.2);outline:none}
 .private-admin-card.private-admin-open header strong,.private-admin-card.private-admin-open h3{color:#fff6ed!important}.private-admin-card.private-admin-open p{color:#cbb4a6!important}.private-open-hint{display:block;margin-top:.8rem;color:#ef535c;font-weight:800;text-transform:uppercase;letter-spacing:.07em}
+.private-admin-card.private-admin-open.is-unread{border-left-color:#ff3d49!important;box-shadow:0 0 0 1px rgba(255,61,73,.25),0 0 22px rgba(213,38,49,.18)}
+.private-unread-badge{display:inline-block;margin-left:.45rem;padding:.15rem .4rem;background:#d52631;color:#fff;font:700 .72rem Oswald,sans-serif;letter-spacing:.08em}
+.private-notification-state{display:block;margin-top:.55rem;color:#d3bfae;font-size:.82rem}.private-notification-state.sent{color:#8fe0aa}.private-notification-state.failed{color:#ff8b92}.private-notification-state.retry{color:#f5c66a}
 .private-event-dialog{width:min(940px,calc(100% - 24px));max-width:940px;max-height:92dvh;padding:0;border:1px solid #793238;background:#090606;color:#f7eee5;box-shadow:0 30px 90px rgba(0,0,0,.72)}
 .private-event-dialog::backdrop{background:rgba(0,0,0,.78)}
 .private-event-dialog-shell{position:relative;padding:clamp(18px,4vw,34px);background:#090606;max-height:92dvh;overflow:auto;-webkit-overflow-scrolling:touch}
