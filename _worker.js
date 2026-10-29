@@ -5415,6 +5415,34 @@ Please do not travel to the venue. We will contact affected customers separately
 
 Stay safe,
 Nora`]
+  ,['save-the-date','Save the Date','Save the date — Boot Scootin’',`Howdy, Boot Scooters! 🤠
+
+Save the date: [add event name, date, time and venue].
+
+More information will follow soon.
+
+Nora`]
+  ,['tickets-now-available','Tickets Now Available','Tickets are now available — Boot Scootin’',`Howdy, Boot Scooters! 🤠
+
+Tickets are now available for [add event name].
+
+[Add date, time, venue and ticket details.]
+
+Book here: {{booking_link}}
+
+Nora`]
+  ,['event-reminder','Event Reminder','A reminder from Boot Scootin’',`Howdy, Boot Scooters! 🤠
+
+Your reminder for [add event name].
+
+[Add date, time, venue and arrival information.]
+
+Nora`]
+  ,['special-announcement','Special Announcement','A special Boot Scootin’ announcement',`Howdy, Boot Scooters! 🤠
+
+[Add the special announcement here.]
+
+Nora`]
 ];
 
 async function ensureEmailCentreSchema(env){
@@ -5432,7 +5460,7 @@ async function ensureEmailCentreSchema(env){
   for(const [id,name,subject,body] of DEFAULT_EMAIL_TEMPLATES){
     await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_templates(id,name,subject,body_text,is_system) VALUES(?,?,?,?,1)`).bind(id,name,subject,body).run();
   }
-  for(const key of ['welcome','reminder_48h','class_day_morning','birthday','thank_you','new_class_draft','class_updates']){
+  for(const key of ['welcome','reminder_48h','class_day_morning','birthday','thank_you','new_class_draft','class_updates','weekly_roundup_draft']){
     await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_automation_settings(setting_key,enabled) VALUES(?,1)`).bind(key).run();
   }
 }
@@ -5645,8 +5673,59 @@ async function processBirthdayEmails(env){
   }
   return {processed};
 }
+
+function weeklyRoundupMonday(value=new Date()){
+  const local=londonCalendarDate(value);if(!local)return '';
+  const day=new Date(`${local}T12:00:00Z`).getUTCDay()||7;
+  return addCalendarDays(local,1-day);
+}
+function weeklyRoundupSuggestedSend(monday){
+  try{return londonLocalClassDate(`${monday}T18:00:00`,'Weekly roundup schedule').toISOString()}catch{return ''}
+}
+function weeklyClassLine(klass,remaining){
+  const date=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'long',day:'numeric',month:'long'}).format(new Date(klass.starts_at));
+  const time=londonDateParts(klass.starts_at).time;
+  const price=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(Number(klass.price_pence||0)/100);
+  const link=`${SITE_ORIGIN}/bookings.html?event=${encodeURIComponent(klass.id)}`;
+  if(remaining<1)return `• ${klass.title}\n  ${date} at ${time} · ${klass.venue}\n  ${price} · SOLD OUT — join the waiting list: ${link}`;
+  return `• ${klass.title}\n  ${date} at ${time} · ${klass.venue}\n  ${price} · ${remaining} place${remaining===1?'':'s'} remaining\n  Book: ${link}`;
+}
+async function weeklyRoundupContent(env,monday){
+  const sunday=addCalendarDays(monday,6);
+  const rows=await env.BOOKINGS_DB.prepare(`SELECT c.*,
+    COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND b.status IN ('PAID','PENDING')),0)+
+    COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>CURRENT_TIMESTAMP),0)+
+    COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) occupied
+    FROM classes c WHERE c.status='open' ORDER BY c.starts_at`).all();
+  const classes=(rows.results||[]).filter(row=>{const date=londonCalendarDate(row.starts_at);return date>=monday&&date<=sunday;});
+  const anniversary=await anniversaryInventory(env).catch(()=>null);
+  const lines=classes.map(row=>{
+    const isAnniversary=anniversary?.event?.class_id===row.id;
+    const price=isAnniversary&&anniversary.current_release?anniversary.current_release.price_pence:row.price_pence;
+    const remaining=isAnniversary?Number(anniversary.current_release?.remaining||0):Math.max(0,Number(row.capacity||0)-Number(row.occupied||0));
+    return weeklyClassLine({...row,price_pence:price},remaining);
+  });
+  const special=classes.filter(row=>anniversary?.event?.class_id===row.id||/anniversary|halloween|christmas|sunday session|workshop/i.test(`${row.title} ${row.public_notes||''}`));
+  const body=`Howdy, Boot Scooters! 🤠\n\nTHIS WEEK AT BOOT SCOOTIN’!\n\n${lines.length?lines.join('\n\n'):'There are no published Boot Scootin’ classes scheduled for this week.'}${special.length?`\n\nSPECIAL EVENTS\n${special.map(row=>`• ${row.title} — ${SITE_ORIGIN}/bookings.html?event=${encodeURIComponent(row.id)}`).join('\n')}`:''}\n\nImportant announcements\n[Review and add any announcement before approving this draft.]\n\nSee all classes: ${SITE_ORIGIN}/bookings.html\n\nNora\nBoot Scootin’ Line Dancing`;
+  return {body,classIds:classes.map(row=>row.id)};
+}
+async function ensureWeeklyRoundupDraft(env,value=new Date(),createdBy='weekly-automation'){
+  await ensureEmailCentreSchema(env);
+  if(!(await automationEnabled(env,'weekly_roundup_draft')))return {skipped:true};
+  const monday=weeklyRoundupMonday(value);if(!monday)return {skipped:true};
+  const existing=await env.BOOKINGS_DB.prepare(`SELECT * FROM email_campaigns WHERE json_extract(audience_json,'$.weekly_roundup_key')=? LIMIT 1`).bind(monday).first();
+  if(existing&&existing.status!=='DRAFT')return {id:existing.id,status:existing.status,existing:true};
+  if(existing&&JSON.parse(existing.audience_json||'{}').owner_edited)return {id:existing.id,status:'DRAFT',existing:true,owner_edited:true};
+  const content=await weeklyRoundupContent(env,monday);
+  const audience={weekly_roundup_key:monday,sender_type:'general',generated_class_ids:content.classIds,suggested_send_at:weeklyRoundupSuggestedSend(monday),owner_edited:false};
+  if(existing){await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET subject=?,body_text=?,audience_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='DRAFT'`).bind('THIS WEEK AT BOOT SCOOTIN’!',content.body,JSON.stringify(audience),existing.id).run();return {id:existing.id,status:'DRAFT',updated:true};}
+  const id=crypto.randomUUID();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO email_campaigns(id,subject,body_text,audience_type,audience_json,status,created_by) VALUES(?,?,?,'subscribers',?,'DRAFT',?)`).bind(id,'THIS WEEK AT BOOT SCOOTIN’!',content.body,JSON.stringify(audience),createdBy).run();
+  return {id,status:'DRAFT',created:true};
+}
 async function createNewClassDraft(env,klass,createdBy='hq'){
   if(!(await automationEnabled(env,'new_class_draft')) || !klass || klass.status==='cancelled') return;
+  await ensureWeeklyRoundupDraft(env,new Date(klass.starts_at),createdBy);
   const exists=await env.BOOKINGS_DB.prepare(`SELECT id FROM email_campaigns WHERE audience_type='subscribers' AND json_extract(audience_json,'$.automation_class_id')=? AND status='DRAFT'`).bind(klass.id).first();
   if(exists) return;
   const id=crypto.randomUUID();
@@ -5707,25 +5786,33 @@ async function sendCampaign(env,campaignId){
   await ensureEmailCentreSchema(env);
   const campaign=await env.BOOKINGS_DB.prepare(`SELECT * FROM email_campaigns WHERE id=?`).bind(campaignId).first();
   if(!campaign)throw new Error('Campaign not found.');
-  if(campaign.status==='SENT')return {sent:campaign.recipient_count||0,already:true};
+  if(['SENT','PARTIAL'].includes(campaign.status))return {sent:campaign.recipient_count||0,already:true,status:campaign.status};
   const audience=JSON.parse(campaign.audience_json||'{}');
   const resolved=await resolveEmailAudience(env,campaign.audience_type,audience);
   if(!resolved.recipients.length)throw new Error('This audience has no eligible recipients.');
-  await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='SENDING',recipient_count=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(resolved.recipients.length,campaignId).run();
+  const claimed=await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='SENDING',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('QUEUED','SCHEDULED')`).bind(campaignId).run();
+  if(Number(claimed?.meta?.changes||0)!==1)return {sent:0,already:true,status:campaign.status};
+  await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET recipient_count=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='SENDING'`).bind(resolved.recipients.length,campaignId).run();
   let sent=0,failed=0;
   for(const recipient of resolved.recipients.slice(0,500)){
-    const rid=crypto.randomUUID();
+    const existing=await env.BOOKINGS_DB.prepare(`SELECT id,status FROM email_campaign_recipients WHERE campaign_id=? AND lower(email)=lower(?)`).bind(campaignId,recipient.email).first();
+    if(existing?.status==='SENT'){sent++;continue;}
+    const rid=existing?.id||crypto.randomUUID();
+    if(!existing)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_campaign_recipients(id,campaign_id,email,name,status) VALUES(?,?,?,?,'PENDING')`).bind(rid,campaignId,recipient.email,recipient.name||'').run();
+    const recipientClaim=await env.BOOKINGS_DB.prepare(`UPDATE email_campaign_recipients SET status='PROCESSING',error_message=NULL WHERE id=? AND status IN ('PENDING','FAILED')`).bind(rid).run();
+    if(Number(recipientClaim?.meta?.changes||0)!==1)continue;
     try{
       const subject=mergeEmailText(campaign.subject,recipient,resolved.klass);
       const body=mergeEmailText(campaign.body_text,recipient,resolved.klass);
       const token=campaign.audience_type==='subscribers'?await mailingToken(env,recipient.email):'';
       const unsubscribe=token?`https://bootscootinlinedancing.co.uk/api/email/unsubscribe?email=${encodeURIComponent(recipient.email)}&token=${encodeURIComponent(token)}`:'';
       const senderType=String(audience.sender_type||'general');
-      const result=await sendTransactionalEmail(env,recipient.email,subject,emailHtmlFromText(body,unsubscribe),body,senderType);
+      const idempotencyKey=`email-campaign:${campaignId}:${await sha256Hex(recipient.email)}`;
+      const result=await sendTransactionalEmail(env,recipient.email,subject,emailHtmlFromText(body,unsubscribe),body,senderType,{idempotencyKey});
       if(result.skipped)throw new Error(result.reason||'Email provider is not configured.');
-      await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_campaign_recipients(id,campaign_id,email,name,status,provider_id,sent_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)`).bind(rid,campaignId,recipient.email,recipient.name||'', 'SENT',result.id||'').run(); sent++;
+      await env.BOOKINGS_DB.prepare(`UPDATE email_campaign_recipients SET status='SENT',provider_id=?,error_message=NULL,sent_at=CURRENT_TIMESTAMP WHERE id=? AND status='PROCESSING'`).bind(result.id||'',rid).run(); sent++;
     }catch(error){
-      await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_campaign_recipients(id,campaign_id,email,name,status,error_message) VALUES(?,?,?,?,?,?)`).bind(rid,campaignId,recipient.email,recipient.name||'','FAILED',clean(error.message||error,300)).run(); failed++;
+      await env.BOOKINGS_DB.prepare(`UPDATE email_campaign_recipients SET status='FAILED',error_message=? WHERE id=? AND status='PROCESSING'`).bind(clean(error.message||error,300),rid).run(); failed++;
     }
   }
   const finalStatus=sent>0?(failed?'PARTIAL':'SENT'):'FAILED';
@@ -5833,6 +5920,7 @@ async function adminEmailCentreInner(request,env,ctx){
   const check=requireAccessAdmin(request,env);if(check.response)return check.response;
   await ensureBookingSchema(env); await ensureEmailCentreSchema(env);
   if(request.method==='GET'){
+    await ensureWeeklyRoundupDraft(env).catch(()=>null);
     const [templates,campaigns,subscribers,classes]=await Promise.all([
       env.BOOKINGS_DB.prepare(`SELECT * FROM email_templates ORDER BY is_system DESC,name`).all(),
       env.BOOKINGS_DB.prepare(`SELECT ec.*,c.starts_at automation_class_starts_at FROM email_campaigns ec LEFT JOIN classes c ON c.id=COALESCE(json_extract(ec.audience_json,'$.automation_class_id'),json_extract(ec.audience_json,'$.class_id')) ORDER BY ec.created_at DESC LIMIT 50`).all(),
@@ -5864,7 +5952,7 @@ async function adminEmailCentreInner(request,env,ctx){
   const action=String(body.action||'');
   if(action==='SAVE_AUTOMATIONS'){
     const settings=body.settings||{};
-    for(const key of ['welcome','reminder_48h','class_day_morning','birthday','thank_you','new_class_draft','class_updates']){
+    for(const key of ['welcome','reminder_48h','class_day_morning','birthday','thank_you','new_class_draft','class_updates','weekly_roundup_draft']){
       await env.BOOKINGS_DB.prepare(`INSERT INTO email_automation_settings(setting_key,enabled,updated_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(setting_key) DO UPDATE SET enabled=excluded.enabled,updated_at=CURRENT_TIMESTAMP`).bind(key,settings[key]===false?0:1).run();
     }
     return json({ok:true,message:'Email automation settings saved.'});
@@ -5884,6 +5972,23 @@ async function adminEmailCentreInner(request,env,ctx){
     const email=check.state.email; if(!email)return json({error:'Your Cloudflare Access email is unavailable.'},400);
     const recipient={email,name:'Nora'};let klass=null;if(body.audience?.class_id)klass=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(body.audience.class_id).first();
     const subject=mergeEmailText(body.subject,recipient,klass),text=mergeEmailText(body.body_text,recipient,klass);const senderType=String(body.audience?.sender_type||'general');const result=await sendTransactionalEmail(env,email,`TEST — ${subject}`,emailHtmlFromText(text,''),text,senderType);if(result.skipped)return json({error:result.reason},503);return json({ok:true,message:`Test sent to ${email} from ${result.from}.`});
+  }
+  if(action==='UPDATE_DRAFT'){
+    const id=clean(body.id,80),subject=clean(body.subject,160),text=String(body.body_text||'').trim();
+    if(!id||!subject||!text)return json({error:'Draft, subject and message are required.'},400);
+    const campaign=await env.BOOKINGS_DB.prepare(`SELECT audience_json FROM email_campaigns WHERE id=? AND status='DRAFT'`).bind(id).first();
+    if(!campaign)return json({error:'This draft is no longer editable.'},409);
+    const audience={...JSON.parse(campaign.audience_json||'{}'),owner_edited:true};
+    await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET subject=?,body_text=?,audience_json=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='DRAFT'`).bind(subject,text,JSON.stringify(audience),id).run();
+    return json({ok:true,id,message:'Draft saved. No customer email was sent.'});
+  }
+  if(action==='APPROVE_SCHEDULE'){
+    const id=clean(body.id,80),parsed=new Date(String(body.scheduled_at||''));
+    if(!id||Number.isNaN(parsed.getTime()))return json({error:'Choose the approved Monday send time.'},400);
+    const scheduled=parsed.toISOString().slice(0,19).replace('T',' ');
+    const result=await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='SCHEDULED',scheduled_at=?,created_by=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='DRAFT'`).bind(scheduled,check.state.email||'hq',id).run();
+    if(Number(result?.meta?.changes||0)!==1)return json({error:'This draft has already been scheduled or is no longer available.'},409);
+    return json({ok:true,id,message:`Approved and scheduled for ${scheduled}.`});
   }
   if(['SEND_NOW','SCHEDULE'].includes(action)){
     const subject=clean(body.subject,160),text=String(body.body_text||'').trim(),type=clean(body.audience_type,40),audience=body.audience||{};
@@ -7189,7 +7294,7 @@ async function serveMedia(request, env, pathname) {
 }
 
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env)])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([ensureWeeklyRoundupDraft(env),processDueCampaigns(env),processAutomaticBookingNotifications(env)])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;

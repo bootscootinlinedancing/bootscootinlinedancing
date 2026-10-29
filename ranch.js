@@ -1798,7 +1798,7 @@ Type REFUNDED to continue.`);
     const provider=$('#emailProviderStatus');
     if(provider){provider.className=`email-centre-status ${data.provider?.ready?'ready':'setup'}`;provider.innerHTML=data.provider?.ready?`<strong>Email sending connected</strong><br>General: ${esc(data.provider.senders?.general||data.provider.from||'configured')}<br>Bookings: ${esc(data.provider.senders?.bookings||'configured')}<br>Events: ${esc(data.provider.senders?.events||'configured')}<br>Members: ${esc(data.provider.senders?.members||'configured')}<br>${esc(data.provider.cron_note||'Check scheduled-processing configuration.')}`:`<strong>Email setup required</strong><br>Add RESEND_API_KEY and at least EMAIL_FROM_GENERAL or EMAIL_FROM in Cloudflare before sending.`;}
     const automationWrap=$('#emailAutomationSettings');
-    if(automationWrap){const labels={welcome:'Welcome email after opt-in',reminder_48h:'Reminder about 48 hours before class',class_day_morning:'Reminder on the morning of the class',birthday:'Birthday email',thank_you:'Thank-you email after attendance',new_class_draft:'Prepare new-class announcement as a draft',class_updates:'Email booked customers when class details change'};const settings=Object.fromEntries((data.automations||[]).map(x=>[x.setting_key,Number(x.enabled)!==0]));automationWrap.innerHTML=Object.entries(labels).map(([key,label])=>`<label class="email-customer-option"><input type="checkbox" data-email-automation="${key}" ${settings[key]!==false?'checked':''}><span><strong>${esc(label)}</strong></span></label>`).join('');}
+    if(automationWrap){const labels={welcome:'Welcome email after opt-in',reminder_48h:'Reminder about 48 hours before class',class_day_morning:'Reminder on the morning of the class',birthday:'Birthday email',thank_you:'Thank-you email after attendance',new_class_draft:'Prepare new-class announcement as a draft',class_updates:'Email booked customers when class details change',weekly_roundup_draft:'Prepare THIS WEEK AT BOOT SCOOTIN’ as a Monday draft'};const settings=Object.fromEntries((data.automations||[]).map(x=>[x.setting_key,Number(x.enabled)!==0]));automationWrap.innerHTML=Object.entries(labels).map(([key,label])=>`<label class="email-customer-option"><input type="checkbox" data-email-automation="${key}" ${settings[key]!==false?'checked':''}><span><strong>${esc(label)}</strong></span></label>`).join('');}
     const history=$('#emailAutomationHistory');if(history){history.innerHTML=(data.automation_history||[]).length?(data.automation_history||[]).map(x=>`<div class="email-campaign-item"><strong>${esc(x.automation_type)}</strong><span>${esc(x.email||'')} · ${esc(fmt(x.created_at))} · ${esc(x.status)}</span></div>`).join(''):'No automatic emails yet.';}
     const templateSelect=$('#emailTemplateSelect');if(templateSelect){templateSelect.innerHTML='<option value="">Start from blank</option>'+data.templates.map(t=>`<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('');}
     const classPicker=$('#emailClassPicker');if(classPicker){classPicker.innerHTML='<option value="">Choose a class</option>'+data.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.title)} — ${esc(fmt(c.starts_at))}</option>`).join('');}
@@ -1808,7 +1808,7 @@ Type REFUNDED to continue.`);
       const now=Date.now();
       const statusFor=c=>String(c.status||'').toUpperCase()==='DRAFT'&&c.automation_class_starts_at&&new Date(c.automation_class_starts_at).getTime()<now?'EXPIRED_DRAFT':String(c.status||'').toUpperCase();
       const groups=[['Current / upcoming',c=>['SCHEDULED','QUEUED','SENDING'].includes(statusFor(c))],['Sent',c=>['SENT','PARTIAL'].includes(statusFor(c))],['Drafts — manual review required',c=>statusFor(c)==='DRAFT'],['Expired / past drafts',c=>statusFor(c)==='EXPIRED_DRAFT'],['Failed / cancelled',c=>['FAILED','CANCELLED'].includes(statusFor(c))]];
-      const renderCampaign=c=>{const display=statusFor(c),label=display==='EXPIRED_DRAFT'?'Expired draft':display;return `<article class="email-campaign-row"><div><strong>${esc(c.subject)}</strong><br><small>${esc(c.audience_type.replaceAll('_',' '))}${display==='DRAFT'?' · Review and send manually':''}</small></div><span>${Number(c.recipient_count||0)} recipient${Number(c.recipient_count||0)===1?'':'s'}</span><span class="email-status-pill ${esc(display.toLowerCase().replaceAll('_','-'))}">${esc(label)}</span><div>${c.scheduled_at?esc(fmt(c.scheduled_at)):c.sent_at?esc(fmt(c.sent_at)):esc(fmt(c.created_at))}${c.status==='SCHEDULED'?`<br><button type="button" data-cancel-campaign="${esc(c.id)}">Cancel</button>`:''}${c.error_message?`<br><small>${esc(c.error_message)}</small>`:''}</div></article>`;};
+      const renderCampaign=c=>{const display=statusFor(c),label=display==='EXPIRED_DRAFT'?'Expired draft':display;return `<article class="email-campaign-row"><div><strong>${esc(c.subject)}</strong><br><small>${esc(c.audience_type.replaceAll('_',' '))}${display==='DRAFT'?' · Review and send manually':''}</small></div><span>${Number(c.recipient_count||0)} recipient${Number(c.recipient_count||0)===1?'':'s'}</span><span class="email-status-pill ${esc(display.toLowerCase().replaceAll('_','-'))}">${esc(label)}</span><div>${c.scheduled_at?esc(fmt(c.scheduled_at)):c.sent_at?esc(fmt(c.sent_at)):esc(fmt(c.created_at))}${display==='DRAFT'?`<br><button type="button" data-load-campaign-draft="${esc(c.id)}">Review draft</button>`:''}${c.status==='SCHEDULED'?`<br><button type="button" data-cancel-campaign="${esc(c.id)}">Cancel</button>`:''}${c.error_message?`<br><small>${esc(c.error_message)}</small>`:''}</div></article>`;};
       campaigns.innerHTML=data.campaigns.length?groups.map(([label,test])=>{const rows=data.campaigns.filter(test);return rows.length?`<section class="email-campaign-group"><h4>${esc(label)}</h4>${rows.map(renderCampaign).join('')}</section>`:'';}).join(''):'<div class="email-empty">No campaigns yet.</div>';
     }
     const subscribers=$('#emailSubscriberList');if(subscribers){
@@ -1844,6 +1844,25 @@ Type REFUNDED to continue.`);
     const t=state.emailCentre?.templates?.find(x=>String(x.id)===String(id));if(!t)return;
     if(edit){$('#templateId').value=t.id;$('#templateName').value=t.name;$('#templateSubject').value=t.subject;$('#templateBody').value=t.body_text;document.querySelector('.email-template-editor')?.setAttribute('open','');}
     else{$('#emailSubject').value=t.subject;$('#emailBody').value=t.body_text;$('#emailTemplateSelect').value=t.id;toast(`Loaded ${t.name}.`,'success');}
+  }
+  function loadCampaignDraft(id){
+    const campaign=state.emailCentre?.campaigns?.find(item=>String(item.id)===String(id));if(!campaign||campaign.status!=='DRAFT')return;
+    const audience=JSON.parse(campaign.audience_json||'{}');
+    $('#emailCampaignDraftId').value=campaign.id;$('#emailSubject').value=campaign.subject;$('#emailBody').value=campaign.body_text;
+    $('#emailAudienceType').value=campaign.audience_type||'subscribers';$('#emailSenderType').value=audience.sender_type||'general';
+    if(audience.class_id)$('#emailClassPicker').value=audience.class_id;
+    if(audience.suggested_send_at){const d=new Date(audience.suggested_send_at);if(!Number.isNaN(d.getTime()))$('#emailScheduleAt').value=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
+    $('#saveEmailDraft').hidden=false;$('#approveScheduleEmail').hidden=false;updateEmailAudienceFields();
+    document.querySelector('[data-view-panel="emails"]')?.scrollIntoView({behavior:'smooth',block:'start'});toast('Draft loaded for review. Nothing has been sent.','success');
+  }
+  async function saveLoadedCampaignDraft(){
+    const id=$('#emailCampaignDraftId')?.value,draft=currentEmailDraft();if(!id)return;
+    try{const r=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'UPDATE_DRAFT',id,subject:draft.subject,body_text:draft.body_text})});toast(r.message||'Draft saved.','success');await loadEmailCentre();return true;}catch(error){toast(error.message,'error');return false;}
+  }
+  async function approveLoadedCampaign(){
+    const id=$('#emailCampaignDraftId')?.value,sendAt=$('#emailScheduleAt')?.value;if(!id||!sendAt){toast('Choose the Monday 6:00 pm send time first.','error');return;}
+    if(!await saveLoadedCampaignDraft())return;
+    try{const r=await jsonFetch(`${ADMIN_API_PREFIX}/emails`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'APPROVE_SCHEDULE',id,scheduled_at:new Date(sendAt).toISOString()})});toast(r.message||'Roundup approved and scheduled.','success');$('#emailCampaignDraftId').value='';$('#saveEmailDraft').hidden=true;$('#approveScheduleEmail').hidden=true;await loadEmailCentre();}catch(error){toast(error.message,'error');}
   }
   async function emailCampaignAction(action){
     const status=$('#emailComposeStatus');const draft=currentEmailDraft();
@@ -1899,6 +1918,8 @@ Type REFUNDED to continue.`);
   $('#sendEmailTest')?.addEventListener('click',sendEmailTest);
   $('#sendEmailNow')?.addEventListener('click',()=>emailCampaignAction('SEND_NOW'));
   $('#scheduleEmail')?.addEventListener('click',()=>emailCampaignAction('SCHEDULE'));
+  $('#saveEmailDraft')?.addEventListener('click',saveLoadedCampaignDraft);
+  $('#approveScheduleEmail')?.addEventListener('click',approveLoadedCampaign);
   $('#saveEmailTemplate')?.addEventListener('click',saveEmailTemplate);
   $('#saveEmailAutomations')?.addEventListener('click',saveEmailAutomations);
   $('#clearEmailTemplate')?.addEventListener('click',clearEmailTemplate);
@@ -1970,6 +1991,7 @@ Type REFUNDED to continue.`);
     if(event.target.closest?.('[data-crm-email]')){$('#customerCrmDialog')?.close();showView('emails');const email=state.customerProfile?.customer?.customer_email;if($('#emailSelectedRecipients'))$('#emailSelectedRecipients').value=email||'';if($('#emailAudienceType'))$('#emailAudienceType').value='selected';return;}
 
     const privateOpen=event.target.closest?.('[data-private-event-id]');if(privateOpen){event.preventDefault();openPrivateEvent(privateOpen.dataset.privateEventId);return;}
+    const loadCampaign=event.target.closest?.('[data-load-campaign-draft]');if(loadCampaign){event.preventDefault();loadCampaignDraft(loadCampaign.dataset.loadCampaignDraft);return;}
     const privateStatus=event.target.closest?.('[data-private-status]');if(privateStatus){event.preventDefault();const id=$('.private-detail')?.dataset.privateId;if(id)setPrivateEventStatus(id,privateStatus.dataset.privateStatus);return;}
     const use=event.target.closest?.('[data-use-template]');if(use){applyEmailTemplate(use.dataset.useTemplate);return;}
     const edit=event.target.closest?.('[data-edit-template]');if(edit){applyEmailTemplate(edit.dataset.editTemplate,true);return;}
