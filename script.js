@@ -8,6 +8,7 @@ if (!document.querySelector('script[src^="google-analytics.js"]')) {
 
 const BOOT_SCOOTIN_PUBLIC_NAVIGATION = Object.freeze([
   {title:'Discover',subtitle:'Start here and explore Boot Scootin’',items:[
+    ['bookings.html','CLASSES'],['class-pass.html','CLASS PASS'],
     ['about.html','About Boot Scootin’'],['gallery.html','Gallery'],['ask-nora.html','Contact'],
     ['dance-library.html','Dance Library'],['dance-diary.html','Dance Diary']
   ]},
@@ -25,7 +26,7 @@ const BOOT_SCOOTIN_PUBLIC_NAVIGATION = Object.freeze([
     ['country-map.html','Country Map']
   ]},
   {title:'Businesses & Partners',subtitle:'Recommendations, merchandise and partnerships',items:[
-    ['community.html#merchandise','SHOP & MERCHANDISE'],['businesses.html','Businesses We Love'],
+    ['community.html?shop=1#merchandise','SHOP & MERCHANDISE'],['businesses.html','Businesses We Love'],
     ['businesses.html#threefives','Official Merchandise Partner · ThreeFives'],
     ['businesses.html#recommendations','Local Recommendations'],['businesses.html#affiliate-partners','Affiliate Recommendations'],
     ['partnerships.html','Partnerships & Advertising'],['partnerships.html#sponsorship-enquiries','Sponsorship Enquiries']
@@ -38,8 +39,15 @@ function publicNavPath(value=''){
   try{return (new URL(value,location.href).pathname.split('/').pop()?.toLowerCase()||'index').replace(/\.html$/,'');}catch(_){return '';}
 }
 function publicNavActive(href){
-  const page=publicNavPath(location.pathname),target=publicNavPath(href);
-  return page===target;
+  try{
+    const current=new URL(location.href),target=new URL(href,location.href);
+    if(publicNavPath(current.pathname)!==publicNavPath(target.pathname))return false;
+    // Section destinations are only current when their full query/hash target
+    // matches. This prevents every link sharing a page from appearing active.
+    if(target.search&&current.search!==target.search)return false;
+    if(target.hash&&current.hash!==target.hash)return false;
+    return target.search||target.hash?true:!current.search&&!current.hash;
+  }catch(_){return false;}
 }
 function publicNavLinks(items,{desktop=false}={}){
   return items.map(([href,label])=>desktop
@@ -85,13 +93,14 @@ function installMobileNavigationInventory(){
           <img class="public-brand-logo" src="boot-scootin-logo-approved.png" alt="">
           <img class="public-brand-wordmark" src="boot-scootin-wordmark-master.png" alt="" aria-hidden="true">
         </a>
-        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<div class="desktop-explore${exploreActive?' is-current':''}"><button class="desktop-explore-toggle" type="button" aria-expanded="false" aria-controls="desktopExploreMenu">Explore <span aria-hidden="true">▼</span></button><div class="desktop-explore-menu" id="desktopExploreMenu" hidden>${exploreGroups}</div></div></nav>
+        <nav class="honky-desktop-nav" aria-label="Main navigation">${links}<div class="desktop-explore${exploreActive?' is-current':''}"><button class="desktop-explore-toggle" type="button" aria-expanded="false" aria-controls="desktopExploreMenu">Explore <span aria-hidden="true">▼</span></button><div class="desktop-explore-menu" id="desktopExploreMenu" hidden><div class="desktop-explore-head"><strong>Explore Boot Scootin’</strong><button class="desktop-explore-close" type="button" aria-label="Close Explore menu">✕ Close</button></div>${exploreGroups}</div></div></nav>
         <a class="honky-account" href="member-hub.html" data-member-account-link><span aria-hidden="true">👤</span> <b data-member-account-label>My account</b></a>
         <a class="honky-book" href="bookings.html">Book a class</a>
         <button aria-controls="nav" aria-expanded="false" class="honky-menu-button" id="menuButton" type="button"><span></span><span></span><span></span><b class="sr-only">Open menu</b></button>`;
       const explore=header.querySelector('.desktop-explore');
       const toggle=header.querySelector('.desktop-explore-toggle');
       const menu=header.querySelector('.desktop-explore-menu');
+      const closeButton=header.querySelector('.desktop-explore-close');
       const closeExplore=({restoreFocus=false}={})=>{
         if(!toggle||!menu)return;
         toggle.setAttribute('aria-expanded','false');menu.hidden=true;explore?.classList.remove('is-open');
@@ -100,8 +109,10 @@ function installMobileNavigationInventory(){
       toggle?.addEventListener('click',()=>{
         const opening=toggle.getAttribute('aria-expanded')!=='true';
         toggle.setAttribute('aria-expanded',String(opening));menu.hidden=!opening;explore?.classList.toggle('is-open',opening);
-        if(opening)menu.querySelector('a')?.focus();
+        if(opening)closeButton?.focus();
       });
+      closeButton?.addEventListener('click',()=>closeExplore({restoreFocus:true}));
+      menu?.addEventListener('click',event=>{if(event.target.closest('a'))closeExplore();});
       header.addEventListener('keydown',event=>{if(event.key==='Escape'&&!menu?.hidden){event.preventDefault();closeExplore({restoreFocus:true});}});
       menu?.addEventListener('keydown',event=>{
         if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
@@ -124,6 +135,13 @@ function installMobileNavigationInventory(){
     refreshMemberNavigation();
   });
 })();
+
+// The shop view reuses the authoritative merchandise markup and checkout code,
+// but removes unrelated Community sections from the customer journey.
+if(new URLSearchParams(location.search).get('shop')==='1'){
+  document.body?.classList.add('shop-view');
+  document.querySelector('#merchandise')?.setAttribute('aria-label','Boot Scootin’ Shop & Merchandise');
+}
 
 async function refreshMemberNavigation(){
   memberNavigationStatusPromise??=(async()=>{
@@ -405,7 +423,7 @@ function repairPersistentExploreLinks(){
     ['reviews.html','Reviews &amp; Feedback',false]
   ]);
   render('Shop & Rewards',[
-    ['community.html#merchandise','Official Merchandise',true],
+    ['community.html?shop=1#merchandise','Official Merchandise',true],
     ['rewards.html','Boot Scootin’ Rewards',true],
     ['passport.html#trail-rewards','Trail & Rewards',false]
   ]);
@@ -669,7 +687,7 @@ installGuide?.addEventListener("click", event => {
     ensureFirstLink(findSection('Community'), 'community.html', 'Boot Scootin’ Community');
     ensureFirstLink(findSection('Community'), 'moonshine.html', 'Moonshine & Good Times Gang');
     ensureFirstLink(findSection('Shop & Rewards'), 'rewards.html', 'Boot Scootin’ Rewards');
-    ensureFirstLink(findSection('Shop & Rewards'), 'community.html#merchandise', 'Official Merchandise');
+    ensureFirstLink(findSection('Shop & Rewards'), 'community.html?shop=1#merchandise', 'Official Merchandise');
   }
 
   const form = document.getElementById('homeMailingPreview');

@@ -14,7 +14,7 @@ for(const label of ['Discover','Community','Country Corner','Businesses & Partne
   assert.match(script,new RegExp(`title:'${label.replace(/[&]/g,'\\&')}`),`${label} is in the shared navigation inventory`);
 }
 for(const destination of [
-  'community.html','community.html#merchandise','whatsapp-community.html','moonshine.html','long-road-handbook.html',
+  'bookings.html','class-pass.html','community.html','community.html?shop=1#merchandise','whatsapp-community.html','moonshine.html','long-road-handbook.html',
   'country-corner.html','country-guide.html','country-guide-music.html','country-guide-line-dancing.html',
   'country-guide-fashion.html','country-guide-festivals.html','country-guide-food-drink.html',
   'country-guide-places.html','country-guide-inspirations.html','country-guide-adventures.html','country-map.html',
@@ -22,8 +22,13 @@ for(const destination of [
   'partnerships.html#sponsorship-enquiries'
 ]) assert.ok(script.includes(destination),`${destination} is restored to navigation`);
 
-assert.match(script,/\['community\.html#merchandise','SHOP & MERCHANDISE'\]/,'customer-facing shop is directly discoverable');
+assert.match(script,/\['community\.html\?shop=1#merchandise','SHOP & MERCHANDISE'\]/,'customer-facing shop opens the isolated merchandise view');
 assert.match(script,/Official Merchandise Partner · ThreeFives/,'production partner remains distinct from the shop');
+assert.match(script,/class="desktop-explore-close"/,'desktop Explore contains a visible close control');
+assert.match(script,/closeExplore\(\{restoreFocus:true\}\)/,'closing Explore restores focus to its trigger');
+assert.match(script,/target\.hash&&current\.hash!==target\.hash/,'active navigation state distinguishes section destinations');
+assert.match(script,/classList\.add\('shop-view'\)/,'the merchandise destination reuses an isolated public shop presentation');
+assert.match(css,/body\.shop-view \.community-page>section:not\(#merchandise\)/,'shop mode hides unrelated Community sections');
 
 assert.match(script,/window\.addEventListener\('pageshow'/,'Safari bfcache restoration reinitialises navigation state');
 assert.match(script,/sections\.dataset\.sharedNavigation==='true'/,'mobile navigation installation is idempotent');
@@ -45,6 +50,6 @@ for(const file of htmlFiles){
   if(match)scriptVersions.push([file,match[1]]);
 }
 assert.ok(scriptVersions.length>20,'public pages reference the shared script');
-assert.deepEqual([...new Set(scriptVersions.map(([,version])=>version))],['96.4.131'],'public script cache version is consistent');
+assert.deepEqual([...new Set(scriptVersions.map(([,version])=>version))],['96.4.132'],'public script cache version is consistent');
 
 console.log('PR #41 navigation recovery regression checks passed.');
