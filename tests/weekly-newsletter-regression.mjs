@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 
 const worker=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
-const mod=await import(`data:text/javascript;base64,${Buffer.from(worker+'\nexport {ensureWeeklyRoundupDraft,sendCampaign,weeklyRoundupMonday};').toString('base64')}`);
+const mod=await import(`data:text/javascript;base64,${Buffer.from(worker+'\nexport {ensureWeeklyRoundupDraft,isOwnerAccountRemovalSuppression,resolveEmailAudience,sendCampaign,weeklyRoundupMonday};').toString('base64')}`);
 const db=new DatabaseSync(':memory:');db.exec(`PRAGMA foreign_keys=ON;
 CREATE TABLE classes(id TEXT PRIMARY KEY,title TEXT,starts_at TEXT,ends_at TEXT,capacity INTEGER,price_pence INTEGER,venue TEXT,status TEXT,public_notes TEXT,sold INTEGER DEFAULT 0);
 CREATE TABLE bookings(id TEXT PRIMARY KEY,class_id TEXT,customer_email TEXT,customer_name TEXT,marketing_consent INTEGER,quantity INTEGER,status TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
@@ -48,4 +48,11 @@ assert.match(idempotency,new RegExp(`^email-campaign:${draft.id}:`));
 assert.equal(db.prepare(`SELECT COUNT(*) count FROM email_campaign_recipients WHERE campaign_id=? AND status='SENT'`).get(draft.id).count,1);
 assert.equal(db.prepare(`SELECT COUNT(*) count FROM email_campaign_recipients WHERE campaign_id=? AND email='unsubscribed@example.test'`).get(draft.id).count,0,'unsubscribed recipient is suppressed');
 assert.equal(db.prepare(`SELECT COUNT(*) count FROM email_campaigns WHERE json_extract(audience_json,'$.weekly_roundup_key')='2030-01-07'`).get().count,1);
-console.log('PASS weekly draft, sold-out wording, consent suppression and duplicate-send protection');
+
+assert.equal(mod.isOwnerAccountRemovalSuppression({source:'OWNER_ACCOUNT_REMOVAL'}),true,'owner removal suppression is durable');
+assert.equal(mod.isOwnerAccountRemovalSuppression({source:'email-link'}),false,'ordinary unsubscribe may be reversed by fresh consent');
+const selected=await mod.resolveEmailAudience(env,'selected_customers',{selected_emails:['subscriber@example.test','unsubscribed@example.test']});
+assert.deepEqual(selected.recipients.map(row=>row.email),['subscriber@example.test'],'selected-customer campaigns enforce the shared suppression list');
+assert.match(worker,/if\(await marketingSuppression\(env,recipient\.email\)\)/,'campaign delivery rechecks suppression after recipient claim');
+assert.match(worker,/if\(isOwnerAccountRemovalSuppression\(existingSuppression\)\)/,'public signup cannot clear an owner account-removal suppression');
+console.log('PASS weekly draft, sold-out wording, durable suppression, selected-customer suppression and duplicate-send protection');
