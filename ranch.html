@@ -447,6 +447,7 @@
             <section class="email-centre-card">
               <p class="kicker red">Compose</p>
               <h3>Create an email</h3>
+              <input id="emailCampaignDraftId" type="hidden">
               <label>Template
                 <select id="emailTemplateSelect"><option value="">Start from blank</option></select>
               </label>
@@ -498,6 +499,8 @@
                 <button class="button secondary compact" id="sendEmailTest" type="button">Send test to me</button>
                 <button class="button" id="sendEmailNow" type="button">Send now</button>
                 <button class="button secondary compact" id="scheduleEmail" type="button">Schedule</button>
+                <button class="button secondary compact" id="saveEmailDraft" type="button" hidden>Save loaded draft</button>
+                <button class="button" id="approveScheduleEmail" type="button" hidden>Approve &amp; schedule</button>
               </div>
               <div id="emailComposeStatus" class="email-compose-status" role="status"></div>
             </section>
@@ -523,7 +526,7 @@
           <section class="email-centre-card">
             <p class="kicker red">Automations</p>
             <h3>Automatic customer journeys</h3>
-            <p>Marketing emails include an unsubscribe link. Essential booking and safety updates are still sent when needed.</p>
+            <p>Marketing emails include an unsubscribe link. Essential booking and safety updates are still sent when needed. Weekly roundups are prepared as drafts only; they never send without owner approval.</p>
             <div id="emailAutomationSettings" class="email-automation-settings">Loading automations…</div>
             <p class="email-automation-note"><strong>New-class announcements are drafts only.</strong> Nora must review and send or schedule them manually.</p>
             <button class="button" id="saveEmailAutomations" type="button">Save automation settings</button>
