@@ -5605,9 +5605,16 @@ async function processClassPassAutomation(env){
   }
   return {sent,failed,skipped,retries,expiring_candidates:(expiring.results||[]).length,expired_candidates:(expired.results||[]).length};
 }
+async function marketingSuppression(env,email){
+  if(!email)return null;
+  return env.BOOKINGS_DB.prepare(`SELECT email,source FROM mailing_unsubscribes WHERE lower(email)=lower(?)`).bind(email).first();
+}
+function isOwnerAccountRemovalSuppression(row){
+  return String(row?.source||'').trim().toUpperCase()==='OWNER_ACCOUNT_REMOVAL';
+}
 async function sendMarketingAutomation(env,{key,type,email,name,subject,text,senderType='general',klass=null,meta={}}){
   if(!email || await automationAlreadySent(env,key)) return {skipped:true,reason:'Already sent or missing email.'};
-  const unsub=await env.BOOKINGS_DB.prepare(`SELECT email FROM mailing_unsubscribes WHERE lower(email)=lower(?)`).bind(email).first();
+  const unsub=await marketingSuppression(env,email);
   if(unsub) return {skipped:true,reason:'Unsubscribed.'};
   const token=await mailingToken(env,email);
   const unsubscribeUrl=token?`${SITE_ORIGIN}/api/email/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`:'';
@@ -5712,9 +5719,14 @@ async function sendCampaign(env,campaignId){
   const resolved=await resolveEmailAudience(env,campaign.audience_type,audience);
   if(!resolved.recipients.length)throw new Error('This audience has no eligible recipients.');
   await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status='SENDING',recipient_count=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(resolved.recipients.length,campaignId).run();
-  let sent=0,failed=0;
+  let sent=0,failed=0,suppressed=0;
   for(const recipient of resolved.recipients.slice(0,500)){
     const rid=crypto.randomUUID();
+    if(await marketingSuppression(env,recipient.email)){
+      await env.BOOKINGS_DB.prepare(`INSERT OR REPLACE INTO email_campaign_recipients(id,campaign_id,email,name,status,error_message) VALUES(?,?,?,?,?,?)`).bind(rid,campaignId,recipient.email,recipient.name||'','SUPPRESSED','Marketing suppression active').run();
+      suppressed++;
+      continue;
+    }
     try{
       const subject=mergeEmailText(campaign.subject,recipient,resolved.klass);
       const body=mergeEmailText(campaign.body_text,recipient,resolved.klass);
@@ -5730,7 +5742,7 @@ async function sendCampaign(env,campaignId){
   }
   const finalStatus=sent>0?(failed?'PARTIAL':'SENT'):'FAILED';
   await env.BOOKINGS_DB.prepare(`UPDATE email_campaigns SET status=?,sent_at=CURRENT_TIMESTAMP,provider_message=?,error_message=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(finalStatus,`${sent} sent`,failed?`${failed} failed`:null,campaignId).run();
-  return {sent,failed,status:finalStatus};
+  return {sent,failed,suppressed,status:finalStatus};
 }
 
 async function processAutomaticBookingNotifications(env){
@@ -5922,6 +5934,10 @@ async function subscribeMailingList(request,env){
   if(!consent) return json({error:'Please tick the consent box to join the mailing list.'},400);
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({error:'Please enter a valid email address.'},400);
 
+  const existingSuppression=await marketingSuppression(env,email);
+  if(isOwnerAccountRemovalSuppression(existingSuppression)){
+    return json({error:'This address cannot be subscribed to marketing. Please contact Boot Scootin’ if you believe this is an error.'},409);
+  }
   await env.BOOKINGS_DB.prepare(`DELETE FROM mailing_unsubscribes WHERE lower(email)=lower(?)`).bind(email).run().catch(()=>{});
   await env.BOOKINGS_DB.prepare(`
     INSERT INTO mailing_subscribers(email,name,source,subscribed_at,updated_at)
