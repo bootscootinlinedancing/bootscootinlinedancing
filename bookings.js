@@ -46,8 +46,48 @@
   function descriptionHtml(text){
     return String(text||'').trim().split(/\n\s*\n/).filter(Boolean).map(paragraph=>`<p>${esc(paragraph).replace(/\n/g,'<br>')}</p>`).join('');
   }
+  function eventDescriptionMarkup(text,eventId){
+    const paragraphs=String(text||'').trim().split(/\n\s*\n/).map(paragraph=>paragraph.trim()).filter(Boolean);
+    if(!paragraphs.length)return '';
+    const totalLength=paragraphs.reduce((sum,paragraph)=>sum+paragraph.length,0);
+    const sectionId=`event-description-${String(eventId).replace(/[^a-z0-9_-]/gi,'')}`;
+    if(totalLength<=560||paragraphs.length<3){
+      return `<section class="event-description-section" aria-labelledby="${sectionId}-title"><h3 id="${sectionId}-title">About this event</h3><div class="event-full-description">${descriptionHtml(text)}</div></section>`;
+    }
+    let visibleCount=0,visibleLength=0;
+    while(visibleCount<paragraphs.length-1&&(visibleCount<2||visibleLength<420)){
+      visibleLength+=paragraphs[visibleCount].length;
+      visibleCount++;
+    }
+    const introduction=paragraphs.slice(0,visibleCount);
+    const essentialPattern=/\b(class pass|non-refundable|refunds?|age restriction|under 18|18\+|entry (?:from|time)|doors? (?:open|close)|not (?:included|permitted|eligible|available)|must (?:be|have|bring|arrive)|tickets? (?:must|cannot))/i;
+    const essential=paragraphs.slice(visibleCount).filter(paragraph=>essentialPattern.test(paragraph));
+    const remainder=paragraphs.slice(visibleCount).filter(paragraph=>!essentialPattern.test(paragraph));
+    if(!remainder.length)return `<section class="event-description-section" aria-labelledby="${sectionId}-title"><h3 id="${sectionId}-title">About this event</h3><div class="event-full-description">${descriptionHtml(text)}</div></section>`;
+    const important=essential.length?`<aside class="event-description-important" aria-label="Important event information"><strong>Important information</strong>${descriptionHtml(essential.join('\n\n'))}</aside>`:'';
+    return `<section class="event-description-section is-collapsible" aria-labelledby="${sectionId}-title"><h3 id="${sectionId}-title">About this event</h3><div class="event-full-description"><div class="event-description-introduction">${descriptionHtml(introduction.join('\n\n'))}</div>${important}<div class="event-description-more" id="${sectionId}-more" hidden>${descriptionHtml(remainder.join('\n\n'))}</div></div><button class="event-description-toggle" type="button" aria-expanded="false" aria-controls="${sectionId}-more"><span>Read more about this event</span> <b aria-hidden="true">↓</b></button></section>`;
+  }
   function eventUrl(c){return `${location.origin}${location.pathname}?event=${encodeURIComponent(c.id)}`;}
   function selectedTicketType(){return form.querySelector('input[name="ticket_product_code"]:checked')?.value||(selectedClass?.booking_format==='BEGINNER_IMPROVER'?'':'CLASS_SOCIAL');}
+  const isSundaySession=()=>selectedClass?.special_booking_format==='SUNDAY_SESSIONS';
+  function sundayComposition(){
+    const selection_code=document.getElementById('sundaySelection').value;
+    const values={selection_code,adult_count:Number(document.getElementById('sundayAdults').value||0),child_10_17_count:Number(document.getElementById('sundayOlderChildren').value||0),child_5_9_count:Number(document.getElementById('sundayYoungerChildren').value||0),under_5_count:Number(document.getElementById('sundayUnder5').value||0)};
+    values.total_people=values.adult_count+values.child_10_17_count+values.child_5_9_count+values.under_5_count;
+    const bundles={FAMILY_1A1C:[1,1,800],FAMILY_1A2C:[1,2,1000],FAMILY_2A1C:[2,1,1300],FAMILY_2A2C:[2,2,1500]};
+    values.amount_pence=selection_code==='INDIVIDUAL'?values.adult_count*600+values.child_10_17_count*400+values.child_5_9_count*300:(bundles[selection_code]?.[2]||0)+values.child_10_17_count*100;
+    return values;
+  }
+  function updateSundayComposition(resetBundle=false){
+    if(!isSundaySession())return;
+    const selection=document.getElementById('sundaySelection').value,bundle={FAMILY_1A1C:[1,1],FAMILY_1A2C:[1,2],FAMILY_2A1C:[2,1],FAMILY_2A2C:[2,2]}[selection];
+    const adults=document.getElementById('sundayAdults'),older=document.getElementById('sundayOlderChildren'),younger=document.getElementById('sundayYoungerChildren');
+    if(bundle){adults.value=bundle[0];adults.disabled=true;if(resetBundle){older.value=0;younger.value=bundle[1];}older.max=bundle[1];younger.max=bundle[1];}
+    else{adults.disabled=false;older.max=10;younger.max=10;}
+    const composition=sundayComposition();form.elements.quantity.value=composition.total_people;
+    document.getElementById('sundayPriceSummary').textContent=`${composition.total_people} ${composition.total_people===1?'person':'people'} · ${money(composition.amount_pence/100)} total`;
+    updateGuestFields();updateTicketChoice();
+  }
   function ticketProduct(c,code=selectedTicketType()){return (c.ticket_products||[]).find(product=>product.code===code)||null;}
   function ticketUnitPrice(c,type=selectedTicketType()){const product=ticketProduct(c,type);return product?Number(product.price_pence||0)/100:Number(c.price||0);}
   function productTime(product){
@@ -67,11 +107,11 @@
     submit.disabled=!waitlist&&productRequired&&!product;
     submit.textContent=!waitlist&&!product&&productRequired
       ?'Choose a ticket to continue'
-      :waitlist?'Join Waiting List':`Continue to Secure Payment — ${money(ticketUnitPrice(selectedClass)*Number(form.elements.quantity.value||1))}`;
+      :waitlist?'Join Waiting List':`Continue to Secure Payment — ${money(isSundaySession()?sundayComposition().amount_pence/100:ticketUnitPrice(selectedClass)*Number(form.elements.quantity.value||1))}`;
     appliedPromo=null;showPromoTotals(null);document.getElementById('promoMessage').textContent='';
   }
   function updateGuestFields(){
-    const quantity=Math.max(1,Math.min(4,Number(form.elements.quantity.value)||1));
+    const quantity=Math.max(1,Math.min(isSundaySession()?10:4,Number(form.elements.quantity.value)||1));
     const section=document.getElementById('bookingGuestDetails'),box=document.getElementById('bookingGuestFields');
     const prior=new Map([...box.querySelectorAll('[data-guest-place]')].map(row=>[Number(row.dataset.guestPlace),{
       name:row.querySelector('[name$="[name]"]')?.value||'',email:row.querySelector('[name$="[email]"]')?.value||''
@@ -115,9 +155,9 @@
         ${c.poster_url?`<div class="class-poster"><img src="${esc(c.poster_url)}" alt="${esc(c.title)} poster" loading="lazy"></div>`:''}
         <div class="class-date"><span>${new Date(c.starts_at).toLocaleDateString('en-GB',{month:'short'}).toUpperCase()}</span><strong>${new Date(c.starts_at).getDate()}</strong></div>
         <div class="class-info">
-          <p class="class-venue">${esc(venueLabel(c.venue))}</p><h3>${esc(c.title)}</h3>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<p class="anniversary-ticket-release"><strong>${esc(c.ticket_release.name)}</strong> · ${money(c.ticket_release.price_pence/100)} · ${esc(c.ticket_release.remaining)} release tickets available</p>`:c.booking_format==='BEGINNER_IMPROVER'?`<p class="social-ticket-note"><strong>Beginner, Improver, Full Evening or Social Only</strong></p>`:Number(c.social_only_enabled)===1?`<p class="social-ticket-note"><strong>Class + Social or Social Only</strong> · Social entry from ${esc(c.social_only_entry_time)}</p>`:''}
+          <p class="class-venue">${esc(venueLabel(c.venue))}</p><h3>${esc(c.title)}</h3>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<p class="anniversary-ticket-release"><strong>${esc(c.ticket_release.name)}</strong> · ${money(c.ticket_release.price_pence/100)} · ${esc(c.ticket_release.remaining)} left in this release${Number.isFinite(Number(c.overall_spaces_remaining))?`<br><span>${esc(c.overall_spaces_remaining)} event places remain overall</span>`:''}</p>`:c.booking_format==='BEGINNER_IMPROVER'?`<p class="social-ticket-note"><strong>Beginner, Improver, Full Evening or Social Only</strong></p>`:Number(c.social_only_enabled)===1?`<p class="social-ticket-note"><strong>Class + Social or Social Only</strong> · Social entry from ${esc(c.social_only_entry_time)}</p>`:''}
           <p>${esc(dateFmt(c.starts_at))}</p><p>${esc(c.location)}</p>
-          <div class="class-footer"><span><b>${money(c.price)}</b> per person</span>
+          <div class="class-footer"><span><b>${c.special_booking_format==='SUNDAY_SESSIONS'?'From £3 · Under 5s free':`${money(c.price)} per person`}</b></span>
           <span class="spaces ${nearly?'low':''} ${full?'full':''}">${closed?'Booking closed':full?'Class full':`${c.spaces_remaining} spaces left`}</span></div>
           <div class="class-card-actions"><button type="button" class="button secondary view-event" data-id="${esc(c.id)}">View details</button><button class="button book-class" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}" ${closed?'disabled aria-disabled="true"':''}>${closed?'Booking closed':full?'Join waiting list':'Book now'}</button></div>
         </div>
@@ -129,10 +169,25 @@
     const d=document.getElementById('eventDetailsDialog'),box=document.getElementById('eventDetailsContent'); if(!d||!box)return;
     const full=Number(c.spaces_remaining)<1; const closed=c.booking_open!==true&&c.waiting_list_open!==true; const url=eventUrl(c);
     const availability=closed?'Booking closed':c.event_type==='ANNIVERSARY'?(full?'Event full':`${esc(c.spaces_remaining)} tickets available in the current release`):(full?'Class full':`${esc(c.spaces_remaining)} spaces left`);
-    const overall=c.event_type==='ANNIVERSARY'?(c.releases||[]).find(release=>release.allocation==null)?.remaining:null;
+    const overall=c.event_type==='ANNIVERSARY'&&Number.isFinite(Number(c.overall_spaces_remaining))?Number(c.overall_spaces_remaining):null;
+    const anniversaryReleases=c.event_type==='ANNIVERSARY'?(c.releases||[]):[];
+    const releaseLadder=anniversaryReleases.length?`<div class="anniversary-release-ladder" aria-label="Anniversary ticket releases"><p class="eyebrow">Ticket release schedule</p>${anniversaryReleases.map(release=>{const current=release.id===c.ticket_release?.id;return `<div class="anniversary-release-row ${current?'is-current':'is-upcoming'}"><span><strong>${esc(release.name)}</strong><small>${current?'Available now':'Coming next'}</small></span><b>${money(Number(release.price_pence)/100)}</b>${current?`<em>${esc(release.remaining)} left in this release</em>`:'<em>Opens automatically after the current release</em>'}</div>`;}).join('')}<p class="anniversary-capacity-note"><strong>${esc(overall)} places remain across the whole event.</strong> Release availability is shown separately above.</p></div>`:'';
     const schedule=`${dayFmt(c.starts_at)} · ${timeFmt(c.starts_at)}${c.ends_at?`–${timeFmt(c.ends_at)}`:''}`;
     const products=(c.ticket_products||[]).map(product=>`${esc(product.label)} ${money(Number(product.price_pence)/100)}${productTime(product)?` · ${esc(productTime(product))}`:''}`).join('<br>');
-    box.innerHTML=`<p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2><div class="event-detail-body ${c.poster_url?'has-poster':''}">${c.poster_url?`<figure class="event-detail-poster-shell"><img class="event-detail-poster" src="${esc(c.poster_url)}" alt="${esc(c.title)} poster"></figure>`:''}<div class="event-detail-copy"><p class="event-detail-meta"><strong>${esc(schedule)}</strong><br>${esc(venueLabel(c.venue))}${c.location?` · ${esc(c.location)}`:''}<br>${availability}${overall!=null?` · ${esc(overall)} event places overall`:''}</p>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<div class="anniversary-public-release"><strong>Current release: ${esc(c.ticket_release.name)}</strong><span>${money(c.ticket_release.price_pence/100)} per ticket · ${esc(c.ticket_release.remaining)} tickets remain in this release</span></div>`:products?`<div class="anniversary-public-release"><strong>Ticket options</strong><span>${products}</span></div>`:''}${(c.ticket_products||[]).some(product=>product.class_pass_eligible)?`<p class="event-class-pass-note"><strong>Class Pass available on eligible ticket options.</strong> Social Only is not included.</p>`:''}${c.public_notes?`<div class="event-full-description">${descriptionHtml(c.public_notes)}</div>`:''}<div class="event-detail-actions">${closed?'':`<button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button>`}<button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p></div></div>`;
+    const posters=[c.poster_url&&{url:c.poster_url,label:`${c.title} event poster`},c.promo_poster_url&&{url:c.promo_poster_url,label:`${c.title} promotional poster`}].filter(Boolean);
+    const posterGallery=posters.length?`<div class="event-detail-poster-gallery ${posters.length>1?'has-two-posters':''}">${posters.map(poster=>`<a class="event-detail-poster-shell" href="${esc(poster.url)}" target="_blank" rel="noopener" aria-label="Open ${esc(poster.label)} at full size"><img class="event-detail-poster" src="${esc(poster.url)}" alt="${esc(poster.label)}"></a>`).join('')}</div>`:'';
+    const halloweenVideoUrl=window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL||'';
+    const halloweenVideo=String(c.id)==='4a5fe2de-52ab-44f5-a0c5-187cd58a13a2'&&halloweenVideoUrl?`<section class="event-halloween-video" aria-labelledby="eventHalloweenVideoTitle"><h3 id="eventHalloweenVideoTitle">👻 Take a sneak peek at our Halloween Hoedown!</h3><video controls playsinline preload="none" poster="dead-or-dancing-golden-ticket.png" aria-label="Halloween Hoedown promotional video"><source src="${esc(halloweenVideoUrl)}" type="video/mp4"></video><div class="event-halloween-prize"><strong>🏆 Dead or Dancing Golden Ticket</strong><span>Win 12 FREE Boot Scootin’ line dancing classes!</span><span>Worth £72, valid for four months from activation.</span><span>Awarded to the Best Dressed Competition winner.</span></div><button class="button book-class event-book" type="button" data-id="${esc(c.id)}">🎟️ Book your Halloween tickets</button></section>`:'';
+    const media=posterGallery||halloweenVideo?`<div class="event-detail-media">${posterGallery}${halloweenVideo}</div>`:'';
+    box.innerHTML=`<div class="event-detail-body ${media?'has-poster':''}">${media}<div class="event-detail-copy"><p class="eyebrow">${esc(venueLabel(c.venue))}</p><h2>${esc(c.title)}</h2><p class="event-detail-meta"><strong>${esc(schedule)}</strong><br>${esc(venueLabel(c.venue))}${c.location?` · ${esc(c.location)}`:''}<br>${availability}</p>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<div class="anniversary-public-release"><strong>Current release: ${esc(c.ticket_release.name)}</strong><span>${money(c.ticket_release.price_pence/100)} per ticket · ${esc(c.ticket_release.remaining)} tickets remain in this release</span></div>${releaseLadder}`:products?`<div class="anniversary-public-release"><strong>Ticket options</strong><span>${products}</span></div>`:''}${(c.ticket_products||[]).some(product=>product.class_pass_eligible)?`<p class="event-class-pass-note"><strong>Class Pass available on eligible ticket options.</strong> Social Only is not included.</p>`:''}<div class="event-detail-actions">${closed?'':`<button class="button book-class event-book" data-id="${esc(c.id)}" data-mode="${full?'waitlist':'booking'}">${full?'Join waiting list':'Book now'}</button>`}<button type="button" class="button secondary copy-event-link" data-url="${esc(url)}">Copy event link</button></div><p class="event-share-note">Use this event link on social posts, posters and flyers. A QR code can point to this exact link.</p></div></div>${eventDescriptionMarkup(c.public_notes,c.id)}`;
+    box.querySelector('.event-description-toggle')?.addEventListener('click',event=>{
+      const button=event.currentTarget,more=document.getElementById(button.getAttribute('aria-controls'));
+      const expanded=button.getAttribute('aria-expanded')==='true';
+      button.setAttribute('aria-expanded',String(!expanded));
+      if(more)more.hidden=expanded;
+      button.querySelector('span').textContent=expanded?'Read more about this event':'Show less';
+      button.querySelector('b').textContent=expanded?'↓':'↑';
+    });
     if(typeof d.showModal==='function')d.showModal();
   }
 
@@ -183,12 +238,18 @@
     document.getElementById('classId').value=c.id;
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
     const picker=document.getElementById('ticketTypePicker'),choices=document.getElementById('ticketProductChoices'),products=c.ticket_products||[];
+    const sundayPicker=document.getElementById('sundaySessionPicker'),sunday=c.special_booking_format==='SUNDAY_SESSIONS';
+    sundayPicker.hidden=!sunday;
+    form.elements.quantity.closest('label').hidden=sunday;
+    [...form.elements.quantity.options].forEach(option=>{if(Number(option.value)>4){option.disabled=!sunday;option.hidden=!sunday;}});
+    document.getElementById('promoBox').hidden=sunday;
     const showSingleAnniversaryProduct=c.event_type==='ANNIVERSARY'&&products.length===1;
-    picker.hidden=products.length===0||(!showSingleAnniversaryProduct&&products.length<2&&c.booking_format!=='BEGINNER_IMPROVER');
+    picker.hidden=sunday||products.length===0||(!showSingleAnniversaryProduct&&products.length<2&&c.booking_format!=='BEGINNER_IMPROVER');
     choices.innerHTML=products.map((product,index)=>`<label class="ticket-product-card"><input type="radio" name="ticket_product_code" value="${esc(product.code)}" ${c.booking_format!=='BEGINNER_IMPROVER'&&index===0?'checked':''} required><span>${product.badge?`<em>${esc(product.badge)}</em>`:''}<strong>${esc(product.label)} — ${money(Number(product.price_pence)/100)}</strong><small>${esc(productTime(product))}</small><small>${esc(product.description||'')}</small>${product.class_pass_eligible?'<b>Class Pass eligible</b>':''}</span></label>`).join('');
     choices.querySelectorAll('input').forEach(input=>input.addEventListener('change',()=>{updateTicketChoice();loadClassCreditOption(c);}));
     document.getElementById('bookingSubmit').textContent=waitlist?'Join Waiting List':'Continue to Secure Payment';
     updateTicketChoice();
+    if(sunday)updateSundayComposition(true);
     dialog.showModal();
     creditOperationId=crypto.randomUUID();
     loadClassCreditOption(c);
@@ -246,6 +307,12 @@
     const button=document.getElementById('bookingSubmit');
     button.disabled=true;msg.textContent='Securing your place…';
     const data=Object.fromEntries(new FormData(form));
+    if(isSundaySession()){
+      const composition=sundayComposition();
+      data.quantity=composition.total_people;
+      data.sunday_session={selection_code:composition.selection_code,adult_count:composition.adult_count,child_10_17_count:composition.child_10_17_count,child_5_9_count:composition.child_5_9_count,under_5_count:composition.under_5_count};
+      delete data.promo_code;
+    }
     data.guests=submittedGuests();
     data.terms_accepted=Boolean(data.terms);
     data.marketing_consent=Boolean(data.marketing_consent);
@@ -259,6 +326,9 @@
       location.href=`booking-confirmation.html?reference=${encodeURIComponent(out.reference)}&token=${encodeURIComponent(out.secure_token||'')}&customer=${encodeURIComponent(out.customer_token||'')}`;
     }catch(e){msg.textContent=(e&&e.message&&e.message!=='The string did not match the expected pattern.')?e.message:bookingFailureMessage;button.disabled=false;}
   });
+
+  document.getElementById('sundaySelection')?.addEventListener('change',()=>updateSundayComposition(true));
+  ['sundayAdults','sundayOlderChildren','sundayYoungerChildren','sundayUnder5'].forEach(id=>document.getElementById(id)?.addEventListener('change',()=>updateSundayComposition(false)));
 
   load();loadClassPassDiscovery();
 })();

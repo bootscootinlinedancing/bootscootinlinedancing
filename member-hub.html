@@ -234,7 +234,7 @@ body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:
           <button data-jump="benefits">See membership benefits</button>
         </article>
 
-        <article class="member-card">
+        <article class="member-card" id="memberAdmissionRewards">
           <p class="kicker red">Your rewards</p>
           <h2>Start your trail</h2>
           <p>Your rewards and milestones will build from your real Boot Scootin’ activity.</p>
@@ -663,6 +663,19 @@ body.member-hub-body .member-auth-status{margin:.55rem 0 0!important;min-height:
         : loyalty.reward_ready
           ? 'You have reached a 9-stamp milestone. Your free-class reward is ready.'
           : `${9-progress} more qualifying paid class ${9-progress===1?'booking':'bookings'} until your next free-class milestone.`;
+
+      const rewardBox=document.getElementById('memberAdmissionRewards');
+      const rewards=Array.isArray(data.admission_rewards)?data.admission_rewards:[];
+      const rewardClasses=Array.isArray(data.admission_reward_classes)?data.admission_reward_classes:[];
+      const activeReward=rewards.find(reward=>reward.status==='ACTIVE');
+      if(rewardBox&&activeReward){
+        const eligible=rewardClasses.filter(item=>item.program_code===activeReward.program_code);
+        rewardBox.innerHTML=`<p class="kicker red">Complimentary admissions</p><h2>${memberEsc(activeReward.program_name)}</h2><p><strong>${Number(activeReward.remaining_admissions)} admission${Number(activeReward.remaining_admissions)===1?'':'s'} remaining</strong> · valid through ${memberEsc(formatMemberDate(activeReward.expires_on))}.</p>${eligible.length?`<form id="memberAdmissionRewardForm"><label>Choose an eligible class<select name="class_id" required><option value="">Choose a class</option>${eligible.map(item=>`<option value="${memberEsc(item.id)}">${memberEsc(item.title)} — ${memberEsc(formatMemberDate(item.starts_at))}</option>`).join('')}</select></label><label><input type="checkbox" name="terms" required> I accept the booking and cancellation terms.</label><button type="submit">Book complimentary admission</button><p class="member-pass-message" data-admission-reward-status aria-live="polite"></p></form>`:'<p>No upcoming class has been approved for this reward yet.</p>'}`;
+        const form=rewardBox.querySelector('#memberAdmissionRewardForm');
+        form?.addEventListener('submit',async event=>{event.preventDefault();const status=form.querySelector('[data-admission-reward-status]'),button=form.querySelector('button');button.disabled=true;status.textContent='Booking your place…';try{const result=await api('/api/member/admission-reward-booking',{method:'POST',body:JSON.stringify({reward_id:activeReward.id,class_id:new FormData(form).get('class_id'),terms_accepted:true,operation_id:crypto.randomUUID()})});status.textContent=`Booked. Reference ${result.reference}.`;await loadMember();}catch(error){status.textContent=error.message;button.disabled=false;}});
+      }else if(rewardBox){
+        rewardBox.innerHTML='<p class="kicker red">Your rewards</p><h2>Start your trail</h2><p>Your rewards and milestones will build from your real Boot Scootin’ activity.</p><button data-jump="benefits">See how rewards work</button>';
+      }
 
       document.getElementById('benefitTrailSummary').textContent=`${Number(loyalty.total_stamps||0)} stamps · ${points} Boot Points`;
       document.getElementById('benefitPassportSummary').textContent=attended

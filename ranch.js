@@ -300,7 +300,7 @@
     loadBootstrap(false,{force:true,silent:false}).catch(()=>{});
   });
 
-  const titles={overview:'HQ Home',classes:'Classes','class-passes':'Class Passes',reviews:'Reviews',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
+  const titles={overview:'HQ Home',classes:'Classes','class-passes':'Class Passes',reviews:'Reviews',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards','admission-rewards':'Admission Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
     state.currentView=name;
     $$('.ranch-view').forEach(panel=>panel.classList.toggle('active',panel.dataset.viewPanel===name));
@@ -316,6 +316,7 @@
     if(name==='merch-orders')loadMerchOrders();
     if(name==='emails')loadEmailCentre();
     if(name==='promotions')loadPromotions();
+    if(name==='admission-rewards')loadAdmissionRewards();
     if(name==='operations')renderOperationsFromBootstrap();
     if(name==='private-events')loadPrivateEvents();
     if(name==='media')loadMedia();
@@ -725,11 +726,11 @@
   function renderClassGuests(data){
     const summary=$('#classGuestSummary'),guests=$('#classGuests'),s=data.summary||{};
     if(summary)summary.innerHTML=`<article><span>Active entries</span><strong>${Number(s.guest_entries||0)}</strong></article><article><span>Guest places</span><strong>${Number(s.guest_places||0)}</strong></article><article><span>Booked</span><strong>${Number(s.booked||0)}</strong></article><article><span>Capacity</span><strong>${Number(s.capacity||0)}</strong></article><article><span>Remaining</span><strong>${Number(s.remaining||0)}</strong></article>`;
-    if(guests)guests.innerHTML=(data.guests||[]).length?(data.guests||[]).map(g=>`<article class="ranch-list-row"><div><strong>${esc(g.guest_name)}</strong><small>${Number(g.places)} place${Number(g.places)===1?'':'s'} · ${esc(classGuestCategory(g.category))} · ${esc(g.status)}</small>${g.notes?`<p>${esc(g.notes)}</p>`:''}</div>${g.status==='ACTIVE'?`<div class="ranch-actions"><button type="button" class="button secondary compact" data-edit-class-guest="${esc(g.id)}">Edit</button><button type="button" class="button secondary compact" data-cancel-class-guest="${esc(g.id)}">Cancel</button></div>`:''}</article>`).join(''):emptyPanel('No guest-list entries for this class.');
+    if(guests)guests.innerHTML=(data.guests||[]).length?(data.guests||[]).map(g=>`<article class="ranch-list-row"><div><strong>${esc(g.guest_name)}</strong><small>${Number(g.places)} place${Number(g.places)===1?'':'s'} · ${esc(classGuestCategory(g.category))} · ${esc(g.status)}</small>${g.sunday_adult_count!=null?`<small>Adults ${Number(g.sunday_adult_count)} · 10–17 ${Number(g.sunday_child_10_17_count)} · 5–9 ${Number(g.sunday_child_5_9_count)} · Under 5 ${Number(g.sunday_under_5_count)}</small>`:''}${g.notes?`<p>${esc(g.notes)}</p>`:''}</div>${g.status==='ACTIVE'?`<div class="ranch-actions"><button type="button" class="button secondary compact" data-edit-class-guest="${esc(g.id)}">Edit</button><button type="button" class="button secondary compact" data-cancel-class-guest="${esc(g.id)}">Cancel</button></div>`:''}</article>`).join(''):emptyPanel('No guest-list entries for this class.');
   }
   async function openClassGuestList(classId){
     const panel=$('#classGuestListPanel'),item=state.classes.find(c=>c.id===classId);if(!panel||!item)return;
-    resetGuestListControls();state.guestListClass=item;panel.hidden=false;$('#classGuestListTitle').textContent=item.title||'Class';$('#classGuestListContext').textContent=`${fmt(item.starts_at)} · ${item.venue||'Venue not supplied'}`;
+    resetGuestListControls();state.guestListClass=item;panel.hidden=false;$('#classGuestListTitle').textContent=item.title||'Class';$('#classGuestListContext').textContent=`${fmt(item.starts_at)} · ${item.venue||'Venue not supplied'}`;const sundayFields=$('#sundayGuestComposition');if(sundayFields)sundayFields.hidden=item.special_booking_format!=='SUNDAY_SESSIONS';
     panel.scrollIntoView({behavior:'smooth',block:'start'});await loadClassGuestList();
   }
   async function loadClassGuestList(){
@@ -759,8 +760,9 @@
     const placesText=window.prompt('Number of places',String(guest.places));if(placesText===null)return;
     const category=window.prompt('Category: GUEST, COMPLIMENTARY, INSTRUCTOR_STAFF, VENDOR, ARTIST_PERFORMER or OTHER',guest.category);if(category===null)return;
     const notes=window.prompt('Notes (optional)',guest.notes||'');if(notes===null)return;
+    const sunday={};if(item.special_booking_format==='SUNDAY_SESSIONS')for(const [key,label] of [['sunday_adult_count','Adults'],['sunday_child_10_17_count','Children age 10–17'],['sunday_child_5_9_count','Children age 5–9'],['sunday_under_5_count','Under 5s']]){const value=window.prompt(label,String(guest[key]||0));if(value===null)return;sunday[key]=Number(value);}
     const reason=window.prompt('Audit reason for this change');if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
-    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'UPDATE_GUEST',id,guest_name:guestName.trim(),places:Number(placesText),category:category.trim().toUpperCase(),notes,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(currentGuestContext(item.id,requestSequence)){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);toast('Guest entry updated.','success');}await loadClasses();}
+    try{const result=await jsonFetch(`${ADMIN_API_PREFIX}/class-guests?class_id=${encodeURIComponent(item.id)}`,{method:'POST',body:JSON.stringify({action:'UPDATE_GUEST',id,guest_name:guestName.trim(),places:Number(placesText),category:category.trim().toUpperCase(),notes,...sunday,reason:reason.trim(),operation_id:crypto.randomUUID()})});if(currentGuestContext(item.id,requestSequence)){state.classGuestList=result.guest_list;renderClassGuests(result.guest_list);toast('Guest entry updated.','success');}await loadClasses();}
     catch(error){if(currentGuestContext(item.id,requestSequence))toast(error.message,'error');}
   }
   async function cancelClassGuest(id){
@@ -773,7 +775,7 @@
     const panel=$('#classRegisterPanel'),data=state.classRegister;
     if(!panel||!data)return;
     const c=data.class||{},rows=data.bookings||[],attendees=data.attendees||[],stats=data.stats||{};
-    const attendeeControl=a=>`<div class="class-register-attendee ${a.attendance_status==='ATTENDED'?'is-checked-in':''}"><div class="class-register-attendee-copy"><strong>${esc(a.snapshot_name||'Unnamed attendee')}</strong><small>${esc(a.role==='LEAD'?'Lead booker':a.role==='COMPLIMENTARY'?'Complimentary / support':'Guest')}${a.snapshot_email?` · ${esc(a.snapshot_email)}`:''}${a.customer_id?' · identity matched':' · snapshot only'}${Number(a.loyalty_credited)?' · loyalty credited':''}</small></div>${a.attendance_status==='ATTENDED'?`<span class="checked-in-label">✓ Checked in</span>`:`<button type="button" class="button compact" data-attendee-check-in="${esc(a.id)}">Check in person</button>`}</div>`;
+    const attendeeControl=a=>`<div class="class-register-attendee ${a.attendance_status==='ATTENDED'?'is-checked-in':''}"><div class="class-register-attendee-copy"><strong>${esc(a.snapshot_name||'Unnamed attendee')}</strong><small>${esc(a.role==='LEAD'?'Lead booker':a.role==='COMPLIMENTARY'?'Complimentary / support':'Guest')}${a.admission_category?` · ${esc(String(a.admission_category).replaceAll('_',' ').toLowerCase())}`:''}${a.snapshot_email?` · ${esc(a.snapshot_email)}`:''}${a.customer_id?' · identity matched':' · snapshot only'}${Number(a.loyalty_credited)?' · loyalty credited':''}</small></div>${a.attendance_status==='ATTENDED'?`<span class="checked-in-label">✓ Checked in</span>`:`<button type="button" class="button compact" data-attendee-check-in="${esc(a.id)}">Check in person</button>`}</div>`;
     panel.hidden=false;
     panel.innerHTML=`<header class="class-register-head">
       <div><p class="kicker red">Class register</p><h2>${esc(c.title||'Class')}</h2><p><strong>${esc(fmt(c.starts_at))}</strong> · ${esc(c.venue||'Venue not supplied')}</p></div>
@@ -782,7 +784,7 @@
     <div class="class-register-summary"><article><span>People checked in</span><strong>${Number(stats.checked_in_people||0)} / ${Number(stats.known_people||0)}</strong></article><article><span>Ticket places</span><strong>${Number(stats.total_places||0)}</strong></article><article><span>Beginner participation</span><strong>${Number(stats.beginner_places||0)}</strong></article><article><span>Improver participation</span><strong>${Number(stats.improver_places||0)}</strong></article><article><span>Both classes</span><strong>${Number(stats.combined_places||0)}</strong></article><article><span>Social Only</span><strong>${Number(stats.social_only_places||0)}</strong></article></div>
     <section class="class-register-complimentary"><h3>Add complimentary attendance</h3><p>For an existing customer who attended as teaching/support without a paid booking. Exact email matching is required.</p><form id="complimentaryAttendanceForm"><label>Existing customer email<input name="customer_email" type="email" required></label><label class="wide">Audit reason<input name="reason" required maxlength="500" placeholder="Complimentary teaching/support attendance"></label><button class="button compact wide" type="submit">Record attendance + one loyalty stamp</button></form></section>
     <div class="class-register-list">${rows.length?rows.map(b=>`<article class="class-register-row ${Number(b.checked_in)?'is-checked-in':''}" data-register-booking="${esc(b.id)}">
-      <div class="class-register-person"><strong>${esc(b.customer_name||'Name not supplied')}</strong><span class="class-register-email">${esc(b.customer_email||'Email not supplied')}</span><small>${esc(b.reference||'')} · <b>${Number(b.quantity||1)} ticket${Number(b.quantity||1)===1?'':'s'}</b></small>${(()=>{const people=attendees.filter(a=>a.booking_id===b.id),unnamed=Math.max(0,Number(b.quantity||1)-people.length);return people.length||unnamed?`<div class="class-register-attendees">${people.map(attendeeControl).join('')}${unnamed?`<div class="class-register-attendee"><div class="class-register-attendee-copy"><strong>${unnamed} unnamed guest place${unnamed===1?'':'s'}</strong><small>Counts toward capacity · no person-level loyalty without identity</small></div></div>`:''}</div>`:''})()}</div>
+      <div class="class-register-person"><strong>${esc(b.customer_name||'Name not supplied')}</strong><span class="class-register-email">${esc(b.customer_email||'Email not supplied')}</span><small>${esc(b.reference||'')} · <b>${Number(b.quantity||1)} ticket${Number(b.quantity||1)===1?'':'s'}</b></small>${b.sunday_selection_code?`<small class="sunday-register-composition">${esc(b.sunday_selection_code.replaceAll('_',' '))} · Adults ${Number(b.sunday_adult_count)} · 10–17 ${Number(b.sunday_child_10_17_count)} · 5–9 ${Number(b.sunday_child_5_9_count)} · Under 5 ${Number(b.sunday_under_5_count)}</small>`:''}${(()=>{const people=attendees.filter(a=>a.booking_id===b.id),unnamed=Math.max(0,Number(b.quantity||1)-people.length);return people.length||unnamed?`<div class="class-register-attendees">${people.map(attendeeControl).join('')}${unnamed?`<div class="class-register-attendee"><div class="class-register-attendee-copy"><strong>${unnamed} unnamed guest place${unnamed===1?'':'s'}</strong><small>Counts toward capacity · use booking composition for age categories</small></div></div>`:''}</div>`:''})()}</div>
       <div class="class-register-payment"><span class="booking-status">${esc(b.status)}</span><small>${money(b.amount_pence)} · ${esc(b.payment_provider||'')}</small><small>${esc(ticketLabel(b))}</small></div>
       <div class="class-register-attendance">${attendees.some(a=>a.booking_id===b.id)?'<small>Use the person-level controls shown with this booking.</small>':Number(b.checked_in)?`<strong class="checked-in-label">✓ Legacy booking check-in</strong><small>${esc(fmt(b.checked_in_at))}</small><button type="button" class="class-register-correct" data-register-undo="${esc(b.id)}">Correct</button>`:`<button type="button" class="button class-check-in-button" data-register-check-in="${esc(b.id)}">Check in lead</button><small>${b.status==='PENDING'?'Attendance only — no loyalty credit while pending':'Historical booking-level attendance'}</small>`}</div>
     </article>`).join(''):emptyPanel('No active paid or pending bookings are attached to this class.')}</div>`;
@@ -908,6 +910,25 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     if(status)status.textContent='Poster uploaded and linked to this class.';
     return result.url||'';
   }
+  function setClassPromoPosterPreview(url=''){
+    const form=$('#classEditorForm'),wrap=$('#classPromoPosterPreviewWrap'),img=$('#classPromoPosterPreview'),remove=$('#removeClassPromoPoster'),status=$('#classPromoPosterStatus');
+    if(!form)return;
+    form.elements.promo_poster_url.value=url||'';
+    if(url){if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent='Promotional poster ready to use.';}
+    else{if(img)img.removeAttribute('src');if(wrap)wrap.hidden=true;if(remove)remove.hidden=true;if(status)status.textContent='No promotional poster selected.';}
+  }
+  async function uploadClassPromoPosterIfNeeded(){
+    const input=$('#classPromoPosterFile'),form=$('#classEditorForm'),status=$('#classPromoPosterStatus');
+    const file=input?.files?.[0];
+    if(!file)return form?.elements.promo_poster_url?.value||'';
+    if(status)status.textContent='Uploading promotional poster…';
+    const data=new FormData();data.append('file',file);data.append('title',`${form.elements.title.value||'Boot Scootin class'} promotional poster`);data.append('description','Secondary class/event promotional poster uploaded from Boot Scootin HQ');data.append('placement','class-promo-poster');data.append('published','1');
+    const result=await jsonFetch(`${ADMIN_API_PREFIX}/media`,{method:'POST',body:data},30000);
+    setClassPromoPosterPreview(result.url||'');
+    input.value='';
+    if(status)status.textContent='Promotional poster uploaded and linked to this class.';
+    return result.url||'';
+  }
 
   function openClassEditor(item=null){
     // Opening the editor is a local UI action and must never depend on the
@@ -949,6 +970,8 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     updateTicketFormatFields(form);
     if($('#classPosterFile'))$('#classPosterFile').value='';
     setClassPosterPreview(item?.poster_url||'');
+    if($('#classPromoPosterFile'))$('#classPromoPosterFile').value='';
+    setClassPromoPosterPreview(item?.promo_poster_url||'');
     $('#classEditorTitle').textContent=item?'Edit class':'Create class';
     const existingRecords=Number(item?.booking_count||item?.sold||0)+Number(item?.waiting||0);
     $('#classEditorMessage').textContent=item&&existingRecords
@@ -972,6 +995,8 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     }catch(error){message.textContent=error.message;toast(error.message,'error');return;}
     let posterUrl=form.elements.poster_url.value||'';
     try{posterUrl=await uploadClassPosterIfNeeded();}catch(error){message.textContent=`Poster upload failed: ${error.message}`;toast(message.textContent,'error');return;}
+    let promoPosterUrl=form.elements.promo_poster_url.value||'';
+    try{promoPosterUrl=await uploadClassPromoPosterIfNeeded();}catch(error){message.textContent=`Promotional poster upload failed: ${error.message}`;toast(message.textContent,'error');return;}
     const localProductInstant=time=>classLocalToUtc(`${form.elements.starts_at.value.slice(0,10)}T${time}`,'Ticket time');
     const ticketProducts=form.elements.booking_format.value==='BEGINNER_IMPROVER'?[
       {product_code:'BEGINNER_SOCIAL',enabled:form.elements.beginner_enabled.checked,price_pence:Math.round(Number(form.elements.beginner_price.value)*100),starts_at:localProductInstant(form.elements.beginner_start.value),ends_at:localProductInstant(form.elements.beginner_end.value)},
@@ -983,7 +1008,7 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
       id:id||undefined,title:form.elements.title.value.trim(),venue:form.elements.venue.value.trim(),location:form.elements.location.value.trim(),
       starts_at:startsAt,ends_at:endsAt,
       price_pence:Math.round(Number(form.elements.price_gbp.value||0)*100),capacity:Number(form.elements.capacity.value||0),
-      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl,
+      status:form.elements.status.value,level:form.elements.level.value.trim(),public_notes:form.elements.public_notes.value.trim(),poster_url:posterUrl,promo_poster_url:promoPosterUrl,
       social_only_enabled:form.elements.social_only_enabled.checked,
       social_only_price_pence:Math.round(Number(form.elements.social_only_price_gbp.value||0)*100),
       social_only_entry_time:form.elements.social_only_entry_time.value,
@@ -1164,8 +1189,9 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
 
     if(waiting){
       waiting.innerHTML=(data.waiting||[]).length
-        ?data.waiting.map(w=>`<article class="hq-waiting-row"><strong>${esc(w.customer_name)}</strong><span>${esc(w.class_title)} · ${fmt(w.starts_at)} · ${esc(ticketLabel(w))}</span><b>${esc(w.status)}</b></article>`).join('')
+        ?data.waiting.map(w=>`<article class="hq-waiting-row"><strong>${esc(w.customer_name)}</strong><span>${esc(w.class_title)} · ${fmt(w.starts_at)} · ${esc(ticketLabel(w))}${w.sunday_selection_code?`<small>${Number(w.sunday_adult_count||0)} adult · ${Number(w.sunday_child_10_17_count||0)} age 10–17 · ${Number(w.sunday_child_5_9_count||0)} age 5–9 · ${Number(w.sunday_under_5_count||0)} under 5 · ${money(w.sunday_calculated_amount_pence||0)}</small>`:''}</span><div><b>${esc(w.status)}</b>${w.special_booking_format==='SUNDAY_SESSIONS'&&w.status==='WAITING'?`<button type="button" class="button compact" data-promote-sunday-waiting="${esc(w.id)}">Promote to payment</button>`:''}${w.status==='OFFERED'&&w.promoted_checkout_url?`<a class="button secondary compact" href="${esc(w.promoted_checkout_url)}" target="_blank" rel="noopener">Open payment offer</a>`:''}</div></article>`).join('')
         :emptyPanel('No waiting-list entries.');
+      waiting.querySelectorAll('[data-promote-sunday-waiting]').forEach(button=>button.addEventListener('click',()=>promoteSundayWaiting(button.dataset.promoteSundayWaiting)));
     }
   }
 
@@ -1174,6 +1200,17 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
       method:'PATCH',
       body:JSON.stringify(payload)
     },20000);
+  }
+
+  async function promoteSundayWaiting(id){
+    const row=(state.bookings?.waiting||[]).find(item=>item.id===id);if(!row)return toast('Waiting entry not found.','error');
+    const reason=prompt(`Promote ${row.customer_name}'s ${row.quantity}-person Sunday Sessions entry to a 15-minute SumUp payment offer?\n\nEnter the audit reason.`);
+    if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
+    try{
+      const result=await bookingAdminAction({id,action:'PROMOTE_SUNDAY_WAITING',reason:reason.trim(),operation_id:crypto.randomUUID()});
+      if(result.checkout_url){try{await navigator.clipboard.writeText(result.checkout_url);toast('Payment offer created and copied.','success');}catch(_){toast('Payment offer created. Open it from the waiting list.','success');}}
+      await Promise.all([loadBookings(true),loadClasses(),loadBootstrap(false,{force:true,silent:true})]);
+    }catch(error){toast(error.message||'Could not promote the waiting entry.','error');}
   }
 
   async function cancelBooking(id){
@@ -1391,6 +1428,24 @@ Type REFUNDED to continue.`);
     const payload={action:'CREATE',name:$('#promoAdminName').value.trim(),code:$('#promoAdminCode').value.trim(),discount_type:type,discount_value:type==='FIXED'?Math.round(Number($('#promoAdminValue').value||0)*100):Number($('#promoAdminValue').value||0),starts_at:$('#promoAdminStart').value||'',ends_at:$('#promoAdminEnd').value||'',max_uses:$('#promoAdminMaxUses').value||null,uses_per_customer:$('#promoAdminPerCustomer').value||1};
     try{await jsonFetch(`${ADMIN_API_PREFIX}/promotions`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Promotion created.','success');$('#promoAdminName').value='';$('#promoAdminCode').value='';await loadPromotions();}catch(error){toast(error.message,'error');}
   }
+  async function loadAdmissionRewards(){
+    const list=$('#admissionRewardList'),eligibility=$('#admissionRewardEligibility');if(!list||!eligibility)return;
+    list.innerHTML='<div class="ranch-loading">Loading rewards…</div>';eligibility.innerHTML='<div class="ranch-loading">Loading classes…</div>';
+    try{
+      const data=await jsonFetch(`${ADMIN_API_PREFIX}/admission-rewards`,{cache:'no-store'});state.admissionRewards=data;
+      const program=$('#admissionRewardProgram'),member=$('#admissionRewardMember');
+      if(program)program.innerHTML='<option value="">Choose a programme</option>'+data.programs.filter(p=>Number(p.active)).map(p=>`<option value="${esc(p.id)}" data-default="${Number(p.default_admissions)}">${esc(p.name)}</option>`).join('');
+      if(member)member.innerHTML='<option value="">Choose a member</option>'+data.members.map(m=>`<option value="${esc(m.customer_id)}">${esc(m.name)} — ${esc(m.email)}</option>`).join('');
+      list.innerHTML=data.rewards.length?data.rewards.map(r=>`<article class="ranch-card"><div class="ranch-row"><div><h3>${esc(r.customer_name)} — ${esc(r.program_name)}</h3><p>${Number(r.remaining_admissions)} / ${Number(r.original_allocation)} admissions · ${esc(r.derived_status)} · expires ${esc(r.expires_on)}</p><small>Customer-linked reward. Assignment notifications disabled.</small></div><div class="ranch-row"><button class="ranch-button secondary" data-reward-adjust="${esc(r.id)}">Adjust</button><button class="ranch-button secondary" data-reward-extend="${esc(r.id)}">Extend</button><button class="ranch-button secondary" data-reward-revoke="${esc(r.id)}" ${r.status==='REVOKED'?'disabled':''}>Revoke</button></div></div></article>`).join(''):emptyPanel('No admission rewards assigned.');
+      eligibility.innerHTML=data.classes.length?data.classes.map(c=>`<label class="class-pass-eligibility-row"><span><strong>${esc(c.title)}</strong><small>${esc(fmt(c.starts_at))} · ${esc(c.venue)} · ${esc(c.program_name)}</small></span><input type="checkbox" data-admission-eligibility="${esc(c.id)}" data-program-id="${esc(c.program_id)}" ${Number(c.eligible)?'checked':''}></label>`).join(''):emptyPanel('No classes available.');
+    }catch(error){list.innerHTML=lockedPanel('Admission rewards unavailable',error.message);eligibility.innerHTML='';}
+  }
+  async function admissionRewardAction(payload){return jsonFetch(`${ADMIN_API_PREFIX}/admission-rewards`,{method:'POST',body:JSON.stringify({...payload,operation_id:crypto.randomUUID()})});}
+  $('#admissionRewardProgram')?.addEventListener('change',event=>{const selected=event.target.selectedOptions[0],input=$('#admissionRewardAssignForm [name="admissions"]');if(input&&selected?.dataset.default)input.value=selected.dataset.default;});
+  $('#admissionRewardAssignForm')?.addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget,fd=new FormData(form),button=form.querySelector('button');button.disabled=true;try{await admissionRewardAction({action:'ASSIGN_REWARD',customer_id:fd.get('customer_id'),program_id:fd.get('program_id'),admissions:Number(fd.get('admissions')),active_from:fd.get('active_from'),expires_on:fd.get('expires_on'),source_type:fd.get('source_type'),source_reference:fd.get('source_reference'),reason:fd.get('reason')});toast('Admission reward assigned. No email was sent.','success');form.reset();await loadAdmissionRewards();}catch(error){toast(error.message,'error');button.disabled=false;}});
+  $('#refreshAdmissionRewards')?.addEventListener('click',loadAdmissionRewards);
+  document.addEventListener('change',async event=>{const input=event.target.closest?.('[data-admission-eligibility]');if(!input)return;const previous=!input.checked,reason=prompt(`Required reason to mark this class ${input.checked?'eligible':'ineligible'}:`);if(!reason?.trim()){input.checked=previous;return;}input.disabled=true;try{await admissionRewardAction({action:'SET_CLASS_ELIGIBILITY',program_id:input.dataset.programId,class_id:input.dataset.admissionEligibility,eligible:input.checked,reason:reason.trim()});toast('Admission eligibility updated.','success');}catch(error){input.checked=previous;toast(error.message,'error');}finally{input.disabled=false;}});
+  document.addEventListener('click',async event=>{const adjust=event.target.closest?.('[data-reward-adjust]'),extend=event.target.closest?.('[data-reward-extend]'),revoke=event.target.closest?.('[data-reward-revoke]');if(!adjust&&!extend&&!revoke)return;const rewardId=adjust?.dataset.rewardAdjust||extend?.dataset.rewardExtend||revoke?.dataset.rewardRevoke;let payload;if(adjust){const amount=Number(prompt('Whole admission adjustment (for example 1 or -1):'));if(!Number.isInteger(amount)||!amount)return;const reason=prompt('Required audit reason:');if(!reason?.trim())return;payload={action:'ADJUST_ADMISSIONS',reward_id:rewardId,amount,reason};}else if(extend){const expires_on=prompt('New expiry date (YYYY-MM-DD):');if(!expires_on)return;const reason=prompt('Required audit reason:');if(!reason?.trim())return;payload={action:'EXTEND_EXPIRY',reward_id:rewardId,expires_on,reason};}else{if(!confirm('Revoke this reward? Existing bookings and ledger history remain.'))return;const reason=prompt('Required audit reason:');if(!reason?.trim())return;payload={action:'REVOKE',reward_id:rewardId,reason};}try{await admissionRewardAction(payload);toast('Admission reward updated.','success');await loadAdmissionRewards();}catch(error){toast(error.message,'error');}});
   async function loadCustomers(){
     if(!state.bootstrap)await loadBootstrap(false,{silent:true}).catch(()=>null);
     const box=$('#ranchCustomers');if(!box)return;
@@ -1942,6 +1997,8 @@ Type REFUNDED to continue.`);
   $('#anniversaryAdjustments')?.addEventListener('click',event=>{const button=event.target.closest('[data-cancel-anniversary-ticket]');if(button)cancelAnniversary('CANCEL_TICKETS',button.dataset.cancelAnniversaryTicket,'recorded ticket allocation');});
   $('#classPosterFile')?.addEventListener('change',event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const wrap=$('#classPosterPreviewWrap'),img=$('#classPosterPreview'),remove=$('#removeClassPoster'),status=$('#classPosterStatus');if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent=`Selected: ${file.name}. It will upload when you save the class.`;});
   $('#removeClassPoster')?.addEventListener('click',()=>{const input=$('#classPosterFile');if(input)input.value='';setClassPosterPreview('');});
+  $('#classPromoPosterFile')?.addEventListener('change',event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);const wrap=$('#classPromoPosterPreviewWrap'),img=$('#classPromoPosterPreview'),remove=$('#removeClassPromoPoster'),status=$('#classPromoPosterStatus');if(img)img.src=url;if(wrap)wrap.hidden=false;if(remove)remove.hidden=false;if(status)status.textContent=`Selected: ${file.name}. It will upload when you save the class.`;});
+  $('#removeClassPromoPoster')?.addEventListener('click',()=>{const input=$('#classPromoPosterFile');if(input)input.value='';setClassPromoPosterPreview('');});
   $('#ranchClassFilter')?.addEventListener('change',renderClasses);
   $('#refreshClassPasses')?.addEventListener('click',loadClassPasses);
   $('#classPassAdminSearch')?.addEventListener('input',()=>{clearTimeout(loadClassPasses.timer);loadClassPasses.timer=setTimeout(loadClassPasses,250);});

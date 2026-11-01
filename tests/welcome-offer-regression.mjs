@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 
 const source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
+assert.match(source,/if\(!name\) return json\(\{error:'Please enter your first name\.'/,'mailing-list endpoint rejects a blank first name server-side');
 assert.match(source,/INSERT INTO bookings\([\s\S]+welcomePromotionClaimed=await claimWelcomePromotion/,'booking marker is created before atomic welcome claim');
 assert.match(source,/if\(!welcomePromotionClaimed\)\{[\s\S]+DELETE FROM bookings WHERE id=\?[\s\S]+UPDATE booking_holds SET expires_at/,'losing checkout removes its provisional booking and expires its hold');
 const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {issueWelcomePromotion,validatePromotion,claimWelcomePromotion,releaseWelcomePromotion};').toString('base64')}`);

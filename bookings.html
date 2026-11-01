@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Rye&amp;family=Oswald:wght@400;500;600;700&amp;family=Caveat:wght@600;700&amp;display=swap" rel="stylesheet"/>
-<link href="styles.css?v=96.4.114" rel="stylesheet"/>
+<link href="styles.css?v=96.4.123" rel="stylesheet"/>
 <link href="favicon.png" rel="icon" type="image/png"/>
 <link href="apple-touch-icon.png" rel="apple-touch-icon"/>
 <style id="menu45-style">
@@ -57,7 +57,7 @@
 <link href="honky-theme.css?v=96.4.53" rel="stylesheet"/>
 <link href="honky-authentic.css?v=96.4.39" rel="stylesheet"/>
 <link href="desktop-final-fix.css?v=96.4.39" rel="stylesheet"/>
-<link href="repair-v96.4.56.css?v=96.4.59" rel="stylesheet"/>
+<link href="repair-v96.4.56.css?v=96.4.133" rel="stylesheet"/>
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -142,7 +142,7 @@
 </details>
 <details class="menu45-section">
 <summary><span class="menu45-summary-copy"><strong>Shop &amp; Rewards</strong><small>Merchandise and loyalty</small></span><b aria-hidden="true"></b></summary>
-<div class="menu45-submenu"><a href="community.html#merchandise"><span>Official Merchandise</span><b aria-hidden="true">›</b></a><a href="rewards.html"><span>Boot Scootin’ Rewards</span><b aria-hidden="true">›</b></a>
+<div class="menu45-submenu"><a href="community.html?shop=1#merchandise"><span>Official Merchandise</span><b aria-hidden="true">›</b></a><a href="rewards.html"><span>Boot Scootin’ Rewards</span><b aria-hidden="true">›</b></a>
 
 
 <a href="passport.html#trail-rewards"><span>Trail &amp; Rewards</span><b aria-hidden="true">›</b></a>
@@ -154,7 +154,7 @@
 <a href="ask-nora.html"><span>Ask Nora</span><b aria-hidden="true">›</b></a>
 <a href="mailto:hello@bootscootinlinedancing.co.uk"><span>General Enquiries</span><b aria-hidden="true">›</b></a>
 <a href="mailto:bookings@bootscootinlinedancing.co.uk"><span>Booking Help</span><b aria-hidden="true">›</b></a>
-<a href="mailto:partnerships@bootscootinlinedancing.co.uk"><span>Partnerships</span><b aria-hidden="true">›</b></a>
+<a href="partnerships.html"><span>Partnerships &amp; Advertising</span><b aria-hidden="true">›</b></a>
 <a href="mailto:support@bootscootinlinedancing.co.uk"><span>Website Support</span><b aria-hidden="true">›</b></a>
 </div>
 </details>
@@ -212,6 +212,25 @@
 <legend>Choose your ticket</legend>
 <div id="ticketProductChoices"></div>
 </fieldset>
+<fieldset class="sunday-session-picker" id="sundaySessionPicker" hidden>
+<legend>Who is coming?</legend>
+<label>Ticket option
+<select id="sundaySelection" name="sunday_selection">
+<option value="INDIVIDUAL">Individual tickets</option>
+<option value="FAMILY_1A1C">Family: 1 adult + 1 child — from £8</option>
+<option value="FAMILY_1A2C">Family: 1 adult + 2 children — from £10</option>
+<option value="FAMILY_2A1C">Family: 2 adults + 1 child — from £13</option>
+<option value="FAMILY_2A2C">Family: 2 adults + 2 children — from £15</option>
+</select></label>
+<div class="sunday-composition-grid">
+<label>Adults (18+) <input id="sundayAdults" type="number" min="0" max="10" value="1"></label>
+<label>Children 10–17 <input id="sundayOlderChildren" type="number" min="0" max="10" value="0"></label>
+<label>Children 5–9 <input id="sundayYoungerChildren" type="number" min="0" max="10" value="0"></label>
+<label>Under 5s (free) <input id="sundayUnder5" type="number" min="0" max="10" value="0"></label>
+</div>
+<p class="privacy-note">Every person, including free under-5s, counts towards the shared 75-person capacity.</p>
+<p class="sunday-price-summary" id="sundayPriceSummary" aria-live="polite"></p>
+</fieldset>
 <div class="form-grid">
 <label>Full name <small>(first name and surname)</small><input autocomplete="name" maxlength="100" minlength="3" name="name" placeholder="e.g. Nora Godollei" required=""/></label>
 <label>Email address<input autocomplete="email" maxlength="160" name="email" required="" type="email"/></label>
@@ -219,7 +238,9 @@
 <label>Number of places
             <select id="quantity" name="quantity" required="">
 <option value="1">1 place</option><option value="2">2 places</option>
-<option value="3">3 places</option><option value="4">4 places</option>
+<option value="3">3 places</option><option value="4">4 places</option><option value="5">5 places</option>
+<option value="6">6 places</option><option value="7">7 places</option><option value="8">8 places</option>
+<option value="9">9 places</option><option value="10">10 places</option>
 </select>
 </label>
 </div>
@@ -302,8 +323,8 @@
 </div>
 </section>
 </main>
-<script src="script.js?v=96.4.59"></script>
-<script defer="" src="bookings.js?v=96.4.69"></script>
+<script src="script.js?v=96.4.133"></script>
+<script defer="" src="bookings.js?v=96.4.123"></script>
 <a aria-label="Administrator login" class="admin-login-link" href="/admin-login"><svg aria-hidden="true" class="western-icon"><use href="western-icons.svg?v=96.4.83#lock"></use></svg> Admin Login</a>
 <script src="honky-theme.js?v=96.0.0"></script>
 <section aria-label="Copyright and trade mark notice" class="global-ip-notice">
