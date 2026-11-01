@@ -109,6 +109,7 @@
       <button type="button" data-view="merch-orders">Merch Orders</button>
       <button type="button" data-view="emails">Emails &amp; Mailing List</button>
       <button type="button" data-view="promotions">Promotions &amp; Rewards</button>
+      <button type="button" data-view="admission-rewards">Admission Rewards</button>
       <button type="button" data-view="operations">Operations</button>
       <button type="button" data-view="private-events">Private Events</button>
       <button type="button" data-view="media">Media</button>
@@ -573,6 +574,33 @@
           </article>
         </div>
         <div id="promotionList" class="ranch-stack"><div class="ranch-loading">Loading promotions…</div></div>
+      </section>
+
+      <section class="ranch-view" data-view-panel="admission-rewards">
+        <div class="ranch-section-head"><div><p class="kicker red">Complimentary admissions</p><h2>Admission Rewards</h2><p>Assign auditable, customer-linked admissions without changing loyalty balances or taking payment.</p></div><button type="button" id="refreshAdmissionRewards" class="ranch-button secondary">Refresh</button></div>
+        <div class="ranch-grid two">
+          <article class="ranch-card">
+            <h3>Assign a reward</h3>
+            <form id="admissionRewardAssignForm" class="ranch-form-grid">
+              <label>Verified member<select name="customer_id" id="admissionRewardMember" required><option value="">Choose a member</option></select></label>
+              <label>Programme<select name="program_id" id="admissionRewardProgram" required><option value="">Choose a programme</option></select></label>
+              <label>Admissions<input name="admissions" type="number" min="1" max="100" required></label>
+              <label>Active from<input name="active_from" type="date" required></label>
+              <label>Expires on<input name="expires_on" type="date" required></label>
+              <label>Source<select name="source_type"><option>COMPETITION</option><option>GOODWILL</option><option>ADMIN</option><option>OTHER</option></select></label>
+              <label>Source reference<input name="source_reference" placeholder="Competition or approval reference"></label>
+              <label>Required audit reason<textarea name="reason" required rows="2"></textarea></label>
+              <button class="ranch-button" type="submit">Assign without email</button>
+            </form>
+          </article>
+          <article class="ranch-card">
+            <h3>Safety controls</h3>
+            <p>Assignment notifications are prepared but disabled. A reward is usable only for classes explicitly enabled below and for approved ticket products.</p>
+            <p>Bookings are £0, consume capacity atomically, and do not earn loyalty stamps.</p>
+          </article>
+        </div>
+        <div id="admissionRewardList" class="ranch-stack"><div class="ranch-loading">Loading rewards…</div></div>
+        <article class="ranch-card"><h3>Class eligibility</h3><p>Every programme defaults to ineligible. Enable only the intended classes.</p><div id="admissionRewardEligibility" class="ranch-stack">Loading classes…</div></article>
       </section>
 
       <section class="ranch-view" data-view-panel="operations">
