@@ -300,7 +300,7 @@
     loadBootstrap(false,{force:true,silent:false}).catch(()=>{});
   });
 
-  const titles={overview:'HQ Home',classes:'Classes','class-passes':'Class Passes',reviews:'Reviews',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
+  const titles={overview:'HQ Home',classes:'Classes','class-passes':'Class Passes',reviews:'Reviews',bookings:'Bookings',customers:'Customers','merch-orders':'Merch Orders',emails:'Emails & Mailing List',promotions:'Promotions & Rewards','admission-rewards':'Admission Rewards',operations:'Operations','private-events':'Private Events',media:'Media',health:'System Health',diagnostics:'Diagnostics',settings:'Settings'};
   function showView(name){
     state.currentView=name;
     $$('.ranch-view').forEach(panel=>panel.classList.toggle('active',panel.dataset.viewPanel===name));
@@ -316,6 +316,7 @@
     if(name==='merch-orders')loadMerchOrders();
     if(name==='emails')loadEmailCentre();
     if(name==='promotions')loadPromotions();
+    if(name==='admission-rewards')loadAdmissionRewards();
     if(name==='operations')renderOperationsFromBootstrap();
     if(name==='private-events')loadPrivateEvents();
     if(name==='media')loadMedia();
@@ -1427,6 +1428,24 @@ Type REFUNDED to continue.`);
     const payload={action:'CREATE',name:$('#promoAdminName').value.trim(),code:$('#promoAdminCode').value.trim(),discount_type:type,discount_value:type==='FIXED'?Math.round(Number($('#promoAdminValue').value||0)*100):Number($('#promoAdminValue').value||0),starts_at:$('#promoAdminStart').value||'',ends_at:$('#promoAdminEnd').value||'',max_uses:$('#promoAdminMaxUses').value||null,uses_per_customer:$('#promoAdminPerCustomer').value||1};
     try{await jsonFetch(`${ADMIN_API_PREFIX}/promotions`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});toast('Promotion created.','success');$('#promoAdminName').value='';$('#promoAdminCode').value='';await loadPromotions();}catch(error){toast(error.message,'error');}
   }
+  async function loadAdmissionRewards(){
+    const list=$('#admissionRewardList'),eligibility=$('#admissionRewardEligibility');if(!list||!eligibility)return;
+    list.innerHTML='<div class="ranch-loading">Loading rewards…</div>';eligibility.innerHTML='<div class="ranch-loading">Loading classes…</div>';
+    try{
+      const data=await jsonFetch(`${ADMIN_API_PREFIX}/admission-rewards`,{cache:'no-store'});state.admissionRewards=data;
+      const program=$('#admissionRewardProgram'),member=$('#admissionRewardMember');
+      if(program)program.innerHTML='<option value="">Choose a programme</option>'+data.programs.filter(p=>Number(p.active)).map(p=>`<option value="${esc(p.id)}" data-default="${Number(p.default_admissions)}">${esc(p.name)}</option>`).join('');
+      if(member)member.innerHTML='<option value="">Choose a member</option>'+data.members.map(m=>`<option value="${esc(m.customer_id)}">${esc(m.name)} — ${esc(m.email)}</option>`).join('');
+      list.innerHTML=data.rewards.length?data.rewards.map(r=>`<article class="ranch-card"><div class="ranch-row"><div><h3>${esc(r.customer_name)} — ${esc(r.program_name)}</h3><p>${Number(r.remaining_admissions)} / ${Number(r.original_allocation)} admissions · ${esc(r.derived_status)} · expires ${esc(r.expires_on)}</p><small>Customer-linked reward. Assignment notifications disabled.</small></div><div class="ranch-row"><button class="ranch-button secondary" data-reward-adjust="${esc(r.id)}">Adjust</button><button class="ranch-button secondary" data-reward-extend="${esc(r.id)}">Extend</button><button class="ranch-button secondary" data-reward-revoke="${esc(r.id)}" ${r.status==='REVOKED'?'disabled':''}>Revoke</button></div></div></article>`).join(''):emptyPanel('No admission rewards assigned.');
+      eligibility.innerHTML=data.classes.length?data.classes.map(c=>`<label class="class-pass-eligibility-row"><span><strong>${esc(c.title)}</strong><small>${esc(fmt(c.starts_at))} · ${esc(c.venue)} · ${esc(c.program_name)}</small></span><input type="checkbox" data-admission-eligibility="${esc(c.id)}" data-program-id="${esc(c.program_id)}" ${Number(c.eligible)?'checked':''}></label>`).join(''):emptyPanel('No classes available.');
+    }catch(error){list.innerHTML=lockedPanel('Admission rewards unavailable',error.message);eligibility.innerHTML='';}
+  }
+  async function admissionRewardAction(payload){return jsonFetch(`${ADMIN_API_PREFIX}/admission-rewards`,{method:'POST',body:JSON.stringify({...payload,operation_id:crypto.randomUUID()})});}
+  $('#admissionRewardProgram')?.addEventListener('change',event=>{const selected=event.target.selectedOptions[0],input=$('#admissionRewardAssignForm [name="admissions"]');if(input&&selected?.dataset.default)input.value=selected.dataset.default;});
+  $('#admissionRewardAssignForm')?.addEventListener('submit',async event=>{event.preventDefault();const form=event.currentTarget,fd=new FormData(form),button=form.querySelector('button');button.disabled=true;try{await admissionRewardAction({action:'ASSIGN_REWARD',customer_id:fd.get('customer_id'),program_id:fd.get('program_id'),admissions:Number(fd.get('admissions')),active_from:fd.get('active_from'),expires_on:fd.get('expires_on'),source_type:fd.get('source_type'),source_reference:fd.get('source_reference'),reason:fd.get('reason')});toast('Admission reward assigned. No email was sent.','success');form.reset();await loadAdmissionRewards();}catch(error){toast(error.message,'error');button.disabled=false;}});
+  $('#refreshAdmissionRewards')?.addEventListener('click',loadAdmissionRewards);
+  document.addEventListener('change',async event=>{const input=event.target.closest?.('[data-admission-eligibility]');if(!input)return;const previous=!input.checked,reason=prompt(`Required reason to mark this class ${input.checked?'eligible':'ineligible'}:`);if(!reason?.trim()){input.checked=previous;return;}input.disabled=true;try{await admissionRewardAction({action:'SET_CLASS_ELIGIBILITY',program_id:input.dataset.programId,class_id:input.dataset.admissionEligibility,eligible:input.checked,reason:reason.trim()});toast('Admission eligibility updated.','success');}catch(error){input.checked=previous;toast(error.message,'error');}finally{input.disabled=false;}});
+  document.addEventListener('click',async event=>{const adjust=event.target.closest?.('[data-reward-adjust]'),extend=event.target.closest?.('[data-reward-extend]'),revoke=event.target.closest?.('[data-reward-revoke]');if(!adjust&&!extend&&!revoke)return;const rewardId=adjust?.dataset.rewardAdjust||extend?.dataset.rewardExtend||revoke?.dataset.rewardRevoke;let payload;if(adjust){const amount=Number(prompt('Whole admission adjustment (for example 1 or -1):'));if(!Number.isInteger(amount)||!amount)return;const reason=prompt('Required audit reason:');if(!reason?.trim())return;payload={action:'ADJUST_ADMISSIONS',reward_id:rewardId,amount,reason};}else if(extend){const expires_on=prompt('New expiry date (YYYY-MM-DD):');if(!expires_on)return;const reason=prompt('Required audit reason:');if(!reason?.trim())return;payload={action:'EXTEND_EXPIRY',reward_id:rewardId,expires_on,reason};}else{if(!confirm('Revoke this reward? Existing bookings and ledger history remain.'))return;const reason=prompt('Required audit reason:');if(!reason?.trim())return;payload={action:'REVOKE',reward_id:rewardId,reason};}try{await admissionRewardAction(payload);toast('Admission reward updated.','success');await loadAdmissionRewards();}catch(error){toast(error.message,'error');}});
   async function loadCustomers(){
     if(!state.bootstrap)await loadBootstrap(false,{silent:true}).catch(()=>null);
     const box=$('#ranchCustomers');if(!box)return;

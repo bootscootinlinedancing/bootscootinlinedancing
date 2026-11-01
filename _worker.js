@@ -1158,6 +1158,163 @@ async function createClassCreditBooking(request,env){
   return json({ok:true,reference:booking.reference,status:'PAID',secure_token:booking.secure_token,customer_token:booking.customer_token,total_pence:0,payment_enabled:false,class_credit_used:true},201);
 }
 
+function admissionRewardDerivedStatus(reward,balance,today=londonCalendarDate()){
+  if(reward.status==='REVOKED')return 'REVOKED';
+  if(String(reward.active_from)>today)return 'SCHEDULED';
+  if(String(reward.expires_on)<today)return 'EXPIRED';
+  return Number(balance)>0?'ACTIVE':'USED';
+}
+
+async function memberAdmissionRewards(env,session,{includeClasses=false}={}){
+  const result=await env.BOOKINGS_DB.prepare(`
+    SELECT r.*,p.code program_code,p.name program_name,p.description,
+      COALESCE((SELECT SUM(l.amount) FROM admission_reward_ledger l WHERE l.reward_id=r.id),0) remaining_admissions
+    FROM customer_admission_rewards r
+    JOIN admission_reward_programs p ON p.id=r.program_id
+    WHERE r.member_id=? AND r.customer_id=?
+    ORDER BY r.expires_on,r.assigned_at,r.id
+  `).bind(session.member_id,session.customer_id).all();
+  const today=londonCalendarDate();
+  const rewards=(result.results||[]).map(reward=>({
+    id:reward.id,program_code:reward.program_code,program_name:reward.program_name,
+    description:reward.description||'',original_allocation:Number(reward.original_allocation),
+    remaining_admissions:Number(reward.remaining_admissions||0),active_from:reward.active_from,
+    expires_on:reward.expires_on,status:admissionRewardDerivedStatus(reward,reward.remaining_admissions,today)
+  }));
+  let classes=[];
+  if(includeClasses&&rewards.some(reward=>reward.status==='ACTIVE')){
+    const rows=await env.BOOKINGS_DB.prepare(`
+      SELECT DISTINCT c.id,c.title,c.starts_at,c.ends_at,c.venue,c.location,p.code program_code,
+        tp.product_code ticket_product_code,tp.price_pence ticket_price_pence
+      FROM customer_admission_rewards r
+      JOIN admission_reward_programs p ON p.id=r.program_id AND p.active=1
+      JOIN admission_reward_class_eligibility e ON e.program_id=p.id AND e.eligible=1
+      JOIN classes c ON c.id=e.class_id AND c.status='open' AND c.starts_at>?
+      JOIN class_ticket_products tp ON tp.class_id=c.id AND tp.product_code='CLASS_SOCIAL' AND tp.enabled=1
+      JOIN admission_reward_ticket_eligibility te ON te.program_id=p.id AND te.ticket_product_code=tp.product_code AND te.eligible=1
+      WHERE r.member_id=? AND r.customer_id=? AND r.status='ACTIVE'
+        AND date(?) BETWEEN date(r.active_from) AND date(r.expires_on)
+        AND COALESCE((SELECT SUM(l.amount) FROM admission_reward_ledger l WHERE l.reward_id=r.id),0)>0
+      ORDER BY c.starts_at
+    `).bind(new Date().toISOString(),session.member_id,session.customer_id,today).all();
+    classes=rows.results||[];
+  }
+  return {rewards,classes};
+}
+
+async function memberAdmissionRewardList(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to view your admission rewards.'},401);
+  return json({ok:true,...await memberAdmissionRewards(env,session,{includeClasses:true})});
+}
+
+async function createAdmissionRewardBooking(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
+  const session=await memberSession(request,env);
+  if(!session)return json({error:'Please log in to use an admission reward.'},401);
+  if(!sameOriginWrite(request))return json({error:'This booking request could not be verified.'},403);
+  const body=await request.json().catch(()=>null);
+  const rewardId=clean(body?.reward_id,120),classId=clean(body?.class_id,120),operationId=classCreditOperationId(body?.operation_id);
+  if(!rewardId||!classId||!operationId||body?.terms_accepted!==true)return json({error:'Choose an eligible class and accept the booking terms.'},400);
+  const operationKey=`admission-reward-booking:${session.member_id}:${operationId}`;
+  const digest=await memberSha256Hex(operationKey);
+  const bookingId=`arb-${digest}`,ledgerId=`arl-${digest}`,claimId=`arc-${digest}`,auditId=`ara-${digest}`;
+  const existing=await env.BOOKINGS_DB.prepare(`
+    SELECT b.* FROM admission_reward_booking_claims claim JOIN bookings b ON b.id=claim.booking_id
+    WHERE claim.idempotency_key=? AND claim.reward_id=? AND b.customer_id=?
+  `).bind(operationKey,rewardId,session.customer_id).first();
+  if(existing){
+    if(existing.class_id!==classId)return json({error:'That operation reference was already used for a different class.'},409);
+    return json({ok:true,idempotent:true,reference:existing.reference,status:existing.status,secure_token:existing.secure_token,customer_token:existing.customer_token,total_pence:0,payment_enabled:false,admission_reward_used:true});
+  }
+  const context=await env.BOOKINGS_DB.prepare(`
+    SELECT r.id reward_id,r.program_id,c.*,tp.product_code,tp.price_pence ticket_price_pence,tp.starts_at ticket_starts_at,tp.ends_at ticket_ends_at,tp.entry_at ticket_entry_at
+    FROM customer_admission_rewards r
+    JOIN admission_reward_programs p ON p.id=r.program_id AND p.active=1
+    JOIN admission_reward_class_eligibility e ON e.program_id=p.id AND e.class_id=? AND e.eligible=1
+    JOIN classes c ON c.id=e.class_id AND c.status='open' AND c.starts_at>?
+    JOIN class_ticket_products tp ON tp.class_id=c.id AND tp.product_code='CLASS_SOCIAL' AND tp.enabled=1
+    JOIN admission_reward_ticket_eligibility te ON te.program_id=p.id AND te.ticket_product_code=tp.product_code AND te.eligible=1
+    WHERE r.id=? AND r.member_id=? AND r.customer_id=? AND r.status='ACTIVE'
+      AND date(?) BETWEEN date(r.active_from) AND date(r.expires_on)
+      AND COALESCE((SELECT SUM(l.amount) FROM admission_reward_ledger l WHERE l.reward_id=r.id),0)>0
+  `).bind(classId,new Date().toISOString(),rewardId,session.member_id,session.customer_id,londonCalendarDate()).first();
+  if(!context)return json({error:'This reward is not active or this class is not eligible.'},409);
+
+  const holdId=crypto.randomUUID(),holdExpiry=new Date(Date.now()+15*60*1000).toISOString(),now=new Date().toISOString();
+  const held=await env.BOOKINGS_DB.prepare(`
+    INSERT INTO booking_holds(id,class_id,quantity,expires_at,ticket_type,ticket_price_pence,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
+    SELECT ?,c.id,1,?,NULL,?,'CLASS_SOCIAL','Class + Social',?,?,? FROM classes c
+    WHERE c.id=? AND c.status='open' AND c.starts_at>?
+      AND c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND julianday(h.expires_at)>julianday('now')),0)
+        -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)>=1
+  `).bind(holdId,holdExpiry,Number(context.ticket_price_pence||context.price_pence||0),context.ticket_starts_at||context.starts_at,context.ticket_ends_at||context.ends_at,context.ticket_entry_at||context.starts_at,classId,now).run();
+  if(!Number(held?.meta?.changes||0))return json({error:'This class has just filled. Your reward has not been used.'},409);
+
+  const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const reference=`AR-${digest.slice(0,12).toUpperCase()}`;
+  try{
+    const statements=[
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO bookings(
+          id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,quantity,
+          amount_pence,original_amount_pence,discount_pence,status,payment_provider,secure_token,customer_token,
+          terms_accepted_at,paid_at,retention_delete_after,ticket_type,ticket_product_code,ticket_product_label,
+          ticket_unit_price_pence,ticket_starts_at,ticket_ends_at,ticket_entry_at
+        )
+        SELECT ?,?,?,?,r.customer_id,?,?,?,1,0,?,?,'PAID','ADMISSION_REWARD',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,datetime('now','+24 months'),NULL,
+          'CLASS_SOCIAL','Class + Social',?,?,?,?
+        FROM customer_admission_rewards r JOIN admission_reward_programs p ON p.id=r.program_id AND p.active=1
+        WHERE r.id=? AND r.member_id=? AND r.customer_id=? AND r.status='ACTIVE'
+          AND date(?) BETWEEN date(r.active_from) AND date(r.expires_on)
+          AND EXISTS(SELECT 1 FROM admission_reward_class_eligibility e WHERE e.program_id=r.program_id AND e.class_id=? AND e.eligible=1)
+          AND EXISTS(SELECT 1 FROM admission_reward_ticket_eligibility e WHERE e.program_id=r.program_id AND e.ticket_product_code='CLASS_SOCIAL' AND e.eligible=1)
+          AND COALESCE((SELECT SUM(l.amount) FROM admission_reward_ledger l WHERE l.reward_id=r.id),0)>0
+          AND NOT EXISTS(SELECT 1 FROM admission_reward_booking_claims claim WHERE claim.reward_id=r.id AND claim.class_id=? AND claim.status='CONFIRMED')
+          AND EXISTS(SELECT 1 FROM booking_holds h WHERE h.id=? AND h.class_id=? AND julianday(h.expires_at)>julianday('now'))
+      `).bind(bookingId,reference,classId,holdId,session.name,session.email,session.phone||'',Number(context.ticket_price_pence||0),Number(context.ticket_price_pence||0),secureToken,customerToken,Number(context.ticket_price_pence||0),context.ticket_starts_at||context.starts_at,context.ticket_ends_at||context.ends_at,context.ticket_entry_at||context.starts_at,rewardId,session.member_id,session.customer_id,londonCalendarDate(),classId,classId,holdId,classId),
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO admission_reward_ledger(id,reward_id,booking_id,class_id,amount,event_type,reason,actor_type,actor_id,idempotency_key)
+        SELECT ?,r.id,b.id,b.class_id,-1,'REDEMPTION','Complimentary class admission booked','MEMBER',r.member_id,?
+        FROM customer_admission_rewards r JOIN bookings b ON b.id=? AND b.customer_id=r.customer_id AND b.payment_provider='ADMISSION_REWARD' AND b.status='PAID'
+        WHERE r.id=? AND r.member_id=?
+      `).bind(ledgerId,operationKey,bookingId,rewardId,session.member_id),
+      env.BOOKINGS_DB.prepare(`
+        INSERT OR IGNORE INTO admission_reward_booking_claims(id,reward_id,booking_id,class_id,status,redemption_ledger_id,idempotency_key)
+        SELECT ?,r.id,b.id,b.class_id,'CONFIRMED',l.id,? FROM customer_admission_rewards r
+        JOIN admission_reward_ledger l ON l.reward_id=r.id AND l.id=?
+        JOIN bookings b ON b.id=? AND b.customer_id=r.customer_id AND b.payment_provider='ADMISSION_REWARD' AND b.status='PAID'
+        WHERE r.id=? AND r.member_id=?
+      `).bind(claimId,operationKey,ledgerId,bookingId,rewardId,session.member_id),
+      env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND EXISTS(SELECT 1 FROM admission_reward_booking_claims WHERE booking_id=? AND status='CONFIRMED')`).bind(holdId,bookingId),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO booking_attendees(id,booking_id,class_id,place_number,role,snapshot_name,snapshot_email,normalized_email,customer_id)
+        SELECT ?,b.id,b.class_id,1,'LEAD',b.customer_name,b.customer_email,lower(trim(b.customer_email)),b.customer_id FROM bookings b
+        WHERE b.id=? AND b.payment_provider='ADMISSION_REWARD'`).bind(crypto.randomUUID(),bookingId),
+      bookingConfirmationInsert(env,bookingId),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO admission_reward_audit(id,reward_id,program_id,action,reason,actor,metadata_json,idempotency_key)
+        SELECT ?,r.id,r.program_id,'REDEEMED','Member booked an eligible complimentary admission',?,json_object('booking_id',?,'class_id',?),?
+        FROM customer_admission_rewards r JOIN admission_reward_booking_claims claim ON claim.reward_id=r.id AND claim.booking_id=?
+      `).bind(auditId,session.member_id,bookingId,classId,`audit:${operationKey}`,bookingId)
+    ];
+    await env.BOOKINGS_DB.batch(statements);
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId).run().catch(()=>{});
+    throw error;
+  }
+  const booking=await env.BOOKINGS_DB.prepare(`SELECT b.* FROM bookings b JOIN admission_reward_booking_claims claim ON claim.booking_id=b.id WHERE b.id=? AND claim.reward_id=? AND claim.status='CONFIRMED'`).bind(bookingId,rewardId).first();
+  if(!booking){
+    await env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId).run().catch(()=>{});
+    await reconcileClassSold(env,classId);
+    return json({error:'That place or reward admission was just taken. Please refresh and try again.'},409);
+  }
+  await reconcileClassSold(env,classId);
+  const confirmed=await bookingWithClass(env,booking.id);
+  if(confirmed)await deliverBookingNotification(env,confirmed,'BOOKING_CONFIRMED').catch(()=>{});
+  return json({ok:true,reference:booking.reference,status:'PAID',secure_token:booking.secure_token,customer_token:booking.customer_token,total_pence:0,payment_enabled:false,admission_reward_used:true},201);
+}
+
 
 function repairMemberNavigationHtml(html){
   const desired = `<details class="menu45-section">
@@ -3500,9 +3657,31 @@ async function cancelBooking(request,env){
     const returned=await env.BOOKINGS_DB.prepare(`SELECT id FROM class_pass_credit_ledger WHERE idempotency_key=?`).bind(`class-pass-credit-return:${booking.id}`).first();
     return json({ok:true,idempotent:true,band:booking.cancellation_band||'',credit_returned:Boolean(returned),message:returned?'This booking was already cancelled and its class credit was returned once.':'This booking was already cancelled. No additional class credit was returned.'});
   }
+  if(booking.payment_provider==='ADMISSION_REWARD'&&booking.status==='CANCELLED'){
+    const restored=await env.BOOKINGS_DB.prepare(`SELECT restoration_ledger_id FROM admission_reward_booking_claims WHERE booking_id=?`).bind(booking.id).first();
+    return json({ok:true,idempotent:true,band:booking.cancellation_band||'',admission_restored:Boolean(restored?.restoration_ledger_id),message:restored?.restoration_ledger_id?'This booking was already cancelled and the admission was restored once.':'This booking was already cancelled. No additional admission was restored.'});
+  }
   if(!['PENDING','PAID'].includes(booking.status))return json({error:'This booking can no longer be cancelled online.'},409);
 
   const hours=(new Date(booking.starts_at)-new Date())/3600000;
+  if(booking.payment_provider==='ADMISSION_REWARD'){
+    const restore=hours>=24,band=restore?'ADMISSION_REWARD_RETURN':'LATE_CANCELLATION';
+    const restoreId=crypto.randomUUID(),restoreKey=`admission-reward-restore:${booking.id}`;
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='CANCELLED',cancellation_requested_at=CURRENT_TIMESTAMP,cancellation_band=?,refund_status=? WHERE id=? AND status='PAID' AND payment_provider='ADMISSION_REWARD'`).bind(band,restore?'ADMISSION_REWARD_RETURNED':'NO_ADMISSION_RETURN',booking.id),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO admission_reward_ledger(id,reward_id,booking_id,class_id,amount,event_type,reason,actor_type,actor_id,idempotency_key)
+        SELECT ?,claim.reward_id,b.id,b.class_id,1,'RESTORATION','Admission restored for cancellation at least 24 hours before class','MEMBER',r.member_id,?
+        FROM admission_reward_booking_claims claim JOIN customer_admission_rewards r ON r.id=claim.reward_id JOIN bookings b ON b.id=claim.booking_id
+        WHERE claim.booking_id=? AND claim.status='CONFIRMED' AND b.status='CANCELLED' AND ?=1`).bind(restoreId,restoreKey,booking.id,restore?1:0),
+      env.BOOKINGS_DB.prepare(`UPDATE admission_reward_booking_claims SET status='RELEASED',restoration_ledger_id=(SELECT id FROM admission_reward_ledger WHERE idempotency_key=?),released_at=CURRENT_TIMESTAMP
+        WHERE booking_id=? AND status='CONFIRMED' AND EXISTS(SELECT 1 FROM admission_reward_ledger WHERE idempotency_key=?)`).bind(restoreKey,booking.id,restoreKey),
+      env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(booking.hold_id),
+      env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(booking.customer_email,'CUSTOMER_CANCELLED_ADMISSION_REWARD','booking',booking.id,JSON.stringify({band,admission_restored:restore}))
+    ]);
+    await reconcileClassSold(env,booking.class_id);
+    const restored=restore&&Number(results?.[1]?.meta?.changes||0)===1;
+    return json({ok:true,band,refund_status:restore?'ADMISSION_REWARD_RETURNED':'NO_ADMISSION_RETURN',admission_restored:restored,message:restore?'Your booking is cancelled and one complimentary admission has been restored to the original reward. Its expiry date has not changed.':'Your late cancellation is recorded. The complimentary admission has not been restored.'});
+  }
   if(booking.payment_provider==='CLASS_PASS'){
     const returnCredit=hours>=24;
     const band=returnCredit?'CLASS_CREDIT_RETURN':'LATE_CANCELLATION';
@@ -3546,6 +3725,20 @@ async function cancelBooking(request,env){
       ?'Your cancellation is recorded. You are eligible for one class transfer or class credit.'
       :'Your late cancellation is recorded. A refund or credit is normally considered only if the place is resold or exceptional circumstances are agreed.';
   return json({ok:true,band,refund_status:refundStatus,message});
+}
+
+async function restoreAdmissionRewardForCancelledClass(env,booking,actor){
+  if(booking?.payment_provider!=='ADMISSION_REWARD')return false;
+  const key=`admission-reward-class-cancel:${booking.id}`,ledgerId=crypto.randomUUID();
+  const results=await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO admission_reward_ledger(id,reward_id,booking_id,class_id,amount,event_type,reason,actor_type,actor_id,idempotency_key)
+      SELECT ?,claim.reward_id,b.id,b.class_id,1,'RESTORATION','Admission restored because the class was cancelled','SYSTEM',?,?
+      FROM admission_reward_booking_claims claim JOIN bookings b ON b.id=claim.booking_id
+      WHERE claim.booking_id=? AND claim.status='CONFIRMED' AND b.status='CANCELLED'`).bind(ledgerId,actor||'HQ',key,booking.id),
+    env.BOOKINGS_DB.prepare(`UPDATE admission_reward_booking_claims SET status='RELEASED',restoration_ledger_id=(SELECT id FROM admission_reward_ledger WHERE idempotency_key=?),released_at=CURRENT_TIMESTAMP
+      WHERE booking_id=? AND status='CONFIRMED' AND EXISTS(SELECT 1 FROM admission_reward_ledger WHERE idempotency_key=?)`).bind(key,booking.id,key)
+  ]);
+  return Number(results?.[0]?.meta?.changes||0)===1;
 }
 
 
@@ -3933,6 +4126,9 @@ async function memberMe(request,env){
     FROM merch_orders WHERE lower(customer_email)=lower(?) ORDER BY created_at DESC LIMIT 12
   `).bind(session.email).all();
   const crm=await env.BOOKINGS_DB.prepare(`SELECT birthday FROM customer_crm_profiles WHERE lower(customer_key)=lower(?)`).bind(session.email).first().catch(()=>null);
+  let admissionRewards={rewards:[],classes:[]};
+  try{admissionRewards=await memberAdmissionRewards(env,session,{includeClasses:true});}
+  catch(error){if(!String(error?.message||error).includes('no such table: admission_reward_'))throw error;}
 
   // Member totals are derived from genuine live activity, never preview/demo figures.
   const classesAttended=await uniqueAttendanceCountForCustomer(env,session.customer_id,session.email).catch(()=>0);
@@ -3957,7 +4153,8 @@ async function memberMe(request,env){
     phone:session.phone||'',birthday:crm?.birthday||'',birthday_visible:Boolean(session.birthday_visible),marketing_consent:Boolean(session.marketing_consent),
     trail_identity:['cowgirl','cowboy','trail_rider'].includes(session.trail_identity)?session.trail_identity:'trail_rider',
     trail_rank:rank,boot_points:bootPoints,classes_attended:classesAttended,current_streak:0,dances_learned:0,is_paused:Boolean(session.is_paused)
-  },loyalty,bookings:(bookings.results||[]).map(row=>withClassCalendarStatus(row,currentInstant)),orders:orders.results||[]});
+  },loyalty,admission_rewards:admissionRewards.rewards,admission_reward_classes:admissionRewards.classes,
+    bookings:(bookings.results||[]).map(row=>withClassCalendarStatus(row,currentInstant)),orders:orders.results||[]});
 }
 async function memberProfileUpdate(request,env){
   await ensureMemberSchema(env);
@@ -5069,6 +5266,7 @@ async function adminClasses(request, env) {
         env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`).bind(check.state.email,'CLASS_CANCELLED','class',id,JSON.stringify({affected_bookings:active.length}))
       ]);
       for(const original of active){
+        await restoreAdmissionRewardForCancelledClass(env,original,check.state.email);
         const cancelled={...original,status:'CANCELLED'};
         await deliverBookingNotification(env,cancelled,'CLASS_CANCELLED');
       }
@@ -7345,6 +7543,104 @@ async function publicMedia(request, env, url) {
 }
 
 
+async function adminAdmissionRewards(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  const actor=check.state.email||'hq';
+  if(request.method==='GET'){
+    const [programs,rewards,classes,members]=await Promise.all([
+      env.BOOKINGS_DB.prepare(`SELECT * FROM admission_reward_programs ORDER BY active DESC,name`).all(),
+      env.BOOKINGS_DB.prepare(`SELECT r.*,p.code program_code,p.name program_name,c.name customer_name,c.email customer_email,
+        COALESCE((SELECT SUM(l.amount) FROM admission_reward_ledger l WHERE l.reward_id=r.id),0) remaining_admissions
+        FROM customer_admission_rewards r JOIN admission_reward_programs p ON p.id=r.program_id JOIN customers c ON c.id=r.customer_id
+        ORDER BY r.assigned_at DESC LIMIT 500`).all(),
+      env.BOOKINGS_DB.prepare(`SELECT c.id,c.title,c.venue,c.starts_at,c.status,p.id program_id,p.name program_name,COALESCE(e.eligible,0) eligible
+        FROM classes c CROSS JOIN admission_reward_programs p LEFT JOIN admission_reward_class_eligibility e ON e.class_id=c.id AND e.program_id=p.id
+        WHERE p.active=1 ORDER BY c.starts_at DESC LIMIT 600`).all(),
+      env.BOOKINGS_DB.prepare(`SELECT c.id customer_id,c.name,c.email,m.id member_id FROM customers c JOIN member_accounts m ON m.customer_id=c.id WHERE m.access_state='ACTIVE' AND m.verified_at IS NOT NULL ORDER BY c.name LIMIT 1000`).all()
+    ]);
+    const today=londonCalendarDate();
+    return json({programs:programs.results||[],rewards:(rewards.results||[]).map(r=>({...r,remaining_admissions:Number(r.remaining_admissions||0),derived_status:admissionRewardDerivedStatus(r,r.remaining_admissions,today)})),classes:classes.results||[],members:members.results||[]});
+  }
+  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
+  const body=await request.json().catch(()=>null);if(!body)return json({error:'Reward request could not be read.'},400);
+  const action=clean(body.action,40),operationId=classCreditOperationId(body.operation_id);
+  if(!operationId||!clean(body.reason,300))return json({error:'A stable operation reference and audit reason are required.'},400);
+  const reason=clean(body.reason,300),auditKey=`admission-admin:${operationId}`;
+  const duplicate=await env.BOOKINGS_DB.prepare(`SELECT id FROM admission_reward_audit WHERE idempotency_key=?`).bind(auditKey).first();
+  if(duplicate)return json({ok:true,idempotent:true});
+  if(action==='CREATE_PROGRAM'){
+    const code=clean(body.code,50).toUpperCase().replace(/[^A-Z0-9_]/g,'_'),name=clean(body.name,100),allocation=Math.max(1,Math.min(100,Number(body.default_admissions)||1));
+    if(!code||!name)return json({error:'Programme name and code are required.'},400);
+    const id=crypto.randomUUID();
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT INTO admission_reward_programs(id,code,name,description,default_admissions,active,notification_enabled) VALUES(?,?,?,?,?,1,0)`).bind(id,code,name,clean(body.description,500)||null,allocation),
+      env.BOOKINGS_DB.prepare(`INSERT INTO admission_reward_audit(id,program_id,action,reason,actor,metadata_json,idempotency_key) VALUES(?,?,'PROGRAM_CREATED',?,?,?,?)`).bind(crypto.randomUUID(),id,reason,actor,JSON.stringify({code,name,default_admissions:allocation}),auditKey)
+    ]);
+    return json({ok:true,id},201);
+  }
+  if(action==='ASSIGN_REWARD'){
+    const customerId=clean(body.customer_id,120),programId=clean(body.program_id,120),allocation=Math.max(1,Math.min(100,Number(body.admissions)||0));
+    const activeFrom=clean(body.active_from,10),expiresOn=clean(body.expires_on,10);
+    if(!customerId||!programId||!allocation||!/^\d{4}-\d{2}-\d{2}$/.test(activeFrom)||!/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)||expiresOn<activeFrom)return json({error:'Choose a verified member, valid programme, allocation and date range.'},400);
+    const identity=await env.BOOKINGS_DB.prepare(`SELECT c.id customer_id,m.id member_id FROM customers c JOIN member_accounts m ON m.customer_id=c.id AND m.access_state='ACTIVE' AND m.verified_at IS NOT NULL WHERE c.id=?`).bind(customerId).first();
+    if(!identity)return json({error:'Rewards can only be assigned to a verified active Member Zone identity.'},409);
+    const rewardId=crypto.randomUUID(),ledgerId=crypto.randomUUID();
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT INTO customer_admission_rewards(id,program_id,customer_id,member_id,original_allocation,active_from,original_expires_on,expires_on,source_type,source_reference,notes,assigned_by)
+        SELECT ?,p.id,?,?,?,?,?,?,?, ?,?,? FROM admission_reward_programs p WHERE p.id=? AND p.active=1`).bind(rewardId,customerId,identity.member_id,allocation,activeFrom,expiresOn,expiresOn,['ADMIN','COMPETITION','GOODWILL','OTHER'].includes(body.source_type)?body.source_type:'ADMIN',clean(body.source_reference,160)||null,clean(body.notes,500)||null,actor,programId),
+      env.BOOKINGS_DB.prepare(`INSERT INTO admission_reward_ledger(id,reward_id,amount,event_type,reason,actor_type,actor_id,idempotency_key)
+        SELECT ?,id,?,'ALLOCATION',?,'ADMIN',?,? FROM customer_admission_rewards WHERE id=?`).bind(ledgerId,allocation,reason,actor,`allocation:${operationId}`,rewardId),
+      env.BOOKINGS_DB.prepare(`INSERT INTO admission_reward_notifications(id,reward_id,notification_type,status,idempotency_key)
+        SELECT ?,id,'REWARD_ASSIGNED','DISABLED',? FROM customer_admission_rewards WHERE id=?`).bind(crypto.randomUUID(),`reward-assigned:${rewardId}`,rewardId),
+      env.BOOKINGS_DB.prepare(`INSERT INTO admission_reward_audit(id,reward_id,program_id,action,reason,actor,metadata_json,idempotency_key)
+        SELECT ?,r.id,r.program_id,'ASSIGNED',?,?,json_object('admissions',?,'active_from',?,'expires_on',?),? FROM customer_admission_rewards r WHERE r.id=?`).bind(crypto.randomUUID(),reason,actor,allocation,activeFrom,expiresOn,auditKey,rewardId)
+    ]);
+    const created=await env.BOOKINGS_DB.prepare(`SELECT id FROM customer_admission_rewards WHERE id=?`).bind(rewardId).first();
+    return created?json({ok:true,id:rewardId,notification_status:'DISABLED'},201):json({error:'The programme is no longer active.'},409);
+  }
+  if(action==='SET_CLASS_ELIGIBILITY'){
+    const programId=clean(body.program_id,120),classId=clean(body.class_id,120),eligible=body.eligible===true?1:0;
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT INTO admission_reward_class_eligibility(program_id,class_id,eligible,reason,updated_by,updated_at) VALUES(?,?,?,?,?,CURRENT_TIMESTAMP)
+        ON CONFLICT(program_id,class_id) DO UPDATE SET eligible=excluded.eligible,reason=excluded.reason,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP`).bind(programId,classId,eligible,reason,actor),
+      env.BOOKINGS_DB.prepare(`INSERT INTO admission_reward_audit(id,program_id,action,reason,actor,metadata_json,idempotency_key) VALUES(?,?,'CLASS_ELIGIBILITY_CHANGED',?,?,json_object('class_id',?,'eligible',?),?)`).bind(crypto.randomUUID(),programId,reason,actor,classId,eligible,auditKey)
+    ]);
+    return json({ok:true});
+  }
+  const rewardId=clean(body.reward_id,120);
+  if(action==='EXTEND_EXPIRY'){
+    const expiresOn=clean(body.expires_on,10);
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE customer_admission_rewards SET expires_on=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND date(?)>=date(expires_on) AND date(?)>=date(active_from)`).bind(expiresOn,rewardId,expiresOn,expiresOn),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO admission_reward_audit(id,reward_id,program_id,action,reason,actor,metadata_json,idempotency_key)
+        SELECT ?,r.id,r.program_id,'EXPIRY_EXTENDED',?,?,json_object('expires_on',?),? FROM customer_admission_rewards r WHERE r.id=? AND r.expires_on=?`).bind(crypto.randomUUID(),reason,actor,expiresOn,auditKey,rewardId,expiresOn)
+    ]);
+    return Number(results?.[0]?.meta?.changes||0)?json({ok:true}):json({error:'Expiry can only be extended to a valid later date.'},409);
+  }
+  if(action==='ADJUST_ADMISSIONS'){
+    const amount=Number(body.amount);
+    if(!Number.isInteger(amount)||!amount||Math.abs(amount)>100)return json({error:'Enter a non-zero whole admission adjustment.'},400);
+    const ledgerId=crypto.randomUUID();
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`INSERT INTO admission_reward_ledger(id,reward_id,amount,event_type,reason,actor_type,actor_id,idempotency_key)
+        SELECT ?,r.id,?,'ADMIN_ADJUSTMENT',?,'ADMIN',?,? FROM customer_admission_rewards r
+        WHERE r.id=? AND r.status='ACTIVE' AND COALESCE((SELECT SUM(l.amount) FROM admission_reward_ledger l WHERE l.reward_id=r.id),0)+?>=0`).bind(ledgerId,amount,reason,actor,`adjustment:${operationId}`,rewardId,amount),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO admission_reward_audit(id,reward_id,program_id,action,reason,actor,metadata_json,idempotency_key)
+        SELECT ?,r.id,r.program_id,'ADMISSIONS_ADJUSTED',?,?,json_object('amount',?),? FROM customer_admission_rewards r JOIN admission_reward_ledger l ON l.reward_id=r.id AND l.id=?`).bind(crypto.randomUUID(),reason,actor,amount,auditKey,ledgerId)
+    ]);
+    return Number(results?.[0]?.meta?.changes||0)?json({ok:true}):json({error:'Adjustment would make the reward balance negative or the reward is inactive.'},409);
+  }
+  if(action==='REVOKE'){
+    const results=await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE customer_admission_rewards SET status='REVOKED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='ACTIVE'`).bind(rewardId),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO admission_reward_audit(id,reward_id,program_id,action,reason,actor,metadata_json,idempotency_key)
+        SELECT ?,r.id,r.program_id,'REVOKED',?,?,json_object('remaining_admissions',COALESCE((SELECT SUM(l.amount) FROM admission_reward_ledger l WHERE l.reward_id=r.id),0)),? FROM customer_admission_rewards r WHERE r.id=? AND r.status='REVOKED'`).bind(crypto.randomUUID(),reason,actor,auditKey,rewardId)
+    ]);
+    return Number(results?.[0]?.meta?.changes||0)?json({ok:true}):json({error:'Reward is already inactive or could not be found.'},409);
+  }
+  return json({error:'Unsupported admission reward action.'},400);
+}
+
 async function adminPromotions(request,env){
   const check=requireAdmin(request,env); if(check.response)return check.response;
   if(request.method==='GET'){
@@ -7455,6 +7751,8 @@ export default {
       if (path === '/api/member/class-pass-purchase-status' && request.method === 'GET') return classPassPurchaseStatus(request, env, url);
       if (path === '/api/member/class-credit-options' && request.method === 'GET') return classCreditOptions(request, env, url);
       if (path === '/api/member/class-credit-booking' && request.method === 'POST') return createClassCreditBooking(request, env);
+      if (path === '/api/member/admission-rewards' && request.method === 'GET') return memberAdmissionRewardList(request, env);
+      if (path === '/api/member/admission-reward-booking' && request.method === 'POST') return createAdmissionRewardBooking(request, env);
       if (path === '/api/member/profile' && request.method === 'POST') return memberProfileUpdate(request, env);
       if (path === '/api/member/export' && request.method === 'GET') return memberExport(request, env);
       if (path === '/api/member/pause' && request.method === 'POST') return memberPause(request, env);
@@ -7480,6 +7778,7 @@ export default {
       if (path === '/api/admin/member-access') return await adminMemberAccess(request,env);
       if (path === '/api/admin/customers') return await adminCustomers(request, env);
       if (path === '/api/admin/promotions') return adminPromotions(request, env);
+      if (path === '/api/admin/admission-rewards') return adminAdmissionRewards(request, env);
       if (path === '/api/admin/emails') return adminEmailCentre(request, env, ctx);
       if (path === '/api/mailing-list/subscribe' && request.method === 'POST') return subscribeMailingList(request, env);
       if (path === '/api/email/unsubscribe' && request.method === 'GET') return unsubscribeEmail(request, env, url);
