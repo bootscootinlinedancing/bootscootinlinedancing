@@ -44,6 +44,13 @@ assert.throws(()=>db.prepare(`DELETE FROM sunday_session_booking_details WHERE b
 db.prepare(`INSERT INTO waiting_list(id,class_id,quantity) VALUES('wait-good','sunday-sessions-2026-11-29',3)`).run();
 db.prepare(`INSERT INTO sunday_session_waiting_details(waiting_id,class_id,selection_code,adult_count,child_10_17_count,child_5_9_count,under_5_count,total_people,calculated_amount_pence,price_breakdown_json) VALUES('wait-good','sunday-sessions-2026-11-29','FAMILY_1A1C',1,1,0,1,3,900,'{}')`).run();
 assert.throws(()=>db.prepare(`UPDATE sunday_session_waiting_details SET total_people=2 WHERE waiting_id='wait-good'`).run(),/immutable/);
+db.prepare(`INSERT INTO bookings(id,class_id,quantity,amount_pence) VALUES('offer-booking','sunday-sessions-2026-11-29',3,900)`).run();
+insertDetail.run('offer-booking','sunday-sessions-2026-11-29','FAMILY_1A1C',1,1,0,1,3,900,'{}');
+db.prepare(`INSERT INTO sunday_session_waiting_offers(id,waiting_id,booking_id,operation_id,created_by,reason) VALUES('offer-one','wait-good','offer-booking','operation-one','admin','Capacity became available')`).run();
+assert.throws(()=>db.prepare(`INSERT INTO sunday_session_waiting_offers(id,waiting_id,booking_id,operation_id,created_by,reason) VALUES('offer-two','wait-good','offer-booking','operation-two','admin','Duplicate attempt')`).run(),/UNIQUE/,'only one active offer may exist for a waiting entry');
+db.prepare(`UPDATE waiting_list SET status='OFFERED' WHERE id='wait-good'`).run();
+db.prepare(`UPDATE sunday_session_waiting_offers SET status='FAILED' WHERE id='offer-one'`).run();
+assert.throws(()=>db.prepare(`INSERT INTO sunday_session_waiting_offers(id,waiting_id,booking_id,operation_id,created_by,reason) VALUES('offer-three','wait-good','bad-headcount','operation-three','admin','Stale concurrent attempt')`).run(),/not available for promotion/,'an offered waiting row cannot be claimed again');
 
 // The same atomic capacity predicate used by the Worker admits one winner only.
 db.prepare(`INSERT INTO booking_holds(id,class_id,quantity,expires_at) VALUES('existing','sunday-sessions-2026-11-29',70,'2099-01-01T00:00:00Z')`).run();
@@ -60,4 +67,7 @@ assert.ok(worker.indexOf('if(sundayDetails)setupStatements.push(sundaySessionDet
 assert.match(worker,/status='FAILED'[\s\S]*Payment provider unavailable/,'provider failure must preserve a failed booking snapshot for audit');
 assert.match(worker,/LEFT JOIN sunday_session_booking_details sd[\s\S]*serveBookingConfirmed|serveBookingConfirmed[\s\S]*LEFT JOIN sunday_session_booking_details sd/,'confirmation summary must load composition');
 assert.match(worker,/admission_category/,'attendance must retain age category');
+assert.match(worker,/PROMOTE_SUNDAY_WAITING/,'HQ must expose the reviewed waitlist promotion action');
+assert.match(worker,/idx_sunday_waiting_active_offer|sunday_session_waiting_offers/,'waitlist promotion must use a durable one-winner offer record');
+assert.match(worker,/settleSundayWaitingOffer\(env,booking\.id,'PAID'\)/,'successful payment must convert the waiting entry');
 console.log('Sunday Sessions pricing, migration, capacity and lifecycle fixtures passed');

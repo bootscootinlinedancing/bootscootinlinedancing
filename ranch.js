@@ -1165,8 +1165,9 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
 
     if(waiting){
       waiting.innerHTML=(data.waiting||[]).length
-        ?data.waiting.map(w=>`<article class="hq-waiting-row"><strong>${esc(w.customer_name)}</strong><span>${esc(w.class_title)} · ${fmt(w.starts_at)} · ${esc(ticketLabel(w))}</span><b>${esc(w.status)}</b></article>`).join('')
+        ?data.waiting.map(w=>`<article class="hq-waiting-row"><strong>${esc(w.customer_name)}</strong><span>${esc(w.class_title)} · ${fmt(w.starts_at)} · ${esc(ticketLabel(w))}${w.sunday_selection_code?`<small>${Number(w.sunday_adult_count||0)} adult · ${Number(w.sunday_child_10_17_count||0)} age 10–17 · ${Number(w.sunday_child_5_9_count||0)} age 5–9 · ${Number(w.sunday_under_5_count||0)} under 5 · ${money(w.sunday_calculated_amount_pence||0)}</small>`:''}</span><div><b>${esc(w.status)}</b>${w.special_booking_format==='SUNDAY_SESSIONS'&&w.status==='WAITING'?`<button type="button" class="button compact" data-promote-sunday-waiting="${esc(w.id)}">Promote to payment</button>`:''}${w.status==='OFFERED'&&w.promoted_checkout_url?`<a class="button secondary compact" href="${esc(w.promoted_checkout_url)}" target="_blank" rel="noopener">Open payment offer</a>`:''}</div></article>`).join('')
         :emptyPanel('No waiting-list entries.');
+      waiting.querySelectorAll('[data-promote-sunday-waiting]').forEach(button=>button.addEventListener('click',()=>promoteSundayWaiting(button.dataset.promoteSundayWaiting)));
     }
   }
 
@@ -1175,6 +1176,17 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
       method:'PATCH',
       body:JSON.stringify(payload)
     },20000);
+  }
+
+  async function promoteSundayWaiting(id){
+    const row=(state.bookings?.waiting||[]).find(item=>item.id===id);if(!row)return toast('Waiting entry not found.','error');
+    const reason=prompt(`Promote ${row.customer_name}'s ${row.quantity}-person Sunday Sessions entry to a 15-minute SumUp payment offer?\n\nEnter the audit reason.`);
+    if(reason===null)return;if(!reason.trim())return toast('An audit reason is required.','error');
+    try{
+      const result=await bookingAdminAction({id,action:'PROMOTE_SUNDAY_WAITING',reason:reason.trim(),operation_id:crypto.randomUUID()});
+      if(result.checkout_url){try{await navigator.clipboard.writeText(result.checkout_url);toast('Payment offer created and copied.','success');}catch(_){toast('Payment offer created. Open it from the waiting list.','success');}}
+      await Promise.all([loadBookings(true),loadClasses(),loadBootstrap(false,{force:true,silent:true})]);
+    }catch(error){toast(error.message||'Could not promote the waiting entry.','error');}
   }
 
   async function cancelBooking(id){

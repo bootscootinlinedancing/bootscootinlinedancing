@@ -587,6 +587,13 @@ function sundayAdmissionCategories(details){return [
   ...Array(details.adult_count).fill('ADULT'),...Array(details.child_10_17_count).fill('CHILD_10_17'),
   ...Array(details.child_5_9_count).fill('CHILD_5_9'),...Array(details.under_5_count).fill('UNDER_5')
 ];}
+function completeSundayAttendeeRows(rows,{bookingId,classId,details}){
+  const categories=sundayAdmissionCategories(details),byPlace=new Map(rows.map(row=>[Number(row.place_number),row]));
+  for(let place=1;place<=details.total_people;place++){
+    if(!byPlace.has(place))byPlace.set(place,{id:crypto.randomUUID(),booking_id:bookingId,class_id:classId,place_number:place,role:place===1?'LEAD':'GUEST',snapshot_name:place===1?'Lead attendee':`Ticket ${place} guest`,snapshot_email:null,normalized_email:null,customer_id:null});
+  }
+  return [...byPlace.values()].sort((a,b)=>Number(a.place_number)-Number(b.place_number)).map(row=>({...row,admission_category:categories[Number(row.place_number)-1]||null}));
+}
 
 function ticketDefinition(code){return CLASS_TICKET_DEFINITIONS[String(code||'')]||null;}
 function ticketSnapshotCode(row){return row?.ticket_product_code||row?.ticket_type||'CLASS_SOCIAL';}
@@ -2949,7 +2956,7 @@ async function createClassReservation(request, env) {
   let attendeeRows=[];
   try{
     if(await attendeeSchemaAvailable(env))attendeeRows=await bookingAttendeeRows(env,{bookingId:id,classId,quantity,lead:{name,email,customerId:customer.id},guests:guestInputs});
-    if(sundayDetails){const categories=sundayAdmissionCategories(sundayDetails);attendeeRows=attendeeRows.map(row=>({...row,admission_category:categories[Number(row.place_number)-1]||null}));}
+    if(sundayDetails&&await attendeeSchemaAvailable(env))attendeeRows=completeSundayAttendeeRows(attendeeRows,{bookingId:id,classId,details:sundayDetails});
   }catch(error){
     return json({error:error?.message||'Guest ticket details are invalid.'},400);
   }
@@ -3208,13 +3215,27 @@ function checkoutTransactionCode(checkout) {
   return successful?.transaction_code || successful?.code || null;
 }
 
+async function settleSundayWaitingOffer(env,bookingId,status){
+  if(!['PAID','FAILED','EXPIRED'].includes(status))return;
+  try{
+    const offer=await env.BOOKINGS_DB.prepare(`SELECT id,waiting_id,status FROM sunday_session_waiting_offers WHERE booking_id=?`).bind(bookingId).first();
+    if(!offer||offer.status!=='ACTIVE')return;
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE sunday_session_waiting_offers SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='ACTIVE'`).bind(status,offer.id),
+      env.BOOKINGS_DB.prepare(`UPDATE waiting_list SET status=? WHERE id=? AND status='OFFERED'`).bind(status==='PAID'?'CONVERTED':'WAITING',offer.waiting_id)
+    ]);
+  }catch(error){
+    console.error('SUNDAY_WAITLIST_SETTLEMENT_ERROR',{booking_id:bookingId,status,code:clean(error?.code||error?.name||'ERROR',80)});
+  }
+}
+
 async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RECONCILIATION') {
   if (!booking || !checkout) return booking;
   const checkoutStatus = String(checkout.status || '').toUpperCase();
   const transactionId = checkoutTransactionId(checkout);
   const transactionCode = checkoutTransactionCode(checkout);
 
-  if(checkoutStatus==='PAID' && booking.status==='PAID'){await safelyQueueBookingConfirmation(env,booking.id);return booking;}
+  if(checkoutStatus==='PAID' && booking.status==='PAID'){await settleSundayWaitingOffer(env,booking.id,'PAID');await safelyQueueBookingConfirmation(env,booking.id);return booking;}
   if (checkoutStatus === 'PAID' && booking.status === 'PENDING') {
     // The paid transition, retained-hold expiry, audit and durable outbox row are
     // one D1 transaction. A crash can therefore leave either the original
@@ -3239,6 +3260,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
     ]);
     const paid=results[0];
     if (Number(paid?.meta?.changes || 0) > 0) {
+      await settleSundayWaitingOffer(env,booking.id,'PAID');
       await reconcileClassSold(env,booking.class_id);
       const confirmedBooking = await bookingWithClass(env, booking.id);
       if (confirmedBooking) await deliverBookingNotification(env, confirmedBooking, 'BOOKING_CONFIRMED');
@@ -3270,6 +3292,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
         const failedPromo=await env.BOOKINGS_DB.prepare(`SELECT id,issued_reason FROM promotion_codes WHERE code=?`).bind(booking.promo_code).first();
         if(failedPromo?.issued_reason==='WELCOME')await releaseWelcomePromotion(env,failedPromo.id);
       }
+      await settleSundayWaitingOffer(env,booking.id,checkoutStatus);
     }
     booking.status = checkoutStatus;
   }
@@ -6486,6 +6509,78 @@ async function deleteTestBooking(env, booking, actor) {
   return { ok: true };
 }
 
+async function promoteSundayWaiting(request,env,actor,body){
+  const waitingId=clean(body.id,120),operationId=clean(body.operation_id,120),reason=clean(body.reason,500);
+  if(!waitingId||!reason||!/^[A-Za-z0-9_-]{12,120}$/.test(operationId))return json({error:'Waiting entry, audit reason and operation reference are required.'},400);
+  const prior=await env.BOOKINGS_DB.prepare(`SELECT o.*,b.reference,b.secure_token,b.customer_token,b.status booking_status FROM sunday_session_waiting_offers o JOIN bookings b ON b.id=o.booking_id WHERE o.operation_id=?`).bind(operationId).first();
+  if(prior)return json({ok:true,idempotent:true,booking_id:prior.booking_id,reference:prior.reference,status:prior.status,checkout_url:prior.status==='ACTIVE'?prior.checkout_url:null},200);
+  if(!sumUpConfigured(env))return json({error:'SumUp checkout is unavailable. No waiting-list booking was created.'},503);
+  const wait=await env.BOOKINGS_DB.prepare(`
+    SELECT w.*,c.title class_title,c.starts_at,c.ends_at,c.status class_status,c.special_booking_format,
+      d.selection_code,d.adult_count,d.child_10_17_count,d.child_5_9_count,d.under_5_count,d.total_people,d.calculated_amount_pence,d.price_breakdown_json
+    FROM waiting_list w JOIN classes c ON c.id=w.class_id JOIN sunday_session_waiting_details d ON d.waiting_id=w.id
+    WHERE w.id=?`).bind(waitingId).first();
+  if(!wait)return json({error:'Sunday Sessions waiting entry not found.'},404);
+  if(wait.status!=='WAITING')return json({error:'This waiting entry is already offered, converted or cancelled.'},409);
+  if(wait.class_status!=='open'||wait.special_booking_format!=='SUNDAY_SESSIONS'||String(wait.starts_at)<=new Date().toISOString())return json({error:'This Sunday Sessions event is not open for promotion.'},409);
+  const details={selection_code:wait.selection_code,adult_count:Number(wait.adult_count),child_10_17_count:Number(wait.child_10_17_count),child_5_9_count:Number(wait.child_5_9_count),under_5_count:Number(wait.under_5_count),total_people:Number(wait.total_people),calculated_amount_pence:Number(wait.calculated_amount_pence),price_breakdown:JSON.parse(wait.price_breakdown_json)};
+  const customer=await resolveCustomerIdentity(env,{email:wait.customer_email,name:wait.customer_name,phone:'',marketingConsent:false,source:'BOOKING'}).catch(error=>{if(['CUSTOMER_IDENTITY_AMBIGUOUS','CUSTOMER_IDENTITY_CONFLICT'].includes(error?.code||error?.message))return null;throw error;});
+  if(!customer)return json({error:'This waiting-list email does not resolve to one safe customer identity.'},409);
+  const bookingId=crypto.randomUUID(),holdId=crypto.randomUUID(),offerId=crypto.randomUUID(),secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const reference=`BS-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
+  const holdExpiry=new Date(Date.now()+15*60*1000).toISOString(),quantity=details.total_people,amount=details.calculated_amount_pence;
+  const hold=await env.BOOKINGS_DB.prepare(`INSERT INTO booking_holds(id,class_id,quantity,expires_at,ticket_type,ticket_price_pence,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at)
+    SELECT ?,c.id,?,?,'CLASS_SOCIAL',?,'CLASS_SOCIAL',?,?,? FROM classes c WHERE c.id=? AND c.status='open' AND c.starts_at>?
+      AND ?<=c.capacity
+      -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+      -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
+      -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`)
+    .bind(holdId,quantity,holdExpiry,amount,wait.ticket_product_label||`Sunday Sessions — ${details.selection_code.replaceAll('_',' ')}`,wait.starts_at,wait.ends_at,wait.class_id,new Date().toISOString(),quantity,new Date().toISOString()).run();
+  if(Number(hold?.meta?.changes||0)!==1)return json({error:'There is not enough capacity to promote this waiting entry.'},409);
+  let attendeeRows=[];
+  try{
+    if(await attendeeSchemaAvailable(env)){
+      attendeeRows=await bookingAttendeeRows(env,{bookingId,classId:wait.class_id,quantity,lead:{name:wait.customer_name,email:wait.customer_email,customerId:customer.id},guests:[]});
+      attendeeRows=completeSundayAttendeeRows(attendeeRows,{bookingId,classId:wait.class_id,details});
+    }
+    const statements=[
+      env.BOOKINGS_DB.prepare(`INSERT INTO bookings(id,reference,class_id,hold_id,customer_id,customer_name,customer_email,customer_phone,quantity,amount_pence,original_amount_pence,discount_pence,status,payment_provider,secure_token,customer_token,terms_accepted_at,marketing_consent,retention_delete_after,ticket_type,ticket_product_code,ticket_product_label,ticket_unit_price_pence,ticket_starts_at,ticket_ends_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,0,'PENDING','SUMUP',?,?,CURRENT_TIMESTAMP,0,datetime('now','+24 months'),'CLASS_SOCIAL','CLASS_SOCIAL',?,?,?,?)`)
+        .bind(bookingId,reference,wait.class_id,holdId,customer.id,wait.customer_name,wait.customer_email,'',quantity,amount,amount,secureToken,customerToken,wait.ticket_product_label||`Sunday Sessions — ${details.selection_code.replaceAll('_',' ')}`,amount,wait.starts_at,wait.ends_at),
+      sundaySessionDetailInsert(env,bookingId,wait.class_id,details),
+      ...attendeeRows.map(row=>bookingAttendeeInsert(env,row)),
+      env.BOOKINGS_DB.prepare(`INSERT INTO sunday_session_waiting_offers(id,waiting_id,booking_id,operation_id,created_by,reason) VALUES(?,?,?,?,?,?)`).bind(offerId,waitingId,bookingId,operationId,actor,reason),
+      env.BOOKINGS_DB.prepare(`UPDATE waiting_list SET status='OFFERED' WHERE id=? AND status='WAITING'`).bind(waitingId),
+      env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,'SUNDAY_WAITLIST_PROMOTED','waiting_list',?,?)`).bind(actor,waitingId,JSON.stringify({booking_id:bookingId,operation_id:operationId,quantity,amount_pence:amount}))
+    ];
+    await env.BOOKINGS_DB.batch(statements);
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId).run().catch(()=>{});
+    if(String(error?.message||error).toLowerCase().includes('unique')||String(error?.message||error).includes('not available for promotion'))return json({error:'This waiting entry has already been promoted.'},409);
+    throw error;
+  }
+  try{
+    const origin=new URL(request.url).origin;
+    const sumup=await sumUpFetch(env,'/v0.1/checkouts',{method:'POST',body:JSON.stringify({checkout_reference:reference,amount:Number((amount/100).toFixed(2)),currency:'GBP',merchant_code:String(env.SUMUP_MERCHANT_CODE),description:`${wait.class_title} — ${quantity} places`,redirect_url:`${origin}/booking-confirmation.html?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}&customer=${encodeURIComponent(customerToken)}`,return_url:`${origin}/api/sumup-webhook`,valid_until:holdExpiry,hosted_checkout:{enabled:true}})});
+    const checkout=await sumup.json().catch(()=>({})),rawUrl=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||'';
+    let checkoutUrl='';try{const parsed=new URL(rawUrl);if(parsed.protocol==='https:')checkoutUrl=parsed.toString();}catch(_){}
+    if(!sumup.ok||!checkout.id||!checkoutUrl)throw new Error('CHECKOUT_UNAVAILABLE');
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE bookings SET provider_checkout_id=? WHERE id=? AND status='PENDING'`).bind(checkout.id,bookingId),
+      env.BOOKINGS_DB.prepare(`UPDATE sunday_session_waiting_offers SET checkout_url=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='ACTIVE'`).bind(checkoutUrl,offerId)
+    ]);
+    return json({ok:true,idempotent:false,booking_id:bookingId,reference,status:'OFFERED',checkout_url:checkoutUrl,expires_at:holdExpiry},201);
+  }catch(error){
+    await env.BOOKINGS_DB.batch([
+      env.BOOKINGS_DB.prepare(`UPDATE bookings SET status='FAILED',admin_notes='Waiting-list promotion checkout failed; no payment was taken.' WHERE id=? AND status='PENDING'`).bind(bookingId),
+      env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(holdId),
+      env.BOOKINGS_DB.prepare(`UPDATE sunday_session_waiting_offers SET status='FAILED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='ACTIVE'`).bind(offerId),
+      env.BOOKINGS_DB.prepare(`UPDATE waiting_list SET status='WAITING' WHERE id=? AND status='OFFERED'`).bind(waitingId)
+    ]).catch(()=>{});
+    return json({error:'SumUp could not create the payment offer. The waiting entry remains available and no payment was taken.'},502);
+  }
+}
+
 async function adminBookings(request, env, ctx) {
   const check=requireAccessAdmin(request,env);if(check.response)return check.response;
   await ensureBookingSchema(env);
@@ -6498,7 +6593,13 @@ async function adminBookings(request, env, ctx) {
       ORDER BY c.starts_at DESC,b.created_at DESC
     `).all();
     const {results:waiting}=await env.BOOKINGS_DB.prepare(`
-      SELECT w.*,c.title class_title,c.starts_at,c.venue FROM waiting_list w JOIN classes c ON c.id=w.class_id
+      SELECT w.*,c.title class_title,c.starts_at,c.venue,c.special_booking_format,
+        d.selection_code sunday_selection_code,d.adult_count sunday_adult_count,d.child_10_17_count sunday_child_10_17_count,
+        d.child_5_9_count sunday_child_5_9_count,d.under_5_count sunday_under_5_count,d.calculated_amount_pence sunday_calculated_amount_pence,
+        o.booking_id promoted_booking_id,o.checkout_url promoted_checkout_url,o.status promotion_status
+      FROM waiting_list w JOIN classes c ON c.id=w.class_id
+      LEFT JOIN sunday_session_waiting_details d ON d.waiting_id=w.id
+      LEFT JOIN sunday_session_waiting_offers o ON o.waiting_id=w.id AND o.status='ACTIVE'
       ORDER BY c.starts_at,w.created_at
     `).all();
     const stats={
@@ -6522,6 +6623,8 @@ async function adminBookings(request, env, ctx) {
   if(!body)return json({error:'Invalid booking action.'},400);
   if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
   const id=clean(body.id,120),action=clean(body.action,40);
+
+  if(action==='PROMOTE_SUNDAY_WAITING')return promoteSundayWaiting(request,env,check.state.email,body);
 
   if(action==='REGISTER_ATTENDEE_CHECK_IN'){
     if(!await attendeeSchemaAvailable(env))return json({error:'Person-level attendance is not available until its database migration is complete.'},503);

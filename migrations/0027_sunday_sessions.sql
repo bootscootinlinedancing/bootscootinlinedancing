@@ -32,6 +32,19 @@ CREATE TABLE sunday_session_waiting_details (
   CHECK(total_people=adult_count+child_10_17_count+child_5_9_count+under_5_count)
 );
 
+CREATE TABLE sunday_session_waiting_offers (
+  id TEXT PRIMARY KEY,
+  waiting_id TEXT NOT NULL REFERENCES waiting_list(id) ON DELETE RESTRICT,
+  booking_id TEXT NOT NULL UNIQUE REFERENCES bookings(id) ON DELETE RESTRICT,
+  operation_id TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','PAID','FAILED','EXPIRED','CANCELLED')),
+  checkout_url TEXT,
+  created_by TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 ALTER TABLE booking_attendees ADD COLUMN admission_category TEXT
   CHECK(admission_category IS NULL OR admission_category IN ('ADULT','CHILD_10_17','CHILD_5_9','UNDER_5'));
 ALTER TABLE class_guest_list ADD COLUMN sunday_adult_count INTEGER CHECK(sunday_adult_count IS NULL OR sunday_adult_count>=0);
@@ -41,6 +54,28 @@ ALTER TABLE class_guest_list ADD COLUMN sunday_under_5_count INTEGER CHECK(sunda
 
 CREATE INDEX idx_sunday_session_details_class ON sunday_session_booking_details(class_id,created_at);
 CREATE INDEX idx_sunday_session_waiting_class ON sunday_session_waiting_details(class_id,created_at);
+CREATE UNIQUE INDEX idx_sunday_waiting_active_offer
+  ON sunday_session_waiting_offers(waiting_id) WHERE status='ACTIVE';
+CREATE INDEX idx_sunday_waiting_offer_booking ON sunday_session_waiting_offers(booking_id,status);
+
+CREATE TRIGGER sunday_waiting_offer_claim BEFORE INSERT ON sunday_session_waiting_offers
+WHEN NOT EXISTS(
+  SELECT 1
+  FROM waiting_list w
+  JOIN sunday_session_waiting_details wd ON wd.waiting_id=w.id
+  JOIN bookings b ON b.id=NEW.booking_id AND b.class_id=w.class_id
+  JOIN sunday_session_booking_details bd ON bd.booking_id=b.id
+  WHERE w.id=NEW.waiting_id AND w.status='WAITING'
+    AND bd.class_id=wd.class_id
+    AND bd.selection_code=wd.selection_code
+    AND bd.adult_count=wd.adult_count
+    AND bd.child_10_17_count=wd.child_10_17_count
+    AND bd.child_5_9_count=wd.child_5_9_count
+    AND bd.under_5_count=wd.under_5_count
+    AND bd.total_people=wd.total_people
+    AND bd.calculated_amount_pence=wd.calculated_amount_pence
+)
+BEGIN SELECT RAISE(ABORT,'Sunday waiting entry or matching booking is not available for promotion'); END;
 
 CREATE TRIGGER sunday_session_details_consistent BEFORE INSERT ON sunday_session_booking_details
 WHEN NOT EXISTS(
