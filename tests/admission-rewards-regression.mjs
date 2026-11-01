@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
 const root=new URL('../',import.meta.url).pathname;
-const migration=readFileSync(join(root,'migrations/0028_admission_rewards.sql'),'utf8');
+const migration=readFileSync(join(root,'migrations/0030_admission_rewards.sql'),'utf8');
 const worker=readFileSync(join(root,'_worker.js'),'utf8');
 const temp=mkdtempSync(join(tmpdir(),'boots-admission-reward-'));
 const db=join(temp,'fixture.sqlite');

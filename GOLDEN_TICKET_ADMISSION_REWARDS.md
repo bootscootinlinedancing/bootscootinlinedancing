@@ -32,14 +32,15 @@ This feature provides reusable complimentary admissions without changing loyalty
 
 ## Migration and release order
 
-The migration is numbered `0028_admission_rewards.sql` because the reviewed Halloween and Sunday Sessions workstreams reserve `0026` and `0027` respectively. Before any future release:
+The migration is numbered `0030_admission_rewards.sql`. The reviewed Halloween, Sunday Sessions, external-ticket and private-enquiry workstreams reserve `0026` through `0029` respectively. Before any future release:
 
 1. Merge and apply the approved `0026` workstream.
 2. Merge/rehearse/apply the approved `0027` workstream.
 3. Take and verify a fresh production D1 backup.
-4. Rehearse `0028` against a disposable copy and run foreign-key/integrity checks.
-5. Apply `0028` before deploying code that reads admission-reward tables.
-6. Deploy the exact reviewed commit and verify Member Zone/HQ read-only views.
-7. Only after separate owner approval, enable intended classes and assign a verified customer reward in HQ.
+4. Release or otherwise record the reviewed `0028` and `0029` workstreams before this migration; do not reuse their numbers.
+5. Rehearse `0030` against a disposable copy and run foreign-key/integrity checks.
+6. Apply `0030` before deploying code that reads admission-reward tables.
+7. Deploy the exact reviewed commit and verify Member Zone/HQ read-only views.
+8. Only after separate owner approval, enable intended classes and assign a verified customer reward in HQ.
 
 Rollback is code-first. The additive tables and immutable history should be retained; never drop them or delete reward history as an application rollback.

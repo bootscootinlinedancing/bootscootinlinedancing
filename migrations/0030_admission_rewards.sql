@@ -1,7 +1,8 @@
 PRAGMA foreign_keys = ON;
 
 -- Reusable, customer-linked complimentary admission rewards.
--- 0026 and 0027 are reserved by the approved Halloween and Sunday Sessions workstreams.
+-- 0026-0029 are reserved by the approved Halloween, Sunday Sessions,
+-- external-ticket and private-enquiry workstreams.
 CREATE TABLE admission_reward_programs (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
