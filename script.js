@@ -164,6 +164,24 @@ window.BOOT_SCOOTIN_HALLOWEEN_VIDEO_URL = '/halloween-hoedown-promo-2026.mp4';
 (() => {
   const promoTrack = document.querySelector('[data-promo-track]');
   const promoPause = document.querySelector('[data-promo-pause]');
+  const promoGroups = [...document.querySelectorAll('[data-promo-group]')];
+  const evergreenPromos = promoGroups[0]?[...promoGroups[0].querySelectorAll('a')].map(link=>({text:link.textContent,href:link.getAttribute('href')})):[];
+  const renderPromos = announcements => {
+    const promos=[...announcements.map(item=>({text:`${item.emoji?`${item.emoji} `:''}${item.text}`,href:item.url})),...evergreenPromos];
+    promoGroups.forEach((group,index)=>{
+      group.replaceChildren(...promos.map(item=>{
+        const link=document.createElement('a');link.textContent=item.text;link.href=item.href;
+        if(index>0)link.tabIndex=-1;
+        return link;
+      }));
+    });
+  };
+  if(promoGroups.length){
+    fetch(`/api/event-announcements?ts=${Date.now()}`,{headers:{Accept:'application/json'},cache:'no-store'})
+      .then(response=>response.ok?response.json():Promise.reject(new Error('Announcements unavailable')))
+      .then(data=>renderPromos(Array.isArray(data?.announcements)?data.announcements:[]))
+      .catch(()=>renderPromos([]));
+  }
   promoPause?.addEventListener('click', () => {
     const paused = promoTrack?.classList.toggle('is-paused') || false;
     promoPause.setAttribute('aria-pressed', String(paused));

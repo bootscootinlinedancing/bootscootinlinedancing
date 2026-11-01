@@ -2068,6 +2068,78 @@ async function publicClasses(env, includeHistory = false, request = null) {
   }
 }
 
+function announcementIsVisible(row,now=new Date()){
+  if(Number(row.enabled)!==1||Number(row.featured)!==1||row.class_status!=='open')return false;
+  if(row.starts_at&&new Date(row.starts_at)>now)return false;
+  if(row.expires_at)return new Date(row.expires_at)>now;
+  return londonCalendarDate(now)<=londonCalendarDate(row.class_starts_at);
+}
+
+async function publicEventAnnouncements(env){
+  const fallback=async()=>{
+    try{
+      const response=await fetch(`${SITE_ORIGIN}/api/classes`,{headers:{Accept:'application/json'},cf:{cacheTtl:0}});
+      const payload=response.ok?await response.json():[];
+      return (Array.isArray(payload)?payload:payload.classes||[]).filter(row=>row.status==='open'&&(row.event_type==='ANNIVERSARY'||row.special_booking_format==='SUNDAY_SESSIONS')).map(row=>({
+        id:`preview-${row.id}`,event_id:row.id,
+        text:row.event_type==='ANNIVERSARY'?'First Year Anniversary Party · Friday 6 November · Tickets available':`${row.title} · Book now`,
+        emoji:row.event_type==='ANNIVERSARY'?'🎉':'🤠',url:`bookings.html?event=${encodeURIComponent(row.id)}`
+      }));
+    }catch{return [];}
+  };
+  if(!env.BOOKINGS_DB)return json({announcements:await fallback(),timezone:'Europe/London'},200,{'Cache-Control':'no-store'});
+  try{
+    const result=await env.BOOKINGS_DB.prepare(`
+      SELECT a.id,a.class_id,a.announcement_text,a.emoji,a.destination_url,a.starts_at,a.expires_at,
+             a.enabled,a.featured,c.status class_status,c.starts_at class_starts_at,c.ends_at class_ends_at
+      FROM event_announcements a JOIN classes c ON c.id=a.class_id
+      ORDER BY c.starts_at,a.created_at
+    `).all();
+    const now=new Date();
+    return json({announcements:(result.results||[]).filter(row=>announcementIsVisible(row,now)).map(row=>({
+      id:row.id,event_id:row.class_id,text:row.announcement_text,emoji:row.emoji||'',url:row.destination_url
+    })),generated_at:now.toISOString(),timezone:'Europe/London'},200,{'Cache-Control':'no-store, no-cache, must-revalidate'});
+  }catch(error){
+    if(/no such table/i.test(String(error?.message||error)))return json({announcements:await fallback(),timezone:'Europe/London'},200,{'Cache-Control':'no-store'});
+    throw error;
+  }
+}
+
+async function adminEventAnnouncements(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  if(request.method==='GET'){
+    const result=await env.BOOKINGS_DB.prepare(`
+      SELECT a.*,c.title class_title,c.status class_status,c.starts_at class_starts_at,c.ends_at class_ends_at
+      FROM event_announcements a JOIN classes c ON c.id=a.class_id ORDER BY c.starts_at
+    `).all();
+    return json({announcements:result.results||[],timezone:'Europe/London'});
+  }
+  if(request.method!=='POST'&&request.method!=='PATCH')return json({error:'Method not allowed.'},405);
+  const body=await request.json().catch(()=>null);if(!body)return json({error:'Invalid announcement request.'},400);
+  const classId=clean(body.class_id,120),text=clean(body.announcement_text,240),emoji=clean(body.emoji,16),url=clean(body.destination_url,500);
+  if(!classId||!text||!url)return json({error:'Choose an event and add announcement text and a destination link.'},400);
+  let destination;
+  try{destination=new URL(url,SITE_ORIGIN);}catch{return json({error:'Announcement destination is invalid.'},400);}
+  if(destination.origin!==new URL(SITE_ORIGIN).origin)return json({error:'Announcement destination must stay on the Boot Scootin’ website.'},400);
+  const klass=await env.BOOKINGS_DB.prepare(`SELECT id FROM classes WHERE id=?`).bind(classId).first();
+  if(!klass)return json({error:'The selected event could not be found.'},404);
+  const starts=clean(body.starts_at,40)||null,expires=clean(body.expires_at,40)||null;
+  if(starts&&Number.isNaN(new Date(starts).getTime()))return json({error:'Announcement start time is invalid.'},400);
+  if(expires&&Number.isNaN(new Date(expires).getTime()))return json({error:'Announcement expiry time is invalid.'},400);
+  if(starts&&expires&&new Date(expires)<=new Date(starts))return json({error:'Announcement expiry must be after its start.'},400);
+  const id=clean(body.id,120)||`announcement-${classId}`;
+  await env.BOOKINGS_DB.prepare(`
+    INSERT INTO event_announcements(id,class_id,announcement_text,emoji,destination_url,starts_at,expires_at,enabled,featured,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    ON CONFLICT(class_id) DO UPDATE SET announcement_text=excluded.announcement_text,emoji=excluded.emoji,
+      destination_url=excluded.destination_url,starts_at=excluded.starts_at,expires_at=excluded.expires_at,
+      enabled=excluded.enabled,featured=excluded.featured,updated_at=CURRENT_TIMESTAMP
+  `).bind(id,classId,text,emoji,`${destination.pathname}${destination.search}${destination.hash}`,starts,expires,body.enabled===false?0:1,body.featured===true?1:0).run();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+    .bind(check.state.email,'EVENT_ANNOUNCEMENT_UPDATED','class',classId,JSON.stringify({enabled:body.enabled!==false,featured:body.featured===true,starts_at:starts,expires_at:expires})).run();
+  return json({ok:true,id});
+}
+
 
 const clean = (value, max = 500) => String(value ?? '').trim().slice(0, max);
 const emailOk = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
@@ -7718,7 +7790,7 @@ async function serveMedia(request, env, pathname) {
   return new Response(object.body, { headers });
 }
 
-export {sundaySessionSelection,sundaySessionProducts};
+export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
 export default {
   async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env)])); },
   async fetch(request, env, ctx) {
@@ -7730,6 +7802,7 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1',request);
+      if (path === '/api/event-announcements' && request.method === 'GET') return publicEventAnnouncements(env);
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
@@ -7783,6 +7856,7 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/event-announcements') return adminEventAnnouncements(request, env);
       if (path === '/api/admin/class-guests') return adminClassGuests(request, env);
       if (path === '/api/admin/anniversary') return adminAnniversary(request, env);
       if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
