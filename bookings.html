@@ -212,6 +212,25 @@
 <legend>Choose your ticket</legend>
 <div id="ticketProductChoices"></div>
 </fieldset>
+<fieldset class="sunday-session-picker" id="sundaySessionPicker" hidden>
+<legend>Who is coming?</legend>
+<label>Ticket option
+<select id="sundaySelection" name="sunday_selection">
+<option value="INDIVIDUAL">Individual tickets</option>
+<option value="FAMILY_1A1C">Family: 1 adult + 1 child — from £8</option>
+<option value="FAMILY_1A2C">Family: 1 adult + 2 children — from £10</option>
+<option value="FAMILY_2A1C">Family: 2 adults + 1 child — from £13</option>
+<option value="FAMILY_2A2C">Family: 2 adults + 2 children — from £15</option>
+</select></label>
+<div class="sunday-composition-grid">
+<label>Adults (18+) <input id="sundayAdults" type="number" min="0" max="10" value="1"></label>
+<label>Children 10–17 <input id="sundayOlderChildren" type="number" min="0" max="10" value="0"></label>
+<label>Children 5–9 <input id="sundayYoungerChildren" type="number" min="0" max="10" value="0"></label>
+<label>Under 5s (free) <input id="sundayUnder5" type="number" min="0" max="10" value="0"></label>
+</div>
+<p class="privacy-note">Every person, including free under-5s, counts towards the shared 75-person capacity.</p>
+<p class="sunday-price-summary" id="sundayPriceSummary" aria-live="polite"></p>
+</fieldset>
 <div class="form-grid">
 <label>Full name <small>(first name and surname)</small><input autocomplete="name" maxlength="100" minlength="3" name="name" placeholder="e.g. Nora Godollei" required=""/></label>
 <label>Email address<input autocomplete="email" maxlength="160" name="email" required="" type="email"/></label>
@@ -219,7 +238,9 @@
 <label>Number of places
             <select id="quantity" name="quantity" required="">
 <option value="1">1 place</option><option value="2">2 places</option>
-<option value="3">3 places</option><option value="4">4 places</option>
+<option value="3">3 places</option><option value="4">4 places</option><option value="5">5 places</option>
+<option value="6">6 places</option><option value="7">7 places</option><option value="8">8 places</option>
+<option value="9">9 places</option><option value="10">10 places</option>
 </select>
 </label>
 </div>
