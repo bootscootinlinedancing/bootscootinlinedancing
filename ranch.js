@@ -957,6 +957,13 @@ Follow @boot.scootin.linedancing on Instagram and Boot Scootin’ Line Dancing o
     form.elements.social_only_price_gbp.value=((Number(item?.social_only_price_pence??400))/100).toFixed(2);
     form.elements.social_only_entry_time.value=item?.social_only_entry_time||'20:30';
     form.elements.booking_format.value=item?.booking_format||'STANDARD';
+    const sundaySummary=$('#sundaySessionTicketSummary');
+    if(sundaySummary){
+      const isSunday=item?.special_booking_format==='SUNDAY_SESSIONS';
+      sundaySummary.hidden=!isSunday;
+      const capacity=Number(item?.capacity||0),booked=Number(item?.sold||0),remaining=Math.max(0,Number(item?.spaces_remaining??(capacity-booked)));
+      const capacitySummary=$('#sundaySessionCapacitySummary');if(capacitySummary)capacitySummary.textContent=`Capacity: ${capacity} · Booked: ${booked} · Remaining: ${remaining}`;
+    }
     const configured=code=>(item?.ticket_products||[]).find(product=>(product.code||product.product_code)===code)||{};
     const localTime=(value,fallback)=>value?classLocalValue(value).slice(11,16):fallback;
     const beginner=configured('BEGINNER_SOCIAL'),improver=configured('IMPROVER_SOCIAL'),combined=configured('BEGINNER_IMPROVER_SOCIAL'),social=configured('SOCIAL_ONLY');
