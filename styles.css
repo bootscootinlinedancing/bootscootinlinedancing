@@ -10118,6 +10118,7 @@ body.legal-page{
   .header #menuButton.menu{min-width:88px!important;padding-inline:.7rem!important}
 }
 /* Social Only and full tickets share one class capacity. */
+.ticket-type-picker[hidden]{display:none!important}
 .ticket-type-picker{display:grid;gap:.65rem;margin:1rem 0;padding:1rem;border:1px solid rgba(198,35,44,.55)}
 .ticket-type-picker legend{padding:0 .35rem;font-weight:800}
 .ticket-type-picker label{display:flex;align-items:flex-start;gap:.7rem;padding:.75rem;border:1px solid rgba(255,255,255,.18);cursor:pointer}

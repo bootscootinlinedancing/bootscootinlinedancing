@@ -68,6 +68,7 @@ assert.deepEqual(db.prepare(`PRAGMA foreign_key_check`).all(),[]);
 assert.equal(db.prepare(`PRAGMA integrity_check`).get().integrity_check,'ok');
 
 const worker=fs.readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
+const css=fs.readFileSync(new URL('../styles.css',import.meta.url),'utf8');
 assert.ok(worker.indexOf('if(sundayDetails)setupStatements.push(sundaySessionDetailInsert')<worker.indexOf("sumUpFetch(env, '/v0.1/checkouts'"),'composition must be persisted before external checkout');
 assert.match(worker,/status='FAILED'[\s\S]*Payment provider unavailable/,'provider failure must preserve a failed booking snapshot for audit');
 assert.match(worker,/LEFT JOIN sunday_session_booking_details sd[\s\S]*serveBookingConfirmed|serveBookingConfirmed[\s\S]*LEFT JOIN sunday_session_booking_details sd/,'confirmation summary must load composition');
@@ -78,4 +79,5 @@ assert.match(worker,/settleSundayWaitingOffer\(env,booking\.id,'PAID'\)/,'succes
 assert.match(worker,/const originalAmount = sundaySession\?sundayDetails\.calculated_amount_pence/,'authoritative Sunday total must drive the booking amount');
 assert.match(worker,/amount: Number\(\(amount \/ 100\)\.toFixed\(2\)\)/,'the authoritative booking amount must drive SumUp checkout');
 assert.match(worker,/c\.booking_format,c\.special_booking_format,c\.social_only_enabled/,'HQ class data must include the Sunday format marker');
+assert.match(css,/\.ticket-type-picker\[hidden\]\{display:none!important\}/,'the generic ticket cards must not duplicate the Sunday composition selector');
 console.log('Sunday Sessions pricing, migration, capacity and lifecycle fixtures passed');
