@@ -562,7 +562,7 @@ function sundaySessionSelection(value){
   }
   const total_people=adult_count+child_10_17_count+child_5_9_count+under_5_count;
   if(total_people<1||total_people>10)throw new Error('Choose between 1 and 10 attendees.');
-  if(adult_count+child_10_17_count+child_5_9_count<1)throw new Error('A booking must include at least one paid attendee.');
+  if(adult_count<1)throw new Error('Sunday Sessions bookings must include at least one responsible adult.');
   return {selection_code,adult_count,child_10_17_count,child_5_9_count,under_5_count,total_people,calculated_amount_pence:amount,
     price_breakdown:{adult_pence:600,child_10_17_pence:400,child_5_9_pence:300,under_5_pence:0,bundle_base_pence:SUNDAY_SESSION_BUNDLES[selection_code]?.base??null,older_child_surcharge_pence:selection_code==='INDIVIDUAL'?0:child_10_17_count*100}};
 }
@@ -5197,7 +5197,7 @@ async function adminClasses(request, env) {
       const response=await env.BOOKINGS_DB.prepare(`
         SELECT
           c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
-          c.status,c.level,c.public_notes,c.poster_url,c.promo_poster_url,c.booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,c.created_at,c.updated_at,
+          c.status,c.level,c.public_notes,c.poster_url,c.promo_poster_url,c.booking_format,c.special_booking_format,c.social_only_enabled,c.social_only_price_pence,c.social_only_entry_time,c.created_at,c.updated_at,
           COALESCE((SELECT SUM(quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) AS sold,
           COALESCE((SELECT SUM(quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) AS held,
           COALESCE((SELECT SUM(quantity) FROM waiting_list w WHERE w.class_id=c.id AND w.status='WAITING'),0) AS waiting,

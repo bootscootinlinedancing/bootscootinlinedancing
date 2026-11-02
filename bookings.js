@@ -83,7 +83,7 @@
     const selection=document.getElementById('sundaySelection').value,bundle={FAMILY_1A1C:[1,1],FAMILY_1A2C:[1,2],FAMILY_2A1C:[2,1],FAMILY_2A2C:[2,2]}[selection];
     const adults=document.getElementById('sundayAdults'),older=document.getElementById('sundayOlderChildren'),younger=document.getElementById('sundayYoungerChildren');
     if(bundle){adults.value=bundle[0];adults.disabled=true;if(resetBundle){older.value=0;younger.value=bundle[1];}older.max=bundle[1];younger.max=bundle[1];}
-    else{adults.disabled=false;older.max=10;younger.max=10;}
+    else{adults.disabled=false;adults.min=1;if(Number(adults.value)<1)adults.value=1;older.max=10;younger.max=10;}
     const composition=sundayComposition();form.elements.quantity.value=composition.total_people;
     document.getElementById('sundayPriceSummary').textContent=`${composition.total_people} ${composition.total_people===1?'person':'people'} · ${money(composition.amount_pence/100)} total`;
     updateGuestFields();updateTicketChoice();
@@ -309,6 +309,7 @@
     const data=Object.fromEntries(new FormData(form));
     if(isSundaySession()){
       const composition=sundayComposition();
+      if(composition.adult_count<1){msg.textContent='Sunday Sessions bookings must include at least one responsible adult.';button.disabled=false;document.getElementById('sundayAdults').focus();return;}
       data.quantity=composition.total_people;
       data.sunday_session={selection_code:composition.selection_code,adult_count:composition.adult_count,child_10_17_count:composition.child_10_17_count,child_5_9_count:composition.child_5_9_count,under_5_count:composition.under_5_count};
       delete data.promo_code;
