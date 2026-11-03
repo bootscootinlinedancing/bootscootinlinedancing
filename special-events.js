@@ -31,6 +31,7 @@ export async function specialEventReadiness(db,eventId){
   if((products.results||[]).some(product=>product.allocation==null))blockers.push('TICKET_ALLOCATION_UNCONFIRMED');
   if(!Number(event.age_terms_confirmed))blockers.push('AGE_TERMS_UNCONFIRMED');
   if(!Number(event.refund_policy_confirmed))blockers.push('REFUND_POLICY_UNCONFIRMED');
+  if(!event.artwork_url)blockers.push('EVENT_ARTWORK_NOT_UPLOADED');
   if((products.results||[]).some(product=>Number(product.password_required)&&!credentialProducts.has(product.id)))blockers.push('RESTRICTED_RELEASE_PASSWORD_NOT_CONFIGURED');
   return {event,days:days.results||[],products:products.results||[],blockers,ready:blockers.length===0};
 }
@@ -49,7 +50,7 @@ export async function publicSpecialEvents(request,env,url){
       return response({status:'PAID',booking});
     }
     if(slug){
-      const event=await env.BOOKINGS_DB.prepare(`SELECT id,slug,title,subtitle,venue_name,venue_address,public_summary,public_description,artwork_url,status
+      const event=await env.BOOKINGS_DB.prepare(`SELECT id,slug,title,subtitle,venue_name,venue_address,venue_notes,public_summary,public_description,artwork_url,status
         FROM special_events WHERE slug=? AND status='PUBLISHED' AND publication_enabled=1`).bind(slug).first();
       if(!event)return response({error:'This event is not currently published.'},404);
       const [days,programme,products]=await Promise.all([
@@ -112,6 +113,15 @@ export async function adminSpecialEvents(request,env,admin){
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'SAFETY_SETTINGS_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,tidy(body.reason,500)||'HQ safety settings update',crypto.randomUUID())
       ]);
       return response({ok:true,readiness:await specialEventReadiness(env.BOOKINGS_DB,eventId)});
+    }
+    if(action==='UPDATE_PRESENTATION'){
+      const artworkUrl=tidy(body.artwork_url,500)||null,publicDescription=tidy(body.public_description,4000)||null,venueNotes=tidy(body.venue_notes,3000)||null;
+      if(artworkUrl&&artworkUrl!==`/api/special-event-artwork?id=${encodeURIComponent(eventId)}`)return response({error:'Use the protected Special Events artwork upload.'},400);
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE special_events SET artwork_url=?,public_description=?,venue_notes=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(artworkUrl,publicDescription,venueNotes,eventId),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'EVENT_PRESENTATION_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,tidy(body.reason,500)||'Event presentation updated in HQ.',crypto.randomUUID())
+      ]);
+      return response({ok:true});
     }
     if(action==='UPDATE_PRODUCT'){
       const productId=tidy(body.product_id,160),allocation=body.allocation==null||body.allocation===''?null:Number(body.allocation),state=tidy(body.release_state,20);
@@ -317,6 +327,36 @@ export async function specialEventDocumentUpload(request,env,admin){
     ]);
   }catch(error){await env.MEDIA_BUCKET.delete(storageKey);throw error;}
   return response({ok:true,document_id:documentId,version,sha256},201);
+}
+
+export async function specialEventArtworkUpload(request,env,admin){
+  if(!env.BOOKINGS_DB||!env.MEDIA_BUCKET)return response({error:'Private artwork storage is unavailable.'},503);
+  const form=await request.formData(),file=form.get('file'),eventId=tidy(form.get('event_id'),160);
+  if(!(file instanceof File)||!eventId)return response({error:'Choose the approved event artwork.'},400);
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size<1||file.size>20*1024*1024)return response({error:'Use an approved JPG, PNG or WebP up to 20 MB.'},400);
+  const event=await env.BOOKINGS_DB.prepare(`SELECT id FROM special_events WHERE id=?`).bind(eventId).first();if(!event)return response({error:'Special event not found.'},404);
+  let document=await env.BOOKINGS_DB.prepare(`SELECT id,current_version FROM special_event_documents WHERE event_id=? AND category='ARTWORK' AND title='Approved event artwork'`).bind(eventId).first();
+  const documentId=document?.id||crypto.randomUUID(),version=Number(document?.current_version||0)+1,versionId=crypto.randomUUID(),extension=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+  const storageKey=`private/special-events/${eventId}/${documentId}/v${version}-${versionId}.${extension}`,bytes=await file.arrayBuffer(),sha256=hex(await crypto.subtle.digest('SHA-256',bytes));
+  await env.MEDIA_BUCKET.put(storageKey,bytes,{httpMetadata:{contentType:file.type,cacheControl:'private, no-store'}});
+  try{await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_documents(id,event_id,title,category,created_by) VALUES(?,?,'Approved event artwork','ARTWORK',?)`).bind(documentId,eventId,admin.email),
+    env.BOOKINGS_DB.prepare(`INSERT INTO special_event_document_versions(id,document_id,version,storage_key,original_filename,content_type,byte_size,sha256,uploaded_by) VALUES(?,?,?,?,?,?,?,?,?)`).bind(versionId,documentId,version,storageKey,tidy(file.name,255),file.type,file.size,sha256,admin.email),
+    env.BOOKINGS_DB.prepare(`UPDATE special_event_documents SET current_version=? WHERE id=?`).bind(version,documentId),
+    env.BOOKINGS_DB.prepare(`UPDATE special_events SET artwork_url=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(`/api/special-event-artwork?id=${encodeURIComponent(eventId)}`,eventId),
+    env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'EVENT_ARTWORK_VERSION_UPLOADED','DOCUMENT',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,documentId,admin.email,'Approved private event artwork uploaded.',JSON.stringify({version,content_type:file.type,byte_size:file.size,sha256}),`event-artwork:${versionId}`)
+  ]);}catch(error){await env.MEDIA_BUCKET.delete(storageKey);throw error;}
+  return response({ok:true,url:`/api/special-event-artwork?id=${encodeURIComponent(eventId)}`,version,sha256},201);
+}
+
+export async function specialEventArtwork(request,env,url){
+  if(!env.BOOKINGS_DB||!env.MEDIA_BUCKET)return new Response('Not found',{status:404});
+  const eventId=tidy(url.searchParams.get('id'),160),event=await env.BOOKINGS_DB.prepare(`SELECT status,publication_enabled FROM special_events WHERE id=?`).bind(eventId).first();
+  if(!event)return new Response('Not found',{status:404});
+  if(!(event.status==='PUBLISHED'&&Number(event.publication_enabled))){const checkEmail=tidy(request.headers.get('cf-access-authenticated-user-email'),200).toLowerCase(),configured=tidy(env.ADMIN_EMAIL,200).toLowerCase();if(!checkEmail||(configured&&checkEmail!==configured))return new Response('Not found',{status:404});}
+  const version=await env.BOOKINGS_DB.prepare(`SELECT v.storage_key,v.content_type FROM special_event_document_versions v JOIN special_event_documents d ON d.id=v.document_id WHERE d.event_id=? AND d.category='ARTWORK' AND d.title='Approved event artwork' ORDER BY v.version DESC LIMIT 1`).bind(eventId).first();
+  if(!version)return new Response('Not found',{status:404});const object=await env.MEDIA_BUCKET.get(version.storage_key);if(!object)return new Response('Not found',{status:404});
+  return new Response(object.body,{headers:{'content-type':version.content_type,'cache-control':event.status==='PUBLISHED'?'public, max-age=3600':'private, no-store','x-content-type-options':'nosniff'}});
 }
 
 export async function specialEventDocumentDownload(request,env,url){

@@ -9,6 +9,7 @@ const migration=readFileSync(new URL('../migrations/0031_special_events.sql',imp
 const worker=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
 const service=readFileSync(new URL('../special-events.js',import.meta.url),'utf8');
 const publicPage=readFileSync(new URL('../johnny-rossato.html',import.meta.url),'utf8');
+const eventPageScript=readFileSync(new URL('../special-event-page.js',import.meta.url),'utf8');
 const temp=mkdtempSync(join(tmpdir(),'boot-scootin-special-events-'));
 const database=join(temp,'rehearsal.sqlite');
 
@@ -49,8 +50,12 @@ try{
   assert.match(service,/INSERT OR IGNORE INTO special_event_competition_entries/,'paid competition add-on must create an idempotent entry');
   assert.match(worker,/\/api\/admin\/special-events/);
   assert.match(worker,/key\.startsWith\('private\/'\)/,'private evidence must be blocked from the public media route');
+  assert.match(service,/EVENT_ARTWORK_NOT_UPLOADED/,'publication must be blocked until approved artwork is uploaded');
+  assert.match(service,/private\/special-events\/\$\{eventId\}/,'Draft artwork must use private event storage');
+  assert.match(worker,/\/api\/admin\/special-event-artwork\/upload/,'HQ must expose a protected artwork upload');
   assert.doesNotMatch(publicPage,/Johnny Rossato: His UK Debut/,'Draft event details must not be embedded in the public shell');
-  assert.match(publicPage,/fetch\('\/api\/special-events\?slug=johnny-rossato'/);
+  assert.match(eventPageScript,/\/api\/special-events\?slug=johnny-rossato/);
+  assert.match(worker,/\/ranch\/special-events\/preview/,'Draft preview must be protected by the HQ route');
 
   const prematurePublish=spawnSync('sqlite3',['-batch','-bail',database],{input:`UPDATE special_events SET status='PUBLISHED',publication_enabled=1 WHERE id='special-event-johnny-rossato-2027';`,encoding:'utf8'});
   assert.notEqual(prematurePublish.status,0,'database trigger must block publication while mandatory settings are incomplete');

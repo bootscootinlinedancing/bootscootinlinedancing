@@ -9,6 +9,7 @@ CREATE TABLE special_events (
   subtitle TEXT,
   venue_name TEXT NOT NULL,
   venue_address TEXT,
+  venue_notes TEXT,
   status TEXT NOT NULL DEFAULT 'DRAFT' CHECK(status IN ('DRAFT','PUBLISHED','CLOSED','CANCELLED')),
   public_summary TEXT,
   public_description TEXT,
@@ -280,8 +281,8 @@ END;
 
 -- Draft-only seed. Capacities, several allocations, policies, timings and the
 -- loyalty credential remain intentionally unset. Publication guards reject it.
-INSERT INTO special_events(id,slug,title,subtitle,venue_name,venue_address,status,public_summary,max_admission_per_checkout)
-VALUES('special-event-johnny-rossato-2027','johnny-rossato','Boot Scootin’ Presents — Johnny Rossato: His UK Debut','Two-day UK debut weekend','Low Places Bar','Digbeth, Birmingham','DRAFT','Workshops, social dancing and a mini competition across Saturday and Sunday.',4);
+INSERT INTO special_events(id,slug,title,subtitle,venue_name,venue_address,venue_notes,status,public_summary,public_description,max_admission_per_checkout)
+VALUES('special-event-johnny-rossato-2027','johnny-rossato','Johnny Rossato — His UK Debut','Kingdom of Fear','Low Places Bar','Digbeth, Birmingham',NULL,'DRAFT','A welcoming two-day Boot Scootin’ workshop and social experience across Saturday and Sunday.','Join Boot Scootin’ for a special weekend of workshops, social dancing and the Kingdom of Fear Mini Competition. Programme details will appear only as they are confirmed.',4);
 
 INSERT INTO special_event_days(id,event_id,event_date,label,capacity,display_order) VALUES
  ('johnny-2027-saturday','special-event-johnny-rossato-2027','2027-02-20','Saturday',NULL,1),
@@ -297,6 +298,15 @@ INSERT INTO special_event_ticket_products(id,event_id,code,name,product_type,pri
  ('johnny-mini-competition','special-event-johnny-rossato-2027','MINI_COMPETITION','Mini Competition Entry','ADD_ON',500,NULL,7,'INACTIVE',0,1,1,7);
 
 UPDATE special_event_ticket_products SET auto_activate_after_product_id='johnny-early-weekend' WHERE id='johnny-standard-weekend';
+UPDATE special_event_ticket_products SET description=CASE code
+  WHEN 'LOYALTY_WEEKEND' THEN 'Password-protected weekend admission for the loyalty release. Includes Saturday and Sunday admission.'
+  WHEN 'EARLY_BIRD_WEEKEND' THEN 'Early release weekend admission. Includes Saturday and Sunday admission.'
+  WHEN 'STANDARD_WEEKEND' THEN 'Standard weekend admission. Includes Saturday and Sunday admission.'
+  WHEN 'SATURDAY_EXPERIENCE' THEN 'Saturday workshop and social experience.'
+  WHEN 'SATURDAY_SOCIAL' THEN 'Saturday social and spectator admission.'
+  WHEN 'SUNDAY_WORKSHOP' THEN 'Sunday workshop admission.'
+  WHEN 'MINI_COMPETITION' THEN 'Kingdom of Fear Mini Competition entry. A qualifying paid admission booking is required.'
+END;
 
 INSERT INTO special_event_product_days(product_id,day_id,places_per_ticket) VALUES
  ('johnny-loyalty-weekend','johnny-2027-saturday',1),('johnny-loyalty-weekend','johnny-2027-sunday',1),

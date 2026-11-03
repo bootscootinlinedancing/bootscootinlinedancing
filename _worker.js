@@ -1,4 +1,4 @@
-import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,specialEventDocumentUpload,specialEventDocumentDownload} from './special-events.js';
+import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork} from './special-events.js';
 
 const INDEX_KEY = '__system/media-index.json';
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -7738,6 +7738,7 @@ export default {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1',request);
       if (path === '/api/special-events' && request.method === 'GET') return publicSpecialEvents(request,env,url);
+      if (path === '/api/special-event-artwork' && request.method === 'GET') return specialEventArtwork(request,env,url);
       if (path === '/api/special-event-reservations' && request.method === 'POST') return createSpecialEventReservation(request,env,{sumUpFetch,resolveCustomerIdentity});
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
@@ -7800,6 +7801,10 @@ export default {
         const check=requireAdmin(request,env);if(check.response)return check.response;
         return specialEventDocumentUpload(request,env,check.state);
       }
+      if (path === '/api/admin/special-event-artwork/upload' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventArtworkUpload(request,env,check.state);
+      }
       if (path === '/api/admin/special-event-documents/download' && request.method === 'GET') {
         const check=requireAdmin(request,env);if(check.response)return check.response;
         return specialEventDocumentDownload(request,env,url);
@@ -7840,6 +7845,10 @@ export default {
       }
       if (path === '/booking-confirmed' && request.method === 'GET') return serveBookingConfirmed(request,env);
       if (path === '/booking-confirmed.html' && request.method === 'GET') return Response.redirect(new URL('/booking-confirmed',request.url).toString(),302);
+      if ((path === '/ranch/special-events/preview' || path === '/ranch/special-events/preview/' || path === '/special-event-preview.html') && request.method === 'GET') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        return servePublicAssetWithRepairs(new Request(new URL('/special-event-preview.html',request.url),{method:'GET',headers:request.headers}),env);
+      }
       if ((path === '/johnny-rossato' || path === '/johnny-rossato/') && request.method === 'GET') {
         return servePublicAssetWithRepairs(new Request(new URL('/johnny-rossato.html',request.url),{method:'GET',headers:request.headers}),env);
       }
