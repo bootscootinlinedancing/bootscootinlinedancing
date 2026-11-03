@@ -36,8 +36,8 @@ export async function specialEventReadiness(db,eventId){
 }
 
 export async function publicSpecialEvents(request,env,url){
-  if(!env.BOOKINGS_DB)return response({error:'Event database is unavailable.'},503);
   const slug=tidy(url.searchParams.get('slug'),120);
+  if(!env.BOOKINGS_DB)return slug?response({error:'This event is not currently published.'},404):response({events:[]});
   try{
     const reference=tidy(url.searchParams.get('reference'),120),token=tidy(url.searchParams.get('token'),180);
     if(reference||token){
