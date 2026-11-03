@@ -17,6 +17,9 @@ const BOOT_SCOOTIN_PUBLIC_NAVIGATION = Object.freeze([
     ['moonshine.html','Moonshine & Good Times Gang'],['long-road-handbook.html','Long Road Handbook'],
     ['country-guide-festivals.html','Festivals & Country Events']
   ]},
+  {title:'Workshops & Events',subtitle:'Special weekends, workshops and guest events',items:[
+    ['workshops-events.html','Workshops & Events']
+  ]},
   {title:'Country Corner',subtitle:'Music, dancing, places and adventures',items:[
     ['country-corner.html','Nora’s Country Corner'],['country-guide.html','Nora’s Country Guide'],
     ['country-guide-music.html','Country Music'],['country-guide-line-dancing.html','UK Line Dancing'],

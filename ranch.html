@@ -112,6 +112,7 @@
       <button type="button" data-view="admission-rewards">Admission Rewards</button>
       <button type="button" data-view="operations">Operations</button>
       <button type="button" data-view="private-events">Private Events</button>
+      <button type="button" data-view="special-events">Special Events</button>
       <button type="button" data-view="media">Media</button>
       <button type="button" data-view="health">System Health</button>
       <button type="button" data-view="diagnostics">Diagnostics</button>
@@ -152,6 +153,13 @@
         <span id="ranch92ModeDetail">Please wait.</span>
         <a class="ranch-button hq-access-sign-in" href="/admin-login.html" data-hq-access-sign-in>SIGN IN TO HQ</a>
         <small id="ranch92LastUpdated"></small>
+      </section>
+
+      <section class="ranch-view" data-view-panel="special-events">
+        <div class="ranch-panel special-events-admin">
+          <div class="ranch-panel-head"><div><p class="kicker red">Reusable event operations</p><h2>Special Events</h2><p>Manage multi-day guest events separately from regular classes.</p></div><button class="button secondary compact" id="refreshSpecialEvents" type="button">Refresh</button></div>
+          <div id="specialEventAdmin" aria-live="polite"><div class="ranch91-loading">Select Special Events to load the Draft event.</div></div>
+        </div>
       </section>
 
       <section class="ranch-view" data-view-panel="class-passes">

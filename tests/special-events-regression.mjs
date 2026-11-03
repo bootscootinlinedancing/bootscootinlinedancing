@@ -1,0 +1,74 @@
+import assert from 'node:assert/strict';
+import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {spawnSync} from 'node:child_process';
+
+const root=new URL('../',import.meta.url);
+const migration=readFileSync(new URL('../migrations/0031_special_events.sql',import.meta.url),'utf8');
+const worker=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
+const service=readFileSync(new URL('../special-events.js',import.meta.url),'utf8');
+const publicPage=readFileSync(new URL('../johnny-rossato.html',import.meta.url),'utf8');
+const temp=mkdtempSync(join(tmpdir(),'boot-scootin-special-events-'));
+const database=join(temp,'rehearsal.sqlite');
+
+function sqlite(sql){
+  const result=spawnSync('sqlite3',['-batch','-bail',database],{input:sql,encoding:'utf8'});
+  assert.equal(result.status,0,result.stderr||result.stdout);
+  return result.stdout.trim();
+}
+
+try{
+  sqlite(`PRAGMA foreign_keys=ON;
+    CREATE TABLE customers(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE);
+    ${migration}`);
+
+  assert.equal(sqlite(`SELECT status||'|'||publication_enabled||'|'||checkout_enabled FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'DRAFT|0|0');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_days WHERE event_id='special-event-johnny-rossato-2027' AND capacity IS NULL;`),'2');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE event_id='special-event-johnny-rossato-2027';`),'7');
+  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state||'|'||password_required FROM special_event_ticket_products WHERE code='LOYALTY_WEEKEND';`),'3500|10|INACTIVE|1');
+  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state FROM special_event_ticket_products WHERE code='EARLY_BIRD_WEEKEND';`),'4000|20|INACTIVE');
+  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||auto_activate_after_product_id FROM special_event_ticket_products WHERE code='STANDARD_WEEKEND';`),'5000|20|johnny-early-weekend');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_product_days WHERE product_id='johnny-standard-weekend';`),'2','weekend admission must reserve both event days');
+  assert.equal(sqlite(`SELECT places_per_ticket FROM special_event_product_days WHERE product_id='johnny-mini-competition';`),'0','competition add-on must not consume venue capacity twice');
+  assert.equal(sqlite(`SELECT max_per_checkout FROM special_event_ticket_products WHERE id='johnny-mini-competition';`),'1','one competition entry is permitted per qualifying booking checkout');
+  assert.equal(sqlite(`PRAGMA foreign_key_check;`),'');
+  assert.equal(sqlite(`PRAGMA integrity_check;`),'ok');
+
+  assert.match(service,/PBKDF2/);
+  assert.match(service,/100000/);
+  assert.match(service,/toLocaleUpperCase\('en-GB'\)/,'restricted password comparison must be case-insensitive');
+  assert.doesNotMatch(`${service}\n${worker}\n${migration}`,/BOOTSWITHJOHNNY/,'approved plaintext password must not be committed');
+  assert.match(migration,/storage_key LIKE 'private\/special-events\/%'/);
+  assert.match(migration,/special_event_document_versions_immutable_update/);
+  assert.match(migration,/special_event_activity_immutable_delete/);
+  assert.match(service,/status='PUBLISHED' AND publication_enabled=1/,'public API must only expose published events');
+  assert.match(service,/Publication is blocked until all mandatory settings are confirmed/);
+  assert.match(service,/only authoritative[\s\S]*PAID bookings permanently sell the release out/,'temporary holds must not unlock Standard Weekend');
+  assert.match(service,/INSERT OR IGNORE INTO special_event_attendees/,'paid admission must create idempotent attendee records');
+  assert.match(service,/INSERT OR IGNORE INTO special_event_competition_entries/,'paid competition add-on must create an idempotent entry');
+  assert.match(worker,/\/api\/admin\/special-events/);
+  assert.match(worker,/key\.startsWith\('private\/'\)/,'private evidence must be blocked from the public media route');
+  assert.doesNotMatch(publicPage,/Johnny Rossato: His UK Debut/,'Draft event details must not be embedded in the public shell');
+  assert.match(publicPage,/fetch\('\/api\/special-events\?slug=johnny-rossato'/);
+
+  const prematurePublish=spawnSync('sqlite3',['-batch','-bail',database],{input:`UPDATE special_events SET status='PUBLISHED',publication_enabled=1 WHERE id='special-event-johnny-rossato-2027';`,encoding:'utf8'});
+  assert.notEqual(prematurePublish.status,0,'database trigger must block publication while mandatory settings are incomplete');
+
+  sqlite(`BEGIN;
+    INSERT INTO customers(id,name,email) VALUES('customer-test','Test Customer','test@example.invalid');
+    UPDATE special_event_days SET capacity=2;
+    UPDATE special_event_ticket_products SET allocation=2,release_state='ACTIVE' WHERE id='johnny-early-weekend';
+    INSERT INTO special_event_holds(id,event_id,product_id,customer_id,customer_email,quantity,amount_pence,status,expires_at,idempotency_key)
+      VALUES('hold-1','special-event-johnny-rossato-2027','johnny-early-weekend','customer-test','test@example.invalid',2,8000,'ACTIVE','2099-01-01T00:00:00Z','test-hold-1');
+    INSERT INTO special_event_hold_days(hold_id,day_id,places) SELECT 'hold-1',day_id,2 FROM special_event_product_days WHERE product_id='johnny-early-weekend';
+    COMMIT;`);
+  assert.equal(sqlite(`SELECT SUM(places) FROM special_event_hold_days WHERE day_id='johnny-2027-saturday';`),'2');
+  assert.equal(sqlite(`SELECT SUM(places) FROM special_event_hold_days WHERE day_id='johnny-2027-sunday';`),'2');
+
+  const immutable=spawnSync('sqlite3',['-batch','-bail',database],{input:`UPDATE special_event_activity SET action='CHANGED' WHERE id='johnny-draft-seed-activity';`,encoding:'utf8'});
+  assert.notEqual(immutable.status,0,'activity history must be immutable');
+  console.log('Special Events migration and draft-safety regression checks passed.');
+} finally {
+  rmSync(temp,{recursive:true,force:true});
+}

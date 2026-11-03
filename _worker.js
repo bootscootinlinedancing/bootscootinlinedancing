@@ -1,3 +1,5 @@
+import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,specialEventDocumentUpload,specialEventDocumentDownload} from './special-events.js';
+
 const INDEX_KEY = '__system/media-index.json';
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -3515,7 +3517,7 @@ async function sumUpWebhook(request, env) {
     return new Response(null, { status: 204 });
   }
 
-  const [booking,classPass,order,privatePayment]=await Promise.all([
+  const [booking,classPass,order,privatePayment,specialEventBooking]=await Promise.all([
     env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE provider_checkout_id=?`).bind(checkoutId).first(),
     env.BOOKINGS_DB.prepare(`
       SELECT mp.*,p.name product_name,p.validity_days
@@ -3523,9 +3525,10 @@ async function sumUpWebhook(request, env) {
       WHERE mp.provider_checkout_id=?
     `).bind(checkoutId).first(),
     env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE provider_checkout_id=?`).bind(checkoutId).first(),
-    env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first()
+    env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_bookings WHERE provider_checkout_id=?`).bind(checkoutId).first().catch(error=>/no such table/i.test(String(error?.message||error))?null:Promise.reject(error))
   ]);
-  if([booking,classPass,order,privatePayment].filter(Boolean).length>1){
+  if([booking,classPass,order,privatePayment,specialEventBooking].filter(Boolean).length>1){
     throw new Error('SUMUP_CHECKOUT_REFERENCE_COLLISION');
   }
   if(order&&(order.status==='CANCELLED'||order.cancelled_at))return new Response(null,{status:204});
@@ -3536,6 +3539,10 @@ async function sumUpWebhook(request, env) {
   }
   if(classPass){
     if(checkout)await applySumUpClassPassState(env,classPass,checkout,'SUMUP_WEBHOOK');
+    return new Response(null,{status:204});
+  }
+  if(specialEventBooking){
+    if(checkout)await applySpecialEventCheckoutState(env,specialEventBooking,checkout);
     return new Response(null,{status:204});
   }
   if(order&&checkout){
@@ -7707,7 +7714,7 @@ async function adminPromotions(request,env){
 async function serveMedia(request, env, pathname) {
   if (!env.MEDIA_BUCKET) return new Response('Media storage is not configured.', { status: 503 });
   const key = decodeURIComponent(pathname.slice('/media/'.length));
-  if (!key || key.startsWith('__system/')) return new Response('Not found', { status: 404 });
+  if (!key || key.startsWith('__system/') || key.startsWith('private/')) return new Response('Not found', { status: 404 });
   const object = await env.MEDIA_BUCKET.get(key);
   if (!object) return new Response('Not found', { status: 404 });
   const headers = new Headers();
@@ -7730,6 +7737,8 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1',request);
+      if (path === '/api/special-events' && request.method === 'GET') return publicSpecialEvents(request,env,url);
+      if (path === '/api/special-event-reservations' && request.method === 'POST') return createSpecialEventReservation(request,env,{sumUpFetch,resolveCustomerIdentity});
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
@@ -7783,6 +7792,18 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/special-events') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        return adminSpecialEvents(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-documents/upload' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventDocumentUpload(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-documents/download' && request.method === 'GET') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventDocumentDownload(request,env,url);
+      }
       if (path === '/api/admin/class-guests') return adminClassGuests(request, env);
       if (path === '/api/admin/anniversary') return adminAnniversary(request, env);
       if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
@@ -7819,6 +7840,9 @@ export default {
       }
       if (path === '/booking-confirmed' && request.method === 'GET') return serveBookingConfirmed(request,env);
       if (path === '/booking-confirmed.html' && request.method === 'GET') return Response.redirect(new URL('/booking-confirmed',request.url).toString(),302);
+      if ((path === '/johnny-rossato' || path === '/johnny-rossato/') && request.method === 'GET') {
+        return servePublicAssetWithRepairs(new Request(new URL('/johnny-rossato.html',request.url),{method:'GET',headers:request.headers}),env);
+      }
       return servePublicAssetWithRepairs(request, env);
     } catch (error) {
       if(path==='/api/class-reservations'&&request.method==='POST'){
