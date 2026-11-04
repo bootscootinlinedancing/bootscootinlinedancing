@@ -42,6 +42,11 @@ await applySpecialEventCheckoutState(env,expiring,{status:'EXPIRED'});
 assert.equal(db.prepare('SELECT status FROM special_event_bookings WHERE id=?').get(expiring.id).status,'FAILED');
 assert.equal(db.prepare('SELECT status FROM special_event_holds WHERE id=?').get(expiring.hold_id).status,'RELEASED');
 
+services.sumUpFetch=async()=>new Response(JSON.stringify({error:'isolated provider failure'}),{status:502,headers:{'content-type':'application/json'}});
+response=await createSpecialEventReservation(new Request('https://example.test/api/special-event-reservations',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...body,quantity:1,idempotency_key:'isolated-provider-failure'})}),env,services);
+assert.equal(response.status,502);const failed=db.prepare("SELECT b.status,h.status hold_status FROM special_event_bookings b JOIN special_event_holds h ON h.id=b.hold_id WHERE h.idempotency_key='isolated-provider-failure'").get();
+assert.equal(failed.status,'FAILED');assert.equal(failed.hold_status,'RELEASED');
+
 const form=new FormData();form.set('event_id','special-event-johnny-rossato-2027');form.set('title','Private isolated evidence');form.set('category','CONTRACT');form.set('file',new File([new TextEncoder().encode('private fixture')],'fixture.pdf',{type:'application/pdf'}));
 response=await specialEventDocumentUpload(new Request('https://example.test/api/admin/special-event-documents/upload',{method:'POST',body:form}),env,{email:'owner@example.test'});
 assert.equal(response.status,201,await response.clone().text());const uploaded=await response.json();
@@ -49,4 +54,4 @@ const version=db.prepare('SELECT * FROM special_event_document_versions WHERE do
 response=await specialEventDocumentDownload(new Request(`https://example.test/api/admin/special-event-documents/download?version=${version.id}`),env,new URL(`https://example.test/api/admin/special-event-documents/download?version=${version.id}`));
 assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');assert.equal(await response.text(),'private fixture');
 assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
-console.log('PASS isolated Special Events purchase, PAID idempotency, EXPIRED release, private evidence version and download');
+console.log('PASS isolated Special Events purchase, PAID idempotency, EXPIRED/FAILED release, private evidence version and download');
