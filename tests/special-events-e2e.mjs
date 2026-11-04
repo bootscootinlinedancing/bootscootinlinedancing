@@ -53,5 +53,19 @@ assert.equal(response.status,201,await response.clone().text());const uploaded=a
 const version=db.prepare('SELECT * FROM special_event_document_versions WHERE document_id=?').get(uploaded.document_id);assert(version.storage_key.startsWith('private/special-events/'));
 response=await specialEventDocumentDownload(new Request(`https://example.test/api/admin/special-event-documents/download?version=${version.id}`),env,new URL(`https://example.test/api/admin/special-event-documents/download?version=${version.id}`));
 assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'private, no-store');assert.equal(await response.text(),'private fixture');
+
+const ranchSource=readFileSync(new URL('../ranch.js',import.meta.url),'utf8');
+const generatedLink=ranchSource.match(/href="\$\{ADMIN_API_PREFIX\}(\/special-event-documents\/download\?version=)\$\{encodeURIComponent\(item\.current_version_id\)\}/);
+assert(generatedLink,'HQ must generate the authoritative version parameter for private downloads');
+const workerSource=readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'');
+const specialSource=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
+const worker=await import(`data:text/javascript;base64,${Buffer.from(`${specialSource}\n${workerSource}`).toString('base64')}`);
+const hqDownloadUrl=`https://example.test/api/admin${generatedLink[1]}${encodeURIComponent(version.id)}`;
+response=await worker.default.fetch(new Request(hqDownloadUrl,{headers:{'Cf-Access-Authenticated-User-Email':'owner@example.test'}}),env,{waitUntil(){}});
+assert.equal(response.status,200,await response.clone().text());
+assert.equal(response.headers.get('cache-control'),'private, no-store');
+assert.equal(await response.text(),'private fixture');
+response=await worker.default.fetch(new Request(hqDownloadUrl),env,{waitUntil(){}});
+assert.equal(response.status,401,'unauthorised users must not download private evidence');
 assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
-console.log('PASS isolated Special Events purchase, PAID idempotency, EXPIRED/FAILED release, private evidence version and download');
+console.log('PASS isolated Special Events purchase, PAID idempotency, EXPIRED/FAILED release, HQ-generated private evidence download and unauthorised rejection');
