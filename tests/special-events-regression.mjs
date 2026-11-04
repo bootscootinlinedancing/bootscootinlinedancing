@@ -56,6 +56,13 @@ try{
   assert.doesNotMatch(publicPage,/Johnny Rossato: His UK Debut/,'Draft event details must not be embedded in the public shell');
   assert.match(eventPageScript,/\/api\/special-events\?slug=johnny-rossato/);
   assert.match(worker,/\/ranch\/special-events\/preview/,'Draft preview must be protected by the HQ route');
+  assert.match(worker,/\/ranch\/special-events\/preview-listing/,'Draft listing preview must be protected by the HQ route');
+  assert.match(service,/action==='OPEN_SALES'/,'manual launch must be implemented server-side');
+  assert.match(service,/EVENT_AND_SALES_OPENED/,'manual launch must create an audit event');
+  assert.match(service,/action==='CLOSE_SALES'/,'HQ must provide a separate close-sales operation');
+  assert.match(migration,/public_presentation_approved/);
+  assert.match(migration,/payment_integration_verified/);
+  assert.match(migration,/production_installation_verified/);
 
   const prematurePublish=spawnSync('sqlite3',['-batch','-bail',database],{input:`UPDATE special_events SET status='PUBLISHED',publication_enabled=1 WHERE id='special-event-johnny-rossato-2027';`,encoding:'utf8'});
   assert.notEqual(prematurePublish.status,0,'database trigger must block publication while mandatory settings are incomplete');

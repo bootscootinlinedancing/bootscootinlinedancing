@@ -10350,3 +10350,30 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-bran
   body.special-events-public .workshops-events-hero h1{font-size:clamp(2.25rem,12vw,3.15rem)}
 }
 .special-event-admin-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,.55fr);gap:20px;padding:22px;border:1px solid #7e2c31;background:#130808}.special-event-admin-hero h3{margin:.25rem 0}.special-event-readiness{padding:16px;border-left:4px solid #d13b43;background:#090505}.special-event-readiness.ready{border-color:#4e9c68}.special-event-readiness ul{margin:.5rem 0 0;padding-left:18px}.special-event-admin-tabs{display:flex;gap:8px;overflow:auto;margin:18px 0;padding-bottom:8px}.special-event-admin-tabs a{flex:none;padding:9px 12px;border:1px solid #6d292e;color:#f3dfce;text-decoration:none}.special-event-admin-section{margin:18px 0;padding:20px;border:1px solid #542326;background:#0e0707}.special-event-day-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.special-event-day-grid article{display:grid;gap:5px;padding:16px;background:#180b0c}.special-event-admin-section table{width:100%;border-collapse:collapse}.special-event-admin-section th,.special-event-admin-section td{padding:10px;border-bottom:1px solid #4e292b;text-align:left}.special-event-admin-section td small{display:block;color:#aa8f82}.special-event-admin-section .ranch-form-grid{margin-top:18px}.table-wrap{overflow-x:auto}@media(max-width:760px){.special-event-admin-hero,.special-event-day-grid{grid-template-columns:1fr}.special-event-admin-section{padding:14px}}
+
+/* Special Events completion: reuse the approved dark public/HQ surfaces. */
+.special-events-public .workshops-events-hero{padding:clamp(105px,12vw,150px) 20px clamp(38px,6vw,64px)}
+.special-events-public .workshops-events-hero h1{font-size:clamp(2.45rem,7vw,4.7rem)}
+.special-events-public .workshops-events-content{padding-bottom:clamp(55px,8vw,90px)}
+.special-events-public .workshops-event-grid{margin-block:26px}
+.special-events-public .workshops-event-card{padding:clamp(20px,4vw,34px)}
+.special-events-public .workshops-event-card h3,.special-events-public .workshops-event-empty h3{font-size:clamp(1.7rem,3.4vw,2.65rem)}
+.special-events-public .workshops-event-date{color:#f3dfce;font:600 1rem/1.4 Oswald,sans-serif;text-transform:uppercase;letter-spacing:.08em}
+.special-events-public .workshops-regular-classes{margin-top:32px;padding:clamp(24px,5vw,40px);background:rgba(11,5,6,.94);color:#f8eadb;border:1px solid #793038;box-shadow:0 0 24px rgba(213,28,39,.12)}
+.special-events-public .workshops-regular-classes h2{color:#fff2e8;font-size:clamp(1.7rem,3.4vw,2.65rem)}
+.special-events-public .workshops-regular-classes p{color:#d7c5b9}
+.special-events-public .special-event-tagline{max-width:620px;color:#d7c5b9;font-size:1.08rem;line-height:1.6}
+.special-events-public .special-event-venue-approved{margin-top:clamp(48px,7vw,80px);margin-bottom:0;background:rgba(11,5,6,.94);color:#f8eadb;border:1px solid #793038;box-shadow:0 0 24px rgba(213,28,39,.1)}
+.special-events-public .special-event-venue-approved h2{color:#fff2e8}
+.special-events-public .special-event-venue-approved p{color:#d7c5b9}
+.special-events-public .special-ticket-state{align-self:end;color:#d7c5b9;font:600 .85rem Oswald,sans-serif;text-transform:uppercase;letter-spacing:.08em}
+.special-events-public .special-event-faq-approved{padding:clamp(48px,7vw,80px) 0 clamp(60px,8vw,95px)}
+.special-events-public .special-event-faq-approved>div:last-child{display:grid;gap:10px;margin-top:24px}
+.special-events-public .special-event-faq-approved details{padding:18px 20px;border:1px solid #693036;background:rgba(11,5,6,.92)}
+.special-events-public .special-event-faq-approved summary{cursor:pointer;color:#fff2e8;font:600 1.08rem Oswald,sans-serif}
+.special-events-public .special-event-faq-approved details p{color:#d7c5b9;line-height:1.6}
+.special-event-preview-actions,.special-event-launch-controls>div{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.special-event-admin-section textarea,.special-event-admin-section input,.special-event-admin-section select{max-width:100%}
+.special-event-admin-section [data-product-description]{min-width:250px}
+.special-event-launch-controls{border-color:#8b3036;background:linear-gradient(135deg,#120707,#240a0d)}
+@media(max-width:760px){.special-events-public .special-event-hero-approved{grid-template-columns:1fr}.special-events-public .special-event-artwork{grid-row:1}.special-events-public .special-event-hero-copy{grid-row:2}.special-event-preview-actions,.special-event-launch-controls>div{display:grid}.special-event-preview-actions .button,.special-event-launch-controls .button{width:100%;text-align:center}.special-event-admin-section [data-product-description]{min-width:190px}}

@@ -4,6 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {
   createSpecialEventReservation,
   applySpecialEventCheckoutState,
+  adminSpecialEvents,
   specialEventDocumentUpload,
   specialEventDocumentDownload
 } from '../special-events.js';
@@ -21,7 +22,7 @@ db.exec(`INSERT INTO special_event_access_credentials(id,event_id,product_id,pas
   UPDATE special_event_days SET capacity=20;
   UPDATE special_event_ticket_products SET allocation=20;
   UPDATE special_event_ticket_products SET release_state='ACTIVE' WHERE code='EARLY_BIRD_WEEKEND';
-  UPDATE special_events SET artwork_url='/api/special-event-artwork?id=special-event-johnny-rossato-2027',age_terms='Confirmed isolated fixture',age_terms_confirmed=1,refund_policy='Confirmed isolated fixture',refund_policy_confirmed=1;
+  UPDATE special_events SET artwork_url='/api/special-event-artwork?id=special-event-johnny-rossato-2027',age_terms='Confirmed isolated fixture',age_terms_confirmed=1,refund_policy='Confirmed isolated fixture',refund_policy_confirmed=1,public_presentation_approved=1,payment_integration_verified=1,production_installation_verified=1;
   UPDATE special_events SET status='PUBLISHED',publication_enabled=1,checkout_enabled=1;`);
 const services={resolveCustomerIdentity:async()=>customer,sumUpFetch:async()=>new Response(JSON.stringify({id:'isolated-checkout',hosted_checkout_url:'https://pay.example.test/special'}),{status:201,headers:{'content-type':'application/json'}})};
 const body={slug:'johnny-rossato',product_code:'EARLY_BIRD_WEEKEND',name:'Isolated Tester',email:'isolated@example.test',phone:'07000000000',quantity:2,terms_accepted:true,idempotency_key:'isolated-special-booking'};
@@ -67,5 +68,15 @@ assert.equal(response.headers.get('cache-control'),'private, no-store');
 assert.equal(await response.text(),'private fixture');
 response=await worker.default.fetch(new Request(hqDownloadUrl),env,{waitUntil(){}});
 assert.equal(response.status,401,'unauthorised users must not download private evidence');
+
+db.exec(`UPDATE special_events SET status='DRAFT',publication_enabled=0,checkout_enabled=0 WHERE id='special-event-johnny-rossato-2027'`);
+response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'OPEN_SALES',confirmation:'Johnny Rossato — His UK Debut'})}),env,{email:'owner@example.test'});
+assert.equal(response.status,200,await response.clone().text());
+assert.deepEqual({...db.prepare(`SELECT status,publication_enabled,checkout_enabled FROM special_events WHERE id='special-event-johnny-rossato-2027'`).get()},{status:'PUBLISHED',publication_enabled:1,checkout_enabled:1});
+assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_activity WHERE action='EVENT_AND_SALES_OPENED'`).get().n,1);
+response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'CLOSE_SALES',confirmation:'CLOSE SALES'})}),env,{email:'owner@example.test'});
+assert.equal(response.status,200,await response.clone().text());
+assert.equal(db.prepare(`SELECT checkout_enabled FROM special_events WHERE id='special-event-johnny-rossato-2027'`).get().checkout_enabled,0);
+assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_activity WHERE action='TICKET_SALES_CLOSED'`).get().n,1);
 assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
-console.log('PASS isolated Special Events purchase, PAID idempotency, EXPIRED/FAILED release, HQ-generated private evidence download and unauthorised rejection');
+console.log('PASS isolated Special Events purchase, PAID idempotency, EXPIRED/FAILED release, HQ-generated private evidence download, unauthorised rejection and audited manual open/close');

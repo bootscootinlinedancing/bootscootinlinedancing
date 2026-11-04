@@ -7849,6 +7849,10 @@ export default {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
         return servePublicAssetWithRepairs(new Request(new URL('/special-event-preview.html',request.url),{method:'GET',headers:request.headers}),env);
       }
+      if ((path === '/ranch/special-events/preview-listing' || path === '/ranch/special-events/preview-listing/') && request.method === 'GET') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        return servePublicAssetWithRepairs(new Request(new URL('/workshops-events.html',request.url),{method:'GET',headers:request.headers}),env);
+      }
       if ((path === '/johnny-rossato' || path === '/johnny-rossato/') && request.method === 'GET') {
         return servePublicAssetWithRepairs(new Request(new URL('/johnny-rossato.html',request.url),{method:'GET',headers:request.headers}),env);
       }

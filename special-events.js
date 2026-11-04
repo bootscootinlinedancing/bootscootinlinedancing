@@ -22,7 +22,13 @@ export async function specialEventReadiness(db,eventId){
   if(!event)return null;
   const [days,products,credentials]=await Promise.all([
     db.prepare(`SELECT * FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(eventId).all(),
-    db.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? ORDER BY display_order`).bind(eventId).all(),
+    db.prepare(`SELECT p.*,
+      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) sold_count,
+      COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP),0) held_count,
+      CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation
+        -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP),0)) END remaining
+      FROM special_event_ticket_products p WHERE p.event_id=? ORDER BY p.display_order`).bind(eventId).all(),
     db.prepare(`SELECT product_id FROM special_event_access_credentials WHERE event_id=? AND active=1`).bind(eventId).all()
   ]);
   const credentialProducts=new Set((credentials.results||[]).map(row=>row.product_id));
@@ -31,6 +37,9 @@ export async function specialEventReadiness(db,eventId){
   if((products.results||[]).some(product=>product.allocation==null))blockers.push('TICKET_ALLOCATION_UNCONFIRMED');
   if(!Number(event.age_terms_confirmed))blockers.push('AGE_TERMS_UNCONFIRMED');
   if(!Number(event.refund_policy_confirmed))blockers.push('REFUND_POLICY_UNCONFIRMED');
+  if(!Number(event.public_presentation_approved))blockers.push('PUBLIC_PRESENTATION_UNAPPROVED');
+  if(!Number(event.payment_integration_verified))blockers.push('PAYMENT_INTEGRATION_UNVERIFIED');
+  if(!Number(event.production_installation_verified))blockers.push('PRODUCTION_INSTALLATION_UNVERIFIED');
   if(!event.artwork_url)blockers.push('EVENT_ARTWORK_NOT_UPLOADED');
   if((products.results||[]).some(product=>Number(product.password_required)&&!credentialProducts.has(product.id)))blockers.push('RESTRICTED_RELEASE_PASSWORD_NOT_CONFIGURED');
   return {event,days:days.results||[],products:products.results||[],blockers,ready:blockers.length===0};
@@ -50,17 +59,23 @@ export async function publicSpecialEvents(request,env,url){
       return response({status:'PAID',booking});
     }
     if(slug){
-      const event=await env.BOOKINGS_DB.prepare(`SELECT id,slug,title,subtitle,venue_name,venue_address,venue_notes,public_summary,public_description,artwork_url,status
+      const event=await env.BOOKINGS_DB.prepare(`SELECT id,slug,title,subtitle,venue_name,venue_address,venue_notes,public_summary,public_description,artwork_url,status,checkout_enabled,age_terms,age_terms_confirmed,refund_policy,refund_policy_confirmed
         FROM special_events WHERE slug=? AND status='PUBLISHED' AND publication_enabled=1`).bind(slug).first();
       if(!event)return response({error:'This event is not currently published.'},404);
       const [days,programme,products]=await Promise.all([
         env.BOOKINGS_DB.prepare(`SELECT id,event_date,label,capacity,display_order FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(event.id).all(),
         env.BOOKINGS_DB.prepare(`SELECT p.day_id,p.item_type,p.title,p.description,p.starts_at,p.ends_at,p.timing_confirmed,p.display_order FROM special_event_programme_items p WHERE p.event_id=? ORDER BY p.day_id,p.display_order`).bind(event.id).all(),
-        env.BOOKINGS_DB.prepare(`SELECT id,code,name,description,product_type,price_pence,allocation,release_state,password_required,requires_qualifying_admission,max_per_checkout,display_order FROM special_event_ticket_products WHERE event_id=? AND release_state IN ('ACTIVE','SOLD_OUT') ORDER BY display_order`).bind(event.id).all()
+        env.BOOKINGS_DB.prepare(`SELECT p.id,p.code,p.name,p.description,p.product_type,p.price_pence,p.allocation,p.release_state,p.password_required,p.requires_qualifying_admission,p.max_per_checkout,p.display_order,
+          COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) sold_count,
+          CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation-COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)-COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP),0)) END remaining
+          FROM special_event_ticket_products p WHERE p.event_id=? AND p.release_state IN ('ACTIVE','SOLD_OUT') ORDER BY p.display_order`).bind(event.id).all()
       ]);
       return response({event,days:days.results||[],programme:programme.results||[],ticket_products:products.results||[]});
     }
-    const rows=await env.BOOKINGS_DB.prepare(`SELECT slug,title,subtitle,venue_name,public_summary,artwork_url FROM special_events WHERE status='PUBLISHED' AND publication_enabled=1 ORDER BY created_at`).all();
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT e.slug,e.title,e.subtitle,e.venue_name,e.public_summary,e.artwork_url,
+      (SELECT MIN(d.event_date) FROM special_event_days d WHERE d.event_id=e.id) starts_on,
+      (SELECT MAX(d.event_date) FROM special_event_days d WHERE d.event_id=e.id) ends_on
+      FROM special_events e WHERE e.status='PUBLISHED' AND e.publication_enabled=1 ORDER BY starts_on`).all();
     return response({events:rows.results||[]});
   }catch(error){if(schemaMissing(error))return response({events:[]});throw error;}
 }
@@ -74,7 +89,7 @@ export async function adminSpecialEvents(request,env,admin){
       if(!ready)return response({error:'Special event not found.'},404);
       const [programme,bookings,attendees,competition,tasks,documents,activity]=await Promise.all([
         env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_programme_items WHERE event_id=? ORDER BY day_id,display_order`).bind(eventId).all(),
-        env.BOOKINGS_DB.prepare(`SELECT id,reference,customer_name,quantity,product_name_snapshot,amount_pence,status,created_at FROM special_event_bookings WHERE event_id=? ORDER BY created_at DESC LIMIT 250`).bind(eventId).all(),
+        env.BOOKINGS_DB.prepare(`SELECT id,reference,customer_name,customer_email,customer_phone,quantity,product_name_snapshot,amount_pence,status,payment_provider,paid_at,created_at FROM special_event_bookings WHERE event_id=? ORDER BY created_at DESC LIMIT 250`).bind(eventId).all(),
         env.BOOKINGS_DB.prepare(`SELECT a.id,a.booking_id,a.name,a.ticket_number,a.status,COUNT(CASE WHEN x.attended_at IS NOT NULL THEN 1 END) checked_in_days
           FROM special_event_attendees a JOIN special_event_bookings b ON b.id=a.booking_id LEFT JOIN special_event_attendance x ON x.attendee_id=a.id
           WHERE b.event_id=? GROUP BY a.id ORDER BY a.created_at`).bind(eventId).all(),
@@ -109,7 +124,7 @@ export async function adminSpecialEvents(request,env,admin){
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE special_event_days SET capacity=? WHERE event_id=? AND display_order=1`).bind(saturday,eventId),
         env.BOOKINGS_DB.prepare(`UPDATE special_event_days SET capacity=? WHERE event_id=? AND display_order=2`).bind(sunday,eventId),
-        env.BOOKINGS_DB.prepare(`UPDATE special_events SET age_terms=?,age_terms_confirmed=?,refund_policy=?,refund_policy_confirmed=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(tidy(body.age_terms,4000)||null,body.age_terms_confirmed?1:0,tidy(body.refund_policy,4000)||null,body.refund_policy_confirmed?1:0,eventId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_events SET age_terms=?,age_terms_confirmed=?,refund_policy=?,refund_policy_confirmed=?,payment_integration_verified=?,production_installation_verified=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(tidy(body.age_terms,4000)||null,body.age_terms_confirmed?1:0,tidy(body.refund_policy,4000)||null,body.refund_policy_confirmed?1:0,body.payment_integration_verified?1:0,body.production_installation_verified?1:0,eventId),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'SAFETY_SETTINGS_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,tidy(body.reason,500)||'HQ safety settings update',crypto.randomUUID())
       ]);
       return response({ok:true,readiness:await specialEventReadiness(env.BOOKINGS_DB,eventId)});
@@ -118,20 +133,22 @@ export async function adminSpecialEvents(request,env,admin){
       const artworkUrl=tidy(body.artwork_url,500)||null,publicDescription=tidy(body.public_description,4000)||null,venueNotes=tidy(body.venue_notes,3000)||null;
       if(artworkUrl&&artworkUrl!==`/api/special-event-artwork?id=${encodeURIComponent(eventId)}`)return response({error:'Use the protected Special Events artwork upload.'},400);
       await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`UPDATE special_events SET artwork_url=?,public_description=?,venue_notes=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(artworkUrl,publicDescription,venueNotes,eventId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_events SET artwork_url=?,title=?,subtitle=?,public_summary=?,public_description=?,venue_name=?,venue_address=?,venue_notes=?,public_presentation_approved=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(artworkUrl,tidy(body.title,240),tidy(body.subtitle,240)||null,tidy(body.public_summary,500)||null,publicDescription,tidy(body.venue_name,240),tidy(body.venue_address,500)||null,venueNotes,body.public_presentation_approved?1:0,eventId),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'EVENT_PRESENTATION_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,tidy(body.reason,500)||'Event presentation updated in HQ.',crypto.randomUUID())
       ]);
       return response({ok:true});
     }
     if(action==='UPDATE_PRODUCT'){
-      const productId=tidy(body.product_id,160),allocation=body.allocation==null||body.allocation===''?null:Number(body.allocation),state=tidy(body.release_state,20);
+      const productId=tidy(body.product_id,160),allocation=body.allocation==null||body.allocation===''?null:Number(body.allocation),state=tidy(body.release_state,20),price=Number(body.price_pence),limit=Number(body.max_per_checkout);
       if(allocation!=null&&(!Number.isInteger(allocation)||allocation<0))return response({error:'Allocation must be a whole number or remain unconfirmed.'},400);
+      if(!Number.isInteger(price)||price<0)return response({error:'Price must be a valid amount in pence.'},400);
+      if(!Number.isInteger(limit)||limit<1||limit>20)return response({error:'Quantity limit must be between 1 and 20.'},400);
       if(!['INACTIVE','ACTIVE','SOLD_OUT','CLOSED'].includes(state))return response({error:'Choose a valid release state.'},400);
       const product=await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE id=? AND event_id=?`).bind(productId,eventId).first();if(!product)return response({error:'Ticket product not found.'},404);
       const claimed=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(SUM(quantity),0) total FROM special_event_bookings WHERE product_id=? AND status='PAID'`).bind(productId).first();
       if(allocation!=null&&allocation<Number(claimed?.total||0))return response({error:'Allocation cannot be lower than paid ticket quantity.'},409);
       await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`UPDATE special_event_ticket_products SET allocation=?,release_state=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND event_id=?`).bind(allocation,state,productId,eventId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_ticket_products SET price_pence=?,allocation=?,description=?,max_per_checkout=?,release_state=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND event_id=?`).bind(price,allocation,tidy(body.description,2000)||null,limit,state,productId,eventId),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'TICKET_PRODUCT_UPDATED','TICKET_PRODUCT',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,productId,admin.email,tidy(body.reason,500)||'HQ ticket configuration update',JSON.stringify({previous_allocation:product.allocation,new_allocation:allocation,previous_state:product.release_state,new_state:state}),crypto.randomUUID())
       ]);
       return response({ok:true,readiness:await specialEventReadiness(env.BOOKINGS_DB,eventId)});
@@ -179,6 +196,32 @@ export async function adminSpecialEvents(request,env,admin){
       const readiness=await specialEventReadiness(env.BOOKINGS_DB,eventId);
       if(!readiness?.ready)return response({error:'Publication is blocked until all mandatory settings are confirmed.',blockers:readiness?.blockers||[]},409);
       return response({error:'Publication requires a separate owner-approved release operation.',code:'OWNER_RELEASE_APPROVAL_REQUIRED'},409);
+    }
+    if(action==='OPEN_SALES'){
+      const readiness=await specialEventReadiness(env.BOOKINGS_DB,eventId);
+      if(!readiness?.ready)return response({error:'Event and ticket sales cannot open until every mandatory readiness item is complete.',blockers:readiness?.blockers||[]},409);
+      if(readiness.event.status!=='DRAFT'||Number(readiness.event.publication_enabled)||Number(readiness.event.checkout_enabled))return response({error:'Only a fully prepared Draft event can be opened.',code:'EVENT_NOT_DRAFT'},409);
+      if(tidy(body.confirmation,240)!==readiness.event.title)return response({error:'Type the exact event title to confirm publication.'},400);
+      const active=readiness.products.filter(product=>product.release_state==='ACTIVE');
+      if(!active.length)return response({error:'At least one approved ticket release must be Active before opening sales.'},409);
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE special_events SET status='PUBLISHED',publication_enabled=1,checkout_enabled=1,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=? AND status='DRAFT' AND publication_enabled=0 AND checkout_enabled=0`).bind(eventId),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'EVENT_AND_SALES_OPENED','SPECIAL_EVENT',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Owner explicitly opened the event and approved ticket sales.',JSON.stringify({active_releases:active.map(product=>({code:product.code,price_pence:product.price_pence,allocation:product.allocation}))}),crypto.randomUUID())
+      ]);
+      const opened=await env.BOOKINGS_DB.prepare(`SELECT status,publication_enabled,checkout_enabled FROM special_events WHERE id=?`).bind(eventId).first();
+      if(opened?.status!=='PUBLISHED'||!Number(opened.publication_enabled)||!Number(opened.checkout_enabled))return response({error:'The event was not opened. No partial publication was retained.'},409);
+      return response({ok:true,status:'PUBLISHED',active_releases:active.map(product=>product.code)});
+    }
+    if(action==='CLOSE_SALES'){
+      if(tidy(body.confirmation,20)!=='CLOSE SALES')return response({error:'Type CLOSE SALES to confirm.'},400);
+      const current=await env.BOOKINGS_DB.prepare(`SELECT status,checkout_enabled FROM special_events WHERE id=?`).bind(eventId).first();
+      if(current?.status!=='PUBLISHED'||!Number(current.checkout_enabled))return response({error:'Ticket sales are not currently open.'},409);
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE special_events SET checkout_enabled=0,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=? AND status='PUBLISHED'`).bind(eventId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_ticket_products SET release_state='CLOSED',updated_at=CURRENT_TIMESTAMP WHERE event_id=? AND release_state='ACTIVE'`).bind(eventId),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'TICKET_SALES_CLOSED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Owner explicitly closed new ticket sales.',crypto.randomUUID())
+      ]);
+      return response({ok:true,status:'PUBLISHED',checkout_enabled:false});
     }
     return response({error:'Unsupported Special Events action.'},400);
   }

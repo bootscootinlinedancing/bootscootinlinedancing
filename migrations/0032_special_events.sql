@@ -19,6 +19,9 @@ CREATE TABLE special_events (
   refund_policy TEXT,
   refund_policy_confirmed INTEGER NOT NULL DEFAULT 0 CHECK(refund_policy_confirmed IN (0,1)),
   max_admission_per_checkout INTEGER NOT NULL DEFAULT 4 CHECK(max_admission_per_checkout BETWEEN 1 AND 20),
+  public_presentation_approved INTEGER NOT NULL DEFAULT 0 CHECK(public_presentation_approved IN (0,1)),
+  payment_integration_verified INTEGER NOT NULL DEFAULT 0 CHECK(payment_integration_verified IN (0,1)),
+  production_installation_verified INTEGER NOT NULL DEFAULT 0 CHECK(production_installation_verified IN (0,1)),
   publication_enabled INTEGER NOT NULL DEFAULT 0 CHECK(publication_enabled IN (0,1)),
   checkout_enabled INTEGER NOT NULL DEFAULT 0 CHECK(checkout_enabled IN (0,1)),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -100,6 +103,10 @@ WHEN NEW.status='PUBLISHED' OR NEW.publication_enabled=1 OR NEW.checkout_enabled
 BEGIN
   SELECT CASE WHEN NEW.age_terms_confirmed<>1 THEN RAISE(ABORT,'special event age terms are unconfirmed') END;
   SELECT CASE WHEN NEW.refund_policy_confirmed<>1 THEN RAISE(ABORT,'special event refund policy is unconfirmed') END;
+  SELECT CASE WHEN NEW.public_presentation_approved<>1 THEN RAISE(ABORT,'special event presentation is unapproved') END;
+  SELECT CASE WHEN NEW.payment_integration_verified<>1 THEN RAISE(ABORT,'special event payment integration is unverified') END;
+  SELECT CASE WHEN NEW.production_installation_verified<>1 THEN RAISE(ABORT,'special event production installation is unverified') END;
+  SELECT CASE WHEN NEW.artwork_url IS NULL OR length(trim(NEW.artwork_url))=0 THEN RAISE(ABORT,'special event artwork is missing') END;
   SELECT CASE WHEN EXISTS(SELECT 1 FROM special_event_days WHERE event_id=NEW.id AND capacity IS NULL) THEN RAISE(ABORT,'special event day capacity is unconfirmed') END;
   SELECT CASE WHEN EXISTS(SELECT 1 FROM special_event_ticket_products WHERE event_id=NEW.id AND allocation IS NULL) THEN RAISE(ABORT,'special event ticket allocation is unconfirmed') END;
   SELECT CASE WHEN EXISTS(
@@ -282,7 +289,7 @@ END;
 -- Draft-only seed. Capacities, several allocations, policies, timings and the
 -- loyalty credential remain intentionally unset. Publication guards reject it.
 INSERT INTO special_events(id,slug,title,subtitle,venue_name,venue_address,venue_notes,status,public_summary,public_description,max_admission_per_checkout)
-VALUES('special-event-johnny-rossato-2027','johnny-rossato','Johnny Rossato — His UK Debut','Kingdom of Fear','Low Places Bar','Digbeth, Birmingham',NULL,'DRAFT','A welcoming two-day Boot Scootin’ workshop and social experience across Saturday and Sunday.','Join Boot Scootin’ for a special weekend of workshops, social dancing and the Kingdom of Fear Mini Competition. Programme details will appear only as they are confirmed.',4);
+VALUES('special-event-johnny-rossato-2027','johnny-rossato','Johnny Rossato — His UK Debut','Kingdom of Fear','Low Places Bar','Digbeth, Birmingham',NULL,'DRAFT','Two days of workshops, dancing and fun!','Join Boot Scootin’ for a friendly two-day workshop and social experience with Johnny Rossato at Low Places Bar. No partner is required. Come for the workshops, stay for the music, dancing and good people.',4);
 
 INSERT INTO special_event_days(id,event_id,event_date,label,capacity,display_order) VALUES
  ('johnny-2027-saturday','special-event-johnny-rossato-2027','2027-02-20','Saturday',NULL,1),
@@ -299,14 +306,20 @@ INSERT INTO special_event_ticket_products(id,event_id,code,name,product_type,pri
 
 UPDATE special_event_ticket_products SET auto_activate_after_product_id='johnny-early-weekend' WHERE id='johnny-standard-weekend';
 UPDATE special_event_ticket_products SET description=CASE code
-  WHEN 'LOYALTY_WEEKEND' THEN 'Password-protected weekend admission for the loyalty release. Includes Saturday and Sunday admission.'
-  WHEN 'EARLY_BIRD_WEEKEND' THEN 'Early release weekend admission. Includes Saturday and Sunday admission.'
-  WHEN 'STANDARD_WEEKEND' THEN 'Standard weekend admission. Includes Saturday and Sunday admission.'
-  WHEN 'SATURDAY_EXPERIENCE' THEN 'Saturday workshop and social experience.'
-  WHEN 'SATURDAY_SOCIAL' THEN 'Saturday social and spectator admission.'
-  WHEN 'SUNDAY_WORKSHOP' THEN 'Sunday workshop admission.'
-  WHEN 'MINI_COMPETITION' THEN 'Kingdom of Fear Mini Competition entry. A qualifying paid admission booking is required.'
+  WHEN 'LOYALTY_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops · Restricted loyalty access.'
+  WHEN 'EARLY_BIRD_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops.'
+  WHEN 'STANDARD_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops.'
+  WHEN 'SATURDAY_EXPERIENCE' THEN 'Saturday workshops · Saturday evening social.'
+  WHEN 'SATURDAY_SOCIAL' THEN 'Saturday evening social · Spectator access to the competition.'
+  WHEN 'SUNDAY_WORKSHOP' THEN 'Sunday workshops.'
+  WHEN 'MINI_COMPETITION' THEN 'Competition entry only · Qualifying Saturday admission required · No independent venue admission.'
 END;
+
+INSERT INTO special_event_programme_items(id,event_id,day_id,item_type,title,description,starts_at,ends_at,timing_confirmed,display_order) VALUES
+ ('johnny-saturday-workshops','special-event-johnny-rossato-2027','johnny-2027-saturday','WORKSHOP','Line Dancing Workshops with Johnny Rossato','Workshop timings and durations are still to be confirmed.',NULL,NULL,0,1),
+ ('johnny-saturday-social','special-event-johnny-rossato-2027','johnny-2027-saturday','SOCIAL','Saturday Evening Social','The Kingdom of Fear Mini Competition will take place at the beginning of the social.',NULL,NULL,0,2),
+ ('johnny-saturday-competition','special-event-johnny-rossato-2027','johnny-2027-saturday','COMPETITION','Kingdom of Fear Mini Competition','At the beginning of the Saturday evening social. Further details to be announced.',NULL,NULL,0,3),
+ ('johnny-sunday-workshops','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Line Dancing Workshops with Johnny Rossato','Workshop timings and durations are still to be confirmed.',NULL,NULL,0,1);
 
 INSERT INTO special_event_product_days(product_id,day_id,places_per_ticket) VALUES
  ('johnny-loyalty-weekend','johnny-2027-saturday',1),('johnny-loyalty-weekend','johnny-2027-sunday',1),
