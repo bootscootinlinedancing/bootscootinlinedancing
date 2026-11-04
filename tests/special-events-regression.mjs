@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const root=new URL('../',import.meta.url);
-const migration=readFileSync(new URL('../migrations/0031_special_events.sql',import.meta.url),'utf8');
+const migration=readFileSync(new URL('../migrations/0032_special_events.sql',import.meta.url),'utf8');
 const worker=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
 const service=readFileSync(new URL('../special-events.js',import.meta.url),'utf8');
 const publicPage=readFileSync(new URL('../johnny-rossato.html',import.meta.url),'utf8');

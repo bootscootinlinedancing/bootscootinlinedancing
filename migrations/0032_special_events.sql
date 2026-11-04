@@ -316,4 +316,4 @@ INSERT INTO special_event_product_days(product_id,day_id,places_per_ticket) VALU
  ('johnny-sunday-workshop','johnny-2027-sunday',1),('johnny-mini-competition','johnny-2027-saturday',0);
 
 INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key)
-VALUES('johnny-draft-seed-activity','special-event-johnny-rossato-2027','EVENT_DRAFT_CREATED','SPECIAL_EVENT','special-event-johnny-rossato-2027','MIGRATION','Owner-approved Draft configuration; publication remains blocked.','migration-0031-johnny-draft-seed');
+VALUES('johnny-draft-seed-activity','special-event-johnny-rossato-2027','EVENT_DRAFT_CREATED','SPECIAL_EVENT','special-event-johnny-rossato-2027','MIGRATION','Owner-approved Draft configuration; publication remains blocked.','migration-0032-johnny-draft-seed');

@@ -84,7 +84,7 @@ export async function adminSpecialEvents(request,env,admin){
         env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_activity WHERE event_id=? ORDER BY created_at DESC LIMIT 250`).bind(eventId).all()
       ]);
       return response({...ready,programme:programme.results||[],bookings:bookings.results||[],attendees:attendees.results||[],competition:competition.results||[],tasks:tasks.results||[],documents:documents.results||[],activity:activity.results||[]});
-    }catch(error){if(schemaMissing(error))return response({error:'Migration 0031_special_events.sql has not been applied in this environment.',code:'SPECIAL_EVENTS_SCHEMA_MISSING'},503);throw error;}
+    }catch(error){if(schemaMissing(error))return response({error:'Migration 0032_special_events.sql has not been applied in this environment.',code:'SPECIAL_EVENTS_SCHEMA_MISSING'},503);throw error;}
   }
   const body=await request.json().catch(()=>null);
   if(!body)return response({error:'The request could not be read.'},400);
