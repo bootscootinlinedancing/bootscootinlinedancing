@@ -34,6 +34,7 @@ export async function specialEventReadiness(db,eventId){
   const credentialProducts=new Set((credentials.results||[]).map(row=>row.product_id));
   const blockers=[];
   if((days.results||[]).some(day=>day.capacity==null))blockers.push('DAY_CAPACITY_UNCONFIRMED');
+  if(event.saturday_evening_capacity==null&&(products.results||[]).some(product=>Number(product.includes_saturday_evening)))blockers.push('SATURDAY_EVENING_CAPACITY_UNCONFIRMED');
   if((products.results||[]).some(product=>product.allocation==null))blockers.push('TICKET_ALLOCATION_UNCONFIRMED');
   if(!Number(event.age_terms_confirmed))blockers.push('AGE_TERMS_UNCONFIRMED');
   if(!Number(event.refund_policy_confirmed))blockers.push('REFUND_POLICY_UNCONFIRMED');
@@ -59,13 +60,13 @@ export async function publicSpecialEvents(request,env,url){
       return response({status:'PAID',booking});
     }
     if(slug){
-      const event=await env.BOOKINGS_DB.prepare(`SELECT id,slug,title,subtitle,venue_name,venue_address,venue_notes,public_summary,public_description,artwork_url,status,checkout_enabled,age_terms,age_terms_confirmed,refund_policy,refund_policy_confirmed
+      const event=await env.BOOKINGS_DB.prepare(`SELECT id,slug,title,subtitle,venue_name,venue_address,venue_notes,public_summary,public_description,artwork_url,promo_video_url,promo_video_title,promo_video_caption,promo_video_poster_url,promo_video_display_enabled,status,checkout_enabled,age_terms,age_terms_confirmed,refund_policy,refund_policy_confirmed
         FROM special_events WHERE slug=? AND status='PUBLISHED' AND publication_enabled=1`).bind(slug).first();
       if(!event)return response({error:'This event is not currently published.'},404);
       const [days,programme,products]=await Promise.all([
         env.BOOKINGS_DB.prepare(`SELECT id,event_date,label,capacity,display_order FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(event.id).all(),
-        env.BOOKINGS_DB.prepare(`SELECT p.day_id,p.item_type,p.title,p.description,p.starts_at,p.ends_at,p.timing_confirmed,p.display_order FROM special_event_programme_items p WHERE p.event_id=? ORDER BY p.day_id,p.display_order`).bind(event.id).all(),
-        env.BOOKINGS_DB.prepare(`SELECT p.id,p.code,p.name,p.description,p.product_type,p.price_pence,p.allocation,p.release_state,p.password_required,p.requires_qualifying_admission,p.max_per_checkout,p.display_order,
+        env.BOOKINGS_DB.prepare(`SELECT p.day_id,p.item_type,p.title,p.description,p.starts_at,p.ends_at,p.timing_confirmed,p.programme_status,p.display_order FROM special_event_programme_items p WHERE p.event_id=? ORDER BY p.day_id,p.display_order`).bind(event.id).all(),
+        env.BOOKINGS_DB.prepare(`SELECT p.id,p.code,p.name,p.description,p.product_type,p.price_pence,p.allocation,p.release_state,p.password_required,p.requires_qualifying_admission,p.is_junior,p.requires_guardian,p.competition_eligible,p.includes_saturday_evening,p.max_per_checkout,p.display_order,
           COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) sold_count,
           CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation-COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)-COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP),0)) END remaining
           FROM special_event_ticket_products p WHERE p.event_id=? AND p.release_state IN ('ACTIVE','SOLD_OUT') ORDER BY p.display_order`).bind(event.id).all()
@@ -119,12 +120,12 @@ export async function adminSpecialEvents(request,env,admin){
       return response({ok:true});
     }
     if(action==='UPDATE_SAFETY_SETTINGS'){
-      const saturday=body.saturday_capacity==null?null:Number(body.saturday_capacity),sunday=body.sunday_capacity==null?null:Number(body.sunday_capacity);
-      if((saturday!=null&&(!Number.isInteger(saturday)||saturday<1))||(sunday!=null&&(!Number.isInteger(sunday)||sunday<1)))return response({error:'Capacities must be positive whole numbers or left unconfirmed.'},400);
+      const saturday=body.saturday_capacity==null?null:Number(body.saturday_capacity),sunday=body.sunday_capacity==null?null:Number(body.sunday_capacity),evening=body.saturday_evening_capacity==null?null:Number(body.saturday_evening_capacity);
+      if([saturday,sunday,evening].some(value=>value!=null&&(!Number.isInteger(value)||value<1)))return response({error:'Capacities must be positive whole numbers or left unconfirmed.'},400);
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE special_event_days SET capacity=? WHERE event_id=? AND display_order=1`).bind(saturday,eventId),
         env.BOOKINGS_DB.prepare(`UPDATE special_event_days SET capacity=? WHERE event_id=? AND display_order=2`).bind(sunday,eventId),
-        env.BOOKINGS_DB.prepare(`UPDATE special_events SET age_terms=?,age_terms_confirmed=?,refund_policy=?,refund_policy_confirmed=?,payment_integration_verified=?,production_installation_verified=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(tidy(body.age_terms,4000)||null,body.age_terms_confirmed?1:0,tidy(body.refund_policy,4000)||null,body.refund_policy_confirmed?1:0,body.payment_integration_verified?1:0,body.production_installation_verified?1:0,eventId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_events SET saturday_evening_capacity=?,age_terms=?,age_terms_confirmed=?,refund_policy=?,refund_policy_confirmed=?,payment_integration_verified=?,production_installation_verified=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(evening,tidy(body.age_terms,4000)||null,body.age_terms_confirmed?1:0,tidy(body.refund_policy,4000)||null,body.refund_policy_confirmed?1:0,body.payment_integration_verified?1:0,body.production_installation_verified?1:0,eventId),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'SAFETY_SETTINGS_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,tidy(body.reason,500)||'HQ safety settings update',crypto.randomUUID())
       ]);
       return response({ok:true,readiness:await specialEventReadiness(env.BOOKINGS_DB,eventId)});
@@ -153,12 +154,24 @@ export async function adminSpecialEvents(request,env,admin){
       ]);
       return response({ok:true,readiness:await specialEventReadiness(env.BOOKINGS_DB,eventId)});
     }
+    if(action==='UPDATE_PROMO_VIDEO'){
+      const title=tidy(body.title,240)||null,caption=tidy(body.caption,1000)||null,enabled=body.display_enabled?1:0;
+      const active=await env.BOOKINGS_DB.prepare(`SELECT id FROM special_event_media WHERE event_id=? AND media_type='PROMO_VIDEO' AND active=1`).bind(eventId).first();
+      if(enabled&&!active)return response({error:'Upload an MP4 promotional video before enabling public display.'},409);
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE special_events SET promo_video_title=?,promo_video_caption=?,promo_video_display_enabled=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(title,caption,enabled,eventId),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'PROMO_VIDEO_SETTINGS_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,enabled?'Promotional video display enabled.':'Promotional video display disabled.',crypto.randomUUID())
+      ]);
+      return response({ok:true});
+    }
     if(action==='UPSERT_PROGRAMME_ITEM'){
       const id=tidy(body.id,160)||crypto.randomUUID(),dayId=tidy(body.day_id,160),type=tidy(body.item_type,30),title=tidy(body.title,240),order=Number(body.display_order);
       if(!dayId||!title||!['WORKSHOP','SOCIAL','COMPETITION','PERFORMANCE','BREAK','OTHER'].includes(type)||!Number.isInteger(order))return response({error:'Complete the programme item details.'},400);
+      const programmeStatus=tidy(body.programme_status,20)||'PROVISIONAL';
+      if(!['PROVISIONAL','CONFIRMED','CANCELLED'].includes(programmeStatus))return response({error:'Choose a valid programme status.'},400);
       await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_programme_items(id,event_id,day_id,item_type,title,description,starts_at,ends_at,timing_confirmed,display_order) VALUES(?,?,?,?,?,?,?,?,?,?)
-          ON CONFLICT(id) DO UPDATE SET day_id=excluded.day_id,item_type=excluded.item_type,title=excluded.title,description=excluded.description,starts_at=excluded.starts_at,ends_at=excluded.ends_at,timing_confirmed=excluded.timing_confirmed,display_order=excluded.display_order`).bind(id,eventId,dayId,type,title,tidy(body.description,4000)||null,tidy(body.starts_at,40)||null,tidy(body.ends_at,40)||null,body.timing_confirmed?1:0,order),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_programme_items(id,event_id,day_id,item_type,title,description,starts_at,ends_at,timing_confirmed,programme_status,display_order) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(id) DO UPDATE SET day_id=excluded.day_id,item_type=excluded.item_type,title=excluded.title,description=excluded.description,starts_at=excluded.starts_at,ends_at=excluded.ends_at,timing_confirmed=excluded.timing_confirmed,programme_status=excluded.programme_status,display_order=excluded.display_order`).bind(id,eventId,dayId,type,title,tidy(body.description,4000)||null,tidy(body.starts_at,40)||null,tidy(body.ends_at,40)||null,programmeStatus==='CONFIRMED'?1:0,programmeStatus,order),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'PROGRAMME_ITEM_SAVED','PROGRAMME_ITEM',?,?,?,?)`).bind(crypto.randomUUID(),eventId,id,admin.email,body.timing_confirmed?'Confirmed programme timing saved.':'Draft programme item saved with timing unconfirmed.',crypto.randomUUID())
       ]);
       return response({ok:true,id});
@@ -262,6 +275,13 @@ export async function createSpecialEventReservation(request,env,services){
   const maximum=Math.min(Number(event.max_admission_per_checkout||4),Number(product.max_per_checkout||event.max_admission_per_checkout||4));
   if(quantity>maximum)return response({error:`Choose no more than ${maximum} ticket${maximum===1?'':'s'} per checkout.`},400);
   if(Number(product.password_required)&&!await verifySpecialEventPassword(env.BOOKINGS_DB,product.id,body.access_password))return response({error:'The loyalty access password was not recognised.'},403);
+  const attendeeInput=Array.isArray(body.attendees)?body.attendees.slice(0,20):[];
+  if(Number(product.is_junior)){
+    if(attendeeInput.length!==quantity)return response({error:'Enter the name and age of every junior attendee.'},400);
+    const invalid=attendeeInput.some(item=>!tidy(item?.name,120)||!Number.isInteger(Number(item?.age))||Number(item.age)<0||Number(item.age)>17||!tidy(item?.guardian_name,120)||!specialEmailOk(tidy(item?.guardian_email,160))||!tidy(item?.guardian_phone,40));
+    if(invalid)return response({error:'Every junior ticket requires the attendee’s name and age plus a responsible adult’s name, email and phone number.'},400);
+  }
+  if(attendeeInput.some(item=>item?.competition_entry)&&!Number(product.competition_eligible))return response({error:'This ticket does not qualify for the mini competition.'},409);
   let qualifyingBookingId=null;
   if(Number(product.requires_qualifying_admission)){
     const reference=tidy(body.qualifying_booking_reference,120);
@@ -273,10 +293,11 @@ export async function createSpecialEventReservation(request,env,services){
   let customer;
   try{customer=await services.resolveCustomerIdentity(env,{email,name,phone,marketingConsent:false,source:'SPECIAL_EVENT_BOOKING'});}catch(_){return response({error:'This customer identity could not be verified safely.'},409);}
   const holdId=crypto.randomUUID(),bookingId=crypto.randomUUID(),idempotencyKey=tidy(body.idempotency_key,160)||crypto.randomUUID(),expiresAt=new Date(Date.now()+15*60*1000).toISOString();
-  const amount=Number(product.price_pence)*quantity,reference=`BSE-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
+  const competitionQuantity=attendeeInput.filter(item=>item?.competition_entry).length;
+  const amount=Number(product.price_pence)*quantity+(competitionQuantity*500),reference=`BSE-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
   const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
-  const holdInsert=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_holds(id,event_id,product_id,customer_id,customer_email,quantity,amount_pence,status,expires_at,idempotency_key)
-    SELECT ?,e.id,p.id,?,?,?,?,'ACTIVE',?,?
+  const holdInsert=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_holds(id,event_id,product_id,customer_id,customer_email,quantity,amount_pence,competition_quantity,status,expires_at,idempotency_key)
+    SELECT ?,e.id,p.id,?,?,?,?,?,'ACTIVE',?,?
     FROM special_events e JOIN special_event_ticket_products p ON p.event_id=e.id
     WHERE e.id=? AND e.status='PUBLISHED' AND e.checkout_enabled=1 AND p.id=? AND p.release_state='ACTIVE'
       AND (p.allocation IS NULL OR ?<=p.allocation
@@ -285,18 +306,26 @@ export async function createSpecialEventReservation(request,env,services){
       AND NOT EXISTS(SELECT 1 FROM special_event_product_days pd JOIN special_event_days d ON d.id=pd.day_id
         WHERE pd.product_id=p.id AND d.capacity IS NOT NULL AND (?*pd.places_per_ticket)>d.capacity
           -COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)
-          -COALESCE((SELECT SUM(hd.places) FROM special_event_hold_days hd JOIN special_event_holds h ON h.id=hd.hold_id WHERE hd.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))`)
-    .bind(holdId,customer.id,email,quantity,amount,expiresAt,idempotencyKey,event.id,product.id,quantity,quantity);
+          -COALESCE((SELECT SUM(hd.places) FROM special_event_hold_days hd JOIN special_event_holds h ON h.id=hd.hold_id WHERE hd.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
+      AND (?=0 OR ?<=(SELECT allocation FROM special_event_ticket_products WHERE event_id=e.id AND code='MINI_COMPETITION')
+        -COALESCE((SELECT SUM(competition_quantity) FROM special_event_bookings WHERE event_id=e.id AND status='PAID'),0)
+        -COALESCE((SELECT SUM(competition_quantity) FROM special_event_holds WHERE event_id=e.id AND status='ACTIVE' AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
+      AND (p.includes_saturday_evening=0 OR e.saturday_evening_capacity IS NULL OR ?<=e.saturday_evening_capacity
+        -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0)
+        -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND hp.includes_saturday_evening=1),0))`)
+    .bind(holdId,customer.id,email,quantity,amount,competitionQuantity,expiresAt,idempotencyKey,event.id,product.id,quantity,quantity,competitionQuantity,competitionQuantity,quantity);
   const holdDays=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_hold_days(hold_id,day_id,places)
     SELECT h.id,pd.day_id,?*pd.places_per_ticket FROM special_event_holds h JOIN special_event_product_days pd ON pd.product_id=h.product_id
     WHERE h.id=? AND pd.product_id=?`).bind(quantity,holdId,product.id);
   const results=await env.BOOKINGS_DB.batch([holdInsert,holdDays]);
   if(!Number(results[0]?.meta?.changes||0))return response({error:'Those tickets have just sold out or there is not enough day capacity.'},409);
   try{
+    const attendeeDrafts=attendeeInput.map((item,index)=>env.BOOKINGS_DB.prepare(`INSERT INTO special_event_booking_attendee_drafts(id,booking_id,attendee_index,name,age_at_event,guardian_name,guardian_email,guardian_phone,competition_requested) VALUES(?,?,?,?,?,?,?,?,?)`).bind(`${bookingId}:draft:${index+1}`,bookingId,index+1,tidy(item.name,120),item.age==null?null:Number(item.age),tidy(item.guardian_name,120)||null,tidy(item.guardian_email,160).toLowerCase()||null,tidy(item.guardian_phone,40)||null,item.competition_entry?1:0));
     await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`INSERT INTO special_event_bookings(id,reference,event_id,product_id,hold_id,qualifying_booking_id,customer_id,customer_name,customer_email,customer_phone,quantity,product_code_snapshot,product_name_snapshot,unit_price_pence_snapshot,amount_pence,status,payment_provider,secure_token,customer_token,terms_accepted_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PENDING','SUMUP',?,?,CURRENT_TIMESTAMP)`).bind(bookingId,reference,event.id,product.id,holdId,qualifyingBookingId,customer.id,name,email,phone||null,quantity,product.code,product.name,product.price_pence,amount,secureToken,customerToken),
+      env.BOOKINGS_DB.prepare(`INSERT INTO special_event_bookings(id,reference,event_id,product_id,hold_id,qualifying_booking_id,customer_id,customer_name,customer_email,customer_phone,quantity,product_code_snapshot,product_name_snapshot,unit_price_pence_snapshot,amount_pence,competition_quantity,status,payment_provider,secure_token,customer_token,terms_accepted_at)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PENDING','SUMUP',?,?,CURRENT_TIMESTAMP)`).bind(bookingId,reference,event.id,product.id,holdId,qualifyingBookingId,customer.id,name,email,phone||null,quantity,product.code,product.name,product.price_pence,amount,competitionQuantity,secureToken,customerToken),
       env.BOOKINGS_DB.prepare(`INSERT INTO special_event_booking_days(booking_id,day_id,places) SELECT ?,day_id,places FROM special_event_hold_days WHERE hold_id=?`).bind(bookingId,holdId),
+      ...attendeeDrafts,
       env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'BOOKING_CREATED','BOOKING',?,?,?,?)`).bind(crypto.randomUUID(),event.id,bookingId,email,'Pending SumUp checkout created.',`booking-created:${bookingId}`)
     ]);
     const origin=new URL(request.url).origin;
@@ -324,17 +353,24 @@ export async function applySpecialEventCheckoutState(env,booking,checkout){
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_confirmation_outbox(id,booking_id,status,idempotency_key) VALUES(?,?,'DISABLED',?)`).bind(crypto.randomUUID(),booking.id,`special-event-paid:${booking.id}`),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'PAYMENT_CONFIRMED','BOOKING',?,'SUMUP','Authoritative SumUp payment confirmed.',?)`).bind(crypto.randomUUID(),booking.event_id,booking.id,`special-event-paid:${booking.id}`)
     ]);
-    const product=await env.BOOKINGS_DB.prepare(`SELECT product_type,requires_qualifying_admission FROM special_event_ticket_products WHERE id=?`).bind(booking.product_id).first();
+    const product=await env.BOOKINGS_DB.prepare(`SELECT product_type,requires_qualifying_admission,competition_eligible FROM special_event_ticket_products WHERE id=?`).bind(booking.product_id).first();
     if(product?.product_type==='ADMISSION'){
+      const drafts=await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_booking_attendee_drafts WHERE booking_id=? ORDER BY attendee_index`).bind(booking.id).all(),draftRows=drafts.results||[];
       const attendeeStatements=[];
       for(let index=1;index<=Number(booking.quantity);index+=1){
         const attendeeId=`${booking.id}:attendee:${index}`;
+        const draft=draftRows[index-1];
         attendeeStatements.push(
-          env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_attendees(id,booking_id,customer_id,name,email,ticket_number) VALUES(?,?,?,?,?,?)`).bind(attendeeId,booking.id,booking.customer_id,booking.customer_name,booking.customer_email,`${booking.reference}-${String(index).padStart(2,'0')}`),
+          env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_attendees(id,booking_id,customer_id,name,email,age_at_event,guardian_name,guardian_email,guardian_phone,ticket_number) VALUES(?,?,?,?,?,?,?,?,?,?)`).bind(attendeeId,booking.id,booking.customer_id,draft?.name||booking.customer_name,booking.customer_email,draft?.age_at_event??null,draft?.guardian_name||null,draft?.guardian_email||null,draft?.guardian_phone||null,`${booking.reference}-${String(index).padStart(2,'0')}`),
           env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_attendance(attendee_id,day_id) SELECT ?,day_id FROM special_event_booking_days WHERE booking_id=? AND places>0`).bind(attendeeId,booking.id)
         );
       }
       if(attendeeStatements.length)await env.BOOKINGS_DB.batch(attendeeStatements);
+      const competitionDrafts=draftRows.filter(row=>Number(row.competition_requested));
+      if(Number(product.competition_eligible)&&competitionDrafts.length){
+        const existing=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(MAX(entry_number),0) maximum FROM special_event_competition_entries WHERE event_id=?`).bind(booking.event_id).first(),base=Number(existing?.maximum||0);
+        await env.BOOKINGS_DB.batch(competitionDrafts.map((row,index)=>env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_competition_entries(id,event_id,booking_id,admission_booking_id,customer_id,attendee_id,entry_number) VALUES(?,?,?,?,?,?,?)`).bind(`${booking.id}:competition:${row.attendee_index}`,booking.event_id,booking.id,booking.id,booking.customer_id,`${booking.id}:attendee:${row.attendee_index}`,base+index+1)));
+      }
     }
     if(Number(product?.requires_qualifying_admission)&&booking.qualifying_booking_id){
       await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_competition_entries(id,event_id,booking_id,admission_booking_id,customer_id,entry_number)
@@ -401,6 +437,40 @@ export async function specialEventArtwork(request,env,url){
   const version=await env.BOOKINGS_DB.prepare(`SELECT v.storage_key,v.content_type FROM special_event_document_versions v JOIN special_event_documents d ON d.id=v.document_id WHERE d.event_id=? AND d.category='ARTWORK' AND d.title='Approved event artwork' ORDER BY v.version DESC LIMIT 1`).bind(eventId).first();
   if(!version)return new Response('Not found',{status:404});const object=await env.MEDIA_BUCKET.get(version.storage_key);if(!object)return new Response('Not found',{status:404});
   return new Response(object.body,{headers:{'content-type':version.content_type,'cache-control':event.status==='PUBLISHED'?'public, max-age=3600':'private, no-store','x-content-type-options':'nosniff'}});
+}
+
+export async function specialEventMediaUpload(request,env,admin){
+  if(!env.BOOKINGS_DB||!env.MEDIA_BUCKET)return response({error:'Private event media storage is unavailable.'},503);
+  const form=await request.formData(),file=form.get('file'),eventId=tidy(form.get('event_id'),160),kind=tidy(form.get('media_type'),30);
+  if(!(file instanceof File)||!eventId||!['PROMO_VIDEO','VIDEO_POSTER'].includes(kind))return response({error:'Choose an event and supported media file.'},400);
+  const isVideo=kind==='PROMO_VIDEO',allowed=isVideo?file.type==='video/mp4':['image/jpeg','image/png','image/webp'].includes(file.type),limit=isVideo?100*1024*1024:10*1024*1024;
+  if(!allowed||file.size<1||file.size>limit)return response({error:isVideo?'Use an H.264/AAC MP4 up to 100 MB. MOV files should be converted to MP4 first.':'Use a JPG, PNG or WebP thumbnail up to 10 MB.'},415);
+  const event=await env.BOOKINGS_DB.prepare(`SELECT id FROM special_events WHERE id=?`).bind(eventId).first();if(!event)return response({error:'Special event not found.'},404);
+  const current=await env.BOOKINGS_DB.prepare(`SELECT COALESCE(MAX(version),0) version FROM special_event_media WHERE event_id=? AND media_type=?`).bind(eventId,kind).first(),version=Number(current?.version||0)+1,id=crypto.randomUUID();
+  const extension=isVideo?'mp4':file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg',storageKey=`private/special-events/${eventId}/media/${kind.toLowerCase()}/v${version}-${id}.${extension}`;
+  const bytes=await file.arrayBuffer(),sha256=hex(await crypto.subtle.digest('SHA-256',bytes));
+  await env.MEDIA_BUCKET.put(storageKey,bytes,{httpMetadata:{contentType:file.type,cacheControl:'private, no-store'}});
+  const publicUrl=`/api/special-event-media?id=${encodeURIComponent(eventId)}&type=${encodeURIComponent(kind)}`;
+  try{await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE special_event_media SET active=0 WHERE event_id=? AND media_type=? AND active=1`).bind(eventId,kind),
+    env.BOOKINGS_DB.prepare(`INSERT INTO special_event_media(id,event_id,media_type,title,caption,storage_key,content_type,byte_size,sha256,version,uploaded_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(id,eventId,kind,tidy(form.get('title'),240)||null,tidy(form.get('caption'),1000)||null,storageKey,file.type,file.size,sha256,version,admin.email),
+    env.BOOKINGS_DB.prepare(`UPDATE special_events SET ${isVideo?'promo_video_url':'promo_video_poster_url'}=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(publicUrl,eventId),
+    env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'EVENT_MEDIA_VERSION_UPLOADED','EVENT_MEDIA',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,id,admin.email,`${kind} version uploaded.`,JSON.stringify({kind,version,content_type:file.type,byte_size:file.size,sha256}),`event-media:${id}`)
+  ]);}catch(error){await env.MEDIA_BUCKET.delete(storageKey);throw error;}
+  return response({ok:true,url:publicUrl,version,sha256},201);
+}
+
+export async function specialEventMedia(request,env,url){
+  if(!env.BOOKINGS_DB||!env.MEDIA_BUCKET)return new Response('Not found',{status:404});
+  const eventId=tidy(url.searchParams.get('id'),160),kind=tidy(url.searchParams.get('type'),30),event=await env.BOOKINGS_DB.prepare(`SELECT status,publication_enabled,promo_video_display_enabled FROM special_events WHERE id=?`).bind(eventId).first();
+  if(!event||!['PROMO_VIDEO','VIDEO_POSTER'].includes(kind))return new Response('Not found',{status:404});
+  const isPublic=event.status==='PUBLISHED'&&Number(event.publication_enabled)&&Number(event.promo_video_display_enabled);
+  if(!isPublic){const email=tidy(request.headers.get('cf-access-authenticated-user-email'),200).toLowerCase(),configured=tidy(env.ADMIN_EMAIL,200).toLowerCase();if(!email||(configured&&email!==configured))return new Response('Not found',{status:404});}
+  const media=await env.BOOKINGS_DB.prepare(`SELECT storage_key,content_type,byte_size FROM special_event_media WHERE event_id=? AND media_type=? AND active=1`).bind(eventId,kind).first();if(!media)return new Response('Not found',{status:404});
+  const range=request.headers.get('range');
+  if(kind==='PROMO_VIDEO'&&range){const match=/^bytes=(\d*)-(\d*)$/.exec(range);if(!match)return new Response(null,{status:416});const size=Number(media.byte_size),start=match[1]?Number(match[1]):0,end=match[2]?Math.min(Number(match[2]),size-1):size-1;if(start>end||start>=size)return new Response(null,{status:416,headers:{'content-range':`bytes */${size}`}});const object=await env.MEDIA_BUCKET.get(media.storage_key,{range:{offset:start,length:end-start+1}});if(!object)return new Response('Not found',{status:404});return new Response(object.body,{status:206,headers:{'content-type':media.content_type,'content-length':String(end-start+1),'content-range':`bytes ${start}-${end}/${size}`,'accept-ranges':'bytes','cache-control':isPublic?'public, max-age=3600':'private, no-store'}});}
+  const object=await env.MEDIA_BUCKET.get(media.storage_key);if(!object)return new Response('Not found',{status:404});
+  return new Response(object.body,{headers:{'content-type':media.content_type,'content-length':String(media.byte_size),'accept-ranges':'bytes','cache-control':isPublic?'public, max-age=3600':'private, no-store','x-content-type-options':'nosniff'}});
 }
 
 export async function specialEventDocumentDownload(request,env,url){

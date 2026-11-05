@@ -26,14 +26,16 @@ try{
     ${migration}`);
 
   assert.equal(sqlite(`SELECT status||'|'||publication_enabled||'|'||checkout_enabled FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'DRAFT|0|0');
-  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_days WHERE event_id='special-event-johnny-rossato-2027' AND capacity IS NULL;`),'2');
-  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE event_id='special-event-johnny-rossato-2027';`),'7');
+  assert.equal(sqlite(`SELECT group_concat(capacity,',') FROM special_event_days WHERE event_id='special-event-johnny-rossato-2027' ORDER BY display_order;`),'75,75');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE event_id='special-event-johnny-rossato-2027';`),'10');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state||'|'||password_required FROM special_event_ticket_products WHERE code='LOYALTY_WEEKEND';`),'3500|10|INACTIVE|1');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state FROM special_event_ticket_products WHERE code='EARLY_BIRD_WEEKEND';`),'4000|20|INACTIVE');
-  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||auto_activate_after_product_id FROM special_event_ticket_products WHERE code='STANDARD_WEEKEND';`),'5000|20|johnny-early-weekend');
+  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||auto_activate_after_product_id FROM special_event_ticket_products WHERE code='STANDARD_WEEKEND';`),'5000|30|johnny-early-weekend');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_product_days WHERE product_id='johnny-standard-weekend';`),'2','weekend admission must reserve both event days');
   assert.equal(sqlite(`SELECT places_per_ticket FROM special_event_product_days WHERE product_id='johnny-mini-competition';`),'0','competition add-on must not consume venue capacity twice');
-  assert.equal(sqlite(`SELECT max_per_checkout FROM special_event_ticket_products WHERE id='johnny-mini-competition';`),'1','one competition entry is permitted per qualifying booking checkout');
+  assert.equal(sqlite(`SELECT allocation||'|'||max_per_checkout FROM special_event_ticket_products WHERE id='johnny-mini-competition';`),'25|4','competition entries must use the approved allocation and per-attendee checkout model');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE is_junior=1 AND requires_guardian=1;`),'3');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE competition_eligible=1;`),'6');
   assert.equal(sqlite(`PRAGMA foreign_key_check;`),'');
   assert.equal(sqlite(`PRAGMA integrity_check;`),'ok');
 
@@ -46,6 +48,11 @@ try{
   assert.match(migration,/special_event_activity_immutable_delete/);
   assert.match(service,/status='PUBLISHED' AND publication_enabled=1/,'public API must only expose published events');
   assert.match(service,/SPECIAL_EVENT_CHECKOUT_DISABLED/,'staging must support a hard checkout kill switch');
+  assert.match(service,/H\.264\/AAC MP4/,'HQ media upload must explain the supported video format');
+  assert.match(service,/content-range/,'event video delivery must support byte ranges');
+  assert.match(worker,/\/api\/admin\/special-event-media\/upload/,'event video upload must remain behind HQ authentication');
+  assert.match(eventPageScript,/playsinline/,'event video must use mobile Safari inline playback');
+  assert.doesNotMatch(eventPageScript,/autoplay/,'event video must not autoplay');
   assert.match(service,/Publication is blocked until all mandatory settings are confirmed/);
   assert.match(service,/only authoritative[\s\S]*PAID bookings permanently sell the release out/,'temporary holds must not unlock Standard Weekend');
   assert.match(service,/INSERT OR IGNORE INTO special_event_attendees/,'paid admission must create idempotent attendee records');

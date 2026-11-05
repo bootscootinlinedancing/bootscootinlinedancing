@@ -14,6 +14,12 @@ CREATE TABLE special_events (
   public_summary TEXT,
   public_description TEXT,
   artwork_url TEXT,
+  promo_video_url TEXT,
+  promo_video_title TEXT,
+  promo_video_caption TEXT,
+  promo_video_poster_url TEXT,
+  promo_video_display_enabled INTEGER NOT NULL DEFAULT 0 CHECK(promo_video_display_enabled IN (0,1)),
+  saturday_evening_capacity INTEGER CHECK(saturday_evening_capacity IS NULL OR saturday_evening_capacity > 0),
   age_terms TEXT,
   age_terms_confirmed INTEGER NOT NULL DEFAULT 0 CHECK(age_terms_confirmed IN (0,1)),
   refund_policy TEXT,
@@ -50,6 +56,7 @@ CREATE TABLE special_event_programme_items (
   starts_at TEXT,
   ends_at TEXT,
   timing_confirmed INTEGER NOT NULL DEFAULT 0 CHECK(timing_confirmed IN (0,1)),
+  programme_status TEXT NOT NULL DEFAULT 'PROVISIONAL' CHECK(programme_status IN ('PROVISIONAL','CONFIRMED','CANCELLED')),
   display_order INTEGER NOT NULL,
   UNIQUE(day_id,display_order)
 );
@@ -68,6 +75,10 @@ CREATE TABLE special_event_ticket_products (
   auto_activate_after_product_id TEXT REFERENCES special_event_ticket_products(id),
   password_required INTEGER NOT NULL DEFAULT 0 CHECK(password_required IN (0,1)),
   requires_qualifying_admission INTEGER NOT NULL DEFAULT 0 CHECK(requires_qualifying_admission IN (0,1)),
+  is_junior INTEGER NOT NULL DEFAULT 0 CHECK(is_junior IN (0,1)),
+  requires_guardian INTEGER NOT NULL DEFAULT 0 CHECK(requires_guardian IN (0,1)),
+  competition_eligible INTEGER NOT NULL DEFAULT 0 CHECK(competition_eligible IN (0,1)),
+  includes_saturday_evening INTEGER NOT NULL DEFAULT 0 CHECK(includes_saturday_evening IN (0,1)),
   max_per_checkout INTEGER CHECK(max_per_checkout IS NULL OR max_per_checkout BETWEEN 1 AND 20),
   display_order INTEGER NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -124,6 +135,7 @@ CREATE TABLE special_event_holds (
   customer_email TEXT NOT NULL,
   quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 20),
   amount_pence INTEGER NOT NULL CHECK(amount_pence >= 0),
+  competition_quantity INTEGER NOT NULL DEFAULT 0 CHECK(competition_quantity BETWEEN 0 AND 20),
   status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','CONSUMED','EXPIRED','RELEASED')),
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -154,6 +166,7 @@ CREATE TABLE special_event_bookings (
   product_name_snapshot TEXT NOT NULL,
   unit_price_pence_snapshot INTEGER NOT NULL CHECK(unit_price_pence_snapshot >= 0),
   amount_pence INTEGER NOT NULL CHECK(amount_pence >= 0),
+  competition_quantity INTEGER NOT NULL DEFAULT 0 CHECK(competition_quantity BETWEEN 0 AND 20),
   status TEXT NOT NULL DEFAULT 'PENDING' CHECK(status IN ('PENDING','PAID','CANCELLED','FAILED','REFUNDED')),
   payment_provider TEXT NOT NULL DEFAULT 'SUMUP' CHECK(payment_provider IN ('SUMUP','MANUAL','COMPLIMENTARY')),
   provider_checkout_id TEXT,
@@ -168,6 +181,19 @@ CREATE TABLE special_event_bookings (
 );
 CREATE INDEX idx_special_event_bookings_inventory ON special_event_bookings(event_id,product_id,status);
 CREATE INDEX idx_special_event_bookings_customer ON special_event_bookings(customer_id,created_at);
+
+CREATE TABLE special_event_booking_attendee_drafts (
+  id TEXT PRIMARY KEY,
+  booking_id TEXT NOT NULL REFERENCES special_event_bookings(id) ON DELETE CASCADE,
+  attendee_index INTEGER NOT NULL CHECK(attendee_index > 0),
+  name TEXT NOT NULL,
+  age_at_event INTEGER CHECK(age_at_event IS NULL OR age_at_event BETWEEN 0 AND 120),
+  guardian_name TEXT,
+  guardian_email TEXT,
+  guardian_phone TEXT,
+  competition_requested INTEGER NOT NULL DEFAULT 0 CHECK(competition_requested IN (0,1)),
+  UNIQUE(booking_id,attendee_index)
+);
 
 CREATE TABLE special_event_confirmation_outbox (
   id TEXT PRIMARY KEY,
@@ -195,6 +221,10 @@ CREATE TABLE special_event_attendees (
   customer_id TEXT REFERENCES customers(id),
   name TEXT NOT NULL,
   email TEXT,
+  age_at_event INTEGER CHECK(age_at_event IS NULL OR age_at_event BETWEEN 0 AND 120),
+  guardian_name TEXT,
+  guardian_email TEXT,
+  guardian_phone TEXT,
   ticket_number TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','CANCELLED')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -214,13 +244,33 @@ CREATE TABLE special_event_competition_entries (
   booking_id TEXT NOT NULL REFERENCES special_event_bookings(id),
   admission_booking_id TEXT NOT NULL REFERENCES special_event_bookings(id),
   customer_id TEXT NOT NULL REFERENCES customers(id),
+  attendee_id TEXT REFERENCES special_event_attendees(id),
   entry_number INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'ENTERED' CHECK(status IN ('ENTERED','WITHDRAWN','FINALIST','WINNER')),
   result_notes TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(event_id,entry_number),
-  UNIQUE(booking_id)
+  UNIQUE(booking_id),
+  UNIQUE(event_id,attendee_id)
 );
+
+CREATE TABLE special_event_media (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES special_events(id) ON DELETE CASCADE,
+  media_type TEXT NOT NULL CHECK(media_type IN ('PROMO_VIDEO','VIDEO_POSTER')),
+  title TEXT,
+  caption TEXT,
+  storage_key TEXT NOT NULL UNIQUE CHECK(storage_key LIKE 'private/special-events/%'),
+  content_type TEXT NOT NULL,
+  byte_size INTEGER NOT NULL CHECK(byte_size BETWEEN 1 AND 104857600),
+  sha256 TEXT NOT NULL,
+  version INTEGER NOT NULL CHECK(version > 0),
+  active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+  uploaded_by TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(event_id,media_type,version)
+);
+CREATE UNIQUE INDEX idx_special_event_active_media ON special_event_media(event_id,media_type) WHERE active=1;
 
 CREATE TABLE special_event_tasks (
   id TEXT PRIMARY KEY,
@@ -292,28 +342,40 @@ INSERT INTO special_events(id,slug,title,subtitle,venue_name,venue_address,venue
 VALUES('special-event-johnny-rossato-2027','johnny-rossato','Johnny Rossato — His UK Debut','Kingdom of Fear','Low Places Bar','Digbeth, Birmingham',NULL,'DRAFT','Two days of workshops, dancing and fun!','Join Boot Scootin’ for a friendly two-day workshop and social experience with Johnny Rossato at Low Places Bar. No partner is required. Come for the workshops, stay for the music, dancing and good people.',4);
 
 INSERT INTO special_event_days(id,event_id,event_date,label,capacity,display_order) VALUES
- ('johnny-2027-saturday','special-event-johnny-rossato-2027','2027-02-20','Saturday',NULL,1),
- ('johnny-2027-sunday','special-event-johnny-rossato-2027','2027-02-21','Sunday',NULL,2);
+ ('johnny-2027-saturday','special-event-johnny-rossato-2027','2027-02-20','Saturday workshops',75,1),
+ ('johnny-2027-sunday','special-event-johnny-rossato-2027','2027-02-21','Sunday workshops',75,2);
 
 INSERT INTO special_event_ticket_products(id,event_id,code,name,product_type,price_pence,allocation,release_order,release_state,password_required,requires_qualifying_admission,max_per_checkout,display_order) VALUES
- ('johnny-loyalty-weekend','special-event-johnny-rossato-2027','LOYALTY_WEEKEND','Loyalty Weekend Pass','ADMISSION',3500,10,1,'INACTIVE',1,0,4,1),
+ ('johnny-loyalty-weekend','special-event-johnny-rossato-2027','LOYALTY_WEEKEND','Loyal Boot Scooters Weekend Pass','ADMISSION',3500,10,1,'INACTIVE',1,0,4,1),
  ('johnny-early-weekend','special-event-johnny-rossato-2027','EARLY_BIRD_WEEKEND','Early Bird Weekend Pass','ADMISSION',4000,20,2,'INACTIVE',0,0,4,2),
- ('johnny-standard-weekend','special-event-johnny-rossato-2027','STANDARD_WEEKEND','Standard Weekend Pass','ADMISSION',5000,20,3,'INACTIVE',0,0,4,3),
- ('johnny-saturday-experience','special-event-johnny-rossato-2027','SATURDAY_EXPERIENCE','Saturday Experience','ADMISSION',3500,NULL,4,'INACTIVE',0,0,4,4),
- ('johnny-saturday-social','special-event-johnny-rossato-2027','SATURDAY_SOCIAL','Saturday Social & Spectator','ADMISSION',1500,NULL,5,'INACTIVE',0,0,4,5),
- ('johnny-sunday-workshop','special-event-johnny-rossato-2027','SUNDAY_WORKSHOP','Sunday Workshop','ADMISSION',2500,NULL,6,'INACTIVE',0,0,4,6),
- ('johnny-mini-competition','special-event-johnny-rossato-2027','MINI_COMPETITION','Mini Competition Entry','ADD_ON',500,NULL,7,'INACTIVE',0,1,1,7);
+ ('johnny-standard-weekend','special-event-johnny-rossato-2027','STANDARD_WEEKEND','Standard Weekend Pass','ADMISSION',5000,30,3,'INACTIVE',0,0,4,3),
+ ('johnny-junior-weekend','special-event-johnny-rossato-2027','JUNIOR_WEEKEND','Junior Weekend Workshop Pass','ADMISSION',2500,10,4,'INACTIVE',0,0,4,4),
+ ('johnny-saturday-experience','special-event-johnny-rossato-2027','SATURDAY_EXPERIENCE','Saturday Day Experience','ADMISSION',3500,5,5,'INACTIVE',0,0,4,5),
+ ('johnny-sunday-workshop','special-event-johnny-rossato-2027','SUNDAY_WORKSHOP','Sunday Workshop','ADMISSION',2500,5,6,'INACTIVE',0,0,4,6),
+ ('johnny-saturday-social','special-event-johnny-rossato-2027','SATURDAY_SOCIAL','Saturday Social & Spectator','ADMISSION',1500,20,7,'INACTIVE',0,0,4,7),
+ ('johnny-junior-saturday','special-event-johnny-rossato-2027','JUNIOR_SATURDAY','Junior Saturday Workshop','ADMISSION',1500,NULL,8,'INACTIVE',0,0,4,8),
+ ('johnny-junior-sunday','special-event-johnny-rossato-2027','JUNIOR_SUNDAY','Junior Sunday Workshop','ADMISSION',1500,NULL,9,'INACTIVE',0,0,4,9),
+ ('johnny-mini-competition','special-event-johnny-rossato-2027','MINI_COMPETITION','Mini Competition Entry','ADD_ON',500,25,10,'INACTIVE',0,1,4,10);
 
 UPDATE special_event_ticket_products SET auto_activate_after_product_id='johnny-early-weekend' WHERE id='johnny-standard-weekend';
 UPDATE special_event_ticket_products SET description=CASE code
   WHEN 'LOYALTY_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops · Restricted loyalty access.'
   WHEN 'EARLY_BIRD_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops.'
   WHEN 'STANDARD_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops.'
+  WHEN 'JUNIOR_WEEKEND' THEN 'Junior admission to Saturday and Sunday workshops · Responsible adult details required.'
   WHEN 'SATURDAY_EXPERIENCE' THEN 'Saturday workshops · Saturday evening social.'
   WHEN 'SATURDAY_SOCIAL' THEN 'Saturday evening social · Spectator access to the competition.'
   WHEN 'SUNDAY_WORKSHOP' THEN 'Sunday workshops.'
+  WHEN 'JUNIOR_SATURDAY' THEN 'Junior admission to Saturday workshops · Responsible adult details required.'
+  WHEN 'JUNIOR_SUNDAY' THEN 'Junior admission to Sunday workshops · Responsible adult details required.'
   WHEN 'MINI_COMPETITION' THEN 'Competition entry only · Qualifying Saturday admission required · No independent venue admission.'
 END;
+
+UPDATE special_event_ticket_products SET
+  is_junior=CASE WHEN code LIKE 'JUNIOR_%' THEN 1 ELSE 0 END,
+  requires_guardian=CASE WHEN code LIKE 'JUNIOR_%' THEN 1 ELSE 0 END,
+  competition_eligible=CASE WHEN code IN ('LOYALTY_WEEKEND','EARLY_BIRD_WEEKEND','STANDARD_WEEKEND','JUNIOR_WEEKEND','SATURDAY_EXPERIENCE','JUNIOR_SATURDAY') THEN 1 ELSE 0 END,
+  includes_saturday_evening=CASE WHEN code IN ('LOYALTY_WEEKEND','EARLY_BIRD_WEEKEND','STANDARD_WEEKEND','SATURDAY_EXPERIENCE','SATURDAY_SOCIAL') THEN 1 ELSE 0 END;
 
 INSERT INTO special_event_programme_items(id,event_id,day_id,item_type,title,description,starts_at,ends_at,timing_confirmed,display_order) VALUES
  ('johnny-sat-registration','special-event-johnny-rossato-2027','johnny-2027-saturday','OTHER','Doors and registration','Provisional schedule.','2027-02-20T11:00:00','2027-02-20T11:30:00',0,1),
@@ -343,8 +405,11 @@ INSERT INTO special_event_product_days(product_id,day_id,places_per_ticket) VALU
  ('johnny-loyalty-weekend','johnny-2027-saturday',1),('johnny-loyalty-weekend','johnny-2027-sunday',1),
  ('johnny-early-weekend','johnny-2027-saturday',1),('johnny-early-weekend','johnny-2027-sunday',1),
  ('johnny-standard-weekend','johnny-2027-saturday',1),('johnny-standard-weekend','johnny-2027-sunday',1),
+ ('johnny-junior-weekend','johnny-2027-saturday',1),('johnny-junior-weekend','johnny-2027-sunday',1),
  ('johnny-saturday-experience','johnny-2027-saturday',1),('johnny-saturday-social','johnny-2027-saturday',1),
- ('johnny-sunday-workshop','johnny-2027-sunday',1),('johnny-mini-competition','johnny-2027-saturday',0);
+ ('johnny-sunday-workshop','johnny-2027-sunday',1),
+ ('johnny-junior-saturday','johnny-2027-saturday',1),('johnny-junior-sunday','johnny-2027-sunday',1),
+ ('johnny-mini-competition','johnny-2027-saturday',0);
 
 INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key)
 VALUES('johnny-draft-seed-activity','special-event-johnny-rossato-2027','EVENT_DRAFT_CREATED','SPECIAL_EVENT','special-event-johnny-rossato-2027','MIGRATION','Owner-approved Draft configuration; publication remains blocked.','migration-0032-johnny-draft-seed');

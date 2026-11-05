@@ -1,4 +1,4 @@
-import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork} from './special-events.js';
+import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia} from './special-events.js';
 
 const INDEX_KEY = '__system/media-index.json';
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -7739,6 +7739,7 @@ export default {
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1',request);
       if (path === '/api/special-events' && request.method === 'GET') return publicSpecialEvents(request,env,url);
       if (path === '/api/special-event-artwork' && request.method === 'GET') return specialEventArtwork(request,env,url);
+      if (path === '/api/special-event-media' && request.method === 'GET') return specialEventMedia(request,env,url);
       if (path === '/api/special-event-reservations' && request.method === 'POST') return createSpecialEventReservation(request,env,{sumUpFetch,resolveCustomerIdentity});
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
@@ -7804,6 +7805,10 @@ export default {
       if (path === '/api/admin/special-event-artwork/upload' && request.method === 'POST') {
         const check=requireAdmin(request,env);if(check.response)return check.response;
         return specialEventArtworkUpload(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-media/upload' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMediaUpload(request,env,check.state);
       }
       if (path === '/api/admin/special-event-documents/download' && request.method === 'GET') {
         const check=requireAdmin(request,env);if(check.response)return check.response;
