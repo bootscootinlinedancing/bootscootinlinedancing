@@ -505,15 +505,17 @@
   function renderSetup(){
     const box=$('#ranch92SetupStatus');
     if(!box||!state.bootstrap)return;
-    const c=state.bootstrap.configured;
+    const c=state.bootstrap.configured,b=state.bootstrap;
     const rows=[
-      ['Cloudflare Access',hasVerifiedAccessSession(),'Protects private customer administration.'],
-      ['ADMIN_EMAIL',c.admin_email,'Optional additional restriction to the configured administrator address.'],
-      ['D1 database',c.database,'Stores classes, bookings, attendance and event inquiries.'],
-      ['R2 media bucket',c.media,'Stores website images, videos and PDFs.'],
-      ['SumUp Payments',c.sumup,'Secure payment checkout connection.']
+      ['Cloudflare Access',hasVerifiedAccessSession()?'connected':'failure','Protects private customer administration.'],
+      ['ADMIN_EMAIL',c.admin_email?'connected':'not-configured','Additional restriction to the configured administrator address.'],
+      ['D1 database',b.database_error?'failure':c.database?'connected':'not-configured',b.database_error?'The configured database connection failed.':'Stores classes, bookings, attendance and event inquiries.'],
+      ['R2 media bucket',b.media_error?'failure':c.media?'connected':'not-configured',b.media_error?'The configured media connection failed.':'Stores website images, videos and private event evidence.'],
+      ['Special Event checkout',c.special_event_checkout_disabled?'disabled':c.sumup?'connected':'not-configured',c.special_event_checkout_disabled?'Intentionally disabled in this staging environment.':'Secure SumUp checkout connection.'],
+      ['Outbound email',c.outbound_email_disabled?'disabled':'connected',c.outbound_email_disabled?'Intentionally disabled in this staging environment.':'Transactional delivery is enabled.']
     ];
-    box.innerHTML=rows.map(([name,ready,detail])=>`<article class="ranch92-connection ${ready?'ready':'setup'}"><span></span><div><strong>${esc(name)}</strong><small>${esc(detail)}</small></div><b>${ready?'Connected':'Setup'}</b></article>`).join('')
+    const labels={connected:'Connected','not-configured':'Not configured',disabled:'Intentionally disabled',failure:'Connection failure'};
+    box.innerHTML=rows.map(([name,status,detail])=>`<article class="ranch92-connection ${status==='connected'?'ready':status==='failure'?'error':'setup'}"><span></span><div><strong>${esc(name)}</strong><small>${esc(detail)}</small></div><b>${labels[status]}</b></article>`).join('')
       +(state.bootstrap.setup_steps.length?`<div class="ranch92-steps"><h3>Next steps</h3><ol>${state.bootstrap.setup_steps.map(step=>`<li>${esc(step)}</li>`).join('')}</ol></div>`:'<div class="ranch92-complete">All core backend connections are available.</div>');
   }
 

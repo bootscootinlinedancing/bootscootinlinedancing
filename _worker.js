@@ -5430,7 +5430,9 @@ async function adminBootstrap(request, env) {
       admin_email: Boolean(admin.configured),
       database: Boolean(env.BOOKINGS_DB),
       media: Boolean(env.MEDIA_BUCKET),
-      sumup: sumUpConfigured(env)
+      sumup: sumUpConfigured(env),
+      special_event_checkout_disabled: String(env.SPECIAL_EVENT_CHECKOUT_DISABLED||'').toLowerCase()==='true',
+      outbound_email_disabled: String(env.OUTBOUND_EMAIL_DISABLED||'').toLowerCase()==='true'
     },
     summary: {
       upcoming_classes: 0,
