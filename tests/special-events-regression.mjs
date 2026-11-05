@@ -36,6 +36,9 @@ try{
   assert.equal(sqlite(`SELECT allocation||'|'||max_per_checkout FROM special_event_ticket_products WHERE id='johnny-mini-competition';`),'25|4','competition entries must use the approved allocation and per-attendee checkout model');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE is_junior=1 AND requires_guardian=1;`),'3');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE competition_eligible=1;`),'6');
+  assert.equal(sqlite(`SELECT programme_approval_status FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'ARTIST_APPROVED');
+  assert.equal(sqlite(`SELECT instructor_name||'|'||instructor_website_url FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'Gianmarco “Johnny” Rossato|https://www.learnwithjohnny.com/en');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_choreographies WHERE event_id='special-event-johnny-rossato-2027';`),'1');
   assert.equal(sqlite(`PRAGMA foreign_key_check;`),'');
   assert.equal(sqlite(`PRAGMA integrity_check;`),'ok');
 
@@ -52,6 +55,12 @@ try{
   assert.match(service,/content-range/,'event video delivery must support byte ranges');
   assert.match(worker,/\/api\/admin\/special-event-media\/upload/,'event video upload must remain behind HQ authentication');
   assert.match(eventPageScript,/playsinline/,'event video must use mobile Safari inline playback');
+  assert.match(eventPageScript,/Meet Johnny Rossato/,'public event must include the verified instructor section');
+  assert.match(eventPageScript,/all ages/,'competition must clearly state that it is open to all ages');
+  assert.match(service,/Adult tickets are for named attendees aged 18 or over/,'server must enforce adult admission age');
+  assert.match(service,/Number\(item\.age\)>17/,'server must enforce under-18 junior admission');
+  assert.match(listingPage,/<h2>What’s coming up<\/h2>/,'listing must use the approved single hierarchy');
+  assert.doesNotMatch(listingPage,/Special dates for your diary/,'redundant listing heading must be removed');
   assert.doesNotMatch(eventPageScript,/autoplay/,'event video must not autoplay');
   assert.match(service,/Publication is blocked until all mandatory settings are confirmed/);
   assert.match(service,/only authoritative[\s\S]*PAID bookings permanently sell the release out/,'temporary holds must not unlock Standard Weekend');

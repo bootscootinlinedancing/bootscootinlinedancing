@@ -20,6 +20,13 @@ CREATE TABLE special_events (
   promo_video_poster_url TEXT,
   promo_video_display_enabled INTEGER NOT NULL DEFAULT 0 CHECK(promo_video_display_enabled IN (0,1)),
   saturday_evening_capacity INTEGER CHECK(saturday_evening_capacity IS NULL OR saturday_evening_capacity > 0),
+  instructor_name TEXT,
+  instructor_intro TEXT,
+  instructor_biography TEXT,
+  instructor_website_url TEXT,
+  instructor_photo_url TEXT,
+  instructor_photo_caption TEXT,
+  programme_approval_status TEXT NOT NULL DEFAULT 'DRAFT' CHECK(programme_approval_status IN ('DRAFT','ARTIST_APPROVED')),
   age_terms TEXT,
   age_terms_confirmed INTEGER NOT NULL DEFAULT 0 CHECK(age_terms_confirmed IN (0,1)),
   refund_policy TEXT,
@@ -157,6 +164,7 @@ CREATE TABLE special_event_bookings (
   product_id TEXT NOT NULL REFERENCES special_event_ticket_products(id),
   hold_id TEXT UNIQUE REFERENCES special_event_holds(id),
   qualifying_booking_id TEXT REFERENCES special_event_bookings(id),
+  qualifying_attendee_id TEXT REFERENCES special_event_attendees(id),
   customer_id TEXT NOT NULL REFERENCES customers(id),
   customer_name TEXT NOT NULL,
   customer_email TEXT NOT NULL,
@@ -257,7 +265,7 @@ CREATE TABLE special_event_competition_entries (
 CREATE TABLE special_event_media (
   id TEXT PRIMARY KEY,
   event_id TEXT NOT NULL REFERENCES special_events(id) ON DELETE CASCADE,
-  media_type TEXT NOT NULL CHECK(media_type IN ('PROMO_VIDEO','VIDEO_POSTER')),
+  media_type TEXT NOT NULL CHECK(media_type IN ('PROMO_VIDEO','VIDEO_POSTER','INSTRUCTOR_PHOTO')),
   title TEXT,
   caption TEXT,
   storage_key TEXT NOT NULL UNIQUE CHECK(storage_key LIKE 'private/special-events/%'),
@@ -271,6 +279,17 @@ CREATE TABLE special_event_media (
   UNIQUE(event_id,media_type,version)
 );
 CREATE UNIQUE INDEX idx_special_event_active_media ON special_event_media(event_id,media_type) WHERE active=1;
+
+CREATE TABLE special_event_choreographies (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL REFERENCES special_events(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  info_url TEXT,
+  display_order INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(event_id,display_order)
+);
 
 CREATE TABLE special_event_tasks (
   id TEXT PRIMARY KEY,
@@ -341,6 +360,11 @@ END;
 INSERT INTO special_events(id,slug,title,subtitle,venue_name,venue_address,venue_notes,status,public_summary,public_description,max_admission_per_checkout)
 VALUES('special-event-johnny-rossato-2027','johnny-rossato','Johnny Rossato — His UK Debut','Kingdom of Fear','Low Places Bar','Digbeth, Birmingham',NULL,'DRAFT','Two days of workshops, dancing and fun!','Join Boot Scootin’ for a friendly two-day workshop and social experience with Johnny Rossato at Low Places Bar. No partner is required. Come for the workshops, stay for the music, dancing and good people.',4);
 
+UPDATE special_events SET instructor_name='Gianmarco “Johnny” Rossato',instructor_intro='Johnny is a line-dance teacher and choreographer whose journey has taken him from Italy to dance floors in many countries.',instructor_biography='Johnny shares his passion for teaching through clear explanations, careful attention to each step and the joy of dancing.',instructor_website_url='https://www.learnwithjohnny.com/en',programme_approval_status='ARTIST_APPROVED' WHERE id='special-event-johnny-rossato-2027';
+
+INSERT INTO special_event_choreographies(id,event_id,title,info_url,display_order) VALUES
+ ('johnny-choreography-kingdom-of-fear','special-event-johnny-rossato-2027','Kingdom of Fear','https://www.learnwithjohnny.com/en',1);
+
 INSERT INTO special_event_days(id,event_id,event_date,label,capacity,display_order) VALUES
  ('johnny-2027-saturday','special-event-johnny-rossato-2027','2027-02-20','Saturday workshops',75,1),
  ('johnny-2027-sunday','special-event-johnny-rossato-2027','2027-02-21','Sunday workshops',75,2);
@@ -359,15 +383,15 @@ INSERT INTO special_event_ticket_products(id,event_id,code,name,product_type,pri
 
 UPDATE special_event_ticket_products SET auto_activate_after_product_id='johnny-early-weekend' WHERE id='johnny-standard-weekend';
 UPDATE special_event_ticket_products SET description=CASE code
-  WHEN 'LOYALTY_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops · Restricted loyalty access.'
-  WHEN 'EARLY_BIRD_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops.'
-  WHEN 'STANDARD_WEEKEND' THEN 'Saturday workshops · Saturday evening social · Sunday workshops.'
-  WHEN 'JUNIOR_WEEKEND' THEN 'Junior admission to Saturday and Sunday workshops · Responsible adult details required.'
-  WHEN 'SATURDAY_EXPERIENCE' THEN 'Saturday workshops · Saturday evening social.'
-  WHEN 'SATURDAY_SOCIAL' THEN 'Saturday evening social · Spectator access to the competition.'
-  WHEN 'SUNDAY_WORKSHOP' THEN 'Sunday workshops.'
-  WHEN 'JUNIOR_SATURDAY' THEN 'Junior admission to Saturday workshops · Responsible adult details required.'
-  WHEN 'JUNIOR_SUNDAY' THEN 'Junior admission to Sunday workshops · Responsible adult details required.'
+  WHEN 'LOYALTY_WEEKEND' THEN 'Age 18+ · Saturday workshops · Saturday evening social · Sunday workshops · Restricted loyalty access.'
+  WHEN 'EARLY_BIRD_WEEKEND' THEN 'Age 18+ · Saturday workshops · Saturday evening social · Sunday workshops.'
+  WHEN 'STANDARD_WEEKEND' THEN 'Age 18+ · Saturday workshops · Saturday evening social · Sunday workshops.'
+  WHEN 'JUNIOR_WEEKEND' THEN 'Under 18 · Saturday and Sunday workshops and free dancing · Responsible adult details required · Saturday departure by 8:30 pm · Late-night social not included.'
+  WHEN 'SATURDAY_EXPERIENCE' THEN 'Age 18+ · Saturday workshops · Saturday evening social.'
+  WHEN 'SATURDAY_SOCIAL' THEN 'Age 18+ · Saturday evening social · Spectator access to the competition.'
+  WHEN 'SUNDAY_WORKSHOP' THEN 'Age 18+ · Sunday workshops.'
+  WHEN 'JUNIOR_SATURDAY' THEN 'Under 18 · Saturday workshops and free dancing · Responsible adult details required · Departure by 8:30 pm · Late-night social not included.'
+  WHEN 'JUNIOR_SUNDAY' THEN 'Under 18 · Sunday workshops and free dancing · Responsible adult details required.'
   WHEN 'MINI_COMPETITION' THEN 'Competition entry only · Qualifying Saturday admission required · No independent venue admission.'
 END;
 
@@ -393,11 +417,11 @@ INSERT INTO special_event_programme_items(id,event_id,day_id,item_type,title,des
  ('johnny-sat-under18','special-event-johnny-rossato-2027','johnny-2027-saturday','OTHER','Under-18s leave — subject to venue confirmation','Venue confirmation is required.','2027-02-20T20:30:00',NULL,0,13),
  ('johnny-sat-social','special-event-johnny-rossato-2027','johnny-2027-saturday','SOCIAL','Evening social — finish TBC','Provisional finish time.','2027-02-20T20:30:00','2027-02-21T01:00:00',0,14),
  ('johnny-sun-registration','special-event-johnny-rossato-2027','johnny-2027-sunday','OTHER','Doors and registration','Provisional schedule.','2027-02-21T12:00:00','2027-02-21T12:30:00',0,1),
- ('johnny-sun-workshop-1','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 1','Provisional schedule.','2027-02-21T12:30:00','2027-02-21T13:30:00',0,2),
+ ('johnny-sun-workshop-1','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 1 — dance TBC','Provisional schedule.','2027-02-21T12:30:00','2027-02-21T13:30:00',0,2),
  ('johnny-sun-free-1','special-event-johnny-rossato-2027','johnny-2027-sunday','SOCIAL','Free dancing','Provisional schedule.','2027-02-21T13:30:00','2027-02-21T14:00:00',0,3),
- ('johnny-sun-workshop-2','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 2','Provisional schedule.','2027-02-21T14:00:00','2027-02-21T15:00:00',0,4),
+ ('johnny-sun-workshop-2','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 2 — dance TBC','Provisional schedule.','2027-02-21T14:00:00','2027-02-21T15:00:00',0,4),
  ('johnny-sun-free-2','special-event-johnny-rossato-2027','johnny-2027-sunday','SOCIAL','Free dancing','Provisional schedule.','2027-02-21T15:00:00','2027-02-21T15:30:00',0,5),
- ('johnny-sun-workshop-3','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 3','Provisional schedule.','2027-02-21T15:30:00','2027-02-21T16:30:00',0,6),
+ ('johnny-sun-workshop-3','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 3 — dance TBC','Provisional schedule.','2027-02-21T15:30:00','2027-02-21T16:30:00',0,6),
  ('johnny-sun-recap','special-event-johnny-rossato-2027','johnny-2027-sunday','SOCIAL','Optional recap / social dancing','Provisional schedule.','2027-02-21T16:30:00','2027-02-21T17:00:00',0,7),
  ('johnny-sun-finish','special-event-johnny-rossato-2027','johnny-2027-sunday','OTHER','Proposed finish','Provisional finish time.','2027-02-21T17:00:00',NULL,0,8);
 
