@@ -35,7 +35,7 @@ export async function specialEventReadiness(db,eventId){
   const credentialProducts=new Set((credentials.results||[]).map(row=>row.product_id));
   const blockers=[];
   if((days.results||[]).some(day=>day.capacity==null))blockers.push('DAY_CAPACITY_UNCONFIRMED');
-  if(event.saturday_evening_capacity==null&&(products.results||[]).some(product=>Number(product.includes_saturday_evening)))blockers.push('SATURDAY_EVENING_CAPACITY_UNCONFIRMED');
+  if((event.saturday_evening_capacity==null||!Number(event.saturday_evening_capacity_confirmed))&&(products.results||[]).some(product=>Number(product.includes_saturday_evening)))blockers.push('SATURDAY_EVENING_CAPACITY_UNCONFIRMED');
   if(!Number(event.age_terms_confirmed))blockers.push('AGE_TERMS_UNCONFIRMED');
   if(!Number(event.refund_policy_confirmed))blockers.push('REFUND_POLICY_UNCONFIRMED');
   if(!Number(event.public_presentation_approved))blockers.push('PUBLIC_PRESENTATION_UNAPPROVED');
@@ -71,7 +71,7 @@ export async function publicSpecialEvents(request,env,url){
           COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) sold_count,
           CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation-COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)-COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP),0)) END remaining
           FROM special_event_ticket_products p WHERE p.event_id=? AND p.release_state IN ('ACTIVE','SOLD_OUT') ORDER BY p.display_order`).bind(event.id).all(),
-        env.BOOKINGS_DB.prepare(`SELECT id,title,info_url,display_order FROM special_event_choreographies WHERE event_id=? ORDER BY display_order`).bind(event.id).all()
+        env.BOOKINGS_DB.prepare(`SELECT id,title,info_url,copperknob_url,bootstepper_url,display_order FROM special_event_choreographies WHERE event_id=? ORDER BY display_order`).bind(event.id).all()
       ]);
       return response({event,days:days.results||[],programme:programme.results||[],ticket_products:products.results||[],choreographies:choreographies.results||[]});
     }
@@ -130,7 +130,7 @@ export async function adminSpecialEvents(request,env,admin){
           COALESCE((SELECT COUNT(*) FROM special_event_attendance x JOIN special_event_attendees a ON a.id=x.attendee_id JOIN special_event_bookings b ON b.id=a.booking_id WHERE x.day_id=d.id AND x.attended_at IS NOT NULL AND a.status='ACTIVE' AND b.status='PAID'),0) checked_in
           FROM special_event_days d WHERE d.event_id=? ORDER BY d.display_order`).bind(eventId).all()
       ]);
-      const evening=await env.BOOKINGS_DB.prepare(`SELECT e.saturday_evening_capacity capacity,
+      const evening=await env.BOOKINGS_DB.prepare(`SELECT e.saturday_evening_capacity capacity,e.saturday_evening_capacity_confirmed capacity_confirmed,
         COALESCE((SELECT SUM(p.allocation) FROM special_event_ticket_products p WHERE p.event_id=e.id AND p.product_type='ADMISSION' AND p.includes_saturday_evening=1 AND p.allocation IS NOT NULL),0) configured_allocation,
         COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY' AND p.includes_saturday_evening=1),0) paid,
         COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY' AND p.includes_saturday_evening=1),0) complimentary,
@@ -165,7 +165,7 @@ export async function adminSpecialEvents(request,env,admin){
       return response({ok:true});
     }
     if(action==='UPDATE_SAFETY_SETTINGS'){
-      const saturday=body.saturday_capacity==null?null:Number(body.saturday_capacity),sunday=body.sunday_capacity==null?null:Number(body.sunday_capacity),evening=body.saturday_evening_capacity==null?null:Number(body.saturday_evening_capacity);
+      const saturday=body.saturday_capacity==null?null:Number(body.saturday_capacity),sunday=body.sunday_capacity==null?null:Number(body.sunday_capacity),evening=body.saturday_evening_capacity==null?null:Number(body.saturday_evening_capacity),eveningConfirmed=body.saturday_evening_capacity_confirmed?1:0;
       if([saturday,sunday,evening].some(value=>value!=null&&(!Number.isInteger(value)||value<1)))return response({error:'Capacities must be positive whole numbers or left unconfirmed.'},400);
       const usage=await env.BOOKINGS_DB.prepare(`SELECT d.display_order,
         COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)+
@@ -181,7 +181,7 @@ export async function adminSpecialEvents(request,env,admin){
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE special_event_days SET capacity=? WHERE event_id=? AND display_order=1`).bind(saturday,eventId),
         env.BOOKINGS_DB.prepare(`UPDATE special_event_days SET capacity=? WHERE event_id=? AND display_order=2`).bind(sunday,eventId),
-        env.BOOKINGS_DB.prepare(`UPDATE special_events SET saturday_evening_capacity=?,age_terms=?,age_terms_confirmed=?,refund_policy=?,refund_policy_confirmed=?,payment_integration_verified=?,production_installation_verified=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(evening,tidy(body.age_terms,4000)||null,body.age_terms_confirmed?1:0,tidy(body.refund_policy,4000)||null,body.refund_policy_confirmed?1:0,body.payment_integration_verified?1:0,body.production_installation_verified?1:0,eventId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_events SET saturday_evening_capacity=?,saturday_evening_capacity_confirmed=?,age_terms=?,age_terms_confirmed=?,refund_policy=?,refund_policy_confirmed=?,payment_integration_verified=?,production_installation_verified=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(evening,eveningConfirmed,tidy(body.age_terms,4000)||null,body.age_terms_confirmed?1:0,tidy(body.refund_policy,4000)||null,body.refund_policy_confirmed?1:0,body.payment_integration_verified?1:0,body.production_installation_verified?1:0,eventId),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'SAFETY_SETTINGS_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,tidy(body.reason,500)||'HQ safety settings update',crypto.randomUUID())
       ]);
       return response({ok:true,readiness:await specialEventReadiness(env.BOOKINGS_DB,eventId)});
@@ -232,11 +232,11 @@ export async function adminSpecialEvents(request,env,admin){
       return response({ok:true});
     }
     if(action==='UPSERT_CHOREOGRAPHY'){
-      const id=tidy(body.id,160)||crypto.randomUUID(),title=tidy(body.title,240),order=Number(body.display_order),infoUrl=tidy(body.info_url,500)||null;
+      const id=tidy(body.id,160)||crypto.randomUUID(),title=tidy(body.title,240),order=Number(body.display_order),copperknobUrl=tidy(body.copperknob_url,500)||null,bootstepperUrl=tidy(body.bootstepper_url,500)||null,infoUrl=copperknobUrl||bootstepperUrl;
       if(!title||!Number.isInteger(order)||order<0)return response({error:'Enter a choreography title and display order.'},400);
-      if(infoUrl){try{const parsed=new URL(infoUrl);if(parsed.protocol!=='https:')throw new Error();}catch(_){return response({error:'Use a valid HTTPS choreography link.'},400);}}
+      for(const candidate of [copperknobUrl,bootstepperUrl]){if(candidate){try{const parsed=new URL(candidate);if(parsed.protocol!=='https:')throw new Error();}catch(_){return response({error:'Use valid HTTPS choreography links.'},400);}}}
       await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_choreographies(id,event_id,title,info_url,display_order) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,info_url=excluded.info_url,display_order=excluded.display_order,updated_at=CURRENT_TIMESTAMP`).bind(id,eventId,title,infoUrl,order),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_choreographies(id,event_id,title,info_url,copperknob_url,bootstepper_url,display_order) VALUES(?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,info_url=excluded.info_url,copperknob_url=excluded.copperknob_url,bootstepper_url=excluded.bootstepper_url,display_order=excluded.display_order,updated_at=CURRENT_TIMESTAMP`).bind(id,eventId,title,infoUrl,copperknobUrl,bootstepperUrl,order),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'CHOREOGRAPHY_SAVED','CHOREOGRAPHY',?,?,?,?)`).bind(crypto.randomUUID(),eventId,id,admin.email,'Verified instructor choreography saved.',crypto.randomUUID())
       ]);
       return response({ok:true,id});

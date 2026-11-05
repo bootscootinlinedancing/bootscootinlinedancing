@@ -20,6 +20,7 @@ CREATE TABLE special_events (
   promo_video_poster_url TEXT,
   promo_video_display_enabled INTEGER NOT NULL DEFAULT 0 CHECK(promo_video_display_enabled IN (0,1)),
   saturday_evening_capacity INTEGER CHECK(saturday_evening_capacity IS NULL OR saturday_evening_capacity > 0),
+  saturday_evening_capacity_confirmed INTEGER NOT NULL DEFAULT 0 CHECK(saturday_evening_capacity_confirmed IN (0,1)),
   instructor_name TEXT,
   instructor_intro TEXT,
   instructor_biography TEXT,
@@ -126,6 +127,7 @@ BEGIN
   SELECT CASE WHEN NEW.production_installation_verified<>1 THEN RAISE(ABORT,'special event production installation is unverified') END;
   SELECT CASE WHEN NEW.artwork_url IS NULL OR length(trim(NEW.artwork_url))=0 THEN RAISE(ABORT,'special event artwork is missing') END;
   SELECT CASE WHEN EXISTS(SELECT 1 FROM special_event_days WHERE event_id=NEW.id AND capacity IS NULL) THEN RAISE(ABORT,'special event day capacity is unconfirmed') END;
+  SELECT CASE WHEN NEW.saturday_evening_capacity IS NULL OR NEW.saturday_evening_capacity_confirmed<>1 THEN RAISE(ABORT,'special event Saturday evening capacity is unconfirmed') END;
   SELECT CASE WHEN EXISTS(SELECT 1 FROM special_event_ticket_products WHERE event_id=NEW.id AND allocation IS NULL) THEN RAISE(ABORT,'special event ticket allocation is unconfirmed') END;
   SELECT CASE WHEN EXISTS(
     SELECT 1 FROM special_event_ticket_products p
@@ -290,6 +292,8 @@ CREATE TABLE special_event_choreographies (
   event_id TEXT NOT NULL REFERENCES special_events(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   info_url TEXT,
+  copperknob_url TEXT,
+  bootstepper_url TEXT,
   display_order INTEGER NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -362,13 +366,15 @@ END;
 
 -- Draft-only seed. Capacities, several allocations, policies, timings and the
 -- loyalty credential remain intentionally unset. Publication guards reject it.
-INSERT INTO special_events(id,slug,title,subtitle,venue_name,venue_address,venue_notes,status,public_summary,public_description,max_admission_per_checkout)
-VALUES('special-event-johnny-rossato-2027','johnny-rossato','Johnny Rossato — His UK Debut','Kingdom of Fear','Low Places Bar','Digbeth, Birmingham',NULL,'DRAFT','Two days of workshops, dancing and fun!','Join Boot Scootin’ for a friendly two-day workshop and social experience with Johnny Rossato at Low Places Bar. No partner is required. Come for the workshops, stay for the music, dancing and good people.',4);
+INSERT INTO special_events(id,slug,title,subtitle,venue_name,venue_address,venue_notes,status,public_summary,public_description,saturday_evening_capacity,saturday_evening_capacity_confirmed,max_admission_per_checkout)
+VALUES('special-event-johnny-rossato-2027','johnny-rossato','Johnny Rossato — His UK Debut','Kingdom of Fear','Low Places Bar','Digbeth, Birmingham',NULL,'DRAFT','Two days of workshops, dancing and fun!','Join Boot Scootin’ for a friendly two-day workshop and social experience with Johnny Rossato at Low Places Bar. No partner is required. Come for the workshops, stay for the music, dancing and good people.',100,0,4);
 
 UPDATE special_events SET instructor_name='Gianmarco “Johnny” Rossato',instructor_intro='Johnny is a line-dance teacher and choreographer whose journey has taken him from Italy to dance floors in many countries.',instructor_biography='Johnny shares his passion for teaching through clear explanations, careful attention to each step and the joy of dancing.',instructor_website_url='https://www.learnwithjohnny.com/en',programme_approval_status='ARTIST_APPROVED' WHERE id='special-event-johnny-rossato-2027';
 
-INSERT INTO special_event_choreographies(id,event_id,title,info_url,display_order) VALUES
- ('johnny-choreography-kingdom-of-fear','special-event-johnny-rossato-2027','Kingdom of Fear','https://www.learnwithjohnny.com/en',1);
+INSERT INTO special_event_choreographies(id,event_id,title,info_url,copperknob_url,bootstepper_url,display_order) VALUES
+ ('johnny-choreography-kingdom-of-fear','special-event-johnny-rossato-2027','Kingdom of Fear','https://www.copperknob.co.uk/stepsheets/BHQS3WQ/kingdom-of-fear','https://www.copperknob.co.uk/stepsheets/BHQS3WQ/kingdom-of-fear','https://bootstepper.com/dances/D4255K8NC8B2RF7',1),
+ ('johnny-choreography-wild-magnolia','special-event-johnny-rossato-2027','Wild Magnolia','https://www.copperknob.co.uk/stepsheets/XNGTVL3/wild-magnolia','https://www.copperknob.co.uk/stepsheets/XNGTVL3/wild-magnolia','https://bootstepper.com/dances/D4B7F6CC222C687',2),
+ ('johnny-choreography-bar-none','special-event-johnny-rossato-2027','Bar None','https://www.copperknob.co.uk/stepsheets/Z543GQY/bar-none','https://www.copperknob.co.uk/stepsheets/Z543GQY/bar-none','https://bootstepper.com/dances/D36J5C6F3Q62F3J',3);
 
 INSERT INTO special_event_days(id,event_id,event_date,label,capacity,display_order) VALUES
  ('johnny-2027-saturday','special-event-johnny-rossato-2027','2027-02-20','Saturday workshops',75,1),
@@ -377,13 +383,13 @@ INSERT INTO special_event_days(id,event_id,event_date,label,capacity,display_ord
 INSERT INTO special_event_ticket_products(id,event_id,code,name,product_type,price_pence,allocation,release_order,release_state,password_required,requires_qualifying_admission,max_per_checkout,display_order) VALUES
  ('johnny-loyalty-weekend','special-event-johnny-rossato-2027','LOYALTY_WEEKEND','Loyal Boot Scooters Weekend Pass','ADMISSION',3500,10,1,'INACTIVE',1,0,4,1),
  ('johnny-early-weekend','special-event-johnny-rossato-2027','EARLY_BIRD_WEEKEND','Early Bird Weekend Pass','ADMISSION',4000,20,2,'INACTIVE',0,0,4,2),
- ('johnny-standard-weekend','special-event-johnny-rossato-2027','STANDARD_WEEKEND','Standard Weekend Pass','ADMISSION',5000,30,3,'INACTIVE',0,0,4,3),
+ ('johnny-standard-weekend','special-event-johnny-rossato-2027','STANDARD_WEEKEND','Standard Weekend Pass','ADMISSION',5000,25,3,'INACTIVE',0,0,4,3),
  ('johnny-junior-weekend','special-event-johnny-rossato-2027','JUNIOR_WEEKEND','Junior Weekend Workshop Pass','ADMISSION',2500,10,4,'INACTIVE',0,0,4,4),
  ('johnny-saturday-experience','special-event-johnny-rossato-2027','SATURDAY_EXPERIENCE','Saturday Day Experience','ADMISSION',3500,5,5,'INACTIVE',0,0,4,5),
  ('johnny-sunday-workshop','special-event-johnny-rossato-2027','SUNDAY_WORKSHOP','Sunday Workshop','ADMISSION',2500,5,6,'INACTIVE',0,0,4,6),
  ('johnny-saturday-social','special-event-johnny-rossato-2027','SATURDAY_SOCIAL','Saturday Social & Spectator','ADMISSION',1500,20,7,'INACTIVE',0,0,4,7),
- ('johnny-junior-saturday','special-event-johnny-rossato-2027','JUNIOR_SATURDAY','Junior Saturday Workshop','ADMISSION',1500,NULL,8,'INACTIVE',0,0,4,8),
- ('johnny-junior-sunday','special-event-johnny-rossato-2027','JUNIOR_SUNDAY','Junior Sunday Workshop','ADMISSION',1500,NULL,9,'INACTIVE',0,0,4,9),
+ ('johnny-junior-saturday','special-event-johnny-rossato-2027','JUNIOR_SATURDAY','Junior Saturday Workshop','ADMISSION',1500,5,8,'INACTIVE',0,0,4,8),
+ ('johnny-junior-sunday','special-event-johnny-rossato-2027','JUNIOR_SUNDAY','Junior Sunday Workshop','ADMISSION',1500,5,9,'INACTIVE',0,0,4,9),
  ('johnny-mini-competition','special-event-johnny-rossato-2027','MINI_COMPETITION','Mini Competition Entry','ADD_ON',500,25,10,'INACTIVE',0,1,4,10);
 
 -- All configured ticket products open together through the explicit HQ launch action.

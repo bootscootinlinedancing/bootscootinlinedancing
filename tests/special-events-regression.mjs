@@ -32,7 +32,9 @@ try{
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE event_id='special-event-johnny-rossato-2027';`),'10');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state||'|'||password_required FROM special_event_ticket_products WHERE code='LOYALTY_WEEKEND';`),'3500|10|INACTIVE|1');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state FROM special_event_ticket_products WHERE code='EARLY_BIRD_WEEKEND';`),'4000|20|INACTIVE');
-  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||COALESCE(auto_activate_after_product_id,'NONE') FROM special_event_ticket_products WHERE code='STANDARD_WEEKEND';`),'5000|30|NONE');
+  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||COALESCE(auto_activate_after_product_id,'NONE') FROM special_event_ticket_products WHERE code='STANDARD_WEEKEND';`),'5000|25|NONE');
+  assert.equal(sqlite(`SELECT saturday_evening_capacity||'|'||saturday_evening_capacity_confirmed FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'100|0','proposed evening capacity must remain explicitly unconfirmed');
+  assert.equal(sqlite(`SELECT group_concat(allocation,',') FROM special_event_ticket_products WHERE code IN ('JUNIOR_SATURDAY','JUNIOR_SUNDAY') ORDER BY code;`),'5,5');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE password_required=1;`),'1','only the loyalty product may require a password');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_product_days WHERE product_id='johnny-standard-weekend';`),'2','weekend admission must reserve both event days');
   assert.equal(sqlite(`SELECT places_per_ticket FROM special_event_product_days WHERE product_id='johnny-mini-competition';`),'0','competition add-on must not consume venue capacity twice');
@@ -41,7 +43,9 @@ try{
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE competition_eligible=1;`),'6');
   assert.equal(sqlite(`SELECT programme_approval_status FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'ARTIST_APPROVED');
   assert.equal(sqlite(`SELECT instructor_name||'|'||instructor_website_url FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'Gianmarco “Johnny” Rossato|https://www.learnwithjohnny.com/en');
-  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_choreographies WHERE event_id='special-event-johnny-rossato-2027';`),'1');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_choreographies WHERE event_id='special-event-johnny-rossato-2027';`),'3');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_choreographies WHERE copperknob_url LIKE 'https://www.copperknob.co.uk/%' AND bootstepper_url LIKE 'https://bootstepper.com/%';`),'3');
+  assert.match(sqlite(`SELECT group_concat(title,'|') FROM special_event_choreographies ORDER BY display_order;`),/Kingdom of Fear\|Wild Magnolia\|Bar None/);
   assert.equal(sqlite(`PRAGMA foreign_key_check;`),'');
   assert.equal(sqlite(`PRAGMA integrity_check;`),'ok');
 
