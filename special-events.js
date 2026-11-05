@@ -247,6 +247,7 @@ async function refreshAutomaticReleases(db,eventId){
 }
 
 export async function createSpecialEventReservation(request,env,services){
+  if(String(env.SPECIAL_EVENT_CHECKOUT_DISABLED||'').toLowerCase()==='true')return response({error:'Special Event checkout is disabled in this environment.'},503);
   if(!env.BOOKINGS_DB)return response({error:'Event booking is unavailable.'},503);
   const body=await request.json().catch(()=>null);if(!body)return response({error:'The booking request could not be read.'},400);
   const slug=tidy(body.slug,120),code=tidy(body.product_code,80),name=tidy(body.name,120),email=tidy(body.email,160).toLowerCase(),phone=tidy(body.phone,40),quantity=Number(body.quantity);

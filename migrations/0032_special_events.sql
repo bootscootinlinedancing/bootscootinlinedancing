@@ -316,10 +316,28 @@ UPDATE special_event_ticket_products SET description=CASE code
 END;
 
 INSERT INTO special_event_programme_items(id,event_id,day_id,item_type,title,description,starts_at,ends_at,timing_confirmed,display_order) VALUES
- ('johnny-saturday-workshops','special-event-johnny-rossato-2027','johnny-2027-saturday','WORKSHOP','Line Dancing Workshops with Johnny Rossato','Workshop timings and durations are still to be confirmed.',NULL,NULL,0,1),
- ('johnny-saturday-social','special-event-johnny-rossato-2027','johnny-2027-saturday','SOCIAL','Saturday Evening Social','The Kingdom of Fear Mini Competition will take place at the beginning of the social.',NULL,NULL,0,2),
- ('johnny-saturday-competition','special-event-johnny-rossato-2027','johnny-2027-saturday','COMPETITION','Kingdom of Fear Mini Competition','At the beginning of the Saturday evening social. Further details to be announced.',NULL,NULL,0,3),
- ('johnny-sunday-workshops','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Line Dancing Workshops with Johnny Rossato','Workshop timings and durations are still to be confirmed.',NULL,NULL,0,1);
+ ('johnny-sat-registration','special-event-johnny-rossato-2027','johnny-2027-saturday','OTHER','Doors and registration','Provisional schedule.','2027-02-20T11:00:00','2027-02-20T11:30:00',0,1),
+ ('johnny-sat-beginner','special-event-johnny-rossato-2027','johnny-2027-saturday','WORKSHOP','Beginner / Low Improver workshop','Provisional schedule.','2027-02-20T11:30:00','2027-02-20T12:30:00',0,2),
+ ('johnny-sat-free-1','special-event-johnny-rossato-2027','johnny-2027-saturday','SOCIAL','Free dancing','Provisional schedule.','2027-02-20T12:30:00','2027-02-20T13:00:00',0,3),
+ ('johnny-sat-intermediate','special-event-johnny-rossato-2027','johnny-2027-saturday','WORKSHOP','Intermediate workshop','Provisional schedule.','2027-02-20T13:00:00','2027-02-20T14:00:00',0,4),
+ ('johnny-sat-free-2','special-event-johnny-rossato-2027','johnny-2027-saturday','SOCIAL','Free dancing','Provisional schedule.','2027-02-20T14:00:00','2027-02-20T14:30:00',0,5),
+ ('johnny-sat-advanced','special-event-johnny-rossato-2027','johnny-2027-saturday','WORKSHOP','High Intermediate / Advanced workshop','Provisional schedule.','2027-02-20T14:30:00','2027-02-20T15:30:00',0,6),
+ ('johnny-sat-free-3','special-event-johnny-rossato-2027','johnny-2027-saturday','SOCIAL','Free dancing','Provisional schedule.','2027-02-20T15:30:00','2027-02-20T16:00:00',0,7),
+ ('johnny-sat-kingdom-workshop','special-event-johnny-rossato-2027','johnny-2027-saturday','WORKSHOP','Kingdom of Fear workshop or refresher — TBC','Provisional activity.','2027-02-20T16:00:00','2027-02-20T17:00:00',0,8),
+ ('johnny-sat-break','special-event-johnny-rossato-2027','johnny-2027-saturday','BREAK','Break','Provisional schedule.','2027-02-20T17:00:00','2027-02-20T19:00:00',0,9),
+ ('johnny-sat-comp-registration','special-event-johnny-rossato-2027','johnny-2027-saturday','COMPETITION','Competition registration','Provisional schedule.','2027-02-20T19:00:00','2027-02-20T19:30:00',0,10),
+ ('johnny-sat-competition','special-event-johnny-rossato-2027','johnny-2027-saturday','COMPETITION','Kingdom of Fear Mini Competition','At the beginning of the Saturday evening social.','2027-02-20T19:30:00','2027-02-20T20:00:00',0,11),
+ ('johnny-sat-awards','special-event-johnny-rossato-2027','johnny-2027-saturday','COMPETITION','Proposed awards','Awards remain provisional.','2027-02-20T20:00:00','2027-02-20T20:15:00',0,12),
+ ('johnny-sat-under18','special-event-johnny-rossato-2027','johnny-2027-saturday','OTHER','Under-18s leave — subject to venue confirmation','Venue confirmation is required.','2027-02-20T20:30:00',NULL,0,13),
+ ('johnny-sat-social','special-event-johnny-rossato-2027','johnny-2027-saturday','SOCIAL','Evening social — finish TBC','Provisional finish time.','2027-02-20T20:30:00','2027-02-21T01:00:00',0,14),
+ ('johnny-sun-registration','special-event-johnny-rossato-2027','johnny-2027-sunday','OTHER','Doors and registration','Provisional schedule.','2027-02-21T12:00:00','2027-02-21T12:30:00',0,1),
+ ('johnny-sun-workshop-1','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 1','Provisional schedule.','2027-02-21T12:30:00','2027-02-21T13:30:00',0,2),
+ ('johnny-sun-free-1','special-event-johnny-rossato-2027','johnny-2027-sunday','SOCIAL','Free dancing','Provisional schedule.','2027-02-21T13:30:00','2027-02-21T14:00:00',0,3),
+ ('johnny-sun-workshop-2','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 2','Provisional schedule.','2027-02-21T14:00:00','2027-02-21T15:00:00',0,4),
+ ('johnny-sun-free-2','special-event-johnny-rossato-2027','johnny-2027-sunday','SOCIAL','Free dancing','Provisional schedule.','2027-02-21T15:00:00','2027-02-21T15:30:00',0,5),
+ ('johnny-sun-workshop-3','special-event-johnny-rossato-2027','johnny-2027-sunday','WORKSHOP','Workshop 3','Provisional schedule.','2027-02-21T15:30:00','2027-02-21T16:30:00',0,6),
+ ('johnny-sun-recap','special-event-johnny-rossato-2027','johnny-2027-sunday','SOCIAL','Optional recap / social dancing','Provisional schedule.','2027-02-21T16:30:00','2027-02-21T17:00:00',0,7),
+ ('johnny-sun-finish','special-event-johnny-rossato-2027','johnny-2027-sunday','OTHER','Proposed finish','Provisional finish time.','2027-02-21T17:00:00',NULL,0,8);
 
 INSERT INTO special_event_product_days(product_id,day_id,places_per_ticket) VALUES
  ('johnny-loyalty-weekend','johnny-2027-saturday',1),('johnny-loyalty-weekend','johnny-2027-sunday',1),

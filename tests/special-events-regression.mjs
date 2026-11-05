@@ -44,6 +44,7 @@ try{
   assert.match(migration,/special_event_document_versions_immutable_update/);
   assert.match(migration,/special_event_activity_immutable_delete/);
   assert.match(service,/status='PUBLISHED' AND publication_enabled=1/,'public API must only expose published events');
+  assert.match(service,/SPECIAL_EVENT_CHECKOUT_DISABLED/,'staging must support a hard checkout kill switch');
   assert.match(service,/Publication is blocked until all mandatory settings are confirmed/);
   assert.match(service,/only authoritative[\s\S]*PAID bookings permanently sell the release out/,'temporary holds must not unlock Standard Weekend');
   assert.match(service,/INSERT OR IGNORE INTO special_event_attendees/,'paid admission must create idempotent attendee records');
