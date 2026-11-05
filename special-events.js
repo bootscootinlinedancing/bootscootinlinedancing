@@ -1,5 +1,6 @@
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const tidy=(value,max=500)=>String(value??'').trim().slice(0,max);
+const specialHtmlEscape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const specialEmailOk=value=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value||''));
 const hex=bytes=>[...new Uint8Array(bytes)].map(byte=>byte.toString(16).padStart(2,'0')).join('');
 const fromHex=value=>new Uint8Array(String(value||'').match(/.{1,2}/g)?.map(part=>parseInt(part,16))||[]);
@@ -35,7 +36,6 @@ export async function specialEventReadiness(db,eventId){
   const blockers=[];
   if((days.results||[]).some(day=>day.capacity==null))blockers.push('DAY_CAPACITY_UNCONFIRMED');
   if(event.saturday_evening_capacity==null&&(products.results||[]).some(product=>Number(product.includes_saturday_evening)))blockers.push('SATURDAY_EVENING_CAPACITY_UNCONFIRMED');
-  if((products.results||[]).some(product=>product.allocation==null))blockers.push('TICKET_ALLOCATION_UNCONFIRMED');
   if(!Number(event.age_terms_confirmed))blockers.push('AGE_TERMS_UNCONFIRMED');
   if(!Number(event.refund_policy_confirmed))blockers.push('REFUND_POLICY_UNCONFIRMED');
   if(!Number(event.public_presentation_approved))blockers.push('PUBLIC_PRESENTATION_UNAPPROVED');
@@ -88,6 +88,23 @@ export async function adminSpecialEvents(request,env,admin){
   const url=new URL(request.url),eventId=tidy(url.searchParams.get('id'),160)||'special-event-johnny-rossato-2027';
   if(request.method==='GET'){
     try{
+      const ticketAttendee=tidy(url.searchParams.get('ticket_attendee'),180);
+      if(ticketAttendee){
+        const ticket=await env.BOOKINGS_DB.prepare(`SELECT a.id,a.name,a.ticket_number,a.qr_token,a.status attendee_status,b.reference,b.status booking_status,b.payment_provider,b.product_name_snapshot,e.title,e.venue_name
+          FROM special_event_attendees a JOIN special_event_bookings b ON b.id=a.booking_id JOIN special_events e ON e.id=b.event_id
+          WHERE a.id=? AND b.event_id=?`).bind(ticketAttendee,eventId).first();
+        if(!ticket)return response({error:'Ticket not found.'},404);
+        const qrPayload=`${new URL(request.url).origin}/api/admin/special-events?id=${encodeURIComponent(eventId)}&verify_qr=${encodeURIComponent(ticket.qr_token)}`;
+        if(url.searchParams.get('format')==='html')return new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${specialHtmlEscape(ticket.ticket_number)}</title><style>body{font:18px system-ui;background:#090505;color:#f8eadb;padding:30px}main{max-width:680px;margin:auto;border:2px solid #c5222d;padding:28px;background:#160909}h1{color:#fff}strong{color:#ef3943}code{display:block;overflow-wrap:anywhere;padding:14px;background:#fff;color:#111}button{padding:12px 18px}</style><main><p>BOOT SCOOTIN’ SPECIAL EVENT</p><h1>${specialHtmlEscape(ticket.name)}</h1><p><strong>${specialHtmlEscape(ticket.product_name_snapshot)}</strong></p><p>${specialHtmlEscape(ticket.title)} · ${specialHtmlEscape(ticket.venue_name)}</p><p>Ticket ${specialHtmlEscape(ticket.ticket_number)}</p><p>Status: ${ticket.attendee_status==='ACTIVE'&&ticket.booking_status==='PAID'?'VALID':'NOT VALID'} · ${ticket.payment_provider==='COMPLIMENTARY'?'COMPLIMENTARY — £0.00':specialHtmlEscape(ticket.payment_provider)}</p><p>Secure QR admission payload:</p><code>${specialHtmlEscape(qrPayload)}</code><p><button onclick="print()">Print / Save Ticket</button></p></main>`,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
+        return response({ticket:{...ticket,qr_payload:qrPayload}});
+      }
+      const verifyQr=tidy(url.searchParams.get('verify_qr'),100);
+      if(verifyQr){
+        const ticket=await env.BOOKINGS_DB.prepare(`SELECT a.id,a.name,a.ticket_number,a.status attendee_status,b.reference,b.status booking_status,b.payment_provider,b.product_name_snapshot
+          FROM special_event_attendees a JOIN special_event_bookings b ON b.id=a.booking_id WHERE a.qr_token=? AND b.event_id=?`).bind(verifyQr,eventId).first();
+        if(!ticket)return response({valid:false,error:'Admission code not found.'},404);
+        return response({valid:ticket.attendee_status==='ACTIVE'&&ticket.booking_status==='PAID',ticket});
+      }
       const ready=await specialEventReadiness(env.BOOKINGS_DB,eventId);
       if(!ready)return response({error:'Special event not found.'},404);
       const [programme,bookings,attendees,competition,tasks,documents,activity,choreographies,capacity]=await Promise.all([
@@ -110,7 +127,15 @@ export async function adminSpecialEvents(request,env,admin){
         COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND p.includes_saturday_evening=1),0) paid,
         COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products p ON p.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP AND p.includes_saturday_evening=1),0) held
         FROM special_events e WHERE e.id=?`).bind(eventId).first();
-      return response({...ready,programme:programme.results||[],bookings:bookings.results||[],attendees:attendees.results||[],competition:competition.results||[],tasks:tasks.results||[],documents:documents.results||[],activity:activity.results||[],choreographies:choreographies.results||[],capacity:[...(capacity.results||[]),{id:'saturday-evening',label:'Saturday evening',...evening}]});
+      const [reporting,loyaltyCredential]=await Promise.all([
+        env.BOOKINGS_DB.prepare(`SELECT
+          COALESCE(SUM(CASE WHEN b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY' AND p.product_type='ADMISSION' THEN b.quantity ELSE 0 END),0) paid_tickets,
+          COALESCE(SUM(CASE WHEN b.status='PAID' AND b.payment_provider='COMPLIMENTARY' AND p.product_type='ADMISSION' THEN b.quantity ELSE 0 END),0) complimentary_tickets,
+          COALESCE(SUM(CASE WHEN b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY' THEN b.amount_pence ELSE 0 END),0) paid_revenue_pence
+          FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=?`).bind(eventId).first(),
+        env.BOOKINGS_DB.prepare(`SELECT c.id FROM special_event_access_credentials c JOIN special_event_ticket_products p ON p.id=c.product_id WHERE c.event_id=? AND p.code='LOYALTY_WEEKEND' AND c.active=1 LIMIT 1`).bind(eventId).first()
+      ]);
+      return response({...ready,programme:programme.results||[],bookings:bookings.results||[],attendees:attendees.results||[],competition:competition.results||[],tasks:tasks.results||[],documents:documents.results||[],activity:activity.results||[],choreographies:choreographies.results||[],capacity:[...(capacity.results||[]),{id:'saturday-evening',label:'Saturday evening',...evening}],reporting,loyalty_password_configured:Boolean(loyaltyCredential)});
     }catch(error){if(schemaMissing(error))return response({error:'Migration 0032_special_events.sql has not been applied in this environment.',code:'SPECIAL_EVENTS_SCHEMA_MISSING'},503);throw error;}
   }
   const body=await request.json().catch(()=>null);
@@ -176,7 +201,7 @@ export async function adminSpecialEvents(request,env,admin){
       return response({ok:true});
     }
     if(action==='UPDATE_INSTRUCTOR'){
-      const website=tidy(body.website_url,500)||null;
+      const website=tidy(body.website_url||body.website,500)||null;
       if(website){try{const parsed=new URL(website);if(parsed.protocol!=='https:')throw new Error();}catch(_){return response({error:'Use a valid HTTPS instructor website URL.'},400);}}
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE special_events SET instructor_name=?,instructor_intro=?,instructor_biography=?,instructor_website_url=?,instructor_photo_caption=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(tidy(body.name,200)||null,tidy(body.intro,1000)||null,tidy(body.biography,6000)||null,website,tidy(body.photo_caption,500)||null,eventId),
@@ -244,13 +269,57 @@ export async function adminSpecialEvents(request,env,admin){
     }
     if(action==='CHECK_IN_ATTENDEE'){
       const attendeeId=tidy(body.attendee_id,180),dayId=tidy(body.day_id,180),attended=Boolean(body.attended);
-      const attendance=await env.BOOKINGS_DB.prepare(`SELECT x.attendee_id FROM special_event_attendance x JOIN special_event_attendees a ON a.id=x.attendee_id JOIN special_event_bookings b ON b.id=a.booking_id WHERE x.attendee_id=? AND x.day_id=? AND b.event_id=?`).bind(attendeeId,dayId,eventId).first();
+      const attendance=await env.BOOKINGS_DB.prepare(`SELECT x.attendee_id,x.attended_at FROM special_event_attendance x JOIN special_event_attendees a ON a.id=x.attendee_id JOIN special_event_bookings b ON b.id=a.booking_id WHERE x.attendee_id=? AND x.day_id=? AND b.event_id=? AND a.status='ACTIVE' AND b.status='PAID'`).bind(attendeeId,dayId,eventId).first();
       if(!attendance)return response({error:'Event attendee or day not found.'},404);
+      if(attended&&attendance.attended_at)return response({error:'This attendee is already checked in for this event day.'},409);
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE special_event_attendance SET attended_at=${attended?'CURRENT_TIMESTAMP':'NULL'},checked_in_by=? WHERE attendee_id=? AND day_id=?`).bind(attended?admin.email:null,attendeeId,dayId),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,?,'ATTENDEE',?,?,?,?)`).bind(crypto.randomUUID(),eventId,attended?'ATTENDEE_CHECKED_IN':'ATTENDEE_CHECK_IN_REVERSED',attendeeId,admin.email,`Attendance ${attended?'recorded':'reversed'} for ${dayId}.`,crypto.randomUUID())
       ]);
       return response({ok:true});
+    }
+    if(action==='ISSUE_COMPLIMENTARY_TICKETS'){
+      const productId=tidy(body.product_id,160),recipientName=tidy(body.recipient_name,120),recipientEmail=tidy(body.recipient_email,160).toLowerCase(),reason=tidy(body.reason,1000)||null,quantity=Number(body.quantity),attendeeInput=Array.isArray(body.attendees)?body.attendees.slice(0,20):[];
+      if(!productId||!recipientName||!specialEmailOk(recipientEmail)||!Number.isInteger(quantity)||quantity<1||attendeeInput.length!==quantity)return response({error:'Enter the recipient and every named attendee.'},400);
+      const product=await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE id=? AND event_id=? AND product_type='ADMISSION'`).bind(productId,eventId).first();
+      if(!product)return response({error:'Choose an admission ticket product.'},400);
+      if(product.allocation==null)return response({error:'Configure this product allocation before issuing complimentary tickets.'},409);
+      if(quantity>Number(product.max_per_checkout||20))return response({error:`Issue no more than ${Number(product.max_per_checkout||20)} tickets at once.`},400);
+      const invalidAdult=!Number(product.is_junior)&&attendeeInput.some(item=>!tidy(item?.name,120)||!Number.isInteger(Number(item?.age))||Number(item.age)<18||Number(item.age)>120);
+      const invalidJunior=Number(product.is_junior)&&attendeeInput.some(item=>!tidy(item?.name,120)||!Number.isInteger(Number(item?.age))||Number(item.age)<0||Number(item.age)>17||!tidy(item?.guardian_name,120)||!specialEmailOk(tidy(item?.guardian_email,160))||!tidy(item?.guardian_phone,40));
+      if(invalidAdult||invalidJunior)return response({error:Number(product.is_junior)?'Junior complimentary tickets require an under-18 attendee and responsible-adult details.':'Adult complimentary tickets require named attendees aged 18 or over.'},400);
+      const competitionIndexes=[...new Set((Array.isArray(body.competition_attendee_indexes)?body.competition_attendee_indexes:[]).map(Number))].filter(index=>Number.isInteger(index)&&index>=0&&index<quantity);
+      if(competitionIndexes.length&&!Number(product.competition_eligible))return response({error:'This admission product does not qualify for the mini competition.'},409);
+      let customer=await env.BOOKINGS_DB.prepare(`SELECT id FROM customers WHERE lower(email)=? LIMIT 1`).bind(recipientEmail).first();
+      if(!customer){const customerId=crypto.randomUUID();await env.BOOKINGS_DB.prepare(`INSERT INTO customers(id,name,email) VALUES(?,?,?)`).bind(customerId,recipientName,recipientEmail).run();customer={id:customerId};}
+      const bookingId=crypto.randomUUID(),reference=`BSE-COMP-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`,secureToken=specialRandomHex(32),customerToken=specialRandomHex(32);
+      const bookingInsert=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_bookings(id,reference,event_id,product_id,customer_id,customer_name,customer_email,quantity,product_code_snapshot,product_name_snapshot,unit_price_pence_snapshot,amount_pence,competition_quantity,status,payment_provider,secure_token,customer_token,terms_accepted_at,paid_at,issued_by,internal_reason)
+        SELECT ?,?,e.id,p.id,?,?,?,?,p.code,p.name,0,0,?,'PAID','COMPLIMENTARY',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?,?
+        FROM special_events e JOIN special_event_ticket_products p ON p.event_id=e.id WHERE e.id=? AND p.id=? AND p.product_type='ADMISSION' AND p.allocation IS NOT NULL
+          AND ?<=p.allocation-COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
+          AND NOT EXISTS(SELECT 1 FROM special_event_product_days pd JOIN special_event_days d ON d.id=pd.day_id WHERE pd.product_id=p.id AND d.capacity IS NOT NULL AND (?*pd.places_per_ticket)>d.capacity-COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0))
+          AND (?=0 OR ?<=(SELECT allocation FROM special_event_ticket_products WHERE event_id=e.id AND code='MINI_COMPETITION')-COALESCE((SELECT COUNT(*) FROM special_event_competition_entries ce WHERE ce.event_id=e.id AND ce.status<>'WITHDRAWN'),0))
+          AND (p.includes_saturday_evening=0 OR e.saturday_evening_capacity IS NULL OR ?<=e.saturday_evening_capacity-COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0))`).bind(bookingId,reference,customer.id,recipientName,recipientEmail,quantity,competitionIndexes.length,secureToken,customerToken,admin.email,reason,eventId,productId,quantity,quantity,competitionIndexes.length,competitionIndexes.length,quantity);
+      const statements=[bookingInsert,
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_booking_days(booking_id,day_id,places) SELECT ?,pd.day_id,?*pd.places_per_ticket FROM special_event_product_days pd WHERE pd.product_id=? AND EXISTS(SELECT 1 FROM special_event_bookings WHERE id=?)`).bind(bookingId,quantity,productId,bookingId)];
+      attendeeInput.forEach((item,index)=>{const attendeeId=`${bookingId}:attendee:${index+1}`;statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO special_event_attendees(id,booking_id,customer_id,name,email,age_at_event,guardian_name,guardian_email,guardian_phone,ticket_number,qr_token) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM special_event_bookings WHERE id=?)`).bind(attendeeId,bookingId,customer.id,tidy(item.name,120),recipientEmail,Number(item.age),tidy(item.guardian_name,120)||null,tidy(item.guardian_email,160).toLowerCase()||null,tidy(item.guardian_phone,40)||null,`${reference}-${String(index+1).padStart(2,'0')}`,specialRandomHex(32),bookingId),env.BOOKINGS_DB.prepare(`INSERT INTO special_event_attendance(attendee_id,day_id) SELECT ?,day_id FROM special_event_booking_days WHERE booking_id=?`).bind(attendeeId,bookingId));});
+      competitionIndexes.forEach((attendeeIndex,index)=>statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO special_event_competition_entries(id,event_id,booking_id,admission_booking_id,customer_id,attendee_id,entry_number) SELECT ?,?,?,?,?,?,COALESCE(MAX(entry_number),0)+? FROM special_event_competition_entries WHERE event_id=? AND EXISTS(SELECT 1 FROM special_event_attendees WHERE id=?)`).bind(`${bookingId}:competition:${attendeeIndex+1}`,eventId,bookingId,bookingId,customer.id,`${bookingId}:attendee:${attendeeIndex+1}`,index+1,eventId,`${bookingId}:attendee:${attendeeIndex+1}`)));
+      statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO special_event_confirmation_outbox(id,booking_id,status,idempotency_key) SELECT ?,?,'DISABLED',? WHERE EXISTS(SELECT 1 FROM special_event_bookings WHERE id=?)`).bind(crypto.randomUUID(),bookingId,`special-event-complimentary:${bookingId}`,bookingId),env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) SELECT ?,?,'COMPLIMENTARY_TICKETS_ISSUED','BOOKING',?,?,?,?,? WHERE EXISTS(SELECT 1 FROM special_event_bookings WHERE id=?)`).bind(crypto.randomUUID(),eventId,bookingId,admin.email,reason||'Owner-issued complimentary admission.',JSON.stringify({product_code:product.code,quantity,competition_entries:competitionIndexes.length}),`complimentary-issued:${bookingId}`,bookingId));
+      const result=await env.BOOKINGS_DB.batch(statements);if(!Number(result[0]?.meta?.changes||0))return response({error:'Complimentary tickets could not be issued because allocation or shared capacity is unavailable.'},409);
+      return response({ok:true,booking_id:bookingId,reference,payment_provider:'COMPLIMENTARY',amount_pence:0,email_status:'DISABLED'},201);
+    }
+    if(action==='CANCEL_COMPLIMENTARY_TICKETS'){
+      const bookingId=tidy(body.booking_id,180),reason=tidy(body.reason,1000);if(!bookingId||!reason)return response({error:'Choose a complimentary booking and enter an audit reason.'},400);
+      const booking=await env.BOOKINGS_DB.prepare(`SELECT id,status FROM special_event_bookings WHERE id=? AND event_id=? AND payment_provider='COMPLIMENTARY'`).bind(bookingId,eventId).first();if(!booking)return response({error:'Complimentary booking not found.'},404);if(booking.status==='CANCELLED')return response({ok:true,idempotent:true});if(booking.status!=='PAID')return response({error:'Only an active complimentary booking can be cancelled.'},409);
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='CANCELLED',cancelled_at=CURRENT_TIMESTAMP,cancelled_by=?,cancellation_reason=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PAID' AND payment_provider='COMPLIMENTARY'`).bind(admin.email,reason,bookingId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_attendees SET status='CANCELLED' WHERE booking_id=?`).bind(bookingId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_attendance SET attended_at=NULL,checked_in_by=NULL WHERE attendee_id IN (SELECT id FROM special_event_attendees WHERE booking_id=?)`).bind(bookingId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_competition_entries SET status='WITHDRAWN',result_notes=COALESCE(result_notes||' · ','')||'Complimentary admission cancelled.' WHERE booking_id=?`).bind(bookingId),
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='DISABLED' WHERE booking_id=?`).bind(bookingId),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'COMPLIMENTARY_TICKETS_CANCELLED','BOOKING',?,?,?,?)`).bind(crypto.randomUUID(),eventId,bookingId,admin.email,reason,`complimentary-cancelled:${bookingId}`)
+      ]);
+      return response({ok:true,status:'CANCELLED',capacity_released:true,qr_invalidated:true});
     }
     if(action==='SET_PUBLICATION'){
       const readiness=await specialEventReadiness(env.BOOKINGS_DB,eventId);
@@ -262,15 +331,16 @@ export async function adminSpecialEvents(request,env,admin){
       if(!readiness?.ready)return response({error:'Event and ticket sales cannot open until every mandatory readiness item is complete.',blockers:readiness?.blockers||[]},409);
       if(readiness.event.status!=='DRAFT'||Number(readiness.event.publication_enabled)||Number(readiness.event.checkout_enabled))return response({error:'Only a fully prepared Draft event can be opened.',code:'EVENT_NOT_DRAFT'},409);
       if(tidy(body.confirmation,240)!==readiness.event.title)return response({error:'Type the exact event title to confirm publication.'},400);
-      const active=readiness.products.filter(product=>product.release_state==='ACTIVE');
-      if(!active.length)return response({error:'At least one approved ticket release must be Active before opening sales.'},409);
+      const configured=readiness.products.filter(product=>product.allocation!=null);
+      if(!configured.length)return response({error:'At least one approved ticket allocation must be configured before opening sales.'},409);
       await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_ticket_products SET release_state=CASE WHEN allocation IS NOT NULL THEN 'ACTIVE' ELSE 'INACTIVE' END,auto_activate_after_product_id=NULL,updated_at=CURRENT_TIMESTAMP WHERE event_id=?`).bind(eventId),
         env.BOOKINGS_DB.prepare(`UPDATE special_events SET status='PUBLISHED',publication_enabled=1,checkout_enabled=1,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=? AND status='DRAFT' AND publication_enabled=0 AND checkout_enabled=0`).bind(eventId),
-        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'EVENT_AND_SALES_OPENED','SPECIAL_EVENT',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Owner explicitly opened the event and approved ticket sales.',JSON.stringify({active_releases:active.map(product=>({code:product.code,price_pence:product.price_pence,allocation:product.allocation}))}),crypto.randomUUID())
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'EVENT_AND_SALES_OPENED','SPECIAL_EVENT',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Owner explicitly opened the event and all configured ticket products together.',JSON.stringify({active_releases:configured.map(product=>({code:product.code,price_pence:product.price_pence,allocation:product.allocation,password_required:Boolean(product.password_required)}))}),crypto.randomUUID())
       ]);
       const opened=await env.BOOKINGS_DB.prepare(`SELECT status,publication_enabled,checkout_enabled FROM special_events WHERE id=?`).bind(eventId).first();
       if(opened?.status!=='PUBLISHED'||!Number(opened.publication_enabled)||!Number(opened.checkout_enabled))return response({error:'The event was not opened. No partial publication was retained.'},409);
-      return response({ok:true,status:'PUBLISHED',active_releases:active.map(product=>product.code)});
+      return response({ok:true,status:'PUBLISHED',active_releases:configured.map(product=>product.code)});
     }
     if(action==='CLOSE_SALES'){
       if(tidy(body.confirmation,20)!=='CLOSE SALES')return response({error:'Type CLOSE SALES to confirm.'},400);
@@ -295,15 +365,12 @@ export async function verifySpecialEventPassword(db,productId,password){
 }
 
 async function refreshAutomaticReleases(db,eventId){
-  // A temporary hold can make Early Bird unavailable, but only authoritative
-  // PAID bookings permanently sell the release out and unlock Standard.
+  // Products launch together. This maintenance only marks exhausted releases;
+  // it never activates another release or creates a staggered presale.
   await db.prepare(`UPDATE special_event_ticket_products AS early SET release_state='SOLD_OUT',updated_at=CURRENT_TIMESTAMP
     WHERE early.event_id=? AND early.code='EARLY_BIRD_WEEKEND' AND early.release_state='ACTIVE' AND early.allocation IS NOT NULL
       AND early.allocation<=
         COALESCE((SELECT SUM(quantity) FROM special_event_bookings WHERE product_id=early.id AND status='PAID'),0)`).bind(eventId).run();
-  await db.prepare(`UPDATE special_event_ticket_products AS standard SET release_state='ACTIVE',updated_at=CURRENT_TIMESTAMP
-    WHERE standard.event_id=? AND standard.code='STANDARD_WEEKEND' AND standard.release_state='INACTIVE'
-      AND EXISTS(SELECT 1 FROM special_event_ticket_products prior WHERE prior.id=standard.auto_activate_after_product_id AND prior.release_state='SOLD_OUT')`).bind(eventId).run();
 }
 
 export async function createSpecialEventReservation(request,env,services){
@@ -412,7 +479,7 @@ export async function applySpecialEventCheckoutState(env,booking,checkout){
         const attendeeId=`${booking.id}:attendee:${index}`;
         const draft=draftRows[index-1];
         attendeeStatements.push(
-          env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_attendees(id,booking_id,customer_id,name,email,age_at_event,guardian_name,guardian_email,guardian_phone,ticket_number) VALUES(?,?,?,?,?,?,?,?,?,?)`).bind(attendeeId,booking.id,booking.customer_id,draft?.name||booking.customer_name,booking.customer_email,draft?.age_at_event??null,draft?.guardian_name||null,draft?.guardian_email||null,draft?.guardian_phone||null,`${booking.reference}-${String(index).padStart(2,'0')}`),
+          env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_attendees(id,booking_id,customer_id,name,email,age_at_event,guardian_name,guardian_email,guardian_phone,ticket_number,qr_token) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(attendeeId,booking.id,booking.customer_id,draft?.name||booking.customer_name,booking.customer_email,draft?.age_at_event??null,draft?.guardian_name||null,draft?.guardian_email||null,draft?.guardian_phone||null,`${booking.reference}-${String(index).padStart(2,'0')}`,specialRandomHex(32)),
           env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_attendance(attendee_id,day_id) SELECT ?,day_id FROM special_event_booking_days WHERE booking_id=? AND places>0`).bind(attendeeId,booking.id)
         );
       }

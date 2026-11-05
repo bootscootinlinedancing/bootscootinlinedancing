@@ -30,7 +30,8 @@ try{
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE event_id='special-event-johnny-rossato-2027';`),'10');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state||'|'||password_required FROM special_event_ticket_products WHERE code='LOYALTY_WEEKEND';`),'3500|10|INACTIVE|1');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state FROM special_event_ticket_products WHERE code='EARLY_BIRD_WEEKEND';`),'4000|20|INACTIVE');
-  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||auto_activate_after_product_id FROM special_event_ticket_products WHERE code='STANDARD_WEEKEND';`),'5000|30|johnny-early-weekend');
+  assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||COALESCE(auto_activate_after_product_id,'NONE') FROM special_event_ticket_products WHERE code='STANDARD_WEEKEND';`),'5000|30|NONE');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE password_required=1;`),'1','only the loyalty product may require a password');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_product_days WHERE product_id='johnny-standard-weekend';`),'2','weekend admission must reserve both event days');
   assert.equal(sqlite(`SELECT places_per_ticket FROM special_event_product_days WHERE product_id='johnny-mini-competition';`),'0','competition add-on must not consume venue capacity twice');
   assert.equal(sqlite(`SELECT allocation||'|'||max_per_checkout FROM special_event_ticket_products WHERE id='johnny-mini-competition';`),'25|4','competition entries must use the approved allocation and per-attendee checkout model');
@@ -63,7 +64,7 @@ try{
   assert.doesNotMatch(listingPage,/Special dates for your diary/,'redundant listing heading must be removed');
   assert.doesNotMatch(eventPageScript,/autoplay/,'event video must not autoplay');
   assert.match(service,/Publication is blocked until all mandatory settings are confirmed/);
-  assert.match(service,/only authoritative[\s\S]*PAID bookings permanently sell the release out/,'temporary holds must not unlock Standard Weekend');
+  assert.match(service,/never activates another release or creates a staggered presale/,'automatic release sequencing must remain disabled');
   assert.match(service,/INSERT OR IGNORE INTO special_event_attendees/,'paid admission must create idempotent attendee records');
   assert.match(service,/INSERT OR IGNORE INTO special_event_competition_entries/,'paid competition add-on must create an idempotent entry');
   assert.match(worker,/\/api\/admin\/special-events/);
@@ -78,6 +79,10 @@ try{
   assert.match(listingPage,/src="\/special-events-list\.js\?v=3"/,'protected listing must load its module from the site root');
   assert.match(listingPage,/href="\/styles\.css/,'protected listing must load shared styles from the site root');
   assert.match(service,/action==='OPEN_SALES'/,'manual launch must be implemented server-side');
+  assert.match(service,/all configured ticket products together/,'manual launch must activate configured products together');
+  assert.match(service,/action==='ISSUE_COMPLIMENTARY_TICKETS'/,'HQ must issue complimentary tickets through the existing event booking model');
+  assert.match(service,/payment_provider<>'COMPLIMENTARY'/,'complimentary admission must be excluded from paid revenue');
+  assert.match(service,/action==='CANCEL_COMPLIMENTARY_TICKETS'/,'HQ must cancel complimentary admission safely');
   assert.match(service,/EVENT_AND_SALES_OPENED/,'manual launch must create an audit event');
   assert.match(service,/action==='CLOSE_SALES'/,'HQ must provide a separate close-sales operation');
   assert.match(migration,/public_presentation_approved/);

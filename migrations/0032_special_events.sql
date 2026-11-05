@@ -165,6 +165,10 @@ CREATE TABLE special_event_bookings (
   hold_id TEXT UNIQUE REFERENCES special_event_holds(id),
   qualifying_booking_id TEXT REFERENCES special_event_bookings(id),
   qualifying_attendee_id TEXT REFERENCES special_event_attendees(id),
+  issued_by TEXT,
+  internal_reason TEXT,
+  cancelled_by TEXT,
+  cancellation_reason TEXT,
   customer_id TEXT NOT NULL REFERENCES customers(id),
   customer_name TEXT NOT NULL,
   customer_email TEXT NOT NULL,
@@ -234,6 +238,7 @@ CREATE TABLE special_event_attendees (
   guardian_email TEXT,
   guardian_phone TEXT,
   ticket_number TEXT NOT NULL UNIQUE,
+  qr_token TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','CANCELLED')),
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -381,7 +386,8 @@ INSERT INTO special_event_ticket_products(id,event_id,code,name,product_type,pri
  ('johnny-junior-sunday','special-event-johnny-rossato-2027','JUNIOR_SUNDAY','Junior Sunday Workshop','ADMISSION',1500,NULL,9,'INACTIVE',0,0,4,9),
  ('johnny-mini-competition','special-event-johnny-rossato-2027','MINI_COMPETITION','Mini Competition Entry','ADD_ON',500,25,10,'INACTIVE',0,1,4,10);
 
-UPDATE special_event_ticket_products SET auto_activate_after_product_id='johnny-early-weekend' WHERE id='johnny-standard-weekend';
+-- All configured ticket products open together through the explicit HQ launch action.
+-- Loyalty access remains differentiated only by its server-verified password.
 UPDATE special_event_ticket_products SET description=CASE code
   WHEN 'LOYALTY_WEEKEND' THEN 'Age 18+ · Saturday workshops · Saturday evening social · Sunday workshops · Restricted loyalty access.'
   WHEN 'EARLY_BIRD_WEEKEND' THEN 'Age 18+ · Saturday workshops · Saturday evening social · Sunday workshops.'
