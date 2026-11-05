@@ -11,6 +11,8 @@ const service=readFileSync(new URL('../special-events.js',import.meta.url),'utf8
 const publicPage=readFileSync(new URL('../johnny-rossato.html',import.meta.url),'utf8');
 const eventPageScript=readFileSync(new URL('../special-event-page.js',import.meta.url),'utf8');
 const listingPage=readFileSync(new URL('../workshops-events.html',import.meta.url),'utf8');
+const ranch=readFileSync(new URL('../ranch.js',import.meta.url),'utf8');
+const ranchPage=readFileSync(new URL('../ranch.html',import.meta.url),'utf8');
 const temp=mkdtempSync(join(tmpdir(),'boot-scootin-special-events-'));
 const database=join(temp,'rehearsal.sqlite');
 
@@ -88,6 +90,24 @@ try{
   assert.match(migration,/public_presentation_approved/);
   assert.match(migration,/payment_integration_verified/);
   assert.match(migration,/production_installation_verified/);
+  assert.match(service,/ORDER BY created_at DESC,id ASC LIMIT 250/,'Special Events bookings must default to newest-created first with a stable id tie-break');
+  assert.match(worker,/ORDER BY b\.created_at DESC,b\.id ASC/,'regular and Sunday booking APIs must default to newest-created first with a stable id tie-break');
+  assert.match(ranch,/const bookingSortRows=/,'HQ booking lists must share the stable booking-created sorting helper');
+  assert.match(ranch,/timeZone:'Europe\/London'/,'HQ booking timestamps must render in UK local time');
+  assert.match(ranchPage,/id="bookingAdminSort"/,'the regular and Sunday booking list must expose the compact sort control');
+  for(const mode of ['newest','oldest','name-az','name-za'])assert.match(ranch,new RegExp(`\\['${mode}'`),`sorting mode ${mode} must remain available`);
+  const sortExpression=ranch.match(/const bookingSortRows=(.*?);\n  const bookingSortOptions/s)?.[1];
+  assert.ok(sortExpression,'the shared booking sorting implementation must be extractable for regression testing');
+  const bookingSortRows=Function(`return (${sortExpression})`)();
+  const sortFixture=[
+    {id:'booking-b',customer_name:'Zoe',created_at:'2026-11-05T10:00:00Z'},
+    {id:'booking-a',customer_name:'Amy',created_at:'2026-11-05T10:00:00Z'},
+    {id:'booking-c',customer_name:'Bob',created_at:'2026-11-04T10:00:00Z'}
+  ];
+  assert.deepEqual(bookingSortRows(sortFixture).map(row=>row.id),['booking-a','booking-b','booking-c'],'new bookings must appear first with a stable id tie-break');
+  assert.deepEqual(bookingSortRows(sortFixture,'oldest').map(row=>row.id),['booking-c','booking-a','booking-b']);
+  assert.deepEqual(bookingSortRows(sortFixture,'name-az').map(row=>row.customer_name),['Amy','Bob','Zoe']);
+  assert.deepEqual(bookingSortRows(sortFixture,'name-za').map(row=>row.customer_name),['Zoe','Bob','Amy']);
 
   const prematurePublish=spawnSync('sqlite3',['-batch','-bail',database],{input:`UPDATE special_events SET status='PUBLISHED',publication_enabled=1 WHERE id='special-event-johnny-rossato-2027';`,encoding:'utf8'});
   assert.notEqual(prematurePublish.status,0,'database trigger must block publication while mandatory settings are incomplete');

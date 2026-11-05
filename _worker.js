@@ -5159,14 +5159,14 @@ async function adminClasses(request, env) {
       const classItem=await env.BOOKINGS_DB.prepare(`SELECT id,title,venue,location,starts_at,ends_at,status,capacity FROM classes WHERE id=?`).bind(registerClassId).first();
       if(!classItem)return json({error:'Class not found.'},404);
       const response=await env.BOOKINGS_DB.prepare(`
-        SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,b.ticket_type,b.ticket_entry_time,
+        SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,b.created_at,b.ticket_type,b.ticket_entry_time,
           b.ticket_product_code,b.ticket_product_label,b.ticket_unit_price_pence,b.ticket_starts_at,b.ticket_ends_at,b.ticket_entry_at,
           sd.selection_code sunday_selection_code,sd.adult_count sunday_adult_count,sd.child_10_17_count sunday_child_10_17_count,
           sd.child_5_9_count sunday_child_5_9_count,sd.under_5_count sunday_under_5_count,sd.total_people sunday_total_people,
           CASE WHEN a.id IS NULL THEN 0 ELSE 1 END checked_in,a.checked_in_at,a.recorded_at
         FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id LEFT JOIN sunday_session_booking_details sd ON sd.booking_id=b.id
         WHERE b.class_id=? AND b.status IN ('PAID','PENDING')
-        ORDER BY lower(b.customer_name),b.created_at
+        ORDER BY b.created_at DESC,b.id ASC
       `).bind(registerClassId).all();
       const bookings=response.results||[];
       const attendeeResult=await attendeeSchemaAvailable(env)?await env.BOOKINGS_DB.prepare(`
@@ -6846,7 +6846,7 @@ async function adminBookings(request, env, ctx) {
       SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location,
       EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) checked_in
       FROM bookings b JOIN classes c ON c.id=b.class_id
-      ORDER BY c.starts_at DESC,b.created_at DESC
+      ORDER BY b.created_at DESC,b.id ASC
     `).all();
     const {results:waiting}=await env.BOOKINGS_DB.prepare(`
       SELECT w.*,c.title class_title,c.starts_at,c.venue,c.special_booking_format,

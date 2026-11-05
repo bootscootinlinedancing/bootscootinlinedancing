@@ -109,7 +109,7 @@ export async function adminSpecialEvents(request,env,admin){
       if(!ready)return response({error:'Special event not found.'},404);
       const [programme,bookings,attendees,attendance,competition,tasks,documents,activity,choreographies,capacity]=await Promise.all([
         env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_programme_items WHERE event_id=? ORDER BY day_id,display_order`).bind(eventId).all(),
-        env.BOOKINGS_DB.prepare(`SELECT id,reference,customer_name,customer_email,customer_phone,quantity,product_name_snapshot,amount_pence,status,payment_provider,paid_at,created_at FROM special_event_bookings WHERE event_id=? ORDER BY created_at DESC LIMIT 250`).bind(eventId).all(),
+        env.BOOKINGS_DB.prepare(`SELECT id,reference,customer_name,customer_email,customer_phone,quantity,product_name_snapshot,amount_pence,status,payment_provider,paid_at,created_at FROM special_event_bookings WHERE event_id=? ORDER BY created_at DESC,id ASC LIMIT 250`).bind(eventId).all(),
         env.BOOKINGS_DB.prepare(`SELECT a.id,a.booking_id,a.name,a.age_at_event,a.ticket_number,a.status,b.reference,b.status booking_status,b.payment_provider,b.product_id,b.product_name_snapshot,
           EXISTS(SELECT 1 FROM special_event_competition_entries c WHERE c.event_id=b.event_id AND c.attendee_id=a.id AND c.status<>'WITHDRAWN') competition_registered
           FROM special_event_attendees a JOIN special_event_bookings b ON b.id=a.booking_id
