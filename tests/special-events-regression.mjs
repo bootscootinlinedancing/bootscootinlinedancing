@@ -10,6 +10,7 @@ const worker=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
 const service=readFileSync(new URL('../special-events.js',import.meta.url),'utf8');
 const publicPage=readFileSync(new URL('../johnny-rossato.html',import.meta.url),'utf8');
 const eventPageScript=readFileSync(new URL('../special-event-page.js',import.meta.url),'utf8');
+const listingPage=readFileSync(new URL('../workshops-events.html',import.meta.url),'utf8');
 const temp=mkdtempSync(join(tmpdir(),'boot-scootin-special-events-'));
 const database=join(temp,'rehearsal.sqlite');
 
@@ -58,6 +59,8 @@ try{
   assert.match(eventPageScript,/\/api\/special-events\?slug=johnny-rossato/);
   assert.match(worker,/\/ranch\/special-events\/preview/,'Draft preview must be protected by the HQ route');
   assert.match(worker,/\/ranch\/special-events\/preview-listing/,'Draft listing preview must be protected by the HQ route');
+  assert.match(listingPage,/src="\/special-events-list\.js\?v=3"/,'protected listing must load its module from the site root');
+  assert.match(listingPage,/href="\/styles\.css/,'protected listing must load shared styles from the site root');
   assert.match(service,/action==='OPEN_SALES'/,'manual launch must be implemented server-side');
   assert.match(service,/EVENT_AND_SALES_OPENED/,'manual launch must create an audit event');
   assert.match(service,/action==='CLOSE_SALES'/,'HQ must provide a separate close-sales operation');
