@@ -294,6 +294,7 @@ export async function createSpecialEventReservation(request,env,services){
   try{customer=await services.resolveCustomerIdentity(env,{email,name,phone,marketingConsent:false,source:'SPECIAL_EVENT_BOOKING'});}catch(_){return response({error:'This customer identity could not be verified safely.'},409);}
   const holdId=crypto.randomUUID(),bookingId=crypto.randomUUID(),idempotencyKey=tidy(body.idempotency_key,160)||crypto.randomUUID(),expiresAt=new Date(Date.now()+15*60*1000).toISOString();
   const competitionQuantity=attendeeInput.filter(item=>item?.competition_entry).length;
+  const competitionInventoryQuantity=product.code==='MINI_COMPETITION'?quantity:competitionQuantity;
   const amount=Number(product.price_pence)*quantity+(competitionQuantity*500),reference=`BSE-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
   const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const holdInsert=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_holds(id,event_id,product_id,customer_id,customer_email,quantity,amount_pence,competition_quantity,status,expires_at,idempotency_key)
@@ -308,12 +309,12 @@ export async function createSpecialEventReservation(request,env,services){
           -COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)
           -COALESCE((SELECT SUM(hd.places) FROM special_event_hold_days hd JOIN special_event_holds h ON h.id=hd.hold_id WHERE hd.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
       AND (?=0 OR ?<=(SELECT allocation FROM special_event_ticket_products WHERE event_id=e.id AND code='MINI_COMPETITION')
-        -COALESCE((SELECT SUM(competition_quantity) FROM special_event_bookings WHERE event_id=e.id AND status='PAID'),0)
-        -COALESCE((SELECT SUM(competition_quantity) FROM special_event_holds WHERE event_id=e.id AND status='ACTIVE' AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
+        -COALESCE((SELECT SUM(CASE WHEN bp.code='MINI_COMPETITION' THEN b.quantity ELSE b.competition_quantity END) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID'),0)
+        -COALESCE((SELECT SUM(CASE WHEN hp.code='MINI_COMPETITION' THEN h.quantity ELSE h.competition_quantity END) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
       AND (p.includes_saturday_evening=0 OR e.saturday_evening_capacity IS NULL OR ?<=e.saturday_evening_capacity
         -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0)
         -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND hp.includes_saturday_evening=1),0))`)
-    .bind(holdId,customer.id,email,quantity,amount,competitionQuantity,expiresAt,idempotencyKey,event.id,product.id,quantity,quantity,competitionQuantity,competitionQuantity,quantity);
+    .bind(holdId,customer.id,email,quantity,amount,competitionQuantity,expiresAt,idempotencyKey,event.id,product.id,quantity,quantity,competitionInventoryQuantity,competitionInventoryQuantity,quantity);
   const holdDays=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_hold_days(hold_id,day_id,places)
     SELECT h.id,pd.day_id,?*pd.places_per_ticket FROM special_event_holds h JOIN special_event_product_days pd ON pd.product_id=h.product_id
     WHERE h.id=? AND pd.product_id=?`).bind(quantity,holdId,product.id);
