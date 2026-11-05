@@ -1,4 +1,4 @@
-import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia} from './special-events.js';
+import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,processSpecialEventConfirmations,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
 
 const INDEX_KEY = '__system/media-index.json';
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -7729,7 +7729,7 @@ async function serveMedia(request, env, pathname) {
 
 export {sundaySessionSelection,sundaySessionProducts};
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env)])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
@@ -7798,7 +7798,7 @@ export default {
       if (path === '/api/admin/classes') return adminClasses(request, env);
       if (path === '/api/admin/special-events') {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
-        return adminSpecialEvents(request,env,check.state);
+        return adminSpecialEvents(request,env,check.state,{sendEmail:(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)});
       }
       if (path === '/api/admin/special-event-documents/upload' && request.method === 'POST') {
         const check=requireAdmin(request,env);if(check.response)return check.response;
@@ -7811,6 +7811,18 @@ export default {
       if (path === '/api/admin/special-event-media/upload' && request.method === 'POST') {
         const check=requireAdmin(request,env);if(check.response)return check.response;
         return specialEventMediaUpload(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-media/multipart/start' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMediaMultipartStart(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-media/multipart/part' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMediaMultipartPart(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-media/multipart/complete' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMediaMultipartComplete(request,env,check.state);
       }
       if (path === '/api/admin/special-event-documents/download' && request.method === 'GET') {
         const check=requireAdmin(request,env);if(check.response)return check.response;
