@@ -63,6 +63,7 @@ try{
   assert.match(service,/availability_status/,'public API must expose status rather than inventory quantities');
   assert.match(service,/allocation:_allocation,sold_count:_sold,remaining:_remaining/,'public API must strip product inventory counts');
   assert.doesNotMatch(eventPageScript,/sold ·/,'customer ticket cards must not render sold or remaining quantities');
+  assert.doesNotMatch(eventPageScript,/Capacity is 25 entries/,'customer competition copy must not reveal numeric inventory');
   assert.match(eventPageScript,/SOLD OUT/,'customer ticket cards must show an authoritative sold-out state');
   assert.match(service,/SPECIAL_EVENT_CHECKOUT_DISABLED/,'staging must support a hard checkout kill switch');
   assert.match(service,/H\.264\/AAC MP4/,'HQ media upload must explain the supported video format');
