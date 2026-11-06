@@ -42,6 +42,9 @@ try{
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE is_junior=1 AND requires_guardian=1;`),'3');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE competition_eligible=1;`),'6');
   assert.equal(sqlite(`SELECT programme_approval_status FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'ARTIST_APPROVED');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_programme_items WHERE event_id='special-event-johnny-rossato-2027' AND starts_at IS NOT NULL AND timing_confirmed=1;`),'22','all owner-confirmed programme starts must be displayed');
+  assert.equal(sqlite(`SELECT starts_at||'|'||ends_at FROM special_event_programme_items WHERE id='johnny-sat-comp-registration';`),'2027-02-20T19:00:00|2027-02-20T19:30:00');
+  assert.equal(sqlite(`SELECT starts_at||'|'||ends_at FROM special_event_programme_items WHERE id='johnny-sat-competition';`),'2027-02-20T19:30:00|2027-02-20T20:00:00');
   assert.equal(sqlite(`SELECT instructor_name||'|'||instructor_website_url FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'Gianmarco “Johnny” Rossato|https://www.learnwithjohnny.com/en');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_choreographies WHERE event_id='special-event-johnny-rossato-2027';`),'3');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_choreographies WHERE copperknob_url LIKE 'https://www.copperknob.co.uk/%' AND bootstepper_url LIKE 'https://bootstepper.com/%';`),'3');
@@ -62,6 +65,8 @@ try{
   assert.match(service,/content-range/,'event video delivery must support byte ranges');
   assert.match(worker,/\/api\/admin\/special-event-media\/upload/,'event video upload must remain behind HQ authentication');
   assert.match(eventPageScript,/playsinline/,'event video must use mobile Safari inline playback');
+  assert.match(eventPageScript,/aria-label="Open \$\{escapeHtml\(item\.title\)\} on CopperKnob"/,'CopperKnob actions must have dance-specific accessible labels');
+  assert.match(eventPageScript,/aria-label="Open \$\{escapeHtml\(item\.title\)\} on BootStepper"/,'BootStepper actions must have dance-specific accessible labels');
   assert.match(eventPageScript,/Meet Johnny Rossato/,'public event must include the verified instructor section');
   assert.match(eventPageScript,/all ages/,'competition must clearly state that it is open to all ages');
   assert.match(service,/Adult tickets are for named attendees aged 18 or over/,'server must enforce adult admission age');
