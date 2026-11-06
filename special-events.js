@@ -97,7 +97,7 @@ export async function publicSpecialEvents(request,env,url){
         FROM special_events WHERE slug=? AND status='PUBLISHED' AND publication_enabled=1`).bind(slug).first();
       if(!event)return response({error:'This event is not currently published.'},404);
       const [days,programme,products,choreographies]=await Promise.all([
-        env.BOOKINGS_DB.prepare(`SELECT id,event_date,label,capacity,display_order FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(event.id).all(),
+        env.BOOKINGS_DB.prepare(`SELECT id,event_date,label,display_order FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(event.id).all(),
         env.BOOKINGS_DB.prepare(`SELECT p.day_id,p.item_type,p.title,p.description,p.starts_at,p.ends_at,p.timing_confirmed,p.programme_status,p.display_order FROM special_event_programme_items p WHERE p.event_id=? ORDER BY p.day_id,p.display_order`).bind(event.id).all(),
         env.BOOKINGS_DB.prepare(`SELECT p.id,p.code,p.name,p.description,p.product_type,p.price_pence,p.allocation,p.release_state,p.password_required,p.requires_qualifying_admission,p.is_junior,p.requires_guardian,p.competition_eligible,p.includes_saturday_evening,p.max_per_checkout,p.display_order,
           COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) sold_count,
@@ -105,7 +105,13 @@ export async function publicSpecialEvents(request,env,url){
           FROM special_event_ticket_products p WHERE p.event_id=? AND p.release_state IN ('ACTIVE','SOLD_OUT') ORDER BY p.display_order`).bind(event.id).all(),
         env.BOOKINGS_DB.prepare(`SELECT id,title,info_url,copperknob_url,bootstepper_url,display_order FROM special_event_choreographies WHERE event_id=? ORDER BY display_order`).bind(event.id).all()
       ]);
-      return response({event,days:days.results||[],programme:programme.results||[],ticket_products:products.results||[],choreographies:choreographies.results||[]});
+      const publicProducts=(products.results||[]).map(product=>{
+        const paid=Number(product.sold_count||0),allocation=product.allocation==null?null:Number(product.allocation),temporarilyUnavailable=product.remaining!=null&&Number(product.remaining)<=0&&allocation!=null&&paid<allocation;
+        const availability_status=product.release_state==='SOLD_OUT'||(allocation!=null&&paid>=allocation)?'SOLD_OUT':product.release_state==='ACTIVE'?(temporarilyUnavailable?'TEMPORARILY_UNAVAILABLE':'AVAILABLE'):product.release_state==='CLOSED'?'SALES_CLOSED':'NOT_YET_AVAILABLE';
+        const {allocation:_allocation,sold_count:_sold,remaining:_remaining,...safe}=product;
+        return {...safe,availability_status};
+      });
+      return response({event,days:days.results||[],programme:programme.results||[],ticket_products:publicProducts,choreographies:choreographies.results||[]});
     }
     const rows=await env.BOOKINGS_DB.prepare(`SELECT e.slug,e.title,e.subtitle,e.venue_name,e.public_summary,e.artwork_url,
       (SELECT MIN(d.event_date) FROM special_event_days d WHERE d.event_id=e.id) starts_on,
@@ -375,6 +381,8 @@ export async function adminSpecialEvents(request,env,admin,services={}){
       const invalidAdult=!Number(product.is_junior)&&attendeeInput.some(item=>!tidy(item?.name,120)||!Number.isInteger(Number(item?.age))||Number(item.age)<18||Number(item.age)>120);
       const invalidJunior=Number(product.is_junior)&&attendeeInput.some(item=>!tidy(item?.name,120)||!Number.isInteger(Number(item?.age))||Number(item.age)<0||Number(item.age)>17||!tidy(item?.guardian_name,120)||!specialEmailOk(tidy(item?.guardian_email,160))||!tidy(item?.guardian_phone,40));
       if(invalidAdult||invalidJunior)return response({error:Number(product.is_junior)?'Junior complimentary tickets require an under-18 attendee and responsible-adult details.':'Adult complimentary tickets require named attendees aged 18 or over.'},400);
+      const duplicate=await env.BOOKINGS_DB.prepare(`SELECT id,reference FROM special_event_bookings WHERE event_id=? AND product_id=? AND lower(customer_email)=? AND payment_provider='COMPLIMENTARY' AND status='PAID' LIMIT 1`).bind(eventId,productId,recipientEmail).first();
+      if(duplicate)return response({error:'This recipient already has an active complimentary admission for this ticket product.',existing_reference:duplicate.reference},409);
       const competitionIndexes=[...new Set((Array.isArray(body.competition_attendee_indexes)?body.competition_attendee_indexes:[]).map(Number))].filter(index=>Number.isInteger(index)&&index>=0&&index<quantity);
       if(competitionIndexes.length&&!Number(product.competition_eligible))return response({error:'This admission product does not qualify for the mini competition.'},409);
       let customer=await env.BOOKINGS_DB.prepare(`SELECT id FROM customers WHERE lower(email)=? LIMIT 1`).bind(recipientEmail).first();
@@ -672,7 +680,7 @@ export async function specialEventMediaMultipartStart(request,env,admin){
   if(!eventId||kind!=='PROMO_VIDEO'||type!=='video/mp4'||!Number.isInteger(size)||size<1||size>100*1024*1024)return response({error:type==='video/quicktime'?'Please convert this MOV to an H.264/AAC MP4 before upload.':'Use an H.264/AAC MP4 up to 100 MB.'},415);
   const event=await env.BOOKINGS_DB.prepare(`SELECT id FROM special_events WHERE id=?`).bind(eventId).first();if(!event)return response({error:'Special event not found.'},404);
   const id=crypto.randomUUID(),storageKey=`private/special-events/${eventId}/media/promo_video/pending-${id}.mp4`;
-  try{const upload=await env.MEDIA_BUCKET.createMultipartUpload(storageKey,{httpMetadata:{contentType:type,cacheControl:'private, no-store'}});await env.BOOKINGS_DB.prepare(`INSERT INTO special_event_media_uploads(id,event_id,media_type,storage_key,r2_upload_id,original_filename,content_type,byte_size,title,caption,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(id,eventId,kind,storageKey,upload.uploadId,name,type,size,tidy(body.title,240)||null,tidy(body.caption,1000)||null,admin.email).run();return response({ok:true,upload_id:id,part_size:8*1024*1024},201);}catch(error){return response({error:`Could not start the private R2 upload: ${tidy(error?.message||error,300)}`},502);}
+  try{const upload=await env.MEDIA_BUCKET.createMultipartUpload(storageKey,{httpMetadata:{contentType:type,cacheControl:'private, no-store'}});await env.BOOKINGS_DB.prepare(`INSERT INTO special_event_media_uploads(id,event_id,media_type,storage_key,r2_upload_id,original_filename,content_type,byte_size,title,caption,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(id,eventId,kind,storageKey,upload.uploadId,name,type,size,tidy(body.title,240)||null,tidy(body.caption,1000)||null,admin.email).run();return response({ok:true,upload_id:id,part_size:6*1024*1024},201);}catch(error){return response({error:`Could not start the private R2 upload: ${tidy(error?.message||error,300)}`},502);}
 }
 
 export async function specialEventMediaMultipartPart(request,env){

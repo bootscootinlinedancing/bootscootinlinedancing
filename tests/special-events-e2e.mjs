@@ -11,7 +11,8 @@ import {
   processSpecialEventConfirmations,
   specialEventMediaMultipartStart,
   specialEventMediaMultipartPart,
-  specialEventMediaMultipartComplete
+  specialEventMediaMultipartComplete,
+  publicSpecialEvents
 } from '../special-events.js';
 
 const db=new DatabaseSync(':memory:');
@@ -41,6 +42,13 @@ await applySpecialEventCheckoutState(env,booking,{status:'PAID',transaction_id:'
 assert.equal(db.prepare('SELECT status FROM special_event_bookings WHERE id=?').get(booking.id).status,'PAID');
 assert.equal(db.prepare('SELECT COUNT(*) n FROM special_event_attendees WHERE booking_id=?').get(booking.id).n,2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM special_event_confirmation_outbox WHERE booking_id=?').get(booking.id).n,1);
+response=await publicSpecialEvents(new Request('https://example.test/api/special-events?slug=johnny-rossato'),env,new URL('https://example.test/api/special-events?slug=johnny-rossato'));
+assert.equal(response.status,200);let publicEvent=await response.json();const publicProduct=publicEvent.ticket_products.find(product=>product.code==='EARLY_BIRD_WEEKEND');
+assert.equal(publicProduct.availability_status,'AVAILABLE');for(const field of ['allocation','sold_count','remaining'])assert.equal(field in publicProduct,false,`public product must not expose ${field}`);
+assert.equal('capacity' in publicEvent.days[0],false,'public event days must not expose capacity');
+db.prepare(`UPDATE special_event_ticket_products SET allocation=2 WHERE code='EARLY_BIRD_WEEKEND'`).run();
+response=await publicSpecialEvents(new Request('https://example.test/api/special-events?slug=johnny-rossato'),env,new URL('https://example.test/api/special-events?slug=johnny-rossato'));publicEvent=await response.json();assert.equal(publicEvent.ticket_products.find(product=>product.code==='EARLY_BIRD_WEEKEND').availability_status,'SOLD_OUT');
+db.prepare(`UPDATE special_event_ticket_products SET allocation=20 WHERE code='EARLY_BIRD_WEEKEND'`).run();
 response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'QUEUE_BOOKING_CONFIRMATION',booking_id:booking.id,confirmation:'QUEUE CONFIRMATION'})}),env,{email:'owner@example.test'});assert.equal(response.status,200);
 env.SPECIAL_EVENT_EMAILS_ENABLED='true';const delivered=[];let delivery=await processSpecialEventConfirmations(env,async(to,subject,html,text)=>{delivered.push({to,subject,html,text});return {id:'email-fixture'}});assert.deepEqual(delivery,{processed:1,sent:1,failed:0});assert.equal(delivered.length,1);assert.equal(delivered[0].subject,"Your Booking Confirmation 🤠 | Johnny Rossato's UK Debut");assert.match(delivered[0].html,/Early Bird Weekend Pass/);assert.equal(db.prepare('SELECT status FROM special_event_confirmation_outbox WHERE booking_id=?').get(booking.id).status,'SENT');delivery=await processSpecialEventConfirmations(env,async()=>{throw new Error('duplicate')});assert.equal(delivery.processed,0,'successful confirmation must be exactly once');env.SPECIAL_EVENT_EMAILS_ENABLED='false';
 
@@ -100,6 +108,7 @@ assert.equal(complimentary.payment_provider,'COMPLIMENTARY');assert.equal(compli
 assert.equal(db.prepare(`SELECT SUM(places) n FROM special_event_booking_days WHERE booking_id=?`).get(complimentary.id).n,4,'complimentary weekend passes must reserve both days');
 assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_attendees WHERE booking_id=? AND status='ACTIVE'`).get(complimentary.id).n,2);
 assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_competition_entries WHERE booking_id=?`).get(complimentary.id).n,1);
+response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(complimentaryPayload)}),env,{email:'owner@example.test'});assert.equal(response.status,409,'duplicate active complimentary admission must be rejected');
 assert.equal(db.prepare(`SELECT contact_email FROM special_event_competition_entries WHERE booking_id=?`).get(complimentary.id).contact_email,'complimentary@example.test');
 assert.equal(db.prepare(`SELECT status FROM special_event_confirmation_outbox WHERE booking_id=?`).get(complimentary.id).status,'DISABLED');
 response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'PREVIEW_COMPETITOR_MESSAGE',subject:'Competition update',body_text:'Operational fixture only.'})}),env,{email:'owner@example.test'});assert.equal(response.status,200);assert.equal((await response.json()).recipient_count,1);

@@ -60,6 +60,10 @@ try{
   assert.match(migration,/special_event_document_versions_immutable_update/);
   assert.match(migration,/special_event_activity_immutable_delete/);
   assert.match(service,/status='PUBLISHED' AND publication_enabled=1/,'public API must only expose published events');
+  assert.match(service,/availability_status/,'public API must expose status rather than inventory quantities');
+  assert.match(service,/allocation:_allocation,sold_count:_sold,remaining:_remaining/,'public API must strip product inventory counts');
+  assert.doesNotMatch(eventPageScript,/sold ·/,'customer ticket cards must not render sold or remaining quantities');
+  assert.match(eventPageScript,/SOLD OUT/,'customer ticket cards must show an authoritative sold-out state');
   assert.match(service,/SPECIAL_EVENT_CHECKOUT_DISABLED/,'staging must support a hard checkout kill switch');
   assert.match(service,/H\.264\/AAC MP4/,'HQ media upload must explain the supported video format');
   assert.match(service,/content-range/,'event video delivery must support byte ranges');
