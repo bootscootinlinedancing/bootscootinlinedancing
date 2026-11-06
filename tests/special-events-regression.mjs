@@ -5,7 +5,10 @@ import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const root=new URL('../',import.meta.url);
+const announcementsMigration=readFileSync(new URL('../migrations/0031_event_announcements.sql',import.meta.url),'utf8');
 const migration=readFileSync(new URL('../migrations/0032_special_events.sql',import.meta.url),'utf8');
+const programmeMigration=readFileSync(new URL('../migrations/0033_johnny_programme_times.sql',import.meta.url),'utf8');
+const ownerDecisionsMigration=readFileSync(new URL('../migrations/0034_johnny_owner_decisions.sql',import.meta.url),'utf8');
 const worker=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
 const service=readFileSync(new URL('../special-events.js',import.meta.url),'utf8');
 const publicPage=readFileSync(new URL('../johnny-rossato.html',import.meta.url),'utf8');
@@ -24,16 +27,25 @@ function sqlite(sql){
 
 try{
   sqlite(`PRAGMA foreign_keys=ON;
+    CREATE TABLE classes(id TEXT PRIMARY KEY);
     CREATE TABLE customers(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE);
-    ${migration}`);
+    ${announcementsMigration}
+    ${migration}
+    ${programmeMigration}
+    ${ownerDecisionsMigration}`);
 
   assert.equal(sqlite(`SELECT status||'|'||publication_enabled||'|'||checkout_enabled FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'DRAFT|0|0');
+  assert.equal(sqlite(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='event_announcements';`),'1','migration 0031 must precede Special Events');
   assert.equal(sqlite(`SELECT group_concat(capacity,',') FROM special_event_days WHERE event_id='special-event-johnny-rossato-2027' ORDER BY display_order;`),'75,75');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE event_id='special-event-johnny-rossato-2027';`),'10');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state||'|'||password_required FROM special_event_ticket_products WHERE code='LOYALTY_WEEKEND';`),'3500|10|INACTIVE|1');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||release_state FROM special_event_ticket_products WHERE code='EARLY_BIRD_WEEKEND';`),'4000|20|INACTIVE');
   assert.equal(sqlite(`SELECT price_pence||'|'||allocation||'|'||COALESCE(auto_activate_after_product_id,'NONE') FROM special_event_ticket_products WHERE code='STANDARD_WEEKEND';`),'5000|25|NONE');
-  assert.equal(sqlite(`SELECT saturday_evening_capacity||'|'||saturday_evening_capacity_confirmed FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'100|0','proposed evening capacity must remain explicitly unconfirmed');
+  assert.equal(sqlite(`SELECT saturday_evening_capacity||'|'||saturday_evening_capacity_confirmed FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'75|1','owner-confirmed evening capacity must be authoritative');
+  assert.equal(sqlite(`SELECT starts_at||'|'||programme_status FROM special_event_programme_items WHERE id='johnny-sat-under18';`),'2027-02-20T20:30:00|CONFIRMED');
+  assert.match(sqlite(`SELECT age_terms FROM special_events WHERE id='special-event-johnny-rossato-2027';`),/leave the venue by 8:30 pm/);
+  assert.match(sqlite(`SELECT refund_policy FROM special_events WHERE id='special-event-johnny-rossato-2027';`),/non-refundable except where a refund is required by law/);
+  assert.equal(sqlite(`SELECT age_terms_confirmed||'|'||refund_policy_confirmed FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'0|0','venue and legal review must remain explicit launch blockers');
   assert.equal(sqlite(`SELECT group_concat(allocation,',') FROM special_event_ticket_products WHERE code IN ('JUNIOR_SATURDAY','JUNIOR_SUNDAY') ORDER BY code;`),'5,5');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE password_required=1;`),'1','only the loyalty product may require a password');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_product_days WHERE product_id='johnny-standard-weekend';`),'2','weekend admission must reserve both event days');
@@ -66,6 +78,8 @@ try{
   assert.doesNotMatch(eventPageScript,/sold ·/,'customer ticket cards must not render sold or remaining quantities');
   assert.doesNotMatch(eventPageScript,/Capacity is 25 entries/,'customer competition copy must not reveal numeric inventory');
   assert.match(eventPageScript,/SOLD OUT/,'customer ticket cards must show an authoritative sold-out state');
+  assert.match(eventPageScript,/Final legal\/compliance review is still required/,'Draft preview must identify the outstanding policy review');
+  assert.match(eventPageScript,/I have reviewed and accept the event booking terms/,'checkout must require review of the displayed event policy');
   assert.match(service,/SPECIAL_EVENT_CHECKOUT_DISABLED/,'staging must support a hard checkout kill switch');
   assert.match(service,/H\.264.*AAC/,'HQ media upload must explain the supported video and audio codecs');
   assert.match(ranch,/accept="\.mp4,\.mov,\.m4v,video\/mp4,video\/quicktime,video\/x-m4v"/,'Safari file picker must allow MP4, MOV and M4V selection');
