@@ -61,7 +61,8 @@ try{
   assert.match(migration,/special_event_activity_immutable_delete/);
   assert.match(service,/status='PUBLISHED' AND publication_enabled=1/,'public API must only expose published events');
   assert.match(service,/availability_status/,'public API must expose status rather than inventory quantities');
-  assert.match(service,/allocation:_allocation,sold_count:_sold,remaining:_remaining/,'public API must strip product inventory counts');
+  assert.match(service,/shared_capacity_sold_out/,'public availability must account for genuinely full shared capacity');
+  assert.match(service,/allocation:_allocation,sold_count:_sold,remaining:_remaining,shared_capacity_sold_out:_shared/,'public API must strip product inventory counts');
   assert.doesNotMatch(eventPageScript,/sold ·/,'customer ticket cards must not render sold or remaining quantities');
   assert.doesNotMatch(eventPageScript,/Capacity is 25 entries/,'customer competition copy must not reveal numeric inventory');
   assert.match(eventPageScript,/SOLD OUT/,'customer ticket cards must show an authoritative sold-out state');
