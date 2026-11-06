@@ -3542,7 +3542,7 @@ async function sumUpWebhook(request, env) {
     return new Response(null,{status:204});
   }
   if(specialEventBooking){
-    if(checkout)await applySpecialEventCheckoutState(env,specialEventBooking,checkout);
+    if(checkout){await applySpecialEventCheckoutState(env,specialEventBooking,checkout);await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1).catch(error=>console.error('SPECIAL_EVENT_CONFIRMATION_PROCESS_FAILED',specialEventBooking.id,clean(error?.message||error,200)));}
     return new Response(null,{status:204});
   }
   if(order&&checkout){
