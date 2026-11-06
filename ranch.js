@@ -4,6 +4,7 @@
     bootstrap:null,
     bootstrapVerified:false,
     classes:[],
+    eventAnnouncements:[],
     classPasses:null,
     reviews:null,
     selectedReview:null,
@@ -774,9 +775,25 @@
     try{
       state.classes=await jsonFetch(`${ADMIN_API_PREFIX}/classes`,{cache:'no-store'});
       renderClasses();
+      await loadEventAnnouncements();
     }catch(error){
       box.innerHTML=(error.status===401||error.status===403)?lockedPanel('Class editing is locked','Cloudflare Access must authorise this HQ session.'):setupPanel('Classes unavailable',error.message);
     }
+  }
+  const announcementLocalValue=value=>{if(!value)return '';const d=new Date(value);if(Number.isNaN(d.getTime()))return '';const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;};
+  function clearEventAnnouncementForm(){const form=$('#eventAnnouncementForm');if(!form)return;form.reset();form.elements.id.value='';form.elements.enabled.checked=true;form.elements.featured.checked=false;}
+  function fillEventAnnouncementForm(row){const form=$('#eventAnnouncementForm');if(!form)return;form.elements.id.value=row.id||'';form.elements.class_id.value=row.class_id||'';form.elements.emoji.value=row.emoji||'';form.elements.announcement_text.value=row.announcement_text||'';form.elements.destination_url.value=row.destination_url||'';form.elements.starts_at.value=announcementLocalValue(row.starts_at);form.elements.expires_at.value=announcementLocalValue(row.expires_at);form.elements.enabled.checked=Number(row.enabled)===1;form.elements.featured.checked=Number(row.featured)===1;form.scrollIntoView({behavior:'smooth',block:'center'});}
+  function renderEventAnnouncements(){
+    const form=$('#eventAnnouncementForm'),list=$('#eventAnnouncementList');if(!form||!list)return;
+    const select=form.elements.class_id,current=select.value;
+    select.innerHTML='<option value="">Choose an event</option>'+state.classes.map(c=>`<option value="${esc(c.id)}">${esc(c.title)} · ${esc(fmt(c.starts_at))} · ${esc(c.status)}</option>`).join('');
+    if(current)select.value=current;
+    list.innerHTML=state.eventAnnouncements.length?state.eventAnnouncements.map(row=>`<article class="ranch-list-row"><div><strong>${esc(row.emoji||'')} ${esc(row.announcement_text)}</strong><small>${esc(row.class_title)} · ${esc(row.class_status)} · ${Number(row.featured)===1?'Featured':'Not featured'} · ${Number(row.enabled)===1?'Enabled':'Disabled'}</small><small>${row.starts_at?`Starts ${esc(fmt(row.starts_at))}`:'Starts immediately'} · ${row.expires_at?`Expires ${esc(fmt(row.expires_at))}`:'Expires after the event date (Europe/London)'}</small></div><button class="button secondary compact" type="button" data-edit-event-announcement="${esc(row.id)}">Edit</button></article>`).join(''):emptyPanel('No event announcements configured.');
+  }
+  async function loadEventAnnouncements(){
+    const list=$('#eventAnnouncementList');if(!list)return;
+    try{const data=await jsonFetch(`${ADMIN_API_PREFIX}/event-announcements`,{cache:'no-store'});state.eventAnnouncements=data.announcements||[];renderEventAnnouncements();}
+    catch(error){list.innerHTML=setupPanel('Announcements unavailable',error.message);}
   }
   function anniversaryCategory(value){return ({VENDOR:'Vendor',ARTIST_PERFORMER:'Artist/Performer',FRIEND_GUEST:'Friend/Guest',COMPLIMENTARY:'Complimentary',OTHER:'Other'})[value]||value;}
   function renderAnniversary(data){
@@ -2090,6 +2107,16 @@ Type REFUNDED to continue.`);
   });
   $$('[data-open-class]').forEach(button=>button.dataset.classOpenHandled='1');
   $('#refreshRanch')?.addEventListener('click',loadClasses);
+  $('#clearEventAnnouncement')?.addEventListener('click',clearEventAnnouncementForm);
+  $('#eventAnnouncementForm')?.addEventListener('submit',async event=>{
+    event.preventDefault();const form=event.currentTarget,fd=new FormData(form),submit=form.querySelector('[type="submit"]');
+    const iso=value=>value?new Date(String(value)).toISOString():null;
+    const payload={id:String(fd.get('id')||''),class_id:String(fd.get('class_id')||''),emoji:String(fd.get('emoji')||''),announcement_text:String(fd.get('announcement_text')||''),destination_url:String(fd.get('destination_url')||''),starts_at:iso(fd.get('starts_at')),expires_at:iso(fd.get('expires_at')),featured:fd.get('featured')==='on',enabled:fd.get('enabled')==='on'};
+    if(submit)submit.disabled=true;
+    try{await jsonFetch(`${ADMIN_API_PREFIX}/event-announcements`,{method:'POST',body:JSON.stringify(payload)});toast('Homepage announcement saved.','success');clearEventAnnouncementForm();await loadEventAnnouncements();}
+    catch(error){toast(error.message,'error');}finally{if(submit)submit.disabled=false;}
+  });
+  $('#eventAnnouncementList')?.addEventListener('click',event=>{const button=event.target.closest('[data-edit-event-announcement]');if(!button)return;const row=state.eventAnnouncements.find(item=>item.id===button.dataset.editEventAnnouncement);if(row)fillEventAnnouncementForm(row);});
   $('#refreshGuestList')?.addEventListener('click',loadClassGuestList);
   $('#closeGuestList')?.addEventListener('click',()=>{const panel=$('#classGuestListPanel');if(panel)panel.hidden=true;state.guestListClass=null;state.guestListRequestSequence++;resetGuestListControls();});
   $('#classGuestForm')?.addEventListener('submit',submitClassGuest);

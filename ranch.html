@@ -284,6 +284,22 @@
             <article><span>Waiting</span><strong id="classWaitingCount">—</strong></article>
           </div>
           <div id="ranchClasses" class="ranch-class-table">Loading…</div>
+          <section class="ranch91-card event-announcement-admin" aria-labelledby="eventAnnouncementHeading">
+            <div class="ranch91-card-head"><div><p class="kicker red">Homepage broadcast strip</p><h3 id="eventAnnouncementHeading">Featured event announcements</h3><p>Feature selected events without changing the strip design. Event-linked announcements expire automatically in Europe/London.</p></div></div>
+            <form id="eventAnnouncementForm" class="ranch-form-grid">
+              <input name="id" type="hidden">
+              <label>Event<select name="class_id" required></select></label>
+              <label>Emoji<input name="emoji" maxlength="16" placeholder="🤠"></label>
+              <label class="wide">Announcement text<input name="announcement_text" maxlength="240" required></label>
+              <label class="wide">Destination link<input name="destination_url" maxlength="500" required placeholder="/bookings.html?event=..."></label>
+              <label>Start (optional)<input name="starts_at" type="datetime-local"></label>
+              <label>Expiry (optional)<input name="expires_at" type="datetime-local"></label>
+              <label class="check"><input name="featured" type="checkbox"> Featured in strip</label>
+              <label class="check"><input name="enabled" type="checkbox" checked> Enabled</label>
+              <div class="wide ranch-form-actions"><button class="button" type="submit">Save announcement</button><button class="button secondary" id="clearEventAnnouncement" type="button">Clear</button></div>
+            </form>
+            <div id="eventAnnouncementList" class="ranch-list">Loading announcements…</div>
+          </section>
           <section id="classRegisterPanel" class="class-register-panel" hidden aria-live="polite">
             <div class="class-register-loading">Choose Register on a class to load its attendee list.</div>
           </section>
