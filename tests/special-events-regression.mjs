@@ -67,7 +67,9 @@ try{
   assert.doesNotMatch(eventPageScript,/Capacity is 25 entries/,'customer competition copy must not reveal numeric inventory');
   assert.match(eventPageScript,/SOLD OUT/,'customer ticket cards must show an authoritative sold-out state');
   assert.match(service,/SPECIAL_EVENT_CHECKOUT_DISABLED/,'staging must support a hard checkout kill switch');
-  assert.match(service,/H\.264\/AAC MP4/,'HQ media upload must explain the supported video format');
+  assert.match(service,/H\.264.*AAC/,'HQ media upload must explain the supported video and audio codecs');
+  assert.match(ranch,/accept="\.mp4,\.mov,\.m4v,video\/mp4,video\/quicktime,video\/x-m4v"/,'Safari file picker must allow MP4, MOV and M4V selection');
+  assert.match(service,/verified_codecs:\['H264','AAC'\]/,'server must verify browser-compatible codecs before saving event video');
   assert.match(service,/content-range/,'event video delivery must support byte ranges');
   assert.match(worker,/\/api\/admin\/special-event-media\/upload/,'event video upload must remain behind HQ authentication');
   assert.match(eventPageScript,/playsinline/,'event video must use mobile Safari inline playback');
