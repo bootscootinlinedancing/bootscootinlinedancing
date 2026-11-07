@@ -3575,6 +3575,55 @@ async function retrieveSumUpCheckout(env, checkoutId, credentialName = 'SUMUP_AP
   return response.json().catch(() => null);
 }
 
+async function reconcileSpecialEventBooking(env, booking, {sendConfirmation = true} = {}) {
+  if (!booking?.provider_checkout_id) return { outcome: 'SKIPPED', reason: 'CHECKOUT_ID_MISSING' };
+  const checkout = await retrieveSumUpCheckout(env, booking.provider_checkout_id, 'SUMUP_SPECIAL_EVENTS_API_KEY');
+  if (!checkout) return { outcome: 'ERROR', reason: 'CHECKOUT_UNAVAILABLE' };
+  const verification = verifySpecialEventCheckout(booking, checkout, env.SUMUP_MERCHANT_CODE);
+  if (!verification.ok) return { outcome: 'ERROR', reason: verification.code };
+  if (!['PAID', 'FAILED', 'EXPIRED'].includes(verification.status)) {
+    return { outcome: 'UNCHANGED', status: verification.status || 'UNKNOWN' };
+  }
+  await applySpecialEventCheckoutState(env, booking, checkout);
+  if (verification.status === 'PAID' && sendConfirmation) {
+    await processSpecialEventConfirmations(
+      env,
+      (to, subject, html, text, options) => sendTransactionalEmail(env, to, subject, html, text, 'events', options),
+      20
+    );
+  }
+  return { outcome: 'UPDATED', status: verification.status };
+}
+
+async function reconcilePendingSpecialEventBookings(env, eventId = 'special-event-johnny-rossato-2027') {
+  const rows = await env.BOOKINGS_DB.prepare(
+    `SELECT * FROM special_event_bookings
+     WHERE event_id=? AND status='PENDING' AND payment_provider='SUMUP' AND provider_checkout_id IS NOT NULL
+     ORDER BY created_at,id`
+  ).bind(eventId).all();
+  const summary = { inspected: 0, paid: 0, failed_or_expired: 0, pending: 0, errors: 0, results: [] };
+  for (const booking of rows.results || []) {
+    summary.inspected += 1;
+    const result = await reconcileSpecialEventBooking(env, booking);
+    if (result.outcome === 'UPDATED' && result.status === 'PAID') summary.paid += 1;
+    else if (result.outcome === 'UPDATED') summary.failed_or_expired += 1;
+    else if (result.outcome === 'UNCHANGED') summary.pending += 1;
+    else summary.errors += 1;
+    summary.results.push({ reference: booking.reference, outcome: result.outcome, status: result.status || null, reason: result.reason || null });
+  }
+  return summary;
+}
+
+async function reconcileSpecialEventReturn(env, url) {
+  const reference = clean(url.searchParams.get('reference'), 120);
+  const token = clean(url.searchParams.get('token'), 180);
+  if (!reference || !token) return;
+  const booking = await env.BOOKINGS_DB.prepare(
+    `SELECT * FROM special_event_bookings WHERE reference=? AND secure_token=? AND status='PENDING'`
+  ).bind(reference, token).first();
+  if (booking) await reconcileSpecialEventBooking(env, booking);
+}
+
 async function syncSumUpBooking(env, booking, actor = 'SUMUP_STATUS_CHECK') {
   if (!booking?.provider_checkout_id || !sumUpConfigured(env)) return booking;
   const checkout = await retrieveSumUpCheckout(env, booking.provider_checkout_id);
@@ -7842,7 +7891,10 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1',request);
-      if (path === '/api/special-events' && request.method === 'GET') return publicSpecialEvents(request,env,url);
+      if (path === '/api/special-events' && request.method === 'GET') {
+        if (url.searchParams.has('reference') || url.searchParams.has('token')) await reconcileSpecialEventReturn(env, url);
+        return publicSpecialEvents(request,env,url);
+      }
       if (path === '/api/special-event-artwork' && request.method === 'GET') return specialEventArtwork(request,env,url);
       if (path === '/api/special-event-media' && request.method === 'GET') return specialEventMedia(request,env,url);
       if (path === '/api/special-event-reservations' && request.method === 'POST') {
@@ -7939,6 +7991,15 @@ export default {
         const delivery=await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1);
         const result=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.status,b.amount_pence,b.paid_at,b.provider_transaction_id,h.status hold_status,(SELECT COUNT(*) FROM special_event_attendees a WHERE a.booking_id=b.id AND a.status='ACTIVE') attendee_count,(SELECT status FROM special_event_confirmation_outbox o WHERE o.booking_id=b.id LIMIT 1) confirmation_status FROM special_event_bookings b JOIN special_event_holds h ON h.id=b.hold_id WHERE b.id=?`).bind(booking.id).first();
         return json({ok:true,booking:result,delivery});
+      }
+      if (path === '/api/admin/special-event-reconcile-pending' && request.method === 'POST') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+        const confirmation=clean((await request.json().catch(()=>({}))).confirmation,100);
+        if(confirmation!=='RECONCILE PENDING SPECIAL EVENT PAYMENTS')return json({error:'The reconciliation confirmation is invalid.'},400);
+        if(!specialEventSumUpConfigured(env))return json({error:'The dedicated Special Events payment connection is unavailable.'},503);
+        const result=await reconcilePendingSpecialEventBookings(env);
+        return json({ok:true,...result});
       }
       if (path === '/api/admin/special-event-confirmation-delivery-test' && request.method === 'POST') {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;

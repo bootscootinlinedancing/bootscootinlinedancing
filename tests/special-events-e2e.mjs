@@ -51,6 +51,12 @@ await applySpecialEventCheckoutState(env,booking,{status:'PAID',transaction_id:'
 assert.equal(db.prepare('SELECT status FROM special_event_bookings WHERE id=?').get(booking.id).status,'PAID');
 assert.equal(db.prepare('SELECT COUNT(*) n FROM special_event_attendees WHERE booking_id=?').get(booking.id).n,2);
 assert.equal(db.prepare('SELECT COUNT(*) n FROM special_event_confirmation_outbox WHERE booking_id=?').get(booking.id).n,1);
+const reconciliationWorkerSource=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
+assert.match(reconciliationWorkerSource,/reconcilePendingSpecialEventBookings/,'HQ must expose authoritative pending-payment reconciliation');
+assert.match(reconciliationWorkerSource,/reconcileSpecialEventReturn/,'the customer return path must recover a missed webhook');
+assert.match(reconciliationWorkerSource,/SUMUP_SPECIAL_EVENTS_API_KEY/,'Special Event reconciliation must use the dedicated SumUp credential');
+const reconciliationRanchSource=readFileSync(new URL('../ranch.js',import.meta.url),'utf8');
+assert.match(reconciliationRanchSource,/special-event-reconcile-pending/,'HQ must call the protected reconciliation endpoint');
 response=await publicSpecialEvents(new Request('https://example.test/api/special-events?slug=johnny-rossato'),env,new URL('https://example.test/api/special-events?slug=johnny-rossato'));
 assert.equal(response.status,200);let publicEvent=await response.json();const publicProduct=publicEvent.ticket_products.find(product=>product.code==='EARLY_BIRD_WEEKEND');
 assert.equal(publicProduct.availability_status,'AVAILABLE');for(const field of ['allocation','sold_count','remaining'])assert.equal(field in publicProduct,false,`public product must not expose ${field}`);
