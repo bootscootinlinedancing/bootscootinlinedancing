@@ -3614,6 +3614,51 @@ async function reconcilePendingSpecialEventBookings(env, eventId = 'special-even
   return summary;
 }
 
+const APPROVED_OWNER_TEST_REFUNDS = new Map([
+  ['BSE-261107-B83249', { amountPence: 1500, productCode: 'SATURDAY_SOCIAL', requiresOwnerTestAudit: true }],
+  ['BSE-261107-D2B4B8', { amountPence: 3500, productCode: 'LOYALTY_WEEKEND', requiresOwnerTestAudit: false }]
+]);
+
+async function refundApprovedSpecialEventOwnerTest(env, reference, actor) {
+  const approved = APPROVED_OWNER_TEST_REFUNDS.get(reference);
+  if (!approved) return { error: 'This booking is not in the approved owner-test refund set.', status: 403 };
+  const booking = await env.BOOKINGS_DB.prepare(
+    `SELECT b.*,p.code product_code,
+      EXISTS(SELECT 1 FROM special_event_activity a WHERE a.target_type='BOOKING' AND a.target_id=b.id AND a.action='OWNER_PAYMENT_TEST_CREATED') owner_test_audit
+     FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id
+     WHERE b.event_id='special-event-johnny-rossato-2027' AND b.reference=?`
+  ).bind(reference).first();
+  if (!booking) return { error: 'The approved owner-test booking was not found.', status: 404 };
+  const confirmed = await env.BOOKINGS_DB.prepare(`SELECT id FROM special_event_activity WHERE idempotency_key=?`).bind(`owner-test-refund:${booking.id}:confirmed`).first();
+  if (confirmed) return { ok: true, idempotent: true, reference, booking_status: booking.status };
+  const unresolved = await env.BOOKINGS_DB.prepare(`SELECT id FROM special_event_activity WHERE idempotency_key=?`).bind(`owner-test-refund:${booking.id}:unconfirmed`).first();
+  if (unresolved) return { error: 'A previous refund result is unconfirmed. Review SumUp before any retry.', status: 409 };
+  if (booking.status !== 'PAID' || booking.payment_provider !== 'SUMUP' || Number(booking.amount_pence) !== approved.amountPence || booking.product_code !== approved.productCode || String(booking.customer_email||'').toLowerCase() !== 'nora@bootscootinlinedancing.co.uk' || !booking.provider_checkout_id || !booking.provider_transaction_id || (approved.requiresOwnerTestAudit && !Number(booking.owner_test_audit))) {
+    return { error: 'The live booking no longer matches the approved paid owner-test transaction.', status: 409 };
+  }
+  const checkout = await retrieveSumUpCheckout(env, booking.provider_checkout_id, 'SUMUP_SPECIAL_EVENTS_API_KEY');
+  if (!checkout) return { error: 'SumUp could not verify the original checkout. No refund or cancellation was attempted.', status: 502 };
+  const verification = verifySpecialEventCheckout(booking, checkout, env.SUMUP_MERCHANT_CODE);
+  if (!verification.ok || verification.status !== 'PAID') return { error: 'The original checkout is not authoritatively PAID and eligible for this recovery.', code: verification.code || verification.status, status: 409 };
+  const startKey=`owner-test-refund:${booking.id}:started`,confirmKey=`owner-test-refund:${booking.id}:confirmed`,unconfirmedKey=`owner-test-refund:${booking.id}:unconfirmed`;
+  const started=await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'OWNER_TEST_REFUND_STARTED','BOOKING',?,?,?, ?,?)`).bind(crypto.randomUUID(),booking.event_id,booking.id,actor,'Owner-approved refund of a verified paid test booking.',JSON.stringify({reference,amount_pence:approved.amountPence}),startKey).run();
+  if(!Number(started.meta?.changes||0))return {error:'This refund has already started. Review SumUp before retrying.',status:409};
+  try {
+    await refundSumUpTransaction(env, booking.provider_transaction_id, null);
+  } catch (error) {
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'OWNER_TEST_REFUND_UNCONFIRMED','BOOKING',?,?,?, ?,?)`).bind(crypto.randomUUID(),booking.event_id,booking.id,actor,'SumUp did not return a confirmed refund result; cancellation was not applied.',JSON.stringify({reference,amount_pence:approved.amountPence,error:clean(error?.message||error,300)}),unconfirmedKey).run();
+    return { error: 'SumUp did not confirm the refund. The booking and attendee remain active; do not retry blindly.', status: 502 };
+  }
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='REFUNDED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PAID'`).bind(booking.id),
+    env.BOOKINGS_DB.prepare(`UPDATE special_event_attendees SET status='CANCELLED' WHERE booking_id=? AND status='ACTIVE'`).bind(booking.id),
+    env.BOOKINGS_DB.prepare(`UPDATE special_event_competition_entries SET status='WITHDRAWN' WHERE booking_id=? AND status<>'WITHDRAWN'`).bind(booking.id),
+    env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'OWNER_TEST_REFUND_CONFIRMED','BOOKING',?,?,?, ?,?)`).bind(crypto.randomUUID(),booking.event_id,booking.id,actor,'SumUp confirmed the owner-test refund; admission was cancelled and capacity restored.',JSON.stringify({reference,amount_pence:approved.amountPence}),confirmKey)
+  ]);
+  const result=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.status,b.amount_pence,(SELECT COUNT(*) FROM special_event_attendees a WHERE a.booking_id=b.id AND a.status='ACTIVE') active_attendees FROM special_event_bookings b WHERE b.id=?`).bind(booking.id).first();
+  return { ok: true, reference, refund_amount_pence: approved.amountPence, booking: result };
+}
+
 async function reconcileSpecialEventReturn(env, url) {
   const reference = clean(url.searchParams.get('reference'), 120);
   const token = clean(url.searchParams.get('token'), 180);
@@ -8000,6 +8045,15 @@ export default {
         if(!specialEventSumUpConfigured(env))return json({error:'The dedicated Special Events payment connection is unavailable.'},503);
         const result=await reconcilePendingSpecialEventBookings(env);
         return json({ok:true,...result});
+      }
+      if (path === '/api/admin/special-event-owner-test-refund' && request.method === 'POST') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+        const body=await request.json().catch(()=>({})),reference=clean(body.reference,120);
+        if(body.confirmation!==`REFUND ${reference}`)return json({error:`Type REFUND ${reference} to continue.`},400);
+        const result=await refundApprovedSpecialEventOwnerTest(env,reference,check.state.email);
+        if(result.error)return json({error:result.error,code:result.code||null},result.status||500);
+        return json(result);
       }
       if (path === '/api/admin/special-event-confirmation-delivery-test' && request.method === 'POST') {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
