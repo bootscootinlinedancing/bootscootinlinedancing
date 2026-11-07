@@ -501,18 +501,24 @@ async function refreshAutomaticReleases(db,eventId){
         COALESCE((SELECT SUM(quantity) FROM special_event_bookings WHERE product_id=early.id AND status='PAID'),0)`).bind(eventId).run();
 }
 
-export async function createSpecialEventReservation(request,env,services){
-  if(String(env.SPECIAL_EVENT_CHECKOUT_DISABLED||'').toLowerCase()==='true')return response({error:'Special Event checkout is disabled in this environment.'},503);
+export async function createSpecialEventReservation(request,env,services,options={}){
+  const ownerPaymentTest=options.ownerPaymentTest===true;
+  if(!ownerPaymentTest&&String(env.SPECIAL_EVENT_CHECKOUT_DISABLED||'').toLowerCase()==='true')return response({error:'Special Event checkout is disabled in this environment.'},503);
   if(!env.BOOKINGS_DB)return response({error:'Event booking is unavailable.'},503);
   const body=await request.json().catch(()=>null);if(!body)return response({error:'The booking request could not be read.'},400);
   const slug=tidy(body.slug,120),code=tidy(body.product_code,80),name=tidy(body.name,120),email=tidy(body.email,160).toLowerCase(),phone=tidy(body.phone,40),quantity=Number(body.quantity);
   if(!slug||!code||!name||!specialEmailOk(email)||!Number.isInteger(quantity)||quantity<1)return response({error:'Choose a valid event ticket and enter your contact details.'},400);
   if(!body.terms_accepted)return response({error:'Please accept the event booking terms.'},400);
-  const event=await env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE slug=? AND status='PUBLISHED' AND publication_enabled=1 AND checkout_enabled=1`).bind(slug).first();
+  const event=ownerPaymentTest
+    ?await env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE id='special-event-johnny-rossato-2027' AND slug=? AND status='DRAFT' AND publication_enabled=0 AND checkout_enabled=0`).bind(slug).first()
+    :await env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE slug=? AND status='PUBLISHED' AND publication_enabled=1 AND checkout_enabled=1`).bind(slug).first();
   if(!event)return response({error:'Ticket sales for this event are not open.'},404);
-  const readiness=await specialEventReadiness(env.BOOKINGS_DB,event.id);if(!readiness?.ready)return response({error:'Ticket sales remain blocked while event safety settings are incomplete.'},409);
-  await refreshAutomaticReleases(env.BOOKINGS_DB,event.id);
-  const product=await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code=? AND release_state='ACTIVE'`).bind(event.id,code).first();
+  const readiness=await specialEventReadiness(env.BOOKINGS_DB,event.id),allowedTestBlockers=new Set(['PAYMENT_INTEGRATION_UNVERIFIED']);
+  if(!readiness||(!ownerPaymentTest&&!readiness.ready)||(ownerPaymentTest&&readiness.blockers.some(blocker=>!allowedTestBlockers.has(blocker))))return response({error:'Ticket sales remain blocked while event safety settings are incomplete.'},409);
+  if(!ownerPaymentTest)await refreshAutomaticReleases(env.BOOKINGS_DB,event.id);
+  const product=ownerPaymentTest
+    ?await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code='SATURDAY_SOCIAL' AND name='Saturday Social & Spectator' AND price_pence=1500`).bind(event.id).first()
+    :await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code=? AND release_state='ACTIVE'`).bind(event.id,code).first();
   if(!product)return response({error:'This ticket is not currently available.'},409);
   const maximum=Math.min(Number(event.max_admission_per_checkout||4),Number(product.max_per_checkout||event.max_admission_per_checkout||4));
   if(quantity>maximum)return response({error:`Choose no more than ${maximum} ticket${maximum===1?'':'s'} per checkout.`},400);
@@ -542,10 +548,12 @@ export async function createSpecialEventReservation(request,env,services){
   const competitionInventoryQuantity=product.code==='MINI_COMPETITION'?quantity:competitionQuantity;
   const amount=Number(product.price_pence)*quantity+(competitionQuantity*500),reference=`BSE-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
   const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
+  const eventAvailability=ownerPaymentTest?"e.id=? AND e.status='DRAFT' AND e.publication_enabled=0 AND e.checkout_enabled=0":"e.id=? AND e.status='PUBLISHED' AND e.checkout_enabled=1";
+  const productAvailability=ownerPaymentTest?'p.id=?':"p.id=? AND p.release_state='ACTIVE'";
   const holdInsert=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_holds(id,event_id,product_id,customer_id,customer_email,quantity,amount_pence,competition_quantity,status,expires_at,idempotency_key)
     SELECT ?,e.id,p.id,?,?,?,?,?,'ACTIVE',?,?
     FROM special_events e JOIN special_event_ticket_products p ON p.event_id=e.id
-    WHERE e.id=? AND e.status='PUBLISHED' AND e.checkout_enabled=1 AND p.id=? AND p.release_state='ACTIVE'
+    WHERE ${eventAvailability} AND ${productAvailability}
       AND (p.allocation IS NULL OR ?<=p.allocation
         -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
         -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
@@ -572,14 +580,14 @@ export async function createSpecialEventReservation(request,env,services){
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'PENDING','SUMUP',?,?,CURRENT_TIMESTAMP)`).bind(bookingId,reference,event.id,product.id,holdId,qualifyingBookingId,qualifyingAttendeeId,customer.id,name,email,phone||null,quantity,product.code,product.name,product.price_pence,amount,competitionQuantity,secureToken,customerToken),
       env.BOOKINGS_DB.prepare(`INSERT INTO special_event_booking_days(booking_id,day_id,places) SELECT ?,day_id,places FROM special_event_hold_days WHERE hold_id=?`).bind(bookingId,holdId),
       ...attendeeDrafts,
-      env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'BOOKING_CREATED','BOOKING',?,?,?,?)`).bind(crypto.randomUUID(),event.id,bookingId,email,'Pending SumUp checkout created.',`booking-created:${bookingId}`)
+      env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,?,'BOOKING',?,?,?,?,?)`).bind(crypto.randomUUID(),event.id,ownerPaymentTest?'OWNER_PAYMENT_TEST_CREATED':'BOOKING_CREATED',bookingId,ownerPaymentTest?tidy(options.actor,200)||email:email,ownerPaymentTest?'Owner-authorised £15 Draft payment test; event remained private.':'Pending SumUp checkout created.',ownerPaymentTest?JSON.stringify({owner_payment_test:true,public_event_state_unchanged:true,product_code:product.code,amount_pence:amount}):null,`booking-created:${bookingId}`)
     ]);
-    const origin=new URL(request.url).origin;
-    const checkoutResponse=await services.sumUpFetch(env,'/v0.1/checkouts',{method:'POST',body:JSON.stringify({checkout_reference:reference,amount:Number((amount/100).toFixed(2)),currency:'GBP',merchant_code:String(env.SUMUP_MERCHANT_CODE),description:`${event.title} — ${product.name} × ${quantity}`,redirect_url:`${origin}/johnny-rossato?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}`,return_url:`${origin}/api/sumup-webhook`,valid_until:expiresAt,hosted_checkout:{enabled:true}})});
+    const origin=new URL(request.url).origin,returnPath=ownerPaymentTest?'/ranch?special-event-payment-test=1':`/johnny-rossato?reference=${encodeURIComponent(reference)}&token=${encodeURIComponent(secureToken)}`;
+    const checkoutResponse=await services.sumUpFetch(env,'/v0.1/checkouts',{method:'POST',body:JSON.stringify({checkout_reference:reference,amount:Number((amount/100).toFixed(2)),currency:'GBP',merchant_code:String(env.SUMUP_MERCHANT_CODE),description:`${event.title} — ${product.name} × ${quantity}`,redirect_url:`${origin}${returnPath}`,return_url:`${origin}/api/sumup-webhook`,valid_until:expiresAt,hosted_checkout:{enabled:true}})});
     const checkout=await checkoutResponse.json().catch(()=>({})),raw=checkout.hosted_checkout_url||checkout.hosted_checkout?.url||'';let checkoutUrl='';try{const parsed=new URL(raw);if(parsed.protocol==='https:')checkoutUrl=parsed.toString();}catch(_){ }
     if(!checkoutResponse.ok||!checkout.id||!checkoutUrl)throw new Error('SUMUP_CHECKOUT_FAILED');
     await env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET provider_checkout_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(checkout.id,bookingId).run();
-    return response({ok:true,reference,status:'PENDING',checkout_url:checkoutUrl},201);
+    return response({ok:true,reference,status:'PENDING',checkout_url:checkoutUrl,owner_payment_test:ownerPaymentTest},201);
   }catch(error){
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='FAILED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`).bind(bookingId),
@@ -593,10 +601,12 @@ export async function applySpecialEventCheckoutState(env,booking,checkout){
   const status=String(checkout?.status||'').toUpperCase();
   if(status==='PAID'){
     const transaction=tidy(checkout?.transactions?.[0]?.id||checkout?.transaction_id,180)||null;
+    const ownerPaymentTest=await env.BOOKINGS_DB.prepare(`SELECT id FROM special_event_activity WHERE target_type='BOOKING' AND target_id=? AND action='OWNER_PAYMENT_TEST_CREATED' LIMIT 1`).bind(booking.id).first();
+    const confirmationStatus=ownerPaymentTest?'READY':(String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()==='true'?'READY':'DISABLED');
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='PAID',provider_transaction_id=?,paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`).bind(transaction,booking.id),
       env.BOOKINGS_DB.prepare(`UPDATE special_event_holds SET status='CONSUMED' WHERE id=? AND status='ACTIVE'`).bind(booking.hold_id),
-      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_confirmation_outbox(id,booking_id,status,idempotency_key,recipient_email,subject) VALUES(?,?,?, ?,?,?)`).bind(crypto.randomUUID(),booking.id,String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()==='true'?'READY':'DISABLED',`special-event-paid:${booking.id}`,booking.customer_email,SPECIAL_EVENT_CONFIRMATION_SUBJECT),
+      env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_confirmation_outbox(id,booking_id,status,idempotency_key,recipient_email,subject) VALUES(?,?,?, ?,?,?)`).bind(crypto.randomUUID(),booking.id,confirmationStatus,`special-event-paid:${booking.id}`,booking.customer_email,SPECIAL_EVENT_CONFIRMATION_SUBJECT),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'PAYMENT_CONFIRMED','BOOKING',?,'SUMUP','Authoritative SumUp payment confirmed.',?)`).bind(crypto.randomUUID(),booking.event_id,booking.id,`special-event-paid:${booking.id}`)
     ]);
     const product=await env.BOOKINGS_DB.prepare(`SELECT product_type,requires_qualifying_admission,competition_eligible FROM special_event_ticket_products WHERE id=?`).bind(booking.product_id).first();
@@ -632,8 +642,9 @@ export async function applySpecialEventCheckoutState(env,booking,checkout){
 }
 
 export async function processSpecialEventConfirmations(env,sendEmail,limit=20){
-  if(String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()!=='true'||!env.BOOKINGS_DB||typeof sendEmail!=='function')return {processed:0,disabled:true};
-  const rows=await env.BOOKINGS_DB.prepare(`SELECT o.id outbox_id,o.attempt_count,b.*,p.description product_description,e.title event_title,e.venue_name,e.venue_address,e.refund_policy FROM special_event_confirmation_outbox o JOIN special_event_bookings b ON b.id=o.booking_id JOIN special_event_ticket_products p ON p.id=b.product_id JOIN special_events e ON e.id=b.event_id WHERE o.status IN ('READY','FAILED') AND b.status='PAID' AND (o.next_attempt_at IS NULL OR o.next_attempt_at<=CURRENT_TIMESTAMP) ORDER BY o.created_at LIMIT ?`).bind(Math.max(1,Math.min(50,Number(limit)||20))).all();
+  if(!env.BOOKINGS_DB||typeof sendEmail!=='function')return {processed:0,disabled:true};
+  const emailsEnabled=String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()==='true';
+  const rows=await env.BOOKINGS_DB.prepare(`SELECT o.id outbox_id,o.attempt_count,b.*,p.description product_description,e.title event_title,e.venue_name,e.venue_address,e.refund_policy FROM special_event_confirmation_outbox o JOIN special_event_bookings b ON b.id=o.booking_id JOIN special_event_ticket_products p ON p.id=b.product_id JOIN special_events e ON e.id=b.event_id WHERE o.status IN ('READY','FAILED') AND b.status='PAID' AND (o.next_attempt_at IS NULL OR o.next_attempt_at<=CURRENT_TIMESTAMP) AND (?=1 OR (lower(b.customer_email)='nora@bootscootinlinedancing.co.uk' AND EXISTS(SELECT 1 FROM special_event_activity a WHERE a.target_type='BOOKING' AND a.target_id=b.id AND a.action='OWNER_PAYMENT_TEST_CREATED'))) ORDER BY o.created_at LIMIT ?`).bind(emailsEnabled?1:0,Math.max(1,Math.min(50,Number(limit)||20))).all();
   let sent=0,failed=0;
   for(const booking of rows.results||[]){
     const claim=await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='SENDING',attempt_count=attempt_count+1,last_error=NULL WHERE id=? AND status IN ('READY','FAILED')`).bind(booking.outbox_id).run();if(!Number(claim.meta?.changes||0))continue;
