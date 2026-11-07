@@ -71,9 +71,9 @@ const protectedCountsBefore={
 env.SPECIAL_EVENT_CONFIRMATION_TEST_ENABLED='true';
 env.SPECIAL_EVENT_CONFIRMATION_TEST_RECIPIENT='nora@bootscootinlinedancing.co.uk';
 const testDeliveries=[];
-const confirmationTestRequest=()=>new Request('https://example.test/api/admin/special-event-confirmation-delivery-test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirmation:'SEND ONE SPECIAL EVENT TEST'})});
-response=await sendSpecialEventConfirmationDeliveryTest(confirmationTestRequest(),env,{email:'owner@example.test'},async(to,subject,html,text,options)=>{testDeliveries.push({to,subject,html,text,options});return {id:'owner-test-fixture'}});
-assert.equal(response.status,200,await response.clone().text());
+const confirmationTestRequest=(confirmation='SEND ONE SPECIAL EVENT TEST')=>new Request('https://example.test/api/admin/special-event-confirmation-delivery-test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirmation})});
+response=await sendSpecialEventConfirmationDeliveryTest(confirmationTestRequest(),env,{email:'owner@example.test'},async(to,subject,html,text,options)=>{testDeliveries.push({to,subject,html,text,options});throw new Error('isolated provider timeout after request');});
+assert.equal(response.status,502,await response.clone().text());
 assert.equal(testDeliveries.length,1);
 assert.equal(testDeliveries[0].to,'nora@bootscootinlinedancing.co.uk');
 assert.match(testDeliveries[0].subject,/^TEST — /);
@@ -87,10 +87,17 @@ assert.deepEqual({
   outbox:db.prepare('SELECT COUNT(*) n FROM special_event_confirmation_outbox').get().n
 },protectedCountsBefore,'synthetic delivery must not mutate customers, bookings, holds or booking outbox');
 assert.equal(db.prepare("SELECT COUNT(*) n FROM special_event_activity WHERE action='CONFIRMATION_DELIVERY_TEST_CLAIMED'").get().n,1);
+assert.equal(db.prepare("SELECT COUNT(*) n FROM special_event_activity WHERE action='CONFIRMATION_DELIVERY_TEST_UNCONFIRMED'").get().n,1);
+response=await sendSpecialEventConfirmationDeliveryTest(confirmationTestRequest('RETRY ONE SPECIAL EVENT TEST'),env,{email:'owner@example.test'},async(to,subject,html,text,options)=>{testDeliveries.push({to,subject,html,text,options});return {id:'owner-test-fixture'}});
+assert.equal(response.status,200,await response.clone().text());
+assert.equal(testDeliveries.length,2);
+assert.equal(testDeliveries[1].options.idempotencyKey,testDeliveries[0].options.idempotencyKey,'timeout retry must reuse the exact provider idempotency key');
+assert.equal(db.prepare("SELECT COUNT(*) n FROM special_event_activity WHERE action='CONFIRMATION_DELIVERY_TEST_RETRY_CLAIMED'").get().n,1);
 assert.equal(db.prepare("SELECT COUNT(*) n FROM special_event_activity WHERE action='CONFIRMATION_DELIVERY_TEST_SENT'").get().n,1);
 response=await sendSpecialEventConfirmationDeliveryTest(confirmationTestRequest(),env,{email:'owner@example.test'},async()=>{throw new Error('duplicate delivery must not run')});
-assert.equal(response.status,409,'the owner-only test must be one-use and idempotent');
-assert.equal(testDeliveries.length,1);
+assert.equal(response.status,200,'a completed test must return its idempotent sent state');
+assert.equal((await response.json()).idempotent,true);
+assert.equal(testDeliveries.length,2);
 env.SPECIAL_EVENT_CONFIRMATION_TEST_ENABLED='false';
 
 const videoBytes=new TextEncoder().encode('\0\0\0\u0018ftypqt  \0\0\0\0avc1 browser-compatible video mp4a browser-compatible audio');

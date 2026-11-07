@@ -659,10 +659,22 @@ export async function sendSpecialEventConfirmationDeliveryTest(request,env,admin
   if(configuredRecipient!==approvedRecipient)return response({error:'The approved Special Event test recipient is not configured.',code:'TEST_RECIPIENT_NOT_CONFIGURED'},503);
   if(typeof sendEmail!=='function')return response({error:'Transactional email delivery is unavailable.',code:'EMAIL_PROVIDER_UNAVAILABLE'},503);
   const body=await request.json().catch(()=>({}));
-  if(tidy(body.confirmation,80)!=='SEND ONE SPECIAL EVENT TEST')return response({error:'Type SEND ONE SPECIAL EVENT TEST to confirm.',code:'CONFIRMATION_REQUIRED'},400);
+  const confirmation=tidy(body.confirmation,80),initialConfirmation='SEND ONE SPECIAL EVENT TEST',retryConfirmation='RETRY ONE SPECIAL EVENT TEST';
+  if(![initialConfirmation,retryConfirmation].includes(confirmation))return response({error:`Type ${initialConfirmation} to confirm.`,code:'CONFIRMATION_REQUIRED'},400);
   const eventId='special-event-johnny-rossato-2027',operationId='johnny-confirmation-delivery-test-v1',claimKey=`special-event-confirmation-test:${operationId}`;
-  const existing=await env.BOOKINGS_DB.prepare(`SELECT action FROM special_event_activity WHERE idempotency_key=?`).bind(claimKey).first();
-  if(existing)return response({error:'The single controlled confirmation test has already been claimed.',code:'DELIVERY_TEST_ALREADY_USED'},409);
+  const [existing,sent,unconfirmed,retryClaim]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT action,created_at FROM special_event_activity WHERE idempotency_key=?`).bind(claimKey).first(),
+    env.BOOKINGS_DB.prepare(`SELECT action FROM special_event_activity WHERE idempotency_key=?`).bind(`${claimKey}:sent`).first(),
+    env.BOOKINGS_DB.prepare(`SELECT action,created_at FROM special_event_activity WHERE idempotency_key=?`).bind(`${claimKey}:unconfirmed`).first(),
+    env.BOOKINGS_DB.prepare(`SELECT action FROM special_event_activity WHERE idempotency_key=?`).bind(`${claimKey}:retry`).first()
+  ]);
+  if(sent)return response({ok:true,status:'SENT',idempotent:true,recipient:approvedRecipient});
+  const retrying=confirmation===retryConfirmation;
+  if(existing&&!retrying)return response({error:'The controlled test was already claimed. Inspect its provider status before attempting the single safe retry.',code:'DELIVERY_TEST_ALREADY_USED',retry_available:Boolean(unconfirmed&&!retryClaim)},409);
+  if(retrying){
+    if(!existing||!unconfirmed||retryClaim)return response({error:'A safe retry is not available for this controlled test.',code:'DELIVERY_TEST_RETRY_NOT_AVAILABLE'},409);
+    const claimedAt=Date.parse(existing.created_at);if(!Number.isFinite(claimedAt)||Date.now()-claimedAt>23*60*60*1000)return response({error:'The provider idempotency window has expired. Inspect the provider log; do not resend from HQ.',code:'DELIVERY_TEST_RETRY_WINDOW_EXPIRED'},409);
+  }
   const [event,product,days,programme]=await Promise.all([
     env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE id=?`).bind(eventId).first(),
     env.BOOKINGS_DB.prepare(`SELECT name,description,price_pence FROM special_event_ticket_products WHERE event_id=? AND code='LOYALTY_WEEKEND'`).bind(eventId).first(),
@@ -671,9 +683,9 @@ export async function sendSpecialEventConfirmationDeliveryTest(request,env,admin
   ]);
   if(!event||!product)return response({error:'The Johnny Rossato Draft event is unavailable.',code:'EVENT_UNAVAILABLE'},503);
   try{
-    await env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CONFIRMATION_DELIVERY_TEST_CLAIMED','SPECIAL_EVENT',?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Owner-confirmed single synthetic delivery test.',JSON.stringify({recipient:approvedRecipient,operation_id:operationId,no_booking_created:true,no_payment_created:true}),claimKey).run();
+    await env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,?,'SPECIAL_EVENT',?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,retrying?'CONFIRMATION_DELIVERY_TEST_RETRY_CLAIMED':'CONFIRMATION_DELIVERY_TEST_CLAIMED',eventId,admin.email,retrying?'Owner-confirmed single idempotent retry.':'Owner-confirmed single synthetic delivery test.',JSON.stringify({recipient:approvedRecipient,operation_id:operationId,no_booking_created:true,no_payment_created:true,provider_idempotency_window_hours:24}),retrying?`${claimKey}:retry`:claimKey).run();
   }catch(error){
-    if(/unique|constraint/i.test(String(error?.message||error)))return response({error:'The single controlled confirmation test has already been claimed.',code:'DELIVERY_TEST_ALREADY_USED'},409);
+    if(/unique|constraint/i.test(String(error?.message||error)))return response({error:'The controlled confirmation operation has already been claimed.',code:'DELIVERY_TEST_ALREADY_USED'},409);
     throw error;
   }
   const copy=specialEventConfirmationCopy({booking:{test_delivery:true,customer_name:'Nora',reference:'TEST-NO-BOOKING',product_name_snapshot:product.name,product_description:product.description,quantity:1,amount_pence:product.price_pence},event,days:days.results||[],attendees:[{name:'Synthetic Test Attendee',age_at_event:18}],programme:programme.results||[]});
@@ -682,7 +694,8 @@ export async function sendSpecialEventConfirmationDeliveryTest(request,env,admin
     await env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CONFIRMATION_DELIVERY_TEST_SENT','SPECIAL_EVENT',?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Synthetic confirmation delivery accepted by the provider.',JSON.stringify({recipient:approvedRecipient,operation_id:operationId,provider_id:tidy(result?.id,160)||null}),`${claimKey}:sent`).run();
     return response({ok:true,status:'SENT',recipient:approvedRecipient});
   }catch(error){
-    return response({error:'The controlled Special Event confirmation test was not accepted by the provider.',code:'DELIVERY_TEST_FAILED'},502);
+    if(!retrying)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CONFIRMATION_DELIVERY_TEST_UNCONFIRMED','SPECIAL_EVENT',?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Provider result was not confirmed; inspect provider logs before retry.',JSON.stringify({recipient:approvedRecipient,operation_id:operationId,error:tidy(error?.message||error,300),retry_deadline:new Date(Date.now()+23*60*60*1000).toISOString()}),`${claimKey}:unconfirmed`).run();
+    return response({error:retrying?'The single idempotent retry was not confirmed. Inspect the provider log; no further HQ retry is allowed.':'The controlled delivery was not confirmed. Inspect the provider log before using the single idempotent retry.',code:'DELIVERY_TEST_UNCONFIRMED',retry_available:!retrying},502);
   }
 }
 
