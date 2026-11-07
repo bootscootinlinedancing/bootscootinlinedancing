@@ -94,6 +94,9 @@ assert.equal(response.status,200);assert.equal(response.headers.get('cache-contr
 const ranchSource=readFileSync(new URL('../ranch.js',import.meta.url),'utf8');
 const generatedLink=ranchSource.match(/href="\$\{ADMIN_API_PREFIX\}(\/special-event-documents\/download\?version=)\$\{encodeURIComponent\(item\.current_version_id\)\}/);
 assert(generatedLink,'HQ must generate the authoritative version parameter for private downloads');
+assert.match(ranchSource,/protectedSpecialEventMediaUrl\(event\.promo_video_url\)/,'HQ must use its Access-protected Draft media route');
+const eventPageSource=readFileSync(new URL('../special-event-page.js',import.meta.url),'utf8');
+assert.match(eventPageSource,/\/ranch\/api\/admin\/special-event-media\?/,'Draft preview must use its Access-protected media route');
 const workerSource=readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'');
 const specialSource=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
 const worker=await import(`data:text/javascript;base64,${Buffer.from(`${specialSource}\n${workerSource}`).toString('base64')}`);
@@ -105,6 +108,17 @@ assert.equal(response.headers.get('cache-control'),'private, no-store');
 assert.equal(await response.text(),'private fixture');
 response=await worker.default.fetch(new Request(hqDownloadUrl),env,{waitUntil(){}});
 assert.equal(response.status,401,'unauthorised users must not download private evidence');
+const protectedVideoUrl='https://example.test/ranch/api/admin/special-event-media?id=special-event-johnny-rossato-2027&type=PROMO_VIDEO';
+response=await worker.default.fetch(new Request(protectedVideoUrl,{headers:{'Cf-Access-Authenticated-User-Email':'owner@example.test'}}),env,{waitUntil(){}});
+assert.equal(response.status,200);assert.equal(Number(response.headers.get('content-length')),videoBytes.length);assert.deepEqual(new Uint8Array(await response.arrayBuffer()),videoBytes);
+response=await worker.default.fetch(new Request(protectedVideoUrl,{headers:{Range:'bytes=2-5','Cf-Access-Authenticated-User-Email':'owner@example.test'}}),env,{waitUntil(){}});
+assert.equal(response.status,206);assert.equal(response.headers.get('content-range'),`bytes 2-5/${videoBytes.length}`);assert.deepEqual(new Uint8Array(await response.arrayBuffer()),videoBytes.slice(2,6));
+response=await worker.default.fetch(new Request(protectedVideoUrl,{headers:{Range:'bytes=4-','Cf-Access-Authenticated-User-Email':'owner@example.test'}}),env,{waitUntil(){}});
+assert.equal(response.status,206);assert.equal(response.headers.get('content-range'),`bytes 4-${videoBytes.length-1}/${videoBytes.length}`);assert.deepEqual(new Uint8Array(await response.arrayBuffer()),videoBytes.slice(4));
+response=await worker.default.fetch(new Request(protectedVideoUrl,{headers:{Range:'bytes=-8','Cf-Access-Authenticated-User-Email':'owner@example.test'}}),env,{waitUntil(){}});
+assert.equal(response.status,206);assert.equal(response.headers.get('content-range'),`bytes ${videoBytes.length-8}-${videoBytes.length-1}/${videoBytes.length}`);assert.deepEqual(new Uint8Array(await response.arrayBuffer()),videoBytes.slice(-8));
+response=await worker.default.fetch(new Request(protectedVideoUrl),env,{waitUntil(){}});
+assert.equal(response.status,401,'unauthorised users must not read Draft event media');
 response=await worker.default.fetch(new Request('https://example.test/api/admin/special-event-media/multipart/start',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}),env,{waitUntil(){}});
 assert.equal(response.status,401,'unauthorised users must not start a private Special Event media upload');
 

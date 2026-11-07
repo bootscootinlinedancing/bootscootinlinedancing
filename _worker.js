@@ -7885,6 +7885,10 @@ export default {
         const check=requireAdmin(request,env);if(check.response)return check.response;
         return specialEventMediaUpload(request,env,check.state);
       }
+      if (path === '/api/admin/special-event-media' && request.method === 'GET') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMedia(request,env,url);
+      }
       if (path === '/api/admin/special-event-media/multipart/start' && request.method === 'POST') {
         const check=requireAdmin(request,env);if(check.response)return check.response;
         return specialEventMediaMultipartStart(request,env,check.state);
