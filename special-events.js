@@ -209,6 +209,32 @@ export async function adminSpecialEvents(request,env,admin,services={}){
   if(!body)return response({error:'The request could not be read.'},400);
   if(request.method==='PATCH'){
     const action=tidy(body.action,80);
+    if(action==='RECOVER_PAID_CUSTOMER_CONFIRMATIONS'){
+      if(String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()!=='true'||typeof services.sendEmail!=='function')return response({error:'Special Event transactional email delivery is not enabled.'},409);
+      if(tidy(body.confirmation,80)!=='SEND SIX VERIFIED CONFIRMATIONS')return response({error:'Type SEND SIX VERIFIED CONFIRMATIONS to continue.'},400);
+      const references=[...new Set((Array.isArray(body.references)?body.references:[]).map(value=>tidy(value,120)).filter(Boolean))];
+      if(references.length!==6)return response({error:'Exactly six verified booking references are required.'},400);
+      const placeholders=references.map(()=>'?').join(',');
+      const rows=await env.BOOKINGS_DB.prepare(`SELECT b.id,b.reference,b.customer_email,b.status,b.payment_provider,o.status confirmation_status FROM special_event_bookings b JOIN special_event_confirmation_outbox o ON o.booking_id=b.id WHERE b.event_id=? AND b.reference IN (${placeholders}) ORDER BY b.reference`).bind(eventId,...references).all(),bookings=rows.results||[];
+      if(bookings.length!==6||bookings.some(row=>row.status!=='PAID'||row.payment_provider!=='SUMUP'||!['DISABLED','FAILED','SENT'].includes(row.confirmation_status)||String(row.customer_email||'').toLowerCase()==='nora@bootscootinlinedancing.co.uk'))return response({error:'The recovery set does not match six verified paid customer bookings.'},409);
+      const alreadySent=bookings.filter(row=>row.confirmation_status==='SENT');
+      for(const booking of bookings.filter(row=>row.confirmation_status!=='SENT')){
+        const [event,days,attendees,competition,programme,detail]=await Promise.all([
+          env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE id=?`).bind(eventId).first(),
+          env.BOOKINGS_DB.prepare(`SELECT d.label,d.event_date FROM special_event_booking_days bd JOIN special_event_days d ON d.id=bd.day_id WHERE bd.booking_id=? ORDER BY d.display_order`).bind(booking.id).all(),
+          env.BOOKINGS_DB.prepare(`SELECT name,age_at_event,guardian_email FROM special_event_attendees WHERE booking_id=? ORDER BY created_at,id`).bind(booking.id).all(),
+          env.BOOKINGS_DB.prepare(`SELECT a.name attendee_name FROM special_event_competition_entries c LEFT JOIN special_event_attendees a ON a.id=c.attendee_id WHERE c.booking_id=? AND c.status<>'WITHDRAWN'`).bind(booking.id).all(),
+          env.BOOKINGS_DB.prepare(`SELECT title,starts_at,ends_at,programme_status,display_order FROM special_event_programme_items WHERE event_id=? ORDER BY day_id,display_order`).bind(eventId).all(),
+          env.BOOKINGS_DB.prepare(`SELECT b.*,p.description product_description FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.id=?`).bind(booking.id).first()
+        ]),copy=specialEventConfirmationCopy({booking:detail,event,days:days.results||[],attendees:attendees.results||[],competition:competition.results||[],programme:programme.results||[]});
+        await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='READY',recipient_email=?,subject=?,next_attempt_at=CURRENT_TIMESTAMP,last_error=NULL WHERE booking_id=? AND status IN ('DISABLED','FAILED')`).bind(detail.customer_email,copy.subject,booking.id).run();
+      }
+      const delivery=await processSpecialEventConfirmations(env,services.sendEmail,6);
+      const statuses=await env.BOOKINGS_DB.prepare(`SELECT b.reference,o.status,o.provider_id,o.sent_at,o.last_error FROM special_event_bookings b JOIN special_event_confirmation_outbox o ON o.booking_id=b.id WHERE b.event_id=? AND b.reference IN (${placeholders}) ORDER BY b.reference`).bind(eventId,...references).all();
+      const results=statuses.results||[],complete=results.length===6&&results.every(row=>row.status==='SENT'&&row.provider_id);
+      await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CUSTOMER_CONFIRMATIONS_RECOVERED','SPECIAL_EVENT',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Owner-approved recovery of six verified paid customer confirmations.',JSON.stringify({requested:6,already_sent:alreadySent.length,sent:delivery.sent,failed:delivery.failed}),`customer-confirmation-recovery:${references.slice().sort().join(':')}`).run();
+      return response({ok:complete,delivery,results},complete?200:502);
+    }
     if(action==='PREVIEW_BOOKING_CONFIRMATION'||action==='QUEUE_BOOKING_CONFIRMATION'){
       const bookingId=tidy(body.booking_id,180),booking=await env.BOOKINGS_DB.prepare(`SELECT b.*,p.description product_description FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.id=? AND b.event_id=?`).bind(bookingId,eventId).first();
       if(!booking)return response({error:'Booking not found.'},404);
