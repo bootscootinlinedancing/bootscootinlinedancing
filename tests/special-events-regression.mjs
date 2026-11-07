@@ -92,6 +92,9 @@ try{
   assert.match(worker,/requireAccessAdmin\(request,env\)/,'owner payment test must use authoritative Cloudflare Access authorisation');
   assert.match(worker,/CREATE £15 OWNER PAYMENT TEST/,'owner payment test must require an explicit server-side confirmation');
   assert.match(worker,/product_code:'SATURDAY_SOCIAL'/,'owner payment test must be fixed to the approved £15 product');
+  assert.match(worker,/FROM member_accounts m JOIN customers c ON c\.id=m\.customer_id/,'the test must resolve the verified Member Zone customer relationship');
+  assert.match(worker,/m\.verified_at IS NOT NULL/,'the test must reject unverified Member Zone identities');
+  assert.match(worker,/resolveCustomerIdentity:resolveVerifiedOwner/,'the test must not depend on ambiguous historical email matching');
   assert.match(service,/status='DRAFT' AND publication_enabled=0 AND checkout_enabled=0/,'owner payment test must require the event to remain private and checkout-disabled');
   assert.match(service,/REFUND_POLICY_UNCONFIRMED.*PUBLIC_PRESENTATION_UNAPPROVED.*PAYMENT_INTEGRATION_UNVERIFIED.*PRODUCTION_INSTALLATION_UNVERIFIED/,'owner test may defer publication-only approvals without mutating them');
   assert.match(service,/OWNER_PAYMENT_TEST_CREATED/,'owner payment tests must have a durable audit marker');
