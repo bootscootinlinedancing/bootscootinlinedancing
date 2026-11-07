@@ -88,6 +88,13 @@ try{
   assert.match(worker,/specialEventBooking \? 'SUMUP_SPECIAL_EVENTS_API_KEY' : 'SUMUP_API_KEY'/,'webhook verification must select the credential after identifying the booking type');
   assert.match(worker,/return sumUpFetchWithCredential\(env, 'SUMUP_API_KEY'/,'existing class and Sunday checkout paths must retain the shared credential');
   assert.match(worker,/Special Event payment setup is not complete\. No booking or payment has been created\./,'missing Special Events configuration must fail before creating a booking');
+  assert.match(worker,/\/api\/admin\/special-event-owner-payment-test/,'the controlled payment route must live under protected Admin HQ');
+  assert.match(worker,/requireAccessAdmin\(request,env\)/,'owner payment test must use authoritative Cloudflare Access authorisation');
+  assert.match(worker,/CREATE £15 OWNER PAYMENT TEST/,'owner payment test must require an explicit server-side confirmation');
+  assert.match(worker,/product_code:'SATURDAY_SOCIAL'/,'owner payment test must be fixed to the approved £15 product');
+  assert.match(service,/status='DRAFT' AND publication_enabled=0 AND checkout_enabled=0/,'owner payment test must require the event to remain private and checkout-disabled');
+  assert.match(service,/OWNER_PAYMENT_TEST_CREATED/,'owner payment tests must have a durable audit marker');
+  assert.match(ranch,/Prepare £15 owner payment/,'HQ must expose the protected controlled-payment action');
   assert.match(worker,/special_event_payments/,'HQ health must report Special Events merchant authorisation separately');
   assert.match(service,/H\.264.*AAC/,'HQ media upload must explain the supported video and audio codecs');
   assert.match(ranch,/accept="\.mp4,\.mov,\.m4v,video\/mp4,video\/quicktime,video\/x-m4v"/,'Safari file picker must allow MP4, MOV and M4V selection');

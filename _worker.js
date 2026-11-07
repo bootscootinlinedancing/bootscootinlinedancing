@@ -7903,6 +7903,17 @@ export default {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
         return adminSpecialEvents(request,env,check.state,{sendEmail:(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)});
       }
+      if (path === '/api/admin/special-event-owner-payment-test' && request.method === 'POST') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+        if(!specialEventSumUpConfigured(env))return json({error:'The dedicated Special Events payment connection is unavailable.'},503);
+        const confirmation=clean((await request.json().catch(()=>({}))).confirmation,100);
+        if(confirmation!=='CREATE £15 OWNER PAYMENT TEST')return json({error:'Type CREATE £15 OWNER PAYMENT TEST to continue.'},400);
+        const existing=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.status FROM special_event_bookings b JOIN special_event_holds h ON h.id=b.hold_id WHERE h.idempotency_key='johnny-owner-payment-test-v1' AND b.status IN ('PENDING','PAID') LIMIT 1`).first();
+        if(existing)return json({error:`The controlled payment test already exists (${existing.reference}, ${existing.status}). Do not create another.`,reference:existing.reference,status:existing.status},409);
+        const fixedRequest=new Request(request.url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({slug:'johnny-rossato',product_code:'SATURDAY_SOCIAL',name:'Nora — Owner Payment Test',email:'nora@bootscootinlinedancing.co.uk',phone:'',quantity:1,terms_accepted:true,attendees:[{name:'Nora — Owner Payment Test',age:18}],idempotency_key:'johnny-owner-payment-test-v1'})});
+        return createSpecialEventReservation(fixedRequest,env,{sumUpFetch:specialEventSumUpFetch,resolveCustomerIdentity},{ownerPaymentTest:true,actor:check.state.email});
+      }
       if (path === '/api/admin/special-event-confirmation-delivery-test' && request.method === 'POST') {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
         if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
