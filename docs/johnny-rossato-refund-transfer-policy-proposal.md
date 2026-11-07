@@ -6,12 +6,25 @@ This event takes place on fixed dates. UK consumer-contract rules generally excl
 
 ## Proposed customer cancellation terms
 
-- Admission and competition-entry purchases are non-refundable when a customer simply changes their mind or can no longer attend.
-- A named admission ticket may be transferred once to another person until 23:59 Europe/London seven days before the first event day, subject to the receiving attendee meeting the ticket's age and eligibility rules.
-- Transfer requests must come from the purchaser's verified email address and include the booking reference, current attendee name and replacement attendee details.
-- Restricted Loyalty tickets may be transferred only to another eligible recipient approved by Boot Scootin'.
-- Competition entries may move only with a qualifying Saturday admission and cannot be transferred independently.
-- Complimentary tickets have no cash value and may be cancelled or reassigned only by an authorised administrator.
+Tickets are generally non-refundable. However, we understand that unexpected circumstances can arise.
+
+Refund requests will be considered individually and may require appropriate supporting evidence, such as medical documentation where relevant. Providing evidence does not automatically guarantee a refund.
+
+Requests without sufficient supporting information may be declined, except where a refund is required by law.
+
+Ticket transfers may be considered at the organiser's discretion and must be approved in advance.
+
+Where the event is cancelled or materially changed, applicable statutory refund rights will be honoured.
+
+Restricted Loyalty tickets may be transferred only to another eligible recipient approved by Boot Scootin'. Competition entries may move only with a qualifying Saturday admission and cannot be transferred independently. Complimentary tickets have no cash value and may be cancelled or reassigned only by an authorised administrator.
+
+## Supporting evidence and privacy
+
+- Request only evidence that is necessary and proportionate to assess the request.
+- Do not request a detailed medical diagnosis.
+- Provide a private submission route and restrict evidence access to authorised staff.
+- Define and enforce a short, documented retention period, followed by secure deletion.
+- Keep the refund decision and financial audit record without retaining unnecessary sensitive evidence.
 
 ## Proposed organiser cancellation, postponement and material-change terms
 
@@ -24,6 +37,7 @@ This event takes place on fixed dates. UK consumer-contract rules generally excl
 - Owner approval and legal review of the final wording.
 - A published contact method and response time for transfer/refund requests.
 - A documented HQ workflow that records requester identity, reason, actor, timestamps and any payment-provider action.
+- A private evidence intake, access-control and deletion procedure.
 - Confirmation of how payment-provider fees are handled on organiser-issued refunds.
 - The approved policy must be shown before checkout and snapshotted against each booking.
 

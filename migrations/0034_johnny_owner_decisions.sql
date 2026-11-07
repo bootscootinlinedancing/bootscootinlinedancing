@@ -3,9 +3,9 @@
 UPDATE special_events
 SET saturday_evening_capacity=75,
     saturday_evening_capacity_confirmed=1,
-    age_terms='Under-18 attendees must leave the venue by 8:30 pm on Saturday and may not attend the late-night social. A responsible adult must remain contactable. Final operational confirmation with the venue remains outstanding.',
-    age_terms_confirmed=0,
-    refund_policy='Tickets are non-refundable except where a refund is required by law. Requests to transfer a ticket to another person may be considered at the organiser''s discretion and must be approved in advance. Tickets must not be resold or transferred without approval. If the event is cancelled or materially changed, any applicable refund rights will be honoured.',
+    age_terms='Under-18 attendees must leave the venue by 8:30 pm on Saturday and may not attend the late-night social. A responsible adult must remain contactable. The owner has confirmed this arrangement with the venue.',
+    age_terms_confirmed=1,
+    refund_policy='Tickets are generally non-refundable. However, we understand that unexpected circumstances can arise. Refund requests will be considered individually and may require appropriate supporting evidence, such as medical documentation where relevant. Providing evidence does not automatically guarantee a refund. Requests without sufficient supporting information may be declined, except where a refund is required by law. Ticket transfers may be considered at the organiser''s discretion and must be approved in advance. Where the event is cancelled or materially changed, applicable statutory refund rights will be honoured.',
     refund_policy_confirmed=0,
     updated_at=CURRENT_TIMESTAMP,
     version=version+1
@@ -13,7 +13,7 @@ WHERE id='special-event-johnny-rossato-2027';
 
 UPDATE special_event_programme_items
 SET title='Under-18 departure — 8:30 pm',
-    description='Owner-confirmed departure time. Final operational confirmation with the venue remains outstanding.',
+    description='Owner-confirmed departure time, confirmed with the venue.',
     starts_at='2027-02-20T20:30:00',
     ends_at=NULL,
     timing_confirmed=1,
@@ -40,7 +40,7 @@ INSERT OR IGNORE INTO special_event_activity(
   'SPECIAL_EVENT',
   'special-event-johnny-rossato-2027',
   'MIGRATION',
-  'Recorded owner-confirmed evening capacity, under-18 departure and draft refund/transfer wording. Venue and legal review gates remain closed.',
-  '{"saturday_evening_capacity":75,"under_18_departure":"20:30","venue_confirmation_outstanding":true,"legal_review_outstanding":true}',
+  'Recorded owner-confirmed evening capacity, venue-confirmed under-18 departure and revised draft refund/transfer wording. Legal review gate remains closed.',
+  '{"saturday_evening_capacity":75,"under_18_departure":"20:30","venue_confirmation_outstanding":false,"legal_review_outstanding":true}',
   'johnny-owner-decisions-2026-11-06'
 );
