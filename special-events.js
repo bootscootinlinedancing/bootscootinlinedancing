@@ -546,7 +546,7 @@ export async function createSpecialEventReservation(request,env,services,options
     qualifyingBookingId=qualifying.id;qualifyingAttendeeId=qualifying.attendee_id;
   }
   let customer;
-  try{customer=await services.resolveCustomerIdentity(env,{email,name,phone,marketingConsent:false,source:'SPECIAL_EVENT_BOOKING'});}catch(_){return response({error:'This customer identity could not be verified safely.'},409);}
+  try{customer=await services.resolveCustomerIdentity(env,{email,name,phone,marketingConsent:false,source:'BOOKING'});}catch(_){return response({error:'This customer identity could not be verified safely.'},409);}
   const holdId=crypto.randomUUID(),bookingId=crypto.randomUUID(),idempotencyKey=tidy(body.idempotency_key,160)||crypto.randomUUID(),expiresAt=new Date(Date.now()+15*60*1000).toISOString();
   const competitionQuantity=attendeeInput.filter(item=>item?.competition_entry).length;
   const competitionInventoryQuantity=product.code==='MINI_COMPETITION'?quantity:competitionQuantity;
