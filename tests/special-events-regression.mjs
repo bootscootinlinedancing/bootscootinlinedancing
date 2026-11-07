@@ -46,6 +46,7 @@ try{
   assert.match(sqlite(`SELECT age_terms FROM special_events WHERE id='special-event-johnny-rossato-2027';`),/leave the venue by 8:30 pm/);
   assert.match(sqlite(`SELECT refund_policy FROM special_events WHERE id='special-event-johnny-rossato-2027';`),/Refund requests will be considered individually/);
   assert.match(sqlite(`SELECT refund_policy FROM special_events WHERE id='special-event-johnny-rossato-2027';`),/except where a refund is required by law/);
+  assert.match(sqlite(`SELECT refund_policy FROM special_events WHERE id='special-event-johnny-rossato-2027';`),/Nothing in this policy limits statutory rights/);
   assert.equal(sqlite(`SELECT age_terms_confirmed||'|'||refund_policy_confirmed FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'1|0','owner-reported venue confirmation must be recorded while legal review remains an explicit launch blocker');
   assert.equal(sqlite(`SELECT group_concat(allocation,',') FROM special_event_ticket_products WHERE code IN ('JUNIOR_SATURDAY','JUNIOR_SUNDAY') ORDER BY code;`),'5,5');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE password_required=1;`),'1','only the loyalty product may require a password');

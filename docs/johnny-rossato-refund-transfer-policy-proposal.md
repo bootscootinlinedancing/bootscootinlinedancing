@@ -14,7 +14,7 @@ Requests without sufficient supporting information may be declined, except where
 
 Ticket transfers may be considered at the organiser's discretion and must be approved in advance.
 
-Where the event is cancelled or materially changed, applicable statutory refund rights will be honoured.
+If Boot Scootin' cancels, reschedules or materially changes the event, customers will be offered the legally appropriate remedy, including a full refund of the ticket price and any mandatory booking fee where required. Nothing in this policy limits statutory rights.
 
 Restricted Loyalty tickets may be transferred only to another eligible recipient approved by Boot Scootin'. Competition entries may move only with a qualifying Saturday admission and cannot be transferred independently. Complimentary tickets have no cash value and may be cancelled or reassigned only by an authorised administrator.
 
