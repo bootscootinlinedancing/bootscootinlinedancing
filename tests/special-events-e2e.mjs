@@ -53,6 +53,8 @@ assert.equal(db.prepare('SELECT COUNT(*) n FROM special_event_attendees WHERE bo
 assert.equal(db.prepare('SELECT COUNT(*) n FROM special_event_confirmation_outbox WHERE booking_id=?').get(booking.id).n,1);
 const reconciliationWorkerSource=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
 assert.match(reconciliationWorkerSource,/reconcilePendingSpecialEventBookings/,'HQ must expose authoritative pending-payment reconciliation');
+assert.match(reconciliationWorkerSource,/runProtectedEmailAutomations[\s\S]*reconcilePendingSpecialEventBookings\(env\)/,'the protected scheduled automation must reconcile pending Special Event payments');
+assert.match(reconciliationWorkerSource,/async scheduled[\s\S]*reconcilePendingSpecialEventBookings\(env\)/,'the Worker scheduled handler must reconcile pending Special Event payments');
 assert.match(reconciliationWorkerSource,/reconcileSpecialEventReturn/,'the customer return path must recover a missed webhook');
 assert.match(reconciliationWorkerSource,/SUMUP_SPECIAL_EVENTS_API_KEY/,'Special Event reconciliation must use the dedicated SumUp credential');
 assert.match(reconciliationWorkerSource,/APPROVED_OWNER_TEST_REFUNDS = new Map/,'owner-test refunds must be locked to the approved references');
