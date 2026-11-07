@@ -6353,16 +6353,20 @@ async function runProtectedEmailAutomations(request, env) {
 
   const startedAt = new Date().toISOString();
   try {
-    const [campaigns, journeys] = await Promise.all([
+    const [campaigns, journeys, specialEventReconciliation, specialEventConfirmations] = await Promise.all([
       processDueCampaigns(env),
-      processAutomaticBookingNotifications(env)
+      processAutomaticBookingNotifications(env),
+      reconcilePendingSpecialEventBookings(env),
+      processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))
     ]);
     return json({
       ok: true,
       started_at: startedAt,
       finished_at: new Date().toISOString(),
       scheduled_campaigns: campaigns,
-      automatic_journeys: journeys
+      automatic_journeys: journeys,
+      special_event_reconciliation: specialEventReconciliation,
+      special_event_confirmations: specialEventConfirmations
     });
   } catch (error) {
     console.error('PROTECTED_EMAIL_AUTOMATION_ERROR', error?.stack || error);
@@ -7926,7 +7930,7 @@ async function serveMedia(request, env, pathname) {
 
 export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
