@@ -114,6 +114,10 @@ try{
   assert.match(service,/action==='OPEN_SALES'/,'manual launch must be implemented server-side');
   assert.match(service,/all configured ticket products together/,'manual launch must activate configured products together');
   assert.match(service,/action==='ISSUE_COMPLIMENTARY_TICKETS'/,'HQ must issue complimentary tickets through the existing event booking model');
+  assert.match(service,/action==='UPDATE_ALLOCATION'/,'HQ must expose a dedicated allocation-only operation');
+  assert.match(service,/TICKET_ALLOCATION_UPDATED/,'allocation edits must create a distinct immutable audit event');
+  assert.match(ranch,/Manage Ticket Allocations/,'HQ must provide the owner-facing allocation manager');
+  for(const label of ['Current','Paid','Complimentary','Active holds','Remaining','New allocation'])assert.match(ranch,new RegExp(`>${label}<`),`allocation manager must show ${label}`);
   assert.match(service,/payment_provider<>'COMPLIMENTARY'/,'complimentary admission must be excluded from paid revenue');
   assert.match(service,/action==='CANCEL_COMPLIMENTARY_TICKETS'/,'HQ must cancel complimentary admission safely');
   assert.match(service,/EVENT_AND_SALES_OPENED/,'manual launch must create an audit event');

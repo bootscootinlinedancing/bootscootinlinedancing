@@ -63,7 +63,8 @@ export async function specialEventReadiness(db,eventId){
   const [days,products,credentials]=await Promise.all([
     db.prepare(`SELECT * FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(eventId).all(),
     db.prepare(`SELECT p.*,
-      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) sold_count,
+      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) sold_count,
+      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) complimentary_count,
       COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP),0) held_count,
       CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation
         -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
@@ -290,6 +291,25 @@ export async function adminSpecialEvents(request,env,admin,services={}){
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'TICKET_PRODUCT_UPDATED','TICKET_PRODUCT',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,productId,admin.email,tidy(body.reason,500)||'HQ ticket configuration update',JSON.stringify({previous_allocation:product.allocation,new_allocation:allocation,previous_state:product.release_state,new_state:state}),crypto.randomUUID())
       ]);
       return response({ok:true,readiness:await specialEventReadiness(env.BOOKINGS_DB,eventId)});
+    }
+    if(action==='UPDATE_ALLOCATION'){
+      const productId=tidy(body.product_id,160),allocation=Number(body.allocation),reason=tidy(body.reason,500);
+      if(!Number.isInteger(allocation)||allocation<0)return response({error:'Allocation must be a non-negative whole number.'},400);
+      if(!reason)return response({error:'Add an audit reason for this allocation change.'},400);
+      const product=await env.BOOKINGS_DB.prepare(`SELECT id,name,allocation FROM special_event_ticket_products WHERE id=? AND event_id=?`).bind(productId,eventId).first();
+      if(!product)return response({error:'Ticket product not found.'},404);
+      const previous=product.allocation==null?null:Number(product.allocation),metadata=JSON.stringify({previous_allocation:previous,new_allocation:allocation});
+      const [updated]=await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`UPDATE special_event_ticket_products SET allocation=?,release_state=CASE WHEN release_state='SOLD_OUT' THEN 'ACTIVE' ELSE release_state END,updated_at=CURRENT_TIMESTAMP
+          WHERE id=? AND event_id=? AND allocation IS ? AND ?>=(
+            COALESCE((SELECT SUM(quantity) FROM special_event_bookings WHERE product_id=? AND status='PAID'),0)+
+            COALESCE((SELECT SUM(quantity) FROM special_event_holds WHERE product_id=? AND status='ACTIVE' AND expires_at>CURRENT_TIMESTAMP),0)
+          )`).bind(allocation,productId,eventId,product.allocation,allocation,productId,productId),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key)
+          SELECT ?,?,'TICKET_ALLOCATION_UPDATED','TICKET_PRODUCT',?,?,?,?,? WHERE changes()>0`).bind(crypto.randomUUID(),eventId,productId,admin.email,reason,metadata,crypto.randomUUID())
+      ]);
+      if(!Number(updated?.meta?.changes))return response({error:'Allocation changed concurrently or is below paid, complimentary and actively held tickets. Refresh and try again.'},409);
+      return response({ok:true,product_id:productId,previous_allocation:previous,new_allocation:allocation,readiness:await specialEventReadiness(env.BOOKINGS_DB,eventId)});
     }
     if(action==='UPDATE_PROMO_VIDEO'){
       const title=tidy(body.title,240)||null,caption=tidy(body.caption,1000)||null,enabled=body.display_enabled?1:0;
