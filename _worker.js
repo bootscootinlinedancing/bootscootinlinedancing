@@ -1,3 +1,5 @@
+import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,processSpecialEventConfirmations,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
+
 const INDEX_KEY = '__system/media-index.json';
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -2068,6 +2070,78 @@ async function publicClasses(env, includeHistory = false, request = null) {
   }
 }
 
+function announcementIsVisible(row,now=new Date()){
+  if(Number(row.enabled)!==1||Number(row.featured)!==1||row.class_status!=='open')return false;
+  if(row.starts_at&&new Date(row.starts_at)>now)return false;
+  if(row.expires_at)return new Date(row.expires_at)>now;
+  return londonCalendarDate(now)<=londonCalendarDate(row.class_starts_at);
+}
+
+async function publicEventAnnouncements(env){
+  const fallback=async()=>{
+    try{
+      const response=await fetch(`${SITE_ORIGIN}/api/classes`,{headers:{Accept:'application/json'},cf:{cacheTtl:0}});
+      const payload=response.ok?await response.json():[];
+      return (Array.isArray(payload)?payload:payload.classes||[]).filter(row=>row.status==='open'&&(row.event_type==='ANNIVERSARY'||row.special_booking_format==='SUNDAY_SESSIONS')).map(row=>({
+        id:`preview-${row.id}`,event_id:row.id,
+        text:row.event_type==='ANNIVERSARY'?'First Year Anniversary Party · Friday 6 November · Tickets available':`${row.title} · Book now`,
+        emoji:row.event_type==='ANNIVERSARY'?'🎉':'🤠',url:`bookings.html?event=${encodeURIComponent(row.id)}`
+      }));
+    }catch{return [];}
+  };
+  if(!env.BOOKINGS_DB)return json({announcements:await fallback(),timezone:'Europe/London'},200,{'Cache-Control':'no-store'});
+  try{
+    const result=await env.BOOKINGS_DB.prepare(`
+      SELECT a.id,a.class_id,a.announcement_text,a.emoji,a.destination_url,a.starts_at,a.expires_at,
+             a.enabled,a.featured,c.status class_status,c.starts_at class_starts_at,c.ends_at class_ends_at
+      FROM event_announcements a JOIN classes c ON c.id=a.class_id
+      ORDER BY c.starts_at,a.created_at
+    `).all();
+    const now=new Date();
+    return json({announcements:(result.results||[]).filter(row=>announcementIsVisible(row,now)).map(row=>({
+      id:row.id,event_id:row.class_id,text:row.announcement_text,emoji:row.emoji||'',url:row.destination_url
+    })),generated_at:now.toISOString(),timezone:'Europe/London'},200,{'Cache-Control':'no-store, no-cache, must-revalidate'});
+  }catch(error){
+    if(/no such table/i.test(String(error?.message||error)))return json({announcements:await fallback(),timezone:'Europe/London'},200,{'Cache-Control':'no-store'});
+    throw error;
+  }
+}
+
+async function adminEventAnnouncements(request,env){
+  const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+  if(request.method==='GET'){
+    const result=await env.BOOKINGS_DB.prepare(`
+      SELECT a.*,c.title class_title,c.status class_status,c.starts_at class_starts_at,c.ends_at class_ends_at
+      FROM event_announcements a JOIN classes c ON c.id=a.class_id ORDER BY c.starts_at
+    `).all();
+    return json({announcements:result.results||[],timezone:'Europe/London'});
+  }
+  if(request.method!=='POST'&&request.method!=='PATCH')return json({error:'Method not allowed.'},405);
+  const body=await request.json().catch(()=>null);if(!body)return json({error:'Invalid announcement request.'},400);
+  const classId=clean(body.class_id,120),text=clean(body.announcement_text,240),emoji=clean(body.emoji,16),url=clean(body.destination_url,500);
+  if(!classId||!text||!url)return json({error:'Choose an event and add announcement text and a destination link.'},400);
+  let destination;
+  try{destination=new URL(url,SITE_ORIGIN);}catch{return json({error:'Announcement destination is invalid.'},400);}
+  if(destination.origin!==new URL(SITE_ORIGIN).origin)return json({error:'Announcement destination must stay on the Boot Scootin’ website.'},400);
+  const klass=await env.BOOKINGS_DB.prepare(`SELECT id FROM classes WHERE id=?`).bind(classId).first();
+  if(!klass)return json({error:'The selected event could not be found.'},404);
+  const starts=clean(body.starts_at,40)||null,expires=clean(body.expires_at,40)||null;
+  if(starts&&Number.isNaN(new Date(starts).getTime()))return json({error:'Announcement start time is invalid.'},400);
+  if(expires&&Number.isNaN(new Date(expires).getTime()))return json({error:'Announcement expiry time is invalid.'},400);
+  if(starts&&expires&&new Date(expires)<=new Date(starts))return json({error:'Announcement expiry must be after its start.'},400);
+  const id=clean(body.id,120)||`announcement-${classId}`;
+  await env.BOOKINGS_DB.prepare(`
+    INSERT INTO event_announcements(id,class_id,announcement_text,emoji,destination_url,starts_at,expires_at,enabled,featured,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    ON CONFLICT(class_id) DO UPDATE SET announcement_text=excluded.announcement_text,emoji=excluded.emoji,
+      destination_url=excluded.destination_url,starts_at=excluded.starts_at,expires_at=excluded.expires_at,
+      enabled=excluded.enabled,featured=excluded.featured,updated_at=CURRENT_TIMESTAMP
+  `).bind(id,classId,text,emoji,`${destination.pathname}${destination.search}${destination.hash}`,starts,expires,body.enabled===false?0:1,body.featured===true?1:0).run();
+  await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
+    .bind(check.state.email,'EVENT_ANNOUNCEMENT_UPDATED','class',classId,JSON.stringify({enabled:body.enabled!==false,featured:body.featured===true,starts_at:starts,expires_at:expires})).run();
+  return json({ok:true,id});
+}
+
 
 const clean = (value, max = 500) => String(value ?? '').trim().slice(0, max);
 const emailOk = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
@@ -3515,7 +3589,7 @@ async function sumUpWebhook(request, env) {
     return new Response(null, { status: 204 });
   }
 
-  const [booking,classPass,order,privatePayment]=await Promise.all([
+  const [booking,classPass,order,privatePayment,specialEventBooking]=await Promise.all([
     env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE provider_checkout_id=?`).bind(checkoutId).first(),
     env.BOOKINGS_DB.prepare(`
       SELECT mp.*,p.name product_name,p.validity_days
@@ -3523,9 +3597,10 @@ async function sumUpWebhook(request, env) {
       WHERE mp.provider_checkout_id=?
     `).bind(checkoutId).first(),
     env.BOOKINGS_DB.prepare(`SELECT * FROM merch_orders WHERE provider_checkout_id=?`).bind(checkoutId).first(),
-    env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first()
+    env.BOOKINGS_DB.prepare(`SELECT * FROM private_event_payments WHERE provider_reference=?`).bind(checkoutId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_bookings WHERE provider_checkout_id=?`).bind(checkoutId).first().catch(error=>/no such table/i.test(String(error?.message||error))?null:Promise.reject(error))
   ]);
-  if([booking,classPass,order,privatePayment].filter(Boolean).length>1){
+  if([booking,classPass,order,privatePayment,specialEventBooking].filter(Boolean).length>1){
     throw new Error('SUMUP_CHECKOUT_REFERENCE_COLLISION');
   }
   if(order&&(order.status==='CANCELLED'||order.cancelled_at))return new Response(null,{status:204});
@@ -3536,6 +3611,10 @@ async function sumUpWebhook(request, env) {
   }
   if(classPass){
     if(checkout)await applySumUpClassPassState(env,classPass,checkout,'SUMUP_WEBHOOK');
+    return new Response(null,{status:204});
+  }
+  if(specialEventBooking){
+    if(checkout){await applySpecialEventCheckoutState(env,specialEventBooking,checkout);await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1).catch(error=>console.error('SPECIAL_EVENT_CONFIRMATION_PROCESS_FAILED',specialEventBooking.id,clean(error?.message||error,200)));}
     return new Response(null,{status:204});
   }
   if(order&&checkout){
@@ -5152,14 +5231,14 @@ async function adminClasses(request, env) {
       const classItem=await env.BOOKINGS_DB.prepare(`SELECT id,title,venue,location,starts_at,ends_at,status,capacity FROM classes WHERE id=?`).bind(registerClassId).first();
       if(!classItem)return json({error:'Class not found.'},404);
       const response=await env.BOOKINGS_DB.prepare(`
-        SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,b.ticket_type,b.ticket_entry_time,
+        SELECT b.id,b.reference,b.customer_name,b.customer_email,b.quantity,b.amount_pence,b.status,b.payment_provider,b.paid_at,b.created_at,b.ticket_type,b.ticket_entry_time,
           b.ticket_product_code,b.ticket_product_label,b.ticket_unit_price_pence,b.ticket_starts_at,b.ticket_ends_at,b.ticket_entry_at,
           sd.selection_code sunday_selection_code,sd.adult_count sunday_adult_count,sd.child_10_17_count sunday_child_10_17_count,
           sd.child_5_9_count sunday_child_5_9_count,sd.under_5_count sunday_under_5_count,sd.total_people sunday_total_people,
           CASE WHEN a.id IS NULL THEN 0 ELSE 1 END checked_in,a.checked_in_at,a.recorded_at
         FROM bookings b LEFT JOIN attendance a ON a.booking_id=b.id LEFT JOIN sunday_session_booking_details sd ON sd.booking_id=b.id
         WHERE b.class_id=? AND b.status IN ('PAID','PENDING')
-        ORDER BY lower(b.customer_name),b.created_at
+        ORDER BY b.created_at DESC,b.id ASC
       `).bind(registerClassId).all();
       const bookings=response.results||[];
       const attendeeResult=await attendeeSchemaAvailable(env)?await env.BOOKINGS_DB.prepare(`
@@ -5423,7 +5502,9 @@ async function adminBootstrap(request, env) {
       admin_email: Boolean(admin.configured),
       database: Boolean(env.BOOKINGS_DB),
       media: Boolean(env.MEDIA_BUCKET),
-      sumup: sumUpConfigured(env)
+      sumup: sumUpConfigured(env),
+      special_event_checkout_disabled: String(env.SPECIAL_EVENT_CHECKOUT_DISABLED||'').toLowerCase()==='true',
+      outbound_email_disabled: String(env.OUTBOUND_EMAIL_DISABLED||'').toLowerCase()==='true'
     },
     summary: {
       upcoming_classes: 0,
@@ -6839,7 +6920,7 @@ async function adminBookings(request, env, ctx) {
       SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location,
       EXISTS(SELECT 1 FROM attendance a WHERE a.booking_id=b.id) checked_in
       FROM bookings b JOIN classes c ON c.id=b.class_id
-      ORDER BY c.starts_at DESC,b.created_at DESC
+      ORDER BY b.created_at DESC,b.id ASC
     `).all();
     const {results:waiting}=await env.BOOKINGS_DB.prepare(`
       SELECT w.*,c.title class_title,c.starts_at,c.venue,c.special_booking_format,
@@ -7707,7 +7788,7 @@ async function adminPromotions(request,env){
 async function serveMedia(request, env, pathname) {
   if (!env.MEDIA_BUCKET) return new Response('Media storage is not configured.', { status: 503 });
   const key = decodeURIComponent(pathname.slice('/media/'.length));
-  if (!key || key.startsWith('__system/')) return new Response('Not found', { status: 404 });
+  if (!key || key.startsWith('__system/') || key.startsWith('private/')) return new Response('Not found', { status: 404 });
   const object = await env.MEDIA_BUCKET.get(key);
   if (!object) return new Response('Not found', { status: 404 });
   const headers = new Headers();
@@ -7718,9 +7799,9 @@ async function serveMedia(request, env, pathname) {
   return new Response(object.body, { headers });
 }
 
-export {sundaySessionSelection,sundaySessionProducts};
+export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env)])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
@@ -7730,6 +7811,11 @@ export default {
     try {
       if (path === '/api/admin/health' && request.method === 'GET') return health(request, env);
       if (path === '/api/classes' && request.method === 'GET') return publicClasses(env,url.searchParams.get('calendar')==='1',request);
+      if (path === '/api/special-events' && request.method === 'GET') return publicSpecialEvents(request,env,url);
+      if (path === '/api/special-event-artwork' && request.method === 'GET') return specialEventArtwork(request,env,url);
+      if (path === '/api/special-event-media' && request.method === 'GET') return specialEventMedia(request,env,url);
+      if (path === '/api/special-event-reservations' && request.method === 'POST') return createSpecialEventReservation(request,env,{sumUpFetch,resolveCustomerIdentity});
+      if (path === '/api/event-announcements' && request.method === 'GET') return publicEventAnnouncements(env);
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
         const inventory=await anniversaryInventory(env);return inventory?json(inventory):json({error:'Anniversary tickets are not configured.'},404);
@@ -7783,6 +7869,39 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/admin/special-events') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        return adminSpecialEvents(request,env,check.state,{sendEmail:(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)});
+      }
+      if (path === '/api/admin/special-event-documents/upload' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventDocumentUpload(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-artwork/upload' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventArtworkUpload(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-media/upload' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMediaUpload(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-media/multipart/start' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMediaMultipartStart(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-media/multipart/part' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMediaMultipartPart(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-media/multipart/complete' && request.method === 'POST') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventMediaMultipartComplete(request,env,check.state);
+      }
+      if (path === '/api/admin/special-event-documents/download' && request.method === 'GET') {
+        const check=requireAdmin(request,env);if(check.response)return check.response;
+        return specialEventDocumentDownload(request,env,url);
+      }
+      if (path === '/api/admin/event-announcements') return adminEventAnnouncements(request, env);
       if (path === '/api/admin/class-guests') return adminClassGuests(request, env);
       if (path === '/api/admin/anniversary') return adminAnniversary(request, env);
       if (path === '/api/admin/class-passes') return adminClassPasses(request, env);
@@ -7819,6 +7938,17 @@ export default {
       }
       if (path === '/booking-confirmed' && request.method === 'GET') return serveBookingConfirmed(request,env);
       if (path === '/booking-confirmed.html' && request.method === 'GET') return Response.redirect(new URL('/booking-confirmed',request.url).toString(),302);
+      if ((path === '/ranch/special-events/preview' || path === '/ranch/special-events/preview/' || path === '/special-event-preview.html') && request.method === 'GET') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        return servePublicAssetWithRepairs(new Request(new URL('/special-event-preview.html',request.url),{method:'GET',headers:request.headers}),env);
+      }
+      if ((path === '/ranch/special-events/preview-listing' || path === '/ranch/special-events/preview-listing/') && request.method === 'GET') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        return servePublicAssetWithRepairs(new Request(new URL('/workshops-events.html',request.url),{method:'GET',headers:request.headers}),env);
+      }
+      if ((path === '/johnny-rossato' || path === '/johnny-rossato/') && request.method === 'GET') {
+        return servePublicAssetWithRepairs(new Request(new URL('/johnny-rossato.html',request.url),{method:'GET',headers:request.headers}),env);
+      }
       return servePublicAssetWithRepairs(request, env);
     } catch (error) {
       if(path==='/api/class-reservations'&&request.method==='POST'){

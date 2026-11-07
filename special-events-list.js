@@ -1,0 +1,11 @@
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+const box=document.querySelector('#specialEventList');
+const preview=location.pathname.startsWith('/ranch/special-events/preview-listing');
+const dateRange=event=>{if(!event.starts_on)return 'Date to be confirmed';const format=value=>new Date(`${value}T12:00:00Z`).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});return event.ends_on&&event.ends_on!==event.starts_on?`${format(event.starts_on)} & ${format(event.ends_on)}`:format(event.starts_on)};
+try{
+  const response=await fetch(preview?'/api/admin/special-events?id=special-event-johnny-rossato-2027':'/api/special-events',{headers:{accept:'application/json'},credentials:'same-origin'}),data=await response.json();
+  if(!response.ok)throw new Error(data.error||'Events could not be loaded.');
+  const events=preview?[{...data.event,starts_on:data.days?.[0]?.event_date,ends_on:data.days?.at(-1)?.event_date}]:data.events;
+  if(preview)document.querySelector('#specialEventsPreviewNotice').innerHTML='<div class="special-event-inline-draft">DRAFT LISTING PREVIEW · NOT PUBLIC · CHECKOUT DISABLED</div>';
+  box.innerHTML=events?.length?events.map(event=>`<article class="workshops-event-card">${event.artwork_url?`<img src="${escapeHtml(event.artwork_url)}" alt="${escapeHtml(event.title)} event artwork">`:'<div class="workshops-event-artwork-placeholder" aria-hidden="true">★</div>'}<div><p class="kicker red">${escapeHtml(event.subtitle||'Special event')}</p><h3>${escapeHtml(event.title)}</h3><p class="workshops-event-date">${escapeHtml(dateRange(event))}</p><p><strong>${escapeHtml(event.venue_name||'')}</strong></p><p>${escapeHtml(event.public_summary||'')}</p><a class="button" href="${preview?'/ranch/special-events/preview':'/'+encodeURIComponent(event.slug)}">View Event &amp; Tickets</a></div></article>`).join(''):'<div class="workshops-event-empty"><h3>More special events are being prepared</h3><p>Draft events stay private until every event detail and ticket setting has been approved.</p></div>';
+}catch(error){box.innerHTML='<div class="workshops-event-empty"><h3>More special events are being prepared</h3><p>Please check back soon for approved workshop and event announcements.</p></div>';}

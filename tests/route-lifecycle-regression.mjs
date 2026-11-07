@@ -3,7 +3,8 @@ import {readFileSync,readdirSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 
 const backup=process.argv[2];if(!backup)throw new Error('Supply a local SQL backup; never a remote database.');
-const source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
+const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
+const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'');
 const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {passwordHash,createMemberSession,createMemberEmailToken,memberSha256Hex,processBookingConfirmations,anniversaryInventory,applySumUpCheckoutState,cleanupExpiredUnreferencedBookingHolds};').toString('base64')}`);
 let passed=0;
 const test=async(name,fn)=>{await fn();passed++;console.log('PASS',name)};

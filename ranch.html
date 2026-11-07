@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#120808">
   <title>Boot Scootin’ HQ</title>
   <link rel="icon" href="favicon.png">
-  <link rel="stylesheet" href="styles.css?v=96.4.114">
+  <link rel="stylesheet" href="styles.css?v=96.4.135">
   <link rel="stylesheet" href="honky-theme.css?v=96.4.53">
   <link rel="stylesheet" href="desktop-final-fix.css?v=96.4.39">
   <link rel="stylesheet" href="repair-v96.4.56.css?v=96.4.72">
@@ -112,6 +112,7 @@
       <button type="button" data-view="admission-rewards">Admission Rewards</button>
       <button type="button" data-view="operations">Operations</button>
       <button type="button" data-view="private-events">Private Events</button>
+      <button type="button" data-view="special-events">Special Events</button>
       <button type="button" data-view="media">Media</button>
       <button type="button" data-view="health">System Health</button>
       <button type="button" data-view="diagnostics">Diagnostics</button>
@@ -152,6 +153,13 @@
         <span id="ranch92ModeDetail">Please wait.</span>
         <a class="ranch-button hq-access-sign-in" href="/admin-login.html" data-hq-access-sign-in>SIGN IN TO HQ</a>
         <small id="ranch92LastUpdated"></small>
+      </section>
+
+      <section class="ranch-view" data-view-panel="special-events">
+        <div class="ranch-panel special-events-admin">
+          <div class="ranch-panel-head"><div><p class="kicker red">Reusable event operations</p><h2>Special Events</h2><p>Manage multi-day guest events separately from regular classes.</p></div><button class="button secondary compact" id="refreshSpecialEvents" type="button">Refresh</button></div>
+          <div id="specialEventAdmin" aria-live="polite"><div class="ranch91-loading">Select Special Events to load the Draft event.</div></div>
+        </div>
       </section>
 
       <section class="ranch-view" data-view-panel="class-passes">
@@ -276,6 +284,22 @@
             <article><span>Waiting</span><strong id="classWaitingCount">—</strong></article>
           </div>
           <div id="ranchClasses" class="ranch-class-table">Loading…</div>
+          <section class="ranch91-card event-announcement-admin" aria-labelledby="eventAnnouncementHeading">
+            <div class="ranch91-card-head"><div><p class="kicker red">Homepage broadcast strip</p><h3 id="eventAnnouncementHeading">Featured event announcements</h3><p>Feature selected events without changing the strip design. Event-linked announcements expire automatically in Europe/London.</p></div></div>
+            <form id="eventAnnouncementForm" class="ranch-form-grid">
+              <input name="id" type="hidden">
+              <label>Event<select name="class_id" required></select></label>
+              <label>Emoji<input name="emoji" maxlength="16" placeholder="🤠"></label>
+              <label class="wide">Announcement text<input name="announcement_text" maxlength="240" required></label>
+              <label class="wide">Destination link<input name="destination_url" maxlength="500" required placeholder="/bookings.html?event=..."></label>
+              <label>Start (optional)<input name="starts_at" type="datetime-local"></label>
+              <label>Expiry (optional)<input name="expires_at" type="datetime-local"></label>
+              <label class="check"><input name="featured" type="checkbox"> Featured in strip</label>
+              <label class="check"><input name="enabled" type="checkbox" checked> Enabled</label>
+              <div class="wide ranch-form-actions"><button class="button" type="submit">Save announcement</button><button class="button secondary" id="clearEventAnnouncement" type="button">Clear</button></div>
+            </form>
+            <div id="eventAnnouncementList" class="ranch-list">Loading announcements…</div>
+          </section>
           <section id="classRegisterPanel" class="class-register-panel" hidden aria-live="polite">
             <div class="class-register-loading">Choose Register on a class to load its attendee list.</div>
           </section>
@@ -360,6 +384,14 @@
                 <option value="REFUND_PROCESSING">Refund processing</option>
                 <option value="REFUND_FAILED">Refund failed</option>
                 <option value="refund-review">Refund / credit review</option>
+              </select>
+            </label>
+            <label>Sort by
+              <select id="bookingAdminSort">
+                <option value="newest">Newest booking first</option>
+                <option value="oldest">Oldest booking first</option>
+                <option value="name-az">Customer name A–Z</option>
+                <option value="name-za">Customer name Z–A</option>
               </select>
             </label>
             <button class="button secondary compact" id="exportBookingsCsv" type="button">Export CSV</button>
@@ -880,7 +912,7 @@
       <div id="customerCrmProfile"><div class="ranch91-loading">Loading customer profile…</div></div>
     </div>
   </dialog>
-  <script src="ranch.js?v=96.4.121"></script>
+  <script src="ranch.js?v=96.4.125"></script>
 
 
   <script src="honky-theme.js?v=96.0.0"></script>
