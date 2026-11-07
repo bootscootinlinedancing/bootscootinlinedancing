@@ -4,6 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {
   createSpecialEventReservation,
   applySpecialEventCheckoutState,
+  verifySpecialEventCheckout,
   adminSpecialEvents,
   verifySpecialEventPassword,
   specialEventDocumentUpload,
@@ -216,10 +217,14 @@ db.exec(`UPDATE special_events SET age_terms_confirmed=0 WHERE id='special-event
 response=await createSpecialEventReservation(new Request('https://example.test/ranch/api/admin/special-event-owner-payment-test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(ownerTestBody)}),env,ownerTestServices,{ownerPaymentTest:true,actor:'owner@example.test'});
 assert.equal(response.status,201,await response.clone().text());const ownerTestResult=await response.json();assert.equal(ownerTestResult.owner_payment_test,true);assert.equal(ownerTestResult.checkout_url,'https://pay.example.test/owner-test');
 const ownerTestBooking=db.prepare(`SELECT * FROM special_event_bookings WHERE provider_checkout_id='owner-test-checkout'`).get();assert.equal(ownerTestBooking.amount_pence,1500);assert.equal(ownerTestBooking.product_code_snapshot,'SATURDAY_SOCIAL');
+const authoritativeOwnerCheckout={id:'owner-test-checkout',checkout_reference:ownerTestBooking.reference,amount:15,currency:'GBP',merchant_code:'LOCAL_ONLY',status:'PAID',transaction_id:'owner-test-transaction'};
+assert.deepEqual(verifySpecialEventCheckout(ownerTestBooking,authoritativeOwnerCheckout,'LOCAL_ONLY'),{ok:true,status:'PAID'});
+assert.equal(verifySpecialEventCheckout(ownerTestBooking,{...authoritativeOwnerCheckout,amount:15.01},'LOCAL_ONLY').code,'CHECKOUT_AMOUNT_MISMATCH');
+assert.equal(verifySpecialEventCheckout(ownerTestBooking,{...authoritativeOwnerCheckout,merchant_code:'WRONG'},'LOCAL_ONLY').code,'CHECKOUT_MERCHANT_MISMATCH');
 assert.deepEqual({...db.prepare(`SELECT status,publication_enabled,checkout_enabled FROM special_events WHERE id='special-event-johnny-rossato-2027'`).get()},{status:'DRAFT',publication_enabled:0,checkout_enabled:0},'owner test must not publish or enable public checkout');
 assert.deepEqual({...db.prepare(`SELECT refund_policy_confirmed,public_presentation_approved,payment_integration_verified,production_installation_verified FROM special_events WHERE id='special-event-johnny-rossato-2027'`).get()},{refund_policy_confirmed:0,public_presentation_approved:0,payment_integration_verified:0,production_installation_verified:0},'owner test must not alter or bypass the public release gates');
 assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_activity WHERE action='OWNER_PAYMENT_TEST_CREATED' AND target_id=?`).get(ownerTestBooking.id).n,1);
-await applySpecialEventCheckoutState(env,ownerTestBooking,{status:'PAID',transaction_id:'owner-test-transaction'});await applySpecialEventCheckoutState(env,ownerTestBooking,{status:'PAID',transaction_id:'owner-test-transaction'});
+await applySpecialEventCheckoutState(env,ownerTestBooking,authoritativeOwnerCheckout);await applySpecialEventCheckoutState(env,ownerTestBooking,authoritativeOwnerCheckout);
 assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_attendees WHERE booking_id=?`).get(ownerTestBooking.id).n,1,'duplicate payment notifications must create one attendee');
 assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_confirmation_outbox WHERE booking_id=?`).get(ownerTestBooking.id).n,1,'duplicate payment notifications must create one confirmation');
 const ownerDeliveries=[];env.ADMIN_EMAIL='owner@example.test';env.SPECIAL_EVENT_EMAILS_ENABLED='false';delivery=await processSpecialEventConfirmations(env,async(to,_subject,_html,_text,options)=>{ownerDeliveries.push({to,options});return {id:'owner-payment-email'}});assert.deepEqual(delivery,{processed:1,sent:1,failed:0});assert.equal(ownerDeliveries.length,1);assert.equal(ownerDeliveries[0].to,'nora@bootscootinlinedancing.co.uk');
