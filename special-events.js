@@ -513,7 +513,7 @@ export async function createSpecialEventReservation(request,env,services,options
     ?await env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE id='special-event-johnny-rossato-2027' AND slug=? AND status='DRAFT' AND publication_enabled=0 AND checkout_enabled=0`).bind(slug).first()
     :await env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE slug=? AND status='PUBLISHED' AND publication_enabled=1 AND checkout_enabled=1`).bind(slug).first();
   if(!event)return response({error:'Ticket sales for this event are not open.'},404);
-  const readiness=await specialEventReadiness(env.BOOKINGS_DB,event.id),allowedTestBlockers=new Set(['PAYMENT_INTEGRATION_UNVERIFIED']);
+  const readiness=await specialEventReadiness(env.BOOKINGS_DB,event.id),allowedTestBlockers=new Set(['REFUND_POLICY_UNCONFIRMED','PUBLIC_PRESENTATION_UNAPPROVED','PAYMENT_INTEGRATION_UNVERIFIED','PRODUCTION_INSTALLATION_UNVERIFIED']);
   if(!readiness||(!ownerPaymentTest&&!readiness.ready)||(ownerPaymentTest&&readiness.blockers.some(blocker=>!allowedTestBlockers.has(blocker))))return response({error:'Ticket sales remain blocked while event safety settings are incomplete.'},409);
   if(!ownerPaymentTest)await refreshAutomaticReleases(env.BOOKINGS_DB,event.id);
   const product=ownerPaymentTest
