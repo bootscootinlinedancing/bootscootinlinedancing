@@ -7911,8 +7911,12 @@ export default {
         if(confirmation!=='CREATE £15 OWNER PAYMENT TEST')return json({error:'Type CREATE £15 OWNER PAYMENT TEST to continue.'},400);
         const existing=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.status FROM special_event_bookings b JOIN special_event_holds h ON h.id=b.hold_id WHERE h.idempotency_key='johnny-owner-payment-test-v1' AND b.status IN ('PENDING','PAID') LIMIT 1`).first();
         if(existing)return json({error:`The controlled payment test already exists (${existing.reference}, ${existing.status}). Do not create another.`,reference:existing.reference,status:existing.status},409);
+        const ownerEmail='nora@bootscootinlinedancing.co.uk';
+        const ownerCustomer=await env.BOOKINGS_DB.prepare(`SELECT c.id,c.name,c.email,c.phone FROM member_accounts m JOIN customers c ON c.id=m.customer_id WHERE lower(trim(m.email))=? AND m.verified_at IS NOT NULL AND COALESCE(m.access_state,'ACTIVE')='ACTIVE' LIMIT 1`).bind(ownerEmail).first();
+        if(!ownerCustomer)return json({error:'The verified owner Member Zone customer could not be resolved. No checkout was created.'},409);
         const fixedRequest=new Request(request.url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({slug:'johnny-rossato',product_code:'SATURDAY_SOCIAL',name:'Nora — Owner Payment Test',email:'nora@bootscootinlinedancing.co.uk',phone:'',quantity:1,terms_accepted:true,attendees:[{name:'Nora — Owner Payment Test',age:18}],idempotency_key:'johnny-owner-payment-test-v1'})});
-        return createSpecialEventReservation(fixedRequest,env,{sumUpFetch:specialEventSumUpFetch,resolveCustomerIdentity},{ownerPaymentTest:true,actor:check.state.email});
+        const resolveVerifiedOwner=async()=>({...ownerCustomer,customer_id:ownerCustomer.id,normalized_email:ownerEmail});
+        return createSpecialEventReservation(fixedRequest,env,{sumUpFetch:specialEventSumUpFetch,resolveCustomerIdentity:resolveVerifiedOwner},{ownerPaymentTest:true,actor:check.state.email});
       }
       if (path === '/api/admin/special-event-confirmation-delivery-test' && request.method === 'POST') {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
