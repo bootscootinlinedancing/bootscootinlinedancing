@@ -271,7 +271,6 @@ CREATE TABLE special_event_competition_entries (
   result_notes TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(event_id,entry_number),
-  UNIQUE(booking_id),
   UNIQUE(event_id,attendee_id)
 );
 

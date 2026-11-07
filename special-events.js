@@ -72,11 +72,11 @@ export async function specialEventReadiness(db,eventId){
   const [days,products,credentials]=await Promise.all([
     db.prepare(`SELECT * FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(eventId).all(),
     db.prepare(`SELECT p.*,
-      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) sold_count,
-      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) complimentary_count,
+      CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN special_event_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) ELSE COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) END sold_count,
+      CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN special_event_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) ELSE COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) END complimentary_count,
       COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP),0) held_count,
       CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation
-        -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
+        -CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN special_event_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID'),0) ELSE COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) END
         -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP),0)) END remaining
       FROM special_event_ticket_products p WHERE p.event_id=? ORDER BY p.display_order`).bind(eventId).all(),
     db.prepare(`SELECT product_id FROM special_event_access_credentials WHERE event_id=? AND active=1`).bind(eventId).all()
@@ -576,6 +576,10 @@ export async function createSpecialEventReservation(request,env,services,options
   const holdId=crypto.randomUUID(),bookingId=crypto.randomUUID(),idempotencyKey=tidy(body.idempotency_key,160)||crypto.randomUUID(),expiresAt=new Date(Date.now()+15*60*1000).toISOString();
   const competitionQuantity=attendeeInput.filter(item=>item?.competition_entry).length;
   const competitionInventoryQuantity=product.code==='MINI_COMPETITION'?quantity:competitionQuantity;
+  if(competitionInventoryQuantity){
+    const competitionProduct=await env.BOOKINGS_DB.prepare(`SELECT release_state FROM special_event_ticket_products WHERE event_id=? AND code='MINI_COMPETITION'`).bind(event.id).first();
+    if(competitionProduct?.release_state!=='ACTIVE')return response({error:'Mini Competition entry is temporarily unavailable. Your event ticket can still be booked without it.'},409);
+  }
   const amount=Number(product.price_pence)*quantity+(competitionQuantity*500),reference=`BSE-${new Date().toISOString().slice(2,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
   const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const eventAvailability=ownerPaymentTest?"e.id=? AND e.status='DRAFT' AND e.publication_enabled=0 AND e.checkout_enabled=0":"e.id=? AND e.status='PUBLISHED' AND e.checkout_enabled=1";
@@ -592,7 +596,7 @@ export async function createSpecialEventReservation(request,env,services,options
           -COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)
           -COALESCE((SELECT SUM(hd.places) FROM special_event_hold_days hd JOIN special_event_holds h ON h.id=hd.hold_id WHERE hd.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
       AND (?=0 OR ?<=(SELECT allocation FROM special_event_ticket_products WHERE event_id=e.id AND code='MINI_COMPETITION')
-        -COALESCE((SELECT SUM(CASE WHEN bp.code='MINI_COMPETITION' THEN b.quantity ELSE b.competition_quantity END) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID'),0)
+        -COALESCE((SELECT COUNT(*) FROM special_event_competition_entries ce JOIN special_event_bookings b ON b.id=ce.booking_id WHERE ce.event_id=e.id AND ce.status<>'WITHDRAWN' AND b.status='PAID'),0)
         -COALESCE((SELECT SUM(CASE WHEN hp.code='MINI_COMPETITION' THEN h.quantity ELSE h.competition_quantity END) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
       AND (p.includes_saturday_evening=0 OR e.saturday_evening_capacity IS NULL OR ?<=e.saturday_evening_capacity
         -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0)

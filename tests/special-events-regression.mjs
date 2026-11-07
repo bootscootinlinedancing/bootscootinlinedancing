@@ -9,6 +9,7 @@ const announcementsMigration=readFileSync(new URL('../migrations/0031_event_anno
 const migration=readFileSync(new URL('../migrations/0032_special_events.sql',import.meta.url),'utf8');
 const programmeMigration=readFileSync(new URL('../migrations/0033_johnny_programme_times.sql',import.meta.url),'utf8');
 const ownerDecisionsMigration=readFileSync(new URL('../migrations/0034_johnny_owner_decisions.sql',import.meta.url),'utf8');
+const competitionMigration=readFileSync(new URL('../migrations/0035_special_event_competition_entries.sql',import.meta.url),'utf8');
 const worker=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
 const service=readFileSync(new URL('../special-events.js',import.meta.url),'utf8');
 const publicPage=readFileSync(new URL('../johnny-rossato.html',import.meta.url),'utf8');
@@ -32,7 +33,8 @@ try{
     ${announcementsMigration}
     ${migration}
     ${programmeMigration}
-    ${ownerDecisionsMigration}`);
+    ${ownerDecisionsMigration}
+    ${competitionMigration}`);
 
   assert.equal(sqlite(`SELECT status||'|'||publication_enabled||'|'||checkout_enabled FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'DRAFT|0|0');
   assert.equal(sqlite(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='event_announcements';`),'1','migration 0031 must precede Special Events');
@@ -53,6 +55,7 @@ try{
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_product_days WHERE product_id='johnny-standard-weekend';`),'2','weekend admission must reserve both event days');
   assert.equal(sqlite(`SELECT places_per_ticket FROM special_event_product_days WHERE product_id='johnny-mini-competition';`),'0','competition add-on must not consume venue capacity twice');
   assert.equal(sqlite(`SELECT allocation||'|'||max_per_checkout FROM special_event_ticket_products WHERE id='johnny-mini-competition';`),'25|4','competition entries must use the approved allocation and per-attendee checkout model');
+  assert.doesNotMatch(sqlite(`SELECT sql FROM sqlite_master WHERE type='table' AND name='special_event_competition_entries';`),/UNIQUE\s*\(booking_id\)/i,'one paid booking must support multiple named competitors');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE is_junior=1 AND requires_guardian=1;`),'3');
   assert.equal(sqlite(`SELECT COUNT(*) FROM special_event_ticket_products WHERE competition_eligible=1;`),'6');
   assert.equal(sqlite(`SELECT programme_approval_status FROM special_events WHERE id='special-event-johnny-rossato-2027';`),'ARTIST_APPROVED');
@@ -67,6 +70,9 @@ try{
   assert.equal(sqlite(`PRAGMA integrity_check;`),'ok');
 
   assert.match(service,/PBKDF2/);
+  assert.match(service,/competitionProduct\?\.release_state!==['"]ACTIVE['"]/,'competition add-ons must stop independently while ordinary ticket sales remain live');
+  assert.match(service,/COUNT\(\*\) FROM special_event_competition_entries ce[\s\S]*ce\.status<>'WITHDRAWN'/,'competition availability must count active entry rows so withdrawals restore inventory');
+  assert.match(eventPageScript,/Kingdom of Fear Mini Competition Entry ×/,'checkout must itemise the £5 competition add-on separately');
   assert.match(service,/100000/);
   assert.match(service,/toLocaleUpperCase\('en-GB'\)/,'restricted password comparison must be case-insensitive');
   assert.doesNotMatch(`${service}\n${worker}\n${migration}`,/BOOTSWITHJOHNNY/,'approved plaintext password must not be committed');
