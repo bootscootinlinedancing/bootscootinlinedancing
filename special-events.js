@@ -641,6 +641,20 @@ export async function applySpecialEventCheckoutState(env,booking,checkout){
   }
 }
 
+export function verifySpecialEventCheckout(booking,checkout,merchantCode){
+  if(!booking||!checkout)return {ok:false,code:'CHECKOUT_UNAVAILABLE'};
+  const expectedAmount=Number(booking.amount_pence),actualAmount=Math.round(Number(checkout.amount)*100);
+  const checks=[
+    ['CHECKOUT_ID_MISMATCH',tidy(checkout.id,180)===tidy(booking.provider_checkout_id,180)],
+    ['CHECKOUT_REFERENCE_MISMATCH',tidy(checkout.checkout_reference,120)===tidy(booking.reference,120)],
+    ['CHECKOUT_AMOUNT_MISMATCH',Number.isFinite(actualAmount)&&actualAmount===expectedAmount],
+    ['CHECKOUT_CURRENCY_MISMATCH',tidy(checkout.currency,12).toUpperCase()==='GBP'],
+    ['CHECKOUT_MERCHANT_MISMATCH',tidy(checkout.merchant_code,80)===tidy(merchantCode,80)]
+  ];
+  const failed=checks.find(([,passed])=>!passed);
+  return failed?{ok:false,code:failed[0]}:{ok:true,status:tidy(checkout.status,40).toUpperCase()};
+}
+
 export async function processSpecialEventConfirmations(env,sendEmail,limit=20){
   if(!env.BOOKINGS_DB||typeof sendEmail!=='function')return {processed:0,disabled:true};
   const emailsEnabled=String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()==='true';

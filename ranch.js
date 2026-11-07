@@ -2261,7 +2261,19 @@ Type REFUNDED to continue.`);
   try{localStorage.removeItem(BOOTSTRAP_CACHE_KEY);}catch(_){ }
   state.bootstrap=null;
   state.bootstrapVerified=false;
-  loadBootstrap(false,{silent:false}).catch(()=>{});
+  const ownerPaymentReturn=new URLSearchParams(location.search).get('special-event-payment-test')==='1';
+  loadBootstrap(false,{silent:false}).then(async()=>{
+    if(!ownerPaymentReturn)return;
+    try{
+      const result=await jsonFetch(`${ADMIN_API_PREFIX}/special-event-owner-payment-test/reconcile`,{method:'POST',body:JSON.stringify({confirmation:'RECONCILE £15 OWNER PAYMENT TEST'})},30000);
+      const confirmed=result.booking?.status==='PAID'&&Number(result.booking?.attendee_count)===1;
+      toast(confirmed?'The £15 payment is confirmed and one ticket has been issued.':'The payment status was checked.','success');
+    }catch(error){toast(error.message,'error');}
+    finally{
+      history.replaceState({},'',location.pathname);
+      document.querySelector('.ranch91-nav [data-view="special-events"]')?.click();
+    }
+  }).catch(()=>{});
   renderDiagnostics();
 
   document.addEventListener('click',event=>{

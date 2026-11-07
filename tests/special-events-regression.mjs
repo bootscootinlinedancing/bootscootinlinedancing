@@ -94,6 +94,14 @@ try{
   assert.match(worker,/SELECT id,name,email,phone FROM customers WHERE lower\(trim\(email\)\)=\?/,'owner payment test must use an exact normalized customer email lookup');
   assert.match(worker,/ownerCustomers\.results\|\|\[\]\)\.length!==1/,'owner payment test must reject missing or ambiguous customer identities');
   assert.match(worker,/product_code:'SATURDAY_SOCIAL'/,'owner payment test must be fixed to the approved £15 product');
+  assert.match(worker,/special-event-owner-payment-test\/reconcile/,'HQ must expose a protected reconciliation fallback for the controlled payment');
+  assert.match(worker,/RECONCILE £15 OWNER PAYMENT TEST/,'reconciliation must require an explicit server-side confirmation');
+  assert.match(worker,/if\(!checkout\)return json\(\{error:'Special Event payment verification is temporarily unavailable\.'\},502\)/,'failed webhook verification must return a retryable failure instead of acknowledging the callback');
+  assert.match(service,/CHECKOUT_REFERENCE_MISMATCH/,'reconciliation must verify the authoritative checkout reference');
+  assert.match(service,/CHECKOUT_AMOUNT_MISMATCH/,'reconciliation must verify the authoritative checkout amount');
+  assert.match(service,/CHECKOUT_CURRENCY_MISMATCH/,'reconciliation must verify the authoritative currency');
+  assert.match(service,/CHECKOUT_MERCHANT_MISMATCH/,'reconciliation must verify the authoritative merchant');
+  assert.match(ranch,/special-event-owner-payment-test\/reconcile/,'the protected return page must invoke reconciliation');
   assert.match(worker,/resolveCustomerIdentity:resolveVerifiedOwner/,'the test must not depend on ambiguous historical email matching');
   assert.match(service,/status='DRAFT' AND publication_enabled=0 AND checkout_enabled=0/,'owner payment test must require the event to remain private and checkout-disabled');
   assert.match(service,/REFUND_POLICY_UNCONFIRMED.*PUBLIC_PRESENTATION_UNAPPROVED.*PAYMENT_INTEGRATION_UNVERIFIED.*PRODUCTION_INSTALLATION_UNVERIFIED/,'owner test may defer publication-only approvals without mutating them');

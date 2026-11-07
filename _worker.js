@@ -1,4 +1,4 @@
-import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,processSpecialEventConfirmations,sendSpecialEventConfirmationDeliveryTest,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
+import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,verifySpecialEventCheckout,processSpecialEventConfirmations,sendSpecialEventConfirmationDeliveryTest,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
 
 const INDEX_KEY = '__system/media-index.json';
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -3636,7 +3636,11 @@ async function sumUpWebhook(request, env) {
     return new Response(null,{status:204});
   }
   if(specialEventBooking){
-    if(checkout){await applySpecialEventCheckoutState(env,specialEventBooking,checkout);await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1).catch(error=>console.error('SPECIAL_EVENT_CONFIRMATION_PROCESS_FAILED',specialEventBooking.id,clean(error?.message||error,200)));}
+    if(!checkout)return json({error:'Special Event payment verification is temporarily unavailable.'},502);
+    const verification=verifySpecialEventCheckout(specialEventBooking,checkout,env.SUMUP_MERCHANT_CODE);
+    if(!verification.ok)return json({error:'Special Event payment verification failed.',code:verification.code},409);
+    await applySpecialEventCheckoutState(env,specialEventBooking,checkout);
+    await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1).catch(error=>console.error('SPECIAL_EVENT_CONFIRMATION_PROCESS_FAILED',specialEventBooking.id,clean(error?.message||error,200)));
     return new Response(null,{status:204});
   }
   if(order&&checkout){
@@ -7918,6 +7922,23 @@ export default {
         const fixedRequest=new Request(request.url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({slug:'johnny-rossato',product_code:'SATURDAY_SOCIAL',name:'Nora — Owner Payment Test',email:'nora@bootscootinlinedancing.co.uk',phone:'',quantity:1,terms_accepted:true,attendees:[{name:'Nora — Owner Payment Test',age:18}],idempotency_key:'johnny-owner-payment-test-v1'})});
         const resolveVerifiedOwner=async()=>({...ownerCustomer,customer_id:ownerCustomer.id,normalized_email:ownerEmail});
         return createSpecialEventReservation(fixedRequest,env,{sumUpFetch:specialEventSumUpFetch,resolveCustomerIdentity:resolveVerifiedOwner},{ownerPaymentTest:true,actor:check.state.email});
+      }
+      if (path === '/api/admin/special-event-owner-payment-test/reconcile' && request.method === 'POST') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+        const confirmation=clean((await request.json().catch(()=>({}))).confirmation,100);
+        if(confirmation!=='RECONCILE £15 OWNER PAYMENT TEST')return json({error:'The reconciliation confirmation is invalid.'},400);
+        const booking=await env.BOOKINGS_DB.prepare(`SELECT b.* FROM special_event_bookings b JOIN special_event_activity a ON a.target_type='BOOKING' AND a.target_id=b.id AND a.action='OWNER_PAYMENT_TEST_CREATED' WHERE b.event_id='special-event-johnny-rossato-2027' ORDER BY b.created_at DESC LIMIT 1`).first();
+        if(!booking||!booking.provider_checkout_id)return json({error:'The controlled payment checkout was not found.'},404);
+        const checkout=await retrieveSumUpCheckout(env,booking.provider_checkout_id,'SUMUP_SPECIAL_EVENTS_API_KEY');
+        if(!checkout)return json({error:'SumUp could not verify the controlled checkout. No booking changes were made.'},502);
+        const verification=verifySpecialEventCheckout(booking,checkout,env.SUMUP_MERCHANT_CODE);
+        if(!verification.ok)return json({error:'The checkout did not match the controlled booking. No booking changes were made.',code:verification.code},409);
+        if(verification.status!=='PAID')return json({error:`SumUp reports ${verification.status||'UNKNOWN'}, not PAID. No booking changes were made.`,status:verification.status||'UNKNOWN'},409);
+        await applySpecialEventCheckoutState(env,booking,checkout);
+        const delivery=await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1);
+        const result=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.status,b.amount_pence,b.paid_at,b.provider_transaction_id,h.status hold_status,(SELECT COUNT(*) FROM special_event_attendees a WHERE a.booking_id=b.id AND a.status='ACTIVE') attendee_count,(SELECT status FROM special_event_confirmation_outbox o WHERE o.booking_id=b.id LIMIT 1) confirmation_status FROM special_event_bookings b JOIN special_event_holds h ON h.id=b.hold_id WHERE b.id=?`).bind(booking.id).first();
+        return json({ok:true,booking:result,delivery});
       }
       if (path === '/api/admin/special-event-confirmation-delivery-test' && request.method === 'POST') {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
