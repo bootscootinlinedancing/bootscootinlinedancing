@@ -93,6 +93,7 @@ try{
   assert.match(worker,/CREATE £15 OWNER PAYMENT TEST/,'owner payment test must require an explicit server-side confirmation');
   assert.match(worker,/product_code:'SATURDAY_SOCIAL'/,'owner payment test must be fixed to the approved £15 product');
   assert.match(service,/status='DRAFT' AND publication_enabled=0 AND checkout_enabled=0/,'owner payment test must require the event to remain private and checkout-disabled');
+  assert.match(service,/REFUND_POLICY_UNCONFIRMED.*PUBLIC_PRESENTATION_UNAPPROVED.*PAYMENT_INTEGRATION_UNVERIFIED.*PRODUCTION_INSTALLATION_UNVERIFIED/,'owner test may defer publication-only approvals without mutating them');
   assert.match(service,/OWNER_PAYMENT_TEST_CREATED/,'owner payment tests must have a durable audit marker');
   assert.match(ranch,/Prepare £15 owner payment/,'HQ must expose the protected controlled-payment action');
   assert.match(worker,/special_event_payments/,'HQ health must report Special Events merchant authorisation separately');
