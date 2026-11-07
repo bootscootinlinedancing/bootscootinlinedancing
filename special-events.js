@@ -762,7 +762,22 @@ export async function specialEventMedia(request,env,url){
   if(!isPublic){const email=tidy(request.headers.get('cf-access-authenticated-user-email'),200).toLowerCase(),configured=tidy(env.ADMIN_EMAIL,200).toLowerCase();if(!email||(configured&&email!==configured))return new Response('Not found',{status:404});}
   const media=await env.BOOKINGS_DB.prepare(`SELECT storage_key,content_type,byte_size FROM special_event_media WHERE event_id=? AND media_type=? AND active=1`).bind(eventId,kind).first();if(!media)return new Response('Not found',{status:404});
   const range=request.headers.get('range');
-  if(kind==='PROMO_VIDEO'&&range){const match=/^bytes=(\d*)-(\d*)$/.exec(range);if(!match)return new Response(null,{status:416});const size=Number(media.byte_size),start=match[1]?Number(match[1]):0,end=match[2]?Math.min(Number(match[2]),size-1):size-1;if(start>end||start>=size)return new Response(null,{status:416,headers:{'content-range':`bytes */${size}`}});const object=await env.MEDIA_BUCKET.get(media.storage_key,{range:{offset:start,length:end-start+1}});if(!object)return new Response('Not found',{status:404});return new Response(object.body,{status:206,headers:{'content-type':media.content_type,'content-length':String(end-start+1),'content-range':`bytes ${start}-${end}/${size}`,'accept-ranges':'bytes','cache-control':isPublic?'public, max-age=3600':'private, no-store'}});}
+  if(kind==='PROMO_VIDEO'&&range){
+    const match=/^bytes=(\d*)-(\d*)$/.exec(range),size=Number(media.byte_size);
+    if(!match||!Number.isSafeInteger(size)||size<1)return new Response(null,{status:416});
+    let start,end;
+    if(match[1]){
+      start=Number(match[1]);
+      end=match[2]?Math.min(Number(match[2]),size-1):size-1;
+    }else if(match[2]){
+      const suffixLength=Number(match[2]);
+      if(!Number.isSafeInteger(suffixLength)||suffixLength<1)return new Response(null,{status:416,headers:{'content-range':`bytes */${size}`}});
+      start=Math.max(0,size-suffixLength);
+      end=size-1;
+    }else return new Response(null,{status:416,headers:{'content-range':`bytes */${size}`}});
+    if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<0||start>end||start>=size)return new Response(null,{status:416,headers:{'content-range':`bytes */${size}`}});
+    const object=await env.MEDIA_BUCKET.get(media.storage_key,{range:{offset:start,length:end-start+1}});if(!object)return new Response('Not found',{status:404});return new Response(object.body,{status:206,headers:{'content-type':media.content_type,'content-length':String(end-start+1),'content-range':`bytes ${start}-${end}/${size}`,'accept-ranges':'bytes','cache-control':isPublic?'public, max-age=3600':'private, no-store'}});
+  }
   const object=await env.MEDIA_BUCKET.get(media.storage_key);if(!object)return new Response('Not found',{status:404});
   return new Response(object.body,{headers:{'content-type':media.content_type,'content-length':String(media.byte_size),'accept-ranges':'bytes','cache-control':isPublic?'public, max-age=3600':'private, no-store','x-content-type-options':'nosniff'}});
 }
