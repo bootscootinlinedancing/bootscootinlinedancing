@@ -83,6 +83,12 @@ try{
   assert.match(eventPageScript,/Final legal\/compliance review is still required/,'Draft preview must identify the outstanding policy review');
   assert.match(eventPageScript,/I have reviewed and accept the event booking terms/,'checkout must require review of the displayed event policy');
   assert.match(service,/SPECIAL_EVENT_CHECKOUT_DISABLED/,'staging must support a hard checkout kill switch');
+  assert.match(worker,/SUMUP_SPECIAL_EVENTS_API_KEY/,'Special Events must have a dedicated production credential');
+  assert.match(worker,/sumUpFetch:specialEventSumUpFetch/,'Special Event checkout creation must use only the dedicated credential');
+  assert.match(worker,/specialEventBooking \? 'SUMUP_SPECIAL_EVENTS_API_KEY' : 'SUMUP_API_KEY'/,'webhook verification must select the credential after identifying the booking type');
+  assert.match(worker,/return sumUpFetchWithCredential\(env, 'SUMUP_API_KEY'/,'existing class and Sunday checkout paths must retain the shared credential');
+  assert.match(worker,/Special Event payment setup is not complete\. No booking or payment has been created\./,'missing Special Events configuration must fail before creating a booking');
+  assert.match(worker,/special_event_payments/,'HQ health must report Special Events merchant authorisation separately');
   assert.match(service,/H\.264.*AAC/,'HQ media upload must explain the supported video and audio codecs');
   assert.match(ranch,/accept="\.mp4,\.mov,\.m4v,video\/mp4,video\/quicktime,video\/x-m4v"/,'Safari file picker must allow MP4, MOV and M4V selection');
   assert.match(service,/verified_codecs:\['H264','AAC'\]/,'server must verify browser-compatible codecs before saving event video');

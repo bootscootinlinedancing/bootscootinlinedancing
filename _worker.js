@@ -2160,9 +2160,13 @@ function sumUpConfigured(env) {
   return Boolean(String(env.SUMUP_API_KEY || '').trim() && String(env.SUMUP_MERCHANT_CODE || '').trim());
 }
 
-async function sumUpFetch(env, pathname, options = {}, timeoutMs = 10000) {
-  const key = String(env.SUMUP_API_KEY || '').trim();
-  if (!key) throw new Error('SUMUP_API_KEY is not configured.');
+function specialEventSumUpConfigured(env) {
+  return Boolean(String(env.SUMUP_SPECIAL_EVENTS_API_KEY || '').trim() && String(env.SUMUP_MERCHANT_CODE || '').trim());
+}
+
+async function sumUpFetchWithCredential(env, credentialName, pathname, options = {}, timeoutMs = 10000) {
+  const key = String(env[credentialName] || '').trim();
+  if (!key) throw new Error(`${credentialName} is not configured.`);
   const headers = new Headers(options.headers || {});
   headers.set('Authorization', `Bearer ${key}`);
   headers.set('Accept', 'application/json');
@@ -2182,6 +2186,14 @@ async function sumUpFetch(env, pathname, options = {}, timeoutMs = 10000) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function sumUpFetch(env, pathname, options = {}, timeoutMs = 10000) {
+  return sumUpFetchWithCredential(env, 'SUMUP_API_KEY', pathname, options, timeoutMs);
+}
+
+async function specialEventSumUpFetch(env, pathname, options = {}, timeoutMs = 10000) {
+  return sumUpFetchWithCredential(env, 'SUMUP_SPECIAL_EVENTS_API_KEY', pathname, options, timeoutMs);
 }
 
 function looksLikeSumUpTransactionId(value) {
@@ -2540,12 +2552,15 @@ async function refundSumUpTransaction(env, transactionId, amountPence = null) {
   return { ok: true, status: response.status };
 }
 
-async function checkSumUpConnection(env) {
-  if (!sumUpConfigured(env)) {
-    return { ready: false, status: 'setup', message: 'Add SUMUP_API_KEY and SUMUP_MERCHANT_CODE in Cloudflare.' };
+async function checkSumUpConnection(env, credentialName = 'SUMUP_API_KEY') {
+  const configured = credentialName === 'SUMUP_SPECIAL_EVENTS_API_KEY'
+    ? specialEventSumUpConfigured(env)
+    : sumUpConfigured(env);
+  if (!configured) {
+    return { ready: false, status: 'setup', message: `Add ${credentialName} and SUMUP_MERCHANT_CODE in Cloudflare.` };
   }
   try {
-    const response = await sumUpFetch(env, '/v0.1/me', { method: 'GET' });
+    const response = await sumUpFetchWithCredential(env, credentialName, '/v0.1/me', { method: 'GET' });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       return { ready: false, status: 'attention', message: `SumUp rejected the configured API key (HTTP ${response.status}).` };
@@ -3550,9 +3565,12 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
   return booking;
 }
 
-async function retrieveSumUpCheckout(env, checkoutId) {
-  if (!checkoutId || !sumUpConfigured(env)) return null;
-  const response = await sumUpFetch(env, `/v0.1/checkouts/${encodeURIComponent(checkoutId)}`, { method: 'GET' });
+async function retrieveSumUpCheckout(env, checkoutId, credentialName = 'SUMUP_API_KEY') {
+  const configured = credentialName === 'SUMUP_SPECIAL_EVENTS_API_KEY'
+    ? specialEventSumUpConfigured(env)
+    : sumUpConfigured(env);
+  if (!checkoutId || !configured) return null;
+  const response = await sumUpFetchWithCredential(env, credentialName, `/v0.1/checkouts/${encodeURIComponent(checkoutId)}`, { method: 'GET' });
   if (!response.ok) return null;
   return response.json().catch(() => null);
 }
@@ -3581,7 +3599,7 @@ async function syncPendingSumUpBookings(env, limit = 20) {
 }
 
 async function sumUpWebhook(request, env) {
-  if (!env.BOOKINGS_DB || !sumUpConfigured(env)) return new Response(null, { status: 204 });
+  if (!env.BOOKINGS_DB) return new Response(null, { status: 204 });
   await ensureBookingSchema(env);
   const payload = await request.json().catch(() => null);
   const checkoutId = clean(payload?.id, 160);
@@ -3604,7 +3622,11 @@ async function sumUpWebhook(request, env) {
     throw new Error('SUMUP_CHECKOUT_REFERENCE_COLLISION');
   }
   if(order&&(order.status==='CANCELLED'||order.cancelled_at))return new Response(null,{status:204});
-  const checkout = await retrieveSumUpCheckout(env, checkoutId);
+  const checkout = await retrieveSumUpCheckout(
+    env,
+    checkoutId,
+    specialEventBooking ? 'SUMUP_SPECIAL_EVENTS_API_KEY' : 'SUMUP_API_KEY'
+  );
   if (booking) {
     if (checkout) await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
     return new Response(null, { status: 204 });
@@ -3873,6 +3895,11 @@ async function systemHealth(request, env) {
   result.payments = sumupCheck.ready
     ? { status: 'ready', label: 'SumUp Payments connected', detail: sumupCheck.message }
     : { status: sumupCheck.status === 'setup' ? 'setup' : 'error', label: 'SumUp Payments needs attention', detail: sumupCheck.message };
+
+  const specialEventSumupCheck = await checkSumUpConnection(env, 'SUMUP_SPECIAL_EVENTS_API_KEY');
+  result.special_event_payments = specialEventSumupCheck.ready
+    ? { status: 'ready', label: 'Special Events SumUp connected', detail: specialEventSumupCheck.message }
+    : { status: specialEventSumupCheck.status === 'setup' ? 'setup' : 'error', label: 'Special Events SumUp needs attention', detail: specialEventSumupCheck.message };
 
   const emailConfigured=notificationConfig(env).emailReady&&Boolean(emailSender(env,'members'));
   result.email = recentMemberResetFailures
@@ -7814,7 +7841,10 @@ export default {
       if (path === '/api/special-events' && request.method === 'GET') return publicSpecialEvents(request,env,url);
       if (path === '/api/special-event-artwork' && request.method === 'GET') return specialEventArtwork(request,env,url);
       if (path === '/api/special-event-media' && request.method === 'GET') return specialEventMedia(request,env,url);
-      if (path === '/api/special-event-reservations' && request.method === 'POST') return createSpecialEventReservation(request,env,{sumUpFetch,resolveCustomerIdentity});
+      if (path === '/api/special-event-reservations' && request.method === 'POST') {
+        if (!specialEventSumUpConfigured(env)) return json({error:'Special Event payment setup is not complete. No booking or payment has been created.'},503);
+        return createSpecialEventReservation(request,env,{sumUpFetch:specialEventSumUpFetch,resolveCustomerIdentity});
+      }
       if (path === '/api/event-announcements' && request.method === 'GET') return publicEventAnnouncements(env);
       if (path === '/api/class-pass-products' && request.method === 'GET') return publicClassPassProducts(env);
       if (path === '/api/anniversary' && request.method === 'GET') {
