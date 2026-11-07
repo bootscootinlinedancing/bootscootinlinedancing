@@ -1,4 +1,4 @@
-import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,processSpecialEventConfirmations,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
+import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,processSpecialEventConfirmations,sendSpecialEventConfirmationDeliveryTest,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
 
 const INDEX_KEY = '__system/media-index.json';
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
@@ -7872,6 +7872,11 @@ export default {
       if (path === '/api/admin/special-events') {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
         return adminSpecialEvents(request,env,check.state,{sendEmail:(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)});
+      }
+      if (path === '/api/admin/special-event-confirmation-delivery-test' && request.method === 'POST') {
+        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
+        return sendSpecialEventConfirmationDeliveryTest(request,env,check.state,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options));
       }
       if (path === '/api/admin/special-event-documents/upload' && request.method === 'POST') {
         const check=requireAdmin(request,env);if(check.response)return check.response;

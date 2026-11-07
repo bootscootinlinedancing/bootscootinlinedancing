@@ -9,6 +9,7 @@ import {
   specialEventDocumentUpload,
   specialEventDocumentDownload,
   processSpecialEventConfirmations,
+  sendSpecialEventConfirmationDeliveryTest,
   specialEventMediaMultipartStart,
   specialEventMediaMultipartPart,
   specialEventMediaMultipartComplete,
@@ -60,6 +61,44 @@ const simultaneous=await Promise.all([allocationRequest(30),allocationRequest(31
 assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_activity WHERE action='TICKET_ALLOCATION_UPDATED'`).get().n,2,'successful allocation edits must be audited exactly once');
 response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'QUEUE_BOOKING_CONFIRMATION',booking_id:booking.id,confirmation:'QUEUE CONFIRMATION'})}),env,{email:'owner@example.test'});assert.equal(response.status,200);
 env.SPECIAL_EVENT_EMAILS_ENABLED='true';const delivered=[];let delivery=await processSpecialEventConfirmations(env,async(to,subject,html,text)=>{delivered.push({to,subject,html,text});return {id:'email-fixture'}});assert.deepEqual(delivery,{processed:1,sent:1,failed:0});assert.equal(delivered.length,1);assert.equal(delivered[0].subject,"Your Booking Confirmation 🤠 | Johnny Rossato's UK Debut");assert.match(delivered[0].html,/Early Bird Weekend Pass/);assert.match(delivered[0].html,/Admission includes:/);assert.match(delivered[0].html,/Payment:<\/strong> Confirmed/);assert.match(delivered[0].html,/bookings@bootscootinlinedancing\.co\.uk/);assert.match(delivered[0].html,/Tickets are non-refundable except where a refund is required by law/);assert.equal(db.prepare('SELECT status FROM special_event_confirmation_outbox WHERE booking_id=?').get(booking.id).status,'SENT');delivery=await processSpecialEventConfirmations(env,async()=>{throw new Error('duplicate')});assert.equal(delivery.processed,0,'successful confirmation must be exactly once');env.SPECIAL_EVENT_EMAILS_ENABLED='false';
+
+const protectedCountsBefore={
+  customers:db.prepare('SELECT COUNT(*) n FROM customers').get().n,
+  bookings:db.prepare('SELECT COUNT(*) n FROM special_event_bookings').get().n,
+  holds:db.prepare('SELECT COUNT(*) n FROM special_event_holds').get().n,
+  outbox:db.prepare('SELECT COUNT(*) n FROM special_event_confirmation_outbox').get().n
+};
+env.SPECIAL_EVENT_CONFIRMATION_TEST_ENABLED='true';
+env.SPECIAL_EVENT_CONFIRMATION_TEST_RECIPIENT='nora@bootscootinlinedancing.co.uk';
+const testDeliveries=[];
+const confirmationTestRequest=(confirmation='SEND ONE SPECIAL EVENT TEST')=>new Request('https://example.test/api/admin/special-event-confirmation-delivery-test',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirmation})});
+response=await sendSpecialEventConfirmationDeliveryTest(confirmationTestRequest(),env,{email:'owner@example.test'},async(to,subject,html,text,options)=>{testDeliveries.push({to,subject,html,text,options});throw new Error('isolated provider timeout after request');});
+assert.equal(response.status,502,await response.clone().text());
+assert.equal(testDeliveries.length,1);
+assert.equal(testDeliveries[0].to,'nora@bootscootinlinedancing.co.uk');
+assert.match(testDeliveries[0].subject,/^TEST — /);
+assert.match(testDeliveries[0].html,/No booking, ticket, payment or inventory hold has been created/);
+assert.match(testDeliveries[0].text,/No booking, ticket, payment or inventory hold has been created/);
+assert.match(testDeliveries[0].options.idempotencyKey,/special-event-confirmation-test/);
+assert.deepEqual({
+  customers:db.prepare('SELECT COUNT(*) n FROM customers').get().n,
+  bookings:db.prepare('SELECT COUNT(*) n FROM special_event_bookings').get().n,
+  holds:db.prepare('SELECT COUNT(*) n FROM special_event_holds').get().n,
+  outbox:db.prepare('SELECT COUNT(*) n FROM special_event_confirmation_outbox').get().n
+},protectedCountsBefore,'synthetic delivery must not mutate customers, bookings, holds or booking outbox');
+assert.equal(db.prepare("SELECT COUNT(*) n FROM special_event_activity WHERE action='CONFIRMATION_DELIVERY_TEST_CLAIMED'").get().n,1);
+assert.equal(db.prepare("SELECT COUNT(*) n FROM special_event_activity WHERE action='CONFIRMATION_DELIVERY_TEST_UNCONFIRMED'").get().n,1);
+response=await sendSpecialEventConfirmationDeliveryTest(confirmationTestRequest('RETRY ONE SPECIAL EVENT TEST'),env,{email:'owner@example.test'},async(to,subject,html,text,options)=>{testDeliveries.push({to,subject,html,text,options});return {id:'owner-test-fixture'}});
+assert.equal(response.status,200,await response.clone().text());
+assert.equal(testDeliveries.length,2);
+assert.equal(testDeliveries[1].options.idempotencyKey,testDeliveries[0].options.idempotencyKey,'timeout retry must reuse the exact provider idempotency key');
+assert.equal(db.prepare("SELECT COUNT(*) n FROM special_event_activity WHERE action='CONFIRMATION_DELIVERY_TEST_RETRY_CLAIMED'").get().n,1);
+assert.equal(db.prepare("SELECT COUNT(*) n FROM special_event_activity WHERE action='CONFIRMATION_DELIVERY_TEST_SENT'").get().n,1);
+response=await sendSpecialEventConfirmationDeliveryTest(confirmationTestRequest(),env,{email:'owner@example.test'},async()=>{throw new Error('duplicate delivery must not run')});
+assert.equal(response.status,200,'a completed test must return its idempotent sent state');
+assert.equal((await response.json()).idempotent,true);
+assert.equal(testDeliveries.length,2);
+env.SPECIAL_EVENT_CONFIRMATION_TEST_ENABLED='false';
 
 const videoBytes=new TextEncoder().encode('\0\0\0\u0018ftypqt  \0\0\0\0avc1 browser-compatible video mp4a browser-compatible audio');
 const videoPartSha=[...new Uint8Array(await crypto.subtle.digest('SHA-256',videoBytes))].map(byte=>byte.toString(16).padStart(2,'0')).join('');

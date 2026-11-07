@@ -42,6 +42,7 @@ function eventEmailShell({heading,greeting,body,details='',footer=''}){
 }
 
 export function specialEventConfirmationCopy({booking,event,days=[],attendees=[],competition=[],programme=[]}){
+  const testMode=Boolean(booking.test_delivery);
   const amount=Number(booking.amount_pence||0)===0?'Complimentary — £0.00':`£${(Number(booking.amount_pence||0)/100).toFixed(2)}`;
   const dateText=days.map(day=>`${day.label}: ${day.event_date}`).join(' · ');
   const attendeeText=attendees.map(row=>row.name).join(', ')||`${booking.quantity} attendee${Number(booking.quantity)===1?'':'s'}`;
@@ -50,12 +51,15 @@ export function specialEventConfirmationCopy({booking,event,days=[],attendees=[]
   const programmeHtml=programmeRows.length?`<div><p><strong>Weekend programme</strong></p>${programmeRows.map(row=>`<p style="margin:5px 0"><strong>${specialHtmlEscape(row.time_label)}</strong> · ${specialHtmlEscape(row.title)}${row.programme_status==='PROVISIONAL'?' <em>(detail provisional)</em>':''}</p>`).join('')}</div>`:'';
   const programmeText=programmeRows.length?`\n\nWeekend programme\n${programmeRows.map(row=>`${row.time_label} - ${row.title}${row.programme_status==='PROVISIONAL'?' (detail provisional)':''}`).join('\n')}`:'';
   const entitlement=tidy(booking.product_description,1000);
-  const details=`<p><strong>Reference:</strong> ${specialHtmlEscape(booking.reference)}</p><p><strong>Payment:</strong> Confirmed</p><p><strong>Ticket:</strong> ${specialHtmlEscape(booking.product_name_snapshot)} × ${Number(booking.quantity)}</p>${entitlement?`<p><strong>Admission includes:</strong> ${specialHtmlEscape(entitlement)}</p>`:''}<p><strong>Attendees:</strong> ${specialHtmlEscape(attendeeText)}</p><p><strong>When:</strong> ${specialHtmlEscape(dateText)}</p><p><strong>Venue:</strong> ${specialHtmlEscape(event.venue_name)}${event.venue_address?` · ${specialHtmlEscape(event.venue_address)}`:''}</p><p><strong>Paid:</strong> ${specialHtmlEscape(amount)}</p>${comp}`;
+  const paymentLabel=testMode?'Synthetic delivery test — no payment created':'Confirmed';
+  const details=`<p><strong>Reference:</strong> ${specialHtmlEscape(booking.reference)}</p><p><strong>Payment:</strong> ${specialHtmlEscape(paymentLabel)}</p><p><strong>Ticket:</strong> ${specialHtmlEscape(booking.product_name_snapshot)} × ${Number(booking.quantity)}</p>${entitlement?`<p><strong>Admission includes:</strong> ${specialHtmlEscape(entitlement)}</p>`:''}<p><strong>Attendees:</strong> ${specialHtmlEscape(attendeeText)}</p><p><strong>When:</strong> ${specialHtmlEscape(dateText)}</p><p><strong>Venue:</strong> ${specialHtmlEscape(event.venue_name)}${event.venue_address?` · ${specialHtmlEscape(event.venue_address)}`:''}</p><p><strong>${testMode?'Displayed amount':'Paid'}:</strong> ${specialHtmlEscape(amount)}</p>${comp}`;
   const junior=attendees.some(row=>Number(row.age_at_event)<18)?'<p><strong>Under-18 reminder:</strong> a responsible adult must remain contactable. Under-18 attendees must leave by 8:30 pm on Saturday and cannot attend the late-night social.</p>':'';
   const policy=event.refund_policy?`<p><strong>Refunds and transfers:</strong> ${specialHtmlEscape(event.refund_policy)}</p>`:'';
-  const html=eventEmailShell({heading:'Your Johnny Rossato booking is confirmed',greeting:`Hi ${booking.customer_name},`,body:'<p>Thank you — your authoritative paid booking is confirmed. Keep this email and your booking reference safe.</p>',details,footer:`${programmeHtml}${junior}${policy}<p>Dance selections, workshop format, proposed awards and venue conditions marked provisional or TBC may change. Scheduled times are shown separately.</p><p><strong>Booking enquiries:</strong> <a href="mailto:bookings@bootscootinlinedancing.co.uk">bookings@bootscootinlinedancing.co.uk</a></p><p>Good boots. Good music. Good times.<br>Nora · Boot Scootin’</p>`});
-  const text=`Your Johnny Rossato booking is confirmed\n\nHi ${booking.customer_name},\nReference: ${booking.reference}\nPayment: Confirmed\nTicket: ${booking.product_name_snapshot} x ${booking.quantity}${entitlement?`\nAdmission includes: ${entitlement}`:''}\nAttendees: ${attendeeText}\nWhen: ${dateText}\nVenue: ${event.venue_name}${event.venue_address?`, ${event.venue_address}`:''}\nPaid: ${amount}${competition.length?'\nMini Competition entry recorded. Registration is 7:00–7:30 pm; competition 7:30–8:00 pm; awards remain proposed.':''}${programmeText}${attendees.some(row=>Number(row.age_at_event)<18)?'\n\nUnder-18 attendees must leave by 8:30 pm on Saturday and cannot attend the late-night social.':''}${event.refund_policy?`\n\nRefunds and transfers: ${event.refund_policy}`:''}\n\nTBC details may change; scheduled times are shown separately.\nBooking enquiries: bookings@bootscootinlinedancing.co.uk`;
-  return {subject:SPECIAL_EVENT_CONFIRMATION_SUBJECT,html,text};
+  const heading=testMode?'TEST — Johnny Rossato confirmation email':'Your Johnny Rossato booking is confirmed';
+  const body=testMode?'<p><strong>This is a controlled delivery test.</strong> No booking, ticket, payment or inventory hold has been created.</p>':'<p>Thank you — your authoritative paid booking is confirmed. Keep this email and your booking reference safe.</p>';
+  const html=eventEmailShell({heading,greeting:`Hi ${booking.customer_name},`,body,details,footer:`${programmeHtml}${junior}${policy}<p>Dance selections, workshop format, proposed awards and venue conditions marked provisional or TBC may change. Scheduled times are shown separately.</p><p><strong>Booking enquiries:</strong> <a href="mailto:bookings@bootscootinlinedancing.co.uk">bookings@bootscootinlinedancing.co.uk</a></p><p>Good boots. Good music. Good times.<br>Nora · Boot Scootin’</p>`});
+  const text=`${heading}\n\nHi ${booking.customer_name},${testMode?'\nThis is a controlled delivery test. No booking, ticket, payment or inventory hold has been created.':''}\nReference: ${booking.reference}\nPayment: ${paymentLabel}\nTicket: ${booking.product_name_snapshot} x ${booking.quantity}${entitlement?`\nAdmission includes: ${entitlement}`:''}\nAttendees: ${attendeeText}\nWhen: ${dateText}\nVenue: ${event.venue_name}${event.venue_address?`, ${event.venue_address}`:''}\n${testMode?'Displayed amount':'Paid'}: ${amount}${competition.length?'\nMini Competition entry recorded. Registration is 7:00–7:30 pm; competition 7:30–8:00 pm; awards remain proposed.':''}${programmeText}${attendees.some(row=>Number(row.age_at_event)<18)?'\n\nUnder-18 attendees must leave by 8:30 pm on Saturday and cannot attend the late-night social.':''}${event.refund_policy?`\n\nRefunds and transfers: ${event.refund_policy}`:''}\n\nTBC details may change; scheduled times are shown separately.\nBooking enquiries: bookings@bootscootinlinedancing.co.uk`;
+  return {subject:`${testMode?'TEST — ':''}${SPECIAL_EVENT_CONFIRMATION_SUBJECT}`,html,text};
 }
 
 export async function specialEventReadiness(db,eventId){
@@ -646,6 +650,53 @@ export async function processSpecialEventConfirmations(env,sendEmail,limit=20){
     }catch(error){const attempts=Number(booking.attempt_count||0)+1,delay=Math.min(3600,Math.pow(2,attempts)*60);await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='FAILED',last_error=?,next_attempt_at=datetime('now',?) WHERE id=?`).bind(tidy(error?.message||error,500),`+${delay} seconds`,booking.outbox_id).run();failed++;}
   }
   return {processed:sent+failed,sent,failed};
+}
+
+export async function sendSpecialEventConfirmationDeliveryTest(request,env,admin,sendEmail){
+  const approvedRecipient='nora@bootscootinlinedancing.co.uk';
+  if(String(env.SPECIAL_EVENT_CONFIRMATION_TEST_ENABLED||'').toLowerCase()!=='true')return response({error:'Special Event confirmation delivery tests are disabled.',code:'DELIVERY_TEST_DISABLED'},403);
+  const configuredRecipient=tidy(env.SPECIAL_EVENT_CONFIRMATION_TEST_RECIPIENT,254).toLowerCase();
+  if(configuredRecipient!==approvedRecipient)return response({error:'The approved Special Event test recipient is not configured.',code:'TEST_RECIPIENT_NOT_CONFIGURED'},503);
+  if(typeof sendEmail!=='function')return response({error:'Transactional email delivery is unavailable.',code:'EMAIL_PROVIDER_UNAVAILABLE'},503);
+  const body=await request.json().catch(()=>({}));
+  const confirmation=tidy(body.confirmation,80),initialConfirmation='SEND ONE SPECIAL EVENT TEST',retryConfirmation='RETRY ONE SPECIAL EVENT TEST';
+  if(![initialConfirmation,retryConfirmation].includes(confirmation))return response({error:`Type ${initialConfirmation} to confirm.`,code:'CONFIRMATION_REQUIRED'},400);
+  const eventId='special-event-johnny-rossato-2027',operationId='johnny-confirmation-delivery-test-v1',claimKey=`special-event-confirmation-test:${operationId}`;
+  const [existing,sent,unconfirmed,retryClaim]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT action,created_at FROM special_event_activity WHERE idempotency_key=?`).bind(claimKey).first(),
+    env.BOOKINGS_DB.prepare(`SELECT action FROM special_event_activity WHERE idempotency_key=?`).bind(`${claimKey}:sent`).first(),
+    env.BOOKINGS_DB.prepare(`SELECT action,created_at FROM special_event_activity WHERE idempotency_key=?`).bind(`${claimKey}:unconfirmed`).first(),
+    env.BOOKINGS_DB.prepare(`SELECT action FROM special_event_activity WHERE idempotency_key=?`).bind(`${claimKey}:retry`).first()
+  ]);
+  if(sent)return response({ok:true,status:'SENT',idempotent:true,recipient:approvedRecipient});
+  const retrying=confirmation===retryConfirmation;
+  if(existing&&!retrying)return response({error:'The controlled test was already claimed. Inspect its provider status before attempting the single safe retry.',code:'DELIVERY_TEST_ALREADY_USED',retry_available:Boolean(unconfirmed&&!retryClaim)},409);
+  if(retrying){
+    if(!existing||!unconfirmed||retryClaim)return response({error:'A safe retry is not available for this controlled test.',code:'DELIVERY_TEST_RETRY_NOT_AVAILABLE'},409);
+    const claimedAt=Date.parse(existing.created_at);if(!Number.isFinite(claimedAt)||Date.now()-claimedAt>23*60*60*1000)return response({error:'The provider idempotency window has expired. Inspect the provider log; do not resend from HQ.',code:'DELIVERY_TEST_RETRY_WINDOW_EXPIRED'},409);
+  }
+  const [event,product,days,programme]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE id=?`).bind(eventId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT name,description,price_pence FROM special_event_ticket_products WHERE event_id=? AND code='LOYALTY_WEEKEND'`).bind(eventId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT label,event_date FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(eventId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT title,starts_at,ends_at,programme_status,display_order FROM special_event_programme_items WHERE event_id=? ORDER BY day_id,display_order`).bind(eventId).all()
+  ]);
+  if(!event||!product)return response({error:'The Johnny Rossato Draft event is unavailable.',code:'EVENT_UNAVAILABLE'},503);
+  try{
+    await env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,?,'SPECIAL_EVENT',?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,retrying?'CONFIRMATION_DELIVERY_TEST_RETRY_CLAIMED':'CONFIRMATION_DELIVERY_TEST_CLAIMED',eventId,admin.email,retrying?'Owner-confirmed single idempotent retry.':'Owner-confirmed single synthetic delivery test.',JSON.stringify({recipient:approvedRecipient,operation_id:operationId,no_booking_created:true,no_payment_created:true,provider_idempotency_window_hours:24}),retrying?`${claimKey}:retry`:claimKey).run();
+  }catch(error){
+    if(/unique|constraint/i.test(String(error?.message||error)))return response({error:'The controlled confirmation operation has already been claimed.',code:'DELIVERY_TEST_ALREADY_USED'},409);
+    throw error;
+  }
+  const copy=specialEventConfirmationCopy({booking:{test_delivery:true,customer_name:'Nora',reference:'TEST-NO-BOOKING',product_name_snapshot:product.name,product_description:product.description,quantity:1,amount_pence:product.price_pence},event,days:days.results||[],attendees:[{name:'Synthetic Test Attendee',age_at_event:18}],programme:programme.results||[]});
+  try{
+    const result=await sendEmail(approvedRecipient,copy.subject,copy.html,copy.text,{idempotencyKey:claimKey});
+    await env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CONFIRMATION_DELIVERY_TEST_SENT','SPECIAL_EVENT',?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Synthetic confirmation delivery accepted by the provider.',JSON.stringify({recipient:approvedRecipient,operation_id:operationId,provider_id:tidy(result?.id,160)||null}),`${claimKey}:sent`).run();
+    return response({ok:true,status:'SENT',recipient:approvedRecipient});
+  }catch(error){
+    if(!retrying)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CONFIRMATION_DELIVERY_TEST_UNCONFIRMED','SPECIAL_EVENT',?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Provider result was not confirmed; inspect provider logs before retry.',JSON.stringify({recipient:approvedRecipient,operation_id:operationId,error:tidy(error?.message||error,300),retry_deadline:new Date(Date.now()+23*60*60*1000).toISOString()}),`${claimKey}:unconfirmed`).run();
+    return response({error:retrying?'The single idempotent retry was not confirmed. Inspect the provider log; no further HQ retry is allowed.':'The controlled delivery was not confirmed. Inspect the provider log before using the single idempotent retry.',code:'DELIVERY_TEST_UNCONFIRMED',retry_available:!retrying},502);
+  }
 }
 
 export async function specialEventDocumentUpload(request,env,admin){
