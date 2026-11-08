@@ -209,6 +209,12 @@ export async function adminSpecialEvents(request,env,admin,services={}){
   if(!body)return response({error:'The request could not be read.'},400);
   if(request.method==='PATCH'){
     const action=tidy(body.action,80);
+    if(action==='RECOVER_CORRECTED_CONFIRMATION'){
+      if(String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()!=='true'||typeof services.sendEmail!=='function')return response({error:'Special Event transactional email delivery is not enabled.'},409);
+      if(tidy(body.confirmation,80)!=='SEND ONE CORRECTED CONFIRMATION')return response({error:'Type SEND ONE CORRECTED CONFIRMATION to continue.'},400);
+      const result=await recoverCorrectedSpecialEventConfirmation(env,services.sendEmail,admin,{eventId,bookingId:tidy(body.booking_id,180),correctedEmail:tidy(body.corrected_email,240)});
+      return response(result,result.ok?200:(result.status||500));
+    }
     if(action==='RECOVER_PAID_CUSTOMER_CONFIRMATIONS'){
       if(String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()!=='true'||typeof services.sendEmail!=='function')return response({error:'Special Event transactional email delivery is not enabled.'},409);
       if(tidy(body.confirmation,80)!=='SEND SIX VERIFIED CONFIRMATIONS')return response({error:'Type SEND SIX VERIFIED CONFIRMATIONS to continue.'},400);
@@ -709,6 +715,56 @@ export async function processSpecialEventConfirmations(env,sendEmail,limit=20){
     }catch(error){const attempts=Number(booking.attempt_count||0)+1,delay=Math.min(3600,Math.pow(2,attempts)*60);await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='FAILED',last_error=?,next_attempt_at=datetime('now',?) WHERE id=?`).bind(tidy(error?.message||error,500),`+${delay} seconds`,booking.outbox_id).run();failed++;}
   }
   return {processed:sent+failed,sent,failed};
+}
+
+async function recoverCorrectedSpecialEventConfirmation(env,sendEmail,admin,{eventId,bookingId,correctedEmail}){
+  const normalizedCorrected=tidy(correctedEmail,240).trim().toLowerCase();
+  if(!bookingId||!/^\S+@\S+\.\S+$/.test(normalizedCorrected))return {error:'A valid corrected email address is required.',status:400};
+  const booking=await env.BOOKINGS_DB.prepare(`SELECT b.*,p.description product_description,o.status confirmation_status,o.provider_id original_provider_id,o.recipient_email original_recipient FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id JOIN special_event_confirmation_outbox o ON o.booking_id=b.id WHERE b.id=? AND b.event_id=?`).bind(bookingId,eventId).first();
+  if(!booking)return {error:'Booking not found.',status:404};
+  if(booking.status!=='PAID'||booking.payment_provider!=='SUMUP'||booking.confirmation_status!=='SENT'||!booking.original_provider_id)return {error:'Only an authoritatively paid booking with a preserved original confirmation can use this recovery.',status:409};
+  const operationKey=`corrected-confirmation:${booking.id}:v1`;
+  const existing=await env.BOOKINGS_DB.prepare(`SELECT action,metadata_json,created_at FROM special_event_activity WHERE idempotency_key IN (?,?) ORDER BY created_at DESC LIMIT 1`).bind(`${operationKey}:sent`,`${operationKey}:unconfirmed`).first();
+  if(existing){
+    const metadata=JSON.parse(existing.metadata_json||'{}');
+    if(existing.action==='CORRECTED_CONFIRMATION_SENT')return {ok:true,idempotent:true,reference:booking.reference,provider_id:metadata.provider_id||null,recipient:normalizedCorrected};
+    return {error:'A previous corrected send has an unconfirmed provider result. Inspect Resend before retrying.',status:409};
+  }
+  const originalEmail=tidy(booking.customer_email,240).trim().toLowerCase();
+  if(originalEmail===normalizedCorrected)return {error:'The corrected address matches the current booking address.',status:409};
+  const [customerCollision,identityCollision]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT id FROM customers WHERE lower(trim(email))=? AND id<>? LIMIT 1`).bind(normalizedCorrected,booking.customer_id||'').first(),
+    env.BOOKINGS_DB.prepare(`SELECT customer_id FROM customer_email_identities WHERE normalized_email=? AND customer_id<>? LIMIT 1`).bind(normalizedCorrected,booking.customer_id||'').first()
+  ]);
+  if(customerCollision||identityCollision)return {error:'The corrected address belongs to another customer identity. No contact records or email were changed.',status:409};
+  const claimed=await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CORRECTED_CONFIRMATION_CLAIMED','BOOKING',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,booking.id,admin.email,'Owner-authorised correction of a bounced booking confirmation.',JSON.stringify({reference:booking.reference,original_provider_id:booking.original_provider_id,original_recipient:booking.original_recipient}),operationKey).run();
+  if(!Number(claimed.meta?.changes||0))return {error:'This corrected confirmation recovery has already been claimed. Inspect its audit history before retrying.',status:409};
+  await env.BOOKINGS_DB.batch([
+    env.BOOKINGS_DB.prepare(`UPDATE customers SET email=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND lower(trim(email))=?`).bind(normalizedCorrected,booking.customer_id,originalEmail),
+    env.BOOKINGS_DB.prepare(`UPDATE customer_email_identities SET normalized_email=? WHERE customer_id=? AND normalized_email=?`).bind(normalizedCorrected,booking.customer_id,originalEmail),
+    env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET customer_email=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND lower(trim(customer_email))=?`).bind(normalizedCorrected,booking.id,originalEmail),
+    env.BOOKINGS_DB.prepare(`UPDATE special_event_attendees SET email=? WHERE booking_id=? AND lower(trim(COALESCE(email,'')))=?`).bind(normalizedCorrected,booking.id,originalEmail),
+    env.BOOKINGS_DB.prepare(`UPDATE special_event_competition_entries SET contact_email=? WHERE booking_id=? AND lower(trim(COALESCE(contact_email,'')))=?`).bind(normalizedCorrected,booking.id,originalEmail)
+  ]);
+  const [event,days,attendees,competition,programme,correctedBooking]=await Promise.all([
+    env.BOOKINGS_DB.prepare(`SELECT * FROM special_events WHERE id=?`).bind(eventId).first(),
+    env.BOOKINGS_DB.prepare(`SELECT d.label,d.event_date FROM special_event_booking_days bd JOIN special_event_days d ON d.id=bd.day_id WHERE bd.booking_id=? ORDER BY d.display_order`).bind(booking.id).all(),
+    env.BOOKINGS_DB.prepare(`SELECT name,age_at_event,guardian_email FROM special_event_attendees WHERE booking_id=? ORDER BY created_at,id`).bind(booking.id).all(),
+    env.BOOKINGS_DB.prepare(`SELECT a.name attendee_name FROM special_event_competition_entries c LEFT JOIN special_event_attendees a ON a.id=c.attendee_id WHERE c.booking_id=? AND c.status<>'WITHDRAWN'`).bind(booking.id).all(),
+    env.BOOKINGS_DB.prepare(`SELECT title,starts_at,ends_at,programme_status,display_order FROM special_event_programme_items WHERE event_id=? ORDER BY day_id,display_order`).bind(eventId).all(),
+    env.BOOKINGS_DB.prepare(`SELECT b.*,p.description product_description FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.id=?`).bind(booking.id).first()
+  ]);
+  const copy=specialEventConfirmationCopy({booking:correctedBooking,event,days:days.results||[],attendees:attendees.results||[],competition:competition.results||[],programme:programme.results||[]});
+  try{
+    const provider=await sendEmail(normalizedCorrected,copy.subject,copy.html,copy.text,{idempotencyKey:`${operationKey}:provider`});
+    const providerId=tidy(provider?.id,180)||null;
+    if(!providerId)throw new Error('The email provider did not return a message ID.');
+    await env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CORRECTED_CONFIRMATION_SENT','BOOKING',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,booking.id,admin.email,'Corrected replacement confirmation accepted by the provider.',JSON.stringify({reference:booking.reference,provider_id:providerId,recipient:normalizedCorrected,original_provider_id:booking.original_provider_id}),`${operationKey}:sent`).run();
+    return {ok:true,reference:booking.reference,provider_id:providerId,recipient:normalizedCorrected,original_provider_id:booking.original_provider_id};
+  }catch(error){
+    await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key) VALUES(?,?,'CORRECTED_CONFIRMATION_UNCONFIRMED','BOOKING',?,?,?, ?,?)`).bind(crypto.randomUUID(),eventId,booking.id,admin.email,'Corrected replacement confirmation was not confirmed by the provider; do not retry blindly.',JSON.stringify({reference:booking.reference,error:tidy(error?.message||error,300),recipient:normalizedCorrected}),`${operationKey}:unconfirmed`).run();
+    return {error:'The corrected confirmation was not confirmed by the provider. Inspect Resend before retrying.',status:502};
+  }
 }
 
 export async function sendSpecialEventConfirmationDeliveryTest(request,env,admin,sendEmail){
