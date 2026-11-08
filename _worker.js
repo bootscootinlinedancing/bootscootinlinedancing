@@ -3644,7 +3644,7 @@ async function specialEventRecoveryCapacity(env, booking) {
   const days = await env.BOOKINGS_DB.prepare(
     `SELECT d.id,d.label,d.capacity,bd.places,
       COALESCE((SELECT SUM(x.places) FROM special_event_booking_days x JOIN special_event_bookings b ON b.id=x.booking_id WHERE x.day_id=d.id AND b.status='PAID'),0) paid,
-      COALESCE((SELECT SUM(x.places) FROM special_event_hold_days x JOIN special_event_holds h ON h.id=x.hold_id WHERE x.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP AND h.id<>COALESCE(?,'')),0) held
+      COALESCE((SELECT SUM(x.places) FROM special_event_hold_days x JOIN special_event_holds h ON h.id=x.hold_id WHERE x.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND h.id<>COALESCE(?,'')),0) held
      FROM special_event_booking_days bd JOIN special_event_days d ON d.id=bd.day_id WHERE bd.booking_id=?`
   ).bind(booking.hold_id,booking.id).all();
   for (const day of days.results || []) {
@@ -3653,9 +3653,9 @@ async function specialEventRecoveryCapacity(env, booking) {
   const product = await env.BOOKINGS_DB.prepare(
     `SELECT p.allocation,p.includes_saturday_evening,p.product_type,e.saturday_evening_capacity,
       COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) product_paid,
-      COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP AND h.id<>COALESCE(?,'')),0) product_held,
+      COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND h.id<>COALESCE(?,'')),0) product_held,
       COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=p.event_id AND b.status='PAID' AND bp.includes_saturday_evening=1),0) evening_paid,
-      COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=p.event_id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP AND h.id<>COALESCE(?, '') AND hp.includes_saturday_evening=1),0) evening_held
+      COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=p.event_id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND h.id<>COALESCE(?, '') AND hp.includes_saturday_evening=1),0) evening_held
      FROM special_event_ticket_products p JOIN special_events e ON e.id=p.event_id WHERE p.id=?`
   ).bind(booking.hold_id,booking.hold_id,booking.product_id).first();
   if (product?.allocation != null && Number(booking.quantity) > Number(product.allocation)-Number(product.product_paid)-Number(product.product_held)) blockers.push('PRODUCT_ALLOCATION');
