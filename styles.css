@@ -10396,3 +10396,45 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-bran
 .special-event-choreographies article .special-event-choreography-links .button{display:inline-flex;justify-content:center;min-width:9rem;margin:0;color:#fff;text-decoration:none}
 .special-programme-day{margin-bottom:1.25rem}.special-programme-day>h4{margin:0 0 .5rem;color:#f4e6da;font:700 1.15rem Oswald,sans-serif}.special-programme-day article span{display:block;margin-top:.3rem;color:#d8aaa7}
 @media(max-width:430px){.special-event-choreography-links{display:grid;grid-template-columns:1fr}.special-event-choreographies article .special-event-choreography-links .button{width:100%;min-width:0}}
+
+/* The Special Events section links are an in-page tab row, not the public
+   mobile navigation. Override the legacy global `nav` rule that otherwise
+   fixes this row over the middle of Admin HQ on narrow Safari viewports. */
+@media(max-width:950px){
+  body.ranch-v91 .special-event-admin-tabs{
+    display:flex!important;
+    position:static!important;
+    inset:auto!important;
+    width:100%!important;
+    max-width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    margin:14px 0 18px!important;
+    padding:0 0 8px!important;
+    flex-direction:row!important;
+    align-items:stretch!important;
+    gap:8px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    background:transparent!important;
+    opacity:1!important;
+    visibility:visible!important;
+    transform:none!important;
+    z-index:auto!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-inline:contain;
+    scroll-snap-type:x proximity;
+  }
+  body.ranch-v91 .special-event-admin-tabs a{
+    display:inline-flex;
+    flex:0 0 auto!important;
+    align-items:center;
+    min-height:44px;
+    white-space:nowrap;
+    scroll-snap-align:start;
+  }
+  body.ranch-v91 .special-event-admin-section{min-width:0;overflow-wrap:anywhere}
+  body.ranch-v91 .special-event-admin-section .table-wrap{max-width:100%;-webkit-overflow-scrolling:touch}
+  body.ranch-v91 .special-event-admin-section button,
+  body.ranch-v91 .special-event-admin-section .button{max-width:100%;white-space:normal}
+}
