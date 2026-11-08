@@ -3622,7 +3622,15 @@ async function specialEventProviderDeliveryStatus(env, providerId) {
     const response = await fetch(`https://api.resend.com/emails/${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' }
     });
-    if (!response.ok) return { status: 'LOOKUP_FAILED', http_status: response.status };
+    if (!response.ok) {
+      const failure = await response.json().catch(() => ({}));
+      return {
+        status: 'LOOKUP_FAILED',
+        http_status: response.status,
+        error_code: clean(failure?.name || failure?.code || '', 80) || null,
+        error: clean(failure?.message || failure?.error || '', 240) || null
+      };
+    }
     const data = await response.json().catch(() => ({}));
     return { status: clean(data.last_event || 'ACCEPTED', 80).toUpperCase(), provider_id: id };
   } catch (error) {
@@ -3711,7 +3719,10 @@ async function auditAllSpecialEventPayments(env, { repair = false } = {}) {
       quantity: Number(booking.quantity || 0),
       transaction_id_present: Boolean(clean(checkout?.transactions?.[0]?.id || checkout?.transaction_id || booking.provider_transaction_id, 180)),
       confirmation_status: booking.confirmation_status || null,
-      provider_delivery_status: delivery.status
+      provider_delivery_status: delivery.status,
+      provider_delivery_http_status: delivery.http_status || null,
+      provider_delivery_error_code: delivery.error_code || null,
+      provider_delivery_error: delivery.error || null
       ,capacity_safe: recoveryCapacity.ok
       ,capacity_blockers: recoveryCapacity.blockers
     });
