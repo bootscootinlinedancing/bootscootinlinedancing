@@ -3630,6 +3630,39 @@ async function specialEventProviderDeliveryStatus(env, providerId) {
   }
 }
 
+async function specialEventRecoveryCapacity(env, booking) {
+  if (booking.status === 'PAID') return { ok: true, blockers: [] };
+  const blockers = [];
+  const days = await env.BOOKINGS_DB.prepare(
+    `SELECT d.id,d.label,d.capacity,bd.places,
+      COALESCE((SELECT SUM(x.places) FROM special_event_booking_days x JOIN special_event_bookings b ON b.id=x.booking_id WHERE x.day_id=d.id AND b.status='PAID'),0) paid,
+      COALESCE((SELECT SUM(x.places) FROM special_event_hold_days x JOIN special_event_holds h ON h.id=x.hold_id WHERE x.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP AND h.id<>COALESCE(?,'')),0) held
+     FROM special_event_booking_days bd JOIN special_event_days d ON d.id=bd.day_id WHERE bd.booking_id=?`
+  ).bind(booking.hold_id,booking.id).all();
+  for (const day of days.results || []) {
+    if (day.capacity != null && Number(day.places) > Number(day.capacity)-Number(day.paid)-Number(day.held)) blockers.push(`DAY_CAPACITY:${day.label}`);
+  }
+  const product = await env.BOOKINGS_DB.prepare(
+    `SELECT p.allocation,p.includes_saturday_evening,p.product_type,e.saturday_evening_capacity,
+      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) product_paid,
+      COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP AND h.id<>COALESCE(?,'')),0) product_held,
+      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=p.event_id AND b.status='PAID' AND bp.includes_saturday_evening=1),0) evening_paid,
+      COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=p.event_id AND h.status='ACTIVE' AND h.expires_at>CURRENT_TIMESTAMP AND h.id<>COALESCE(?, '') AND hp.includes_saturday_evening=1),0) evening_held
+     FROM special_event_ticket_products p JOIN special_events e ON e.id=p.event_id WHERE p.id=?`
+  ).bind(booking.hold_id,booking.hold_id,booking.product_id).first();
+  if (product?.allocation != null && Number(booking.quantity) > Number(product.allocation)-Number(product.product_paid)-Number(product.product_held)) blockers.push('PRODUCT_ALLOCATION');
+  if (Number(product?.includes_saturday_evening) && product.saturday_evening_capacity != null && Number(booking.quantity) > Number(product.saturday_evening_capacity)-Number(product.evening_paid)-Number(product.evening_held)) blockers.push('SATURDAY_EVENING_CAPACITY');
+  const competitionPlaces = Number(booking.competition_quantity || (product?.product_type === 'ADD_ON' ? booking.quantity : 0));
+  if (competitionPlaces > 0) {
+    const competition = await env.BOOKINGS_DB.prepare(
+      `SELECT p.allocation,COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN special_event_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID'),0) used
+       FROM special_event_ticket_products p WHERE p.event_id=? AND p.code='MINI_COMPETITION'`
+    ).bind(booking.event_id).first();
+    if (!competition || competitionPlaces > Number(competition.allocation)-Number(competition.used)) blockers.push('COMPETITION_CAPACITY');
+  }
+  return { ok: blockers.length === 0, blockers };
+}
+
 async function auditAllSpecialEventPayments(env, { repair = false } = {}) {
   const eventId = 'special-event-johnny-rossato-2027';
   const rows = await env.BOOKINGS_DB.prepare(
@@ -3639,7 +3672,7 @@ async function auditAllSpecialEventPayments(env, { repair = false } = {}) {
      LEFT JOIN special_event_confirmation_outbox o ON o.booking_id=b.id
      WHERE b.event_id=? ORDER BY b.created_at,b.id`
   ).bind(eventId).all();
-  const summary = { inspected: 0, paid: 0, failed: 0, pending: 0, complimentary: 0, repaired: 0, errors: 0, results: [] };
+  const summary = { inspected: 0, paid: 0, failed: 0, pending: 0, complimentary: 0, repaired: 0, capacity_blocked: 0, errors: 0, results: [] };
   for (const booking of rows.results || []) {
     if (booking.payment_provider === 'COMPLIMENTARY') {
       summary.complimentary += 1;
@@ -3655,9 +3688,14 @@ async function auditAllSpecialEventPayments(env, { repair = false } = {}) {
     else if (providerStatus === 'PENDING') summary.pending += 1;
     else summary.errors += 1;
     const before = booking.status;
+    let recoveryCapacity = { ok: true, blockers: [] };
+    if (providerStatus === 'PAID' && before !== 'PAID') recoveryCapacity = await specialEventRecoveryCapacity(env, booking);
     if (repair && verification.ok && ['PAID', 'FAILED', 'EXPIRED'].includes(providerStatus)) {
-      await applySpecialEventCheckoutState(env, booking, checkout);
-      if ((providerStatus === 'PAID' && before !== 'PAID') || (['FAILED', 'EXPIRED'].includes(providerStatus) && before === 'PENDING')) summary.repaired += 1;
+      if (providerStatus === 'PAID' && !recoveryCapacity.ok) summary.capacity_blocked += 1;
+      else {
+        await applySpecialEventCheckoutState(env, booking, checkout);
+        if ((providerStatus === 'PAID' && before !== 'PAID') || (['FAILED', 'EXPIRED'].includes(providerStatus) && before === 'PENDING')) summary.repaired += 1;
+      }
     }
     const delivery = booking.confirmation_provider_id
       ? await specialEventProviderDeliveryStatus(env, booking.confirmation_provider_id)
@@ -3674,6 +3712,8 @@ async function auditAllSpecialEventPayments(env, { repair = false } = {}) {
       transaction_id_present: Boolean(clean(checkout?.transactions?.[0]?.id || checkout?.transaction_id || booking.provider_transaction_id, 180)),
       confirmation_status: booking.confirmation_status || null,
       provider_delivery_status: delivery.status
+      ,capacity_safe: recoveryCapacity.ok
+      ,capacity_blockers: recoveryCapacity.blockers
     });
   }
   if (repair) {
