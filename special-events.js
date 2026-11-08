@@ -638,8 +638,8 @@ export async function applySpecialEventCheckoutState(env,booking,checkout){
     const ownerPaymentTest=await env.BOOKINGS_DB.prepare(`SELECT id FROM special_event_activity WHERE target_type='BOOKING' AND target_id=? AND action='OWNER_PAYMENT_TEST_CREATED' LIMIT 1`).bind(booking.id).first();
     const confirmationStatus=ownerPaymentTest?'READY':(String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()==='true'?'READY':'DISABLED');
     await env.BOOKINGS_DB.batch([
-      env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='PAID',provider_transaction_id=?,paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`).bind(transaction,booking.id),
-      env.BOOKINGS_DB.prepare(`UPDATE special_event_holds SET status='CONSUMED' WHERE id=? AND status='ACTIVE'`).bind(booking.hold_id),
+      env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='PAID',provider_transaction_id=?,paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('PENDING','FAILED')`).bind(transaction,booking.id),
+      env.BOOKINGS_DB.prepare(`UPDATE special_event_holds SET status='CONSUMED' WHERE id=? AND status IN ('ACTIVE','RELEASED')`).bind(booking.hold_id),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_confirmation_outbox(id,booking_id,status,idempotency_key,recipient_email,subject) VALUES(?,?,?, ?,?,?)`).bind(crypto.randomUUID(),booking.id,confirmationStatus,`special-event-paid:${booking.id}`,booking.customer_email,SPECIAL_EVENT_CONFIRMATION_SUBJECT),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'PAYMENT_CONFIRMED','BOOKING',?,'SUMUP','Authoritative SumUp payment confirmed.',?)`).bind(crypto.randomUUID(),booking.event_id,booking.id,`special-event-paid:${booking.id}`)
     ]);

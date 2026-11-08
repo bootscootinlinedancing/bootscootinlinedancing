@@ -101,6 +101,10 @@ try{
   assert.match(worker,/ownerCustomers\.results\|\|\[\]\)\.length!==1/,'owner payment test must reject missing or ambiguous customer identities');
   assert.match(worker,/product_code:'SATURDAY_SOCIAL'/,'owner payment test must be fixed to the approved £15 product');
   assert.match(worker,/special-event-owner-payment-test\/reconcile/,'HQ must expose a protected reconciliation fallback for the controlled payment');
+  assert.match(worker,/special-event-payment-email-audit/,'HQ must expose an owner-protected complete payment and email audit');
+  assert.match(worker,/DAY_CAPACITY:.*SATURDAY_EVENING_CAPACITY.*COMPETITION_CAPACITY/s,'failed-payment recovery must stop before overallocating any shared capacity');
+  assert.match(service,/status IN \('PENDING','FAILED'\)/,'authoritatively paid failed rows must be safely recoverable');
+  assert.match(service,/status IN \('ACTIVE','RELEASED'\)/,'a recovered paid checkout must consume its released hold exactly once');
   assert.match(worker,/RECONCILE £15 OWNER PAYMENT TEST/,'reconciliation must require an explicit server-side confirmation');
   assert.match(worker,/if\(!checkout\)return json\(\{error:'Special Event payment verification is temporarily unavailable\.'\},502\)/,'failed webhook verification must return a retryable failure instead of acknowledging the callback');
   assert.match(service,/CHECKOUT_REFERENCE_MISMATCH/,'reconciliation must verify the authoritative checkout reference');
