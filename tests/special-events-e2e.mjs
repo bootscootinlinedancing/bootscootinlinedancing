@@ -55,11 +55,15 @@ assert.equal(db.prepare('SELECT COUNT(*) n FROM special_event_attendees WHERE bo
 assert.equal(db.prepare('SELECT COUNT(*) n FROM special_event_confirmation_outbox WHERE booking_id=?').get(booking.id).n,1);
 const reconciliationWorkerSource=readFileSync(new URL('../_worker.js',import.meta.url),'utf8');
 const specialEventsSource=readFileSync(new URL('../special-events.js',import.meta.url),'utf8');
+const specialEventsStyles=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
 assert.match(reconciliationWorkerSource,/reconcilePendingSpecialEventBookings/,'HQ must expose authoritative pending-payment reconciliation');
 assert.match(reconciliationWorkerSource,/runProtectedEmailAutomations[\s\S]*reconcilePendingSpecialEventBookings\(env\)/,'the protected scheduled automation must reconcile pending Special Event payments');
 assert.match(reconciliationWorkerSource,/async scheduled[\s\S]*reconcilePendingSpecialEventBookings\(env\)/,'the Worker scheduled handler must reconcile pending Special Event payments');
 assert.doesNotMatch(specialEventsSource,/expires_at\s*>\s*CURRENT_TIMESTAMP/,'Special Event hold reads must compare ISO timestamps using the ISO now expression');
 assert.doesNotMatch(reconciliationWorkerSource,/special_event_holds[\s\S]{0,500}expires_at\s*>\s*CURRENT_TIMESTAMP/,'recovery capacity checks must not treat expired ISO holds as active');
+assert.match(specialEventsStyles,/\.special-event-admin-tabs a[\s\S]{0,400}white-space:nowrap!important/,'mobile Special Events tabs must keep readable natural-width labels');
+assert.match(specialEventsStyles,/\.special-event-admin-section \.table-wrap table[\s\S]{0,160}min-width:680px/,'dense Special Events tables must scroll locally instead of squeezing into phone-width columns');
+assert.doesNotMatch(specialEventsStyles,/\.special-event-admin-section\{min-width:0;overflow-wrap:anywhere\}/,'Special Events content must not wrap labels character by character');
 assert.match(reconciliationWorkerSource,/reconcileSpecialEventReturn/,'the customer return path must recover a missed webhook');
 assert.match(reconciliationWorkerSource,/SUMUP_SPECIAL_EVENTS_API_KEY/,'Special Event reconciliation must use the dedicated SumUp credential');
 assert.match(reconciliationWorkerSource,/APPROVED_OWNER_TEST_REFUNDS = new Map/,'owner-test refunds must be locked to the approved references');

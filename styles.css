@@ -10433,8 +10433,77 @@ body:not(.ranch-v91):not(.ranch-body):not(.admin-login-body) header .public-bran
     white-space:nowrap;
     scroll-snap-align:start;
   }
-  body.ranch-v91 .special-event-admin-section{min-width:0;overflow-wrap:anywhere}
+  body.ranch-v91 .special-event-admin-section{
+    min-width:0;
+    overflow-wrap:break-word;
+    word-break:normal;
+  }
   body.ranch-v91 .special-event-admin-section .table-wrap{max-width:100%;-webkit-overflow-scrolling:touch}
   body.ranch-v91 .special-event-admin-section button,
   body.ranch-v91 .special-event-admin-section .button{max-width:100%;white-space:normal}
+}
+
+/* Special Events HQ mobile readability: keep labels intact and let dense
+   desktop data scroll inside its own region instead of squeezing every word. */
+@media(max-width:760px){
+  body.ranch-v91 .special-event-admin-tabs a{
+    width:auto!important;
+    min-width:max-content!important;
+    max-width:none!important;
+    white-space:nowrap!important;
+    overflow-wrap:normal!important;
+    word-break:normal!important;
+    hyphens:none!important;
+  }
+  body.ranch-v91 .special-event-admin-section,
+  body.ranch-v91 .special-event-admin-section *{
+    word-break:normal;
+    hyphens:none;
+  }
+  body.ranch-v91 .special-event-admin-section :is(h1,h2,h3,h4,p,span,strong,small,label,button,.button){
+    overflow-wrap:break-word;
+  }
+  body.ranch-v91 .special-event-admin-section .ranch-list article{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:10px;
+    align-items:start;
+  }
+  body.ranch-v91 .special-event-admin-section .ranch-list article>*{
+    min-width:0;
+    max-width:100%;
+  }
+  body.ranch-v91 .special-event-admin-section .table-wrap{
+    width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-inline:contain;
+  }
+  body.ranch-v91 .special-event-admin-section .table-wrap table{
+    width:max-content;
+    min-width:680px;
+  }
+  body.ranch-v91 .special-event-admin-section .table-wrap :is(th,td){
+    min-width:7.5rem;
+    overflow-wrap:break-word;
+  }
+  body.ranch-v91 .special-event-admin-section .table-wrap th{
+    white-space:nowrap;
+  }
+  body.ranch-v91 .special-event-admin-section .ranch-form-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  body.ranch-v91 .special-event-admin-section .ranch-form-grid .wide{
+    grid-column:auto!important;
+  }
+  body.ranch-v91 .special-event-admin-section :is(button,.button){
+    min-height:44px;
+  }
+  body.ranch-v91 .ranch-dialog{
+    max-height:calc(100dvh - 16px);
+    overflow:auto;
+  }
+  body.ranch-v91 .ranch-dialog form{
+    padding:22px 16px;
+  }
 }
