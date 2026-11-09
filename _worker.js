@@ -3638,6 +3638,27 @@ async function specialEventProviderDeliveryStatus(env, providerId) {
   }
 }
 
+function constantTimeBytesEqual(left,right){if(left.length!==right.length)return false;let difference=0;for(let index=0;index<left.length;index+=1)difference|=left[index]^right[index];return difference===0;}
+async function resendWebhook(request,env){
+  if(!env.BOOKINGS_DB)return json({error:'Email delivery storage is unavailable.'},503);
+  const secret=String(env.RESEND_WEBHOOK_SIGNING_SECRET||'').trim();
+  if(!secret)return json({error:'Email delivery webhook is not configured.'},503);
+  const eventId=clean(request.headers.get('svix-id'),180),timestamp=Number(request.headers.get('svix-timestamp')),signatureHeader=String(request.headers.get('svix-signature')||'');
+  if(!eventId||!Number.isFinite(timestamp)||Math.abs(Date.now()/1000-timestamp)>300)return json({error:'Invalid or expired webhook signature.'},401);
+  const raw=await request.text();
+  const encodedSecret=secret.startsWith('whsec_')?secret.slice(6):secret;
+  let secretBytes;try{secretBytes=Uint8Array.from(atob(encodedSecret),character=>character.charCodeAt(0));}catch{return json({error:'Webhook signing secret is invalid.'},503);}
+  const key=await crypto.subtle.importKey('raw',secretBytes,{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const expected=new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(`${eventId}.${timestamp}.${raw}`)));
+  const valid=signatureHeader.split(' ').filter(part=>part.startsWith('v1,')).some(part=>{try{return constantTimeBytesEqual(expected,Uint8Array.from(atob(part.slice(3)),character=>character.charCodeAt(0)));}catch{return false;}});
+  if(!valid)return json({error:'Invalid webhook signature.'},401);
+  let payload;try{payload=JSON.parse(raw);}catch{return json({error:'Invalid webhook payload.'},400);}
+  const type=clean(payload?.type,100),providerId=clean(payload?.data?.email_id||payload?.data?.id,180)||null,occurredAt=payload?.created_at?new Date(Number(payload.created_at)*1000).toISOString():null;
+  if(!type)return json({error:'Webhook event type is required.'},400);
+  await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_delivery_events(id,provider_event_id,provider_id,event_type,occurred_at,payload_json,signature_timestamp) VALUES(?,?,?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,providerId,type,occurredAt,raw,timestamp).run();
+  return json({ok:true});
+}
+
 async function specialEventRecoveryCapacity(env, booking) {
   if (booking.status === 'PAID') return { ok: true, blockers: [] };
   const blockers = [];
@@ -8086,6 +8107,7 @@ export default {
       if (path === '/api/merch-order-status' && request.method === 'GET') return merchOrderStatus(request, env, url);
       if (path === '/api/admin/merch-orders' && ['GET','POST','PATCH'].includes(request.method)) return adminMerchOrders(request, env);
       if (path === '/api/sumup-webhook' && request.method === 'POST') return sumUpWebhook(request, env);
+      if (path === '/api/resend-webhook' && request.method === 'POST') return resendWebhook(request,env);
       if (path === '/api/sumup/callback' && request.method === 'GET') return sumUpOAuthCallback(request, env, url);
       if (path === '/api/booking-status' && request.method === 'GET') return bookingStatus(request, env, url);
       if (path === '/api/booking-confirmed-claim' && request.method === 'POST') return claimBookingConfirmed(request,env);
