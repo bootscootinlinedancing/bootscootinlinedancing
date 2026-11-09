@@ -23,5 +23,7 @@ CREATE TABLE email_delivery_events (
 );
 
 CREATE INDEX email_delivery_events_provider ON email_delivery_events(provider_id,received_at);
+CREATE TRIGGER email_confirmation_attempts_immutable_update BEFORE UPDATE ON email_confirmation_attempts BEGIN SELECT RAISE(ABORT,'email confirmation attempts are immutable'); END;
+CREATE TRIGGER email_confirmation_attempts_immutable_delete BEFORE DELETE ON email_confirmation_attempts BEGIN SELECT RAISE(ABORT,'email confirmation attempts are immutable'); END;
 CREATE TRIGGER email_delivery_events_immutable_update BEFORE UPDATE ON email_delivery_events BEGIN SELECT RAISE(ABORT,'email delivery events are immutable'); END;
 CREATE TRIGGER email_delivery_events_immutable_delete BEFORE DELETE ON email_delivery_events BEGIN SELECT RAISE(ABORT,'email delivery events are immutable'); END;

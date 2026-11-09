@@ -3655,6 +3655,7 @@ async function resendWebhook(request,env){
   let payload;try{payload=JSON.parse(raw);}catch{return json({error:'Invalid webhook payload.'},400);}
   const type=clean(payload?.type,100),providerId=clean(payload?.data?.email_id||payload?.data?.id,180)||null,occurredAt=payload?.created_at?new Date(Number(payload.created_at)*1000).toISOString():null;
   if(!type)return json({error:'Webhook event type is required.'},400);
+  if(providerId)await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_confirmation_attempts(id,provider_id,idempotency_key,source_type,source_id,recipient_email,status) SELECT ?,?,o.idempotency_key,'SPECIAL_EVENT_BOOKING',o.booking_id,o.recipient_email,'ACCEPTED' FROM special_event_confirmation_outbox o WHERE o.provider_id=?`).bind(crypto.randomUUID(),providerId,providerId).run();
   await env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO email_delivery_events(id,provider_event_id,provider_id,event_type,occurred_at,payload_json,signature_timestamp) VALUES(?,?,?,?,?,?,?)`).bind(crypto.randomUUID(),eventId,providerId,type,occurredAt,raw,timestamp).run();
   return json({ok:true});
 }
