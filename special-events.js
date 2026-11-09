@@ -126,8 +126,9 @@ export async function publicSpecialEvents(request,env,url){
       const publicProducts=(products.results||[]).map(product=>{
         const paid=Number(product.sold_count||0),allocation=product.allocation==null?null:Number(product.allocation),temporarilyUnavailable=product.remaining!=null&&Number(product.remaining)<=0&&allocation!=null&&paid<allocation;
         const availability_status=product.release_state==='SOLD_OUT'||Number(product.shared_capacity_sold_out)||(allocation!=null&&paid>=allocation)?'SOLD_OUT':product.release_state==='ACTIVE'?(temporarilyUnavailable?'TEMPORARILY_UNAVAILABLE':'AVAILABLE'):product.release_state==='CLOSED'?'SALES_CLOSED':'NOT_YET_AVAILABLE';
+        const max_bookable_quantity=availability_status==='AVAILABLE'?Math.max(1,Math.min(Number(product.max_per_checkout||1),product.remaining==null?Number(product.max_per_checkout||1):Number(product.remaining))):0;
         const {allocation:_allocation,sold_count:_sold,remaining:_remaining,shared_capacity_sold_out:_shared,...safe}=product;
-        return {...safe,availability_status};
+        return {...safe,availability_status,max_bookable_quantity};
       });
       return response({event,days:days.results||[],programme:programme.results||[],ticket_products:publicProducts,choreographies:choreographies.results||[]});
     }
