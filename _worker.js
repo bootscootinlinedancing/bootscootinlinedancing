@@ -3575,6 +3575,71 @@ async function retrieveSumUpCheckout(env, checkoutId, credentialName = 'SUMUP_AP
   return response.json().catch(() => null);
 }
 
+// This diagnostic is available only behind the existing production HQ Access gate.
+// It never calls reconciliation, notification, schema-setup or mutation functions.
+async function readOnlyPaymentVerification(request,env){
+  const url=new URL(request.url);
+  const reply=(data,status=200,type='application/json; charset=utf-8',nonce='')=>new Response(type.startsWith('application/json')?JSON.stringify(data):data,{status,headers:{
+    'content-type':type,'cache-control':'private, no-store, no-cache, must-revalidate, max-age=0',
+    'cdn-cache-control':'no-store','cloudflare-cdn-cache-control':'no-store',pragma:'no-cache',expires:'0',
+    vary:'Cookie, Cf-Access-Authenticated-User-Email, X-Booking-Reference, X-Booking-Kind',
+    'referrer-policy':'no-referrer','x-content-type-options':'nosniff','x-frame-options':'DENY',
+    'cross-origin-resource-policy':'same-origin',
+    'content-security-policy':`default-src 'none'; script-src ${nonce?`'nonce-${nonce}'`:"'none'"}; style-src ${nonce?`'nonce-${nonce}'`:"'none'"}; connect-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'`
+  }});
+  // Public aliases and pages.dev must not accept spoofed HQ headers/cookies.
+  if(url.origin!==SITE_ORIGIN||url.pathname!=='/ranch/api/admin/payment-verification')return reply({error:'Not found.'},404);
+  const owner=String(env.ADMIN_EMAIL||'nora@bootscootinlinedancing.co.uk').trim().toLowerCase();
+  const email=String(request.headers.get('Cf-Access-Authenticated-User-Email')||'').trim().toLowerCase();
+  if(!email||!request.headers.get('Cf-Access-Jwt-Assertion'))return reply({error:'HQ sign-in required.'},401);
+  if(!emailOk(owner)||email!==owner)return reply({error:'Owner access required.'},403);
+  if(request.method!=='GET')return reply({error:'GET only.'},405);
+  if(!env.BOOKINGS_DB)return reply({error:'Verification storage is unavailable.'},503);
+  // References travel in headers, not URLs, to avoid putting them in URL logs/referrers.
+  if(url.search)return reply({error:'Use the protected lookup form.'},400);
+  const reference=String(request.headers.get('X-Booking-Reference')||'').trim();
+  const kind=String(request.headers.get('X-Booking-Kind')||'').trim();
+  if(!reference&&!kind){
+    const nonce=crypto.randomUUID();
+    return reply(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HQ read-only payment verification</title>
+<style nonce="${nonce}">body{max-width:70rem;margin:2rem auto;padding:0 1rem;font:16px/1.5 system-ui}label{display:block;margin:1rem 0}input,select,button{font:inherit;padding:.6rem}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+<h1>Read-only payment verification</h1><p>Owner access only. Checks one existing checkout and duplicate claims. This tool does not recover bookings or send emails.</p>
+<form id="lookup"><label>Booking type <select id="kind"><option value="regular">Regular class</option><option value="special">Special event</option></select></label><label>Exact booking reference <input id="reference" required maxlength="120" autocomplete="off" spellcheck="false"></label><button id="submit">Verify existing checkout</button></form><pre id="result" role="status" aria-live="polite"></pre>
+<script nonce="${nonce}">document.getElementById('lookup').addEventListener('submit',async event=>{event.preventDefault();const button=document.getElementById('submit'),output=document.getElementById('result');button.disabled=true;output.textContent='Checking…';try{const response=await fetch('/ranch/api/admin/payment-verification',{method:'GET',headers:{Accept:'application/json','X-Booking-Reference':document.getElementById('reference').value.trim(),'X-Booking-Kind':document.getElementById('kind').value},credentials:'same-origin',cache:'no-store',referrerPolicy:'no-referrer'});if(!String(response.headers.get('content-type')).includes('application/json'))throw new Error();output.textContent=JSON.stringify(await response.json(),null,2);}catch{output.textContent='Verification unavailable. No records were changed. Sign in to HQ again if needed.';}finally{button.disabled=false;}});</script></html>`,200,'text/html; charset=utf-8',nonce);
+  }
+  if(!['regular','special'].includes(kind)||reference.length>120||!/^BS(?:E)?-[A-Z0-9-]+$/.test(reference))return reply({error:'Choose a valid type and exact booking reference.'},400);
+  try{
+    const table=kind==='regular'?'bookings':'special_event_bookings';
+    const product=kind==='regular'?'ticket_product_label':'product_name_snapshot';
+    const currency=kind==='regular'?'currency':"'GBP' AS currency";
+    const booking=await env.BOOKINGS_DB.prepare(`SELECT id,reference,customer_name,customer_email,quantity,amount_pence,${currency},status,payment_provider,provider_checkout_id,provider_transaction_id,${product} AS product_label FROM ${table} WHERE reference=?`).bind(reference).first();
+    if(!booking)return reply({error:'Booking not found.'},404);
+    if(booking.payment_provider!=='SUMUP'||!booking.provider_checkout_id)return reply({error:'This booking has no SumUp checkout.'},409);
+    let checkout;
+    try{checkout=await retrieveSumUpCheckout(env,booking.provider_checkout_id,kind==='special'?'SUMUP_SPECIAL_EVENTS_API_KEY':'SUMUP_API_KEY');}
+    catch{return reply({error:'Provider lookup unavailable. No records changed.'},502);}
+    if(!checkout||typeof checkout!=='object'||Array.isArray(checkout))return reply({error:'Provider checkout unavailable. No records changed.'},502);
+    const verification=verifySpecialEventCheckout(booking,checkout,env.SUMUP_MERCHANT_CODE);
+    const transactions=(Array.isArray(checkout.transactions)?checkout.transactions:[]).filter(item=>item&&typeof item==='object').map(item=>({id:clean(item.id,180)||null,code:clean(item.transaction_code||item.code,120)||null,status:clean(item.status,30)||null,amount:item.amount??null,currency:clean(item.currency,12)||null}));
+    const successful=transactions.filter(item=>item.id&&item.status==='SUCCESSFUL'&&item.amount!=null&&Math.round(Number(item.amount)*100)===Number(booking.amount_pence)&&item.currency==='GBP');
+    const ids=[...new Set([...transactions.map(item=>item.id),clean(checkout.transaction_id,180)].filter(Boolean))];
+    if(ids.length>20)return reply({error:'Too many payment attempts for this bounded check. Manual review required.'},409);
+    const duplicates=[];
+    for(const [family,otherTable,idColumn] of [['regular','bookings','provider_checkout_id'],['special','special_event_bookings','provider_checkout_id'],['class_pass','member_passes','provider_checkout_id'],['merch','merch_orders','provider_checkout_id'],['private','private_event_payments','provider_reference'],['regular_payment','payments','provider_reference']]){
+      const txColumn=['private','regular_payment'].includes(family)?'provider_reference':'provider_transaction_id';
+      const txClause=ids.length?` OR ${txColumn} IN (${ids.map(()=>'?').join(',')})`:'';
+      const rows=await env.BOOKINGS_DB.prepare(`SELECT ${family==='regular_payment'?'booking_id AS id':'id'} FROM ${otherTable} WHERE (${idColumn}=?${txClause})`).bind(booking.provider_checkout_id,...ids).all();
+      for(const row of rows.results||[])if((family==='regular_payment'?'regular':family)!==kind||row.id!==booking.id)duplicates.push({kind:family,id:row.id});
+    }
+    return reply({mode:'READ_ONLY',reference,kind,customer:{name:booking.customer_name,email:booking.customer_email},product:booking.product_label,quantity:booking.quantity,website_status:booking.status,stored_transaction_id:booking.provider_transaction_id||null,
+      checkout:{id:clean(checkout.id,180),reference:clean(checkout.checkout_reference,120),merchant:clean(checkout.merchant_code,80),amount:checkout.amount,currency:clean(checkout.currency,12),status:clean(checkout.status,30),description:clean(checkout.description,500),transaction_id:clean(checkout.transaction_id,180)||null},verification,transactions,duplicate_claims:duplicates,
+      payment_match_verified:booking.currency==='GBP'&&verification.ok&&verification.status==='PAID'&&successful.length===1&&duplicates.length===0});
+  }catch{
+    // Never log schema/provider exceptions or return raw exceptions containing private data.
+    return reply({error:'Verification storage unavailable or schema incompatible. No records changed.'},503);
+  }
+}
+
 async function reconcileSpecialEventBooking(env, booking, {sendConfirmation = true} = {}) {
   if (!booking?.provider_checkout_id) return { outcome: 'SKIPPED', reason: 'CHECKOUT_ID_MISSING' };
   const checkout = await retrieveSumUpCheckout(env, booking.provider_checkout_id, 'SUMUP_SPECIAL_EVENTS_API_KEY');
@@ -8173,6 +8238,7 @@ export default {
         const result=await reconcilePendingSpecialEventBookings(env);
         return json({ok:true,...result});
       }
+      if(path==='/api/admin/payment-verification')return readOnlyPaymentVerification(request,env);
       if (path === '/api/admin/special-event-payment-email-audit' && ['GET','POST'].includes(request.method)) {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
         if(!specialEventSumUpConfigured(env))return json({error:'The dedicated Special Events payment connection is unavailable.'},503);
