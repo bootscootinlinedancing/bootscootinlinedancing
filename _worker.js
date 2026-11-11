@@ -3599,10 +3599,11 @@ async function readOnlyPaymentVerification(request,env,url){
   if(checkout.transaction_id)ids.push(String(checkout.transaction_id));
   const duplicates=[];
   // Check every booking family before recommending recovery; do not mutate any of them.
-  for(const [family,otherTable,idColumn] of [['regular','bookings','provider_checkout_id'],['special','special_event_bookings','provider_checkout_id'],['class_pass','member_passes','provider_checkout_id'],['merch','merch_orders','provider_checkout_id'],['private','private_event_payments','provider_reference']]){
-    const txClause=ids.length&&family!=='private'?` OR provider_transaction_id IN (${ids.map(()=>'?').join(',')})`:'';
-    const rows=await env.BOOKINGS_DB.prepare(`SELECT id FROM ${otherTable} WHERE (${idColumn}=?${txClause})`).bind(booking.provider_checkout_id,...(family==='private'?[]:ids)).all();
-    for(const row of rows.results||[])if(family!==kind||row.id!==booking.id)duplicates.push({kind:family,id:row.id});
+  for(const [family,otherTable,idColumn] of [['regular','bookings','provider_checkout_id'],['special','special_event_bookings','provider_checkout_id'],['class_pass','member_passes','provider_checkout_id'],['merch','merch_orders','provider_checkout_id'],['private','private_event_payments','provider_reference'],['regular_payment','payments','provider_reference']]){
+    const txColumn=['private','regular_payment'].includes(family)?'provider_reference':'provider_transaction_id';
+    const txClause=ids.length?` OR ${txColumn} IN (${ids.map(()=>'?').join(',')})`:'';
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT ${family==='regular_payment'?'booking_id AS id':'id'} FROM ${otherTable} WHERE (${idColumn}=?${txClause})`).bind(booking.provider_checkout_id,...ids).all();
+    for(const row of rows.results||[])if((family==='regular_payment'?'regular':family)!==kind||row.id!==booking.id)duplicates.push({kind:family,id:row.id});
   }
   return json({mode:'READ_ONLY',reference,kind,customer:{name:booking.customer_name,email:booking.customer_email},product:booking.ticket_product_label||booking.product_name_snapshot||booking.ticket_type,quantity:booking.quantity,website_status:booking.status,stored_transaction_id:booking.provider_transaction_id||null,checkout:{id:checkout.id,reference:checkout.checkout_reference,merchant:checkout.merchant_code,amount:checkout.amount,currency:checkout.currency,status:checkout.status,transaction_id:checkout.transaction_id||null},verification,transactions,duplicate_claims:duplicates,recovery_verified:verification.ok&&verification.status==='PAID'&&successful.length===1&&duplicates.length===0});
 }

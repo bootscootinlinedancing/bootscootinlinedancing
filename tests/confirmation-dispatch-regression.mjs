@@ -14,6 +14,7 @@ CREATE TABLE special_event_bookings(id TEXT,reference TEXT,provider_checkout_id 
 CREATE TABLE member_passes(id TEXT,provider_checkout_id TEXT,provider_transaction_id TEXT);
 CREATE TABLE merch_orders(id TEXT,provider_checkout_id TEXT,provider_transaction_id TEXT);
 CREATE TABLE private_event_payments(id TEXT,provider_reference TEXT);
+CREATE TABLE payments(id TEXT,booking_id TEXT,provider_reference TEXT);
 INSERT INTO classes VALUES('class','Synthetic class','2030-01-01T19:00:00Z','Test venue','Test address');`);
 db.exec(readFileSync(new URL('../migrations/0019_booking_confirmation_outbox.sql',import.meta.url),'utf8'));
 db.exec(`UPDATE booking_confirmation_policy SET delivery_enabled=1,eligible_paid_from='2020-01-01';`);
@@ -37,6 +38,7 @@ const state=()=>JSON.stringify(db.prepare('SELECT * FROM bookings ORDER BY id').
 response=await mod.default.fetch(request(),env,{});assert.equal(response.status,200);let result=await response.json();assert.equal(result.recovery_verified,true);assert.equal(result.customer.email,'guest@example.test');assert.equal(state(),before);assert(queries.every(q=>q.trim().startsWith('SELECT')),'verification must perform only SELECTs');
 db.exec("INSERT INTO merch_orders VALUES('other','other-checkout','transaction')");response=await mod.default.fetch(request(),env,{});result=await response.json();assert.equal(result.recovery_verified,false);assert.equal(result.duplicate_claims[0].kind,'merch');db.exec('DELETE FROM merch_orders');
 for(const [key,value] of [['id','wrong'],['checkout_reference','wrong'],['amount',9],['currency','EUR'],['merchant_code','OTHER']]){const old=checkout[key];checkout[key]=value;response=await mod.default.fetch(request(),env,{});assert.equal((await response.json()).recovery_verified,false,key);checkout[key]=old;}
+db.exec("INSERT INTO payments VALUES('legacy','different-booking','transaction')");response=await mod.default.fetch(request(),env,{});result=await response.json();assert.equal(result.recovery_verified,false);assert.equal(result.duplicate_claims[0].kind,'regular_payment');db.exec('DELETE FROM payments');
 checkout.transactions[0].status='FAILED';response=await mod.default.fetch(request(),env,{});assert.equal((await response.json()).recovery_verified,false,'failed attempt is not captured payment');checkout.transactions[0].status='SUCCESSFUL';
 checkout.checkout_reference='wrong';const beforeMismatch=state();await assert.rejects(()=>mod.syncSumUpBooking(env,db.prepare("SELECT * FROM bookings WHERE id='pending'").get()),/CHECKOUT_REFERENCE_MISMATCH/);assert.equal(state(),beforeMismatch);
 console.log('PASS immediate targeted paid confirmations, concurrent dedupe, stable retries, unpaid rejection, retry-window review, protected read-only exact checkout verification, cross-family duplicate claims and provider mismatch rejection');
