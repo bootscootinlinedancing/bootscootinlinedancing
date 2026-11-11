@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
-const source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'');
+let source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'');
+const signingKey=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
+const publicKey={...await crypto.subtle.exportKey('jwk',signingKey.publicKey),kid:'synthetic-key'};
+source=source.replace(/const accessKeys=\/\*payment-verification-public-keys\*\/.*;/,`const accessKeys=${JSON.stringify([publicKey])};`);
+const encode=value=>Buffer.from(typeof value==='string'?value:JSON.stringify(value)).toString('base64url');
+async function session(claims={},header={}){const prefix=encode({alg:'RS256',kid:'synthetic-key',...header})+'.'+encode({email:'owner@example.test',iss:'https://still-sunset-1371.cloudflareaccess.com',aud:['bad3d946a17b7b31b9c97dbfbe9ed3f55b1120ca47636adf95c3e918bf496eb3'],exp:Math.floor(Date.now()/1000)+600,...claims});return prefix+'.'+Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',signingKey.privateKey,new TextEncoder().encode(prefix))).toString('base64url');}
+const ownerSession=await session();
 const worker=await import(`data:text/javascript;base64,${Buffer.from(special+'\n'+source).toString('base64')}`);
 const db=new DatabaseSync(':memory:');
 // Column names/types checked against production sqlite_master. No production rows are used.
@@ -20,12 +26,12 @@ const env={ADMIN_EMAIL:'owner@example.test',SUMUP_API_KEY:'secret-regular-key',S
 const checkout={id:'checkout-one',checkout_reference:'BS-SYNTHETIC-ONE',amount:8,currency:'GBP',merchant_code:'MERCHANT',status:'PAID',description:'Synthetic ticket',transactions:[{id:'successful',transaction_code:'SYNTHETIC-TX',status:'SUCCESSFUL',amount:8,currency:'GBP'}]};
 globalThis.fetch=async(url,options)=>{calls.push({url,method:options.method,key:options.headers.get('Authorization')});assert.equal(options.method,'GET');assert(url.startsWith('https://api.sumup.com/v0.1/checkouts/'));if(providerMode==='throw')throw new Error('secret-regular-key person@example.test');if(providerMode==='bad-json')return new Response('not JSON');if(providerMode==='error')return Response.json({private:'secret-regular-key'},{status:500});return Response.json(checkout)};
 const origin='https://bootscootinlinedancing.co.uk';const path='/ranch/api/admin/payment-verification';
-const headers={'Cf-Access-Authenticated-User-Email':'owner@example.test','Cf-Access-Jwt-Assertion':'trusted-edge-test-assertion','X-Booking-Reference':'BS-SYNTHETIC-ONE','X-Booking-Kind':'regular'};
+const headers={'Cf-Access-Authenticated-User-Email':'owner@example.test','Cf-Access-Jwt-Assertion':ownerSession,'X-Booking-Reference':'BS-SYNTHETIC-ONE','X-Booking-Kind':'regular'};
 const request=(changes={},route=origin+path,method='GET')=>worker.default.fetch(new Request(route,{method,headers:{...headers,...changes}}),env,{});
 const responseJson=async response=>{assert.match(response.headers.get('cache-control'),/private.*no-store/);assert.equal(response.headers.get('referrer-policy'),'no-referrer');assert.equal(response.headers.get('cloudflare-cdn-cache-control'),'no-store');const text=await response.text();assert(!text.includes('secret-regular-key'));assert(!text.includes('secret-special-key'));return JSON.parse(text)};
 let response=await worker.default.fetch(new Request(origin+path),env,{});assert.equal(response.status,401);await responseJson(response);assert.equal(calls.length,0);assert.equal(queries.length,0);
 response=await request({'Cf-Access-Authenticated-User-Email':'stranger@example.test'});assert.equal(response.status,403);await responseJson(response);
-response=await request({'Cf-Access-Authenticated-User-Email':'','Cookie':'CF_Authorization=forged'});assert.equal(response.status,401);
+response=await request({'Cf-Access-Authenticated-User-Email':'','Cookie':'CF_Authorization=forged','Cf-Access-Jwt-Assertion':''});assert.equal(response.status,401);
 response=await request({},origin+'/api/admin/payment-verification');assert.equal(response.status,404);
 response=await request({},'https://preview.pages.dev'+path);assert.equal(response.status,404);
 response=await request({},origin+path,'POST');assert.equal(response.status,405);assert.equal(calls.length,0);
@@ -42,3 +48,6 @@ db.exec('ALTER TABLE payments RENAME TO missing_payments');response=await reques
 response=await request({'X-Booking-Reference':'BS-SYNTHETIC-MISSING'});assert.equal(response.status,404);await responseJson(response);
 checkout.id='checkout-event';checkout.checkout_reference='BSE-SYNTHETIC-ONE';checkout.transactions=[{id:'older-failed',status:'FAILED',amount:8,currency:'GBP'},...transactions];response=await request({'X-Booking-Kind':'special','X-Booking-Reference':'BSE-SYNTHETIC-ONE'});result=await responseJson(response);assert.equal(result.payment_match_verified,true);assert.equal(calls.at(-1).key,'Bearer secret-special-key');assert.equal(calls.at(-1).url,'https://api.sumup.com/v0.1/checkouts/checkout-event');assert.equal(result.stored_transaction_id,'older-failed');assert.equal(result.transactions[1].id,'successful');assert.equal(snapshot(),before,'all records remain byte-for-byte unchanged');assert(queries.every(sql=>sql.trim().startsWith('SELECT')));
 console.log('PASS owner/edge/path restrictions, private no-store responses, header-only references, SELECT-only exact checkout verification, provider failures, missing schema/transactions, all six duplicate-claim families, regular/special credentials and zero mutations');
+
+const beforeAuthCalls=calls.length;for(const token of [await session({exp:1}),await session({iss:'https://wrong.example.test'}),await session({aud:['wrong']}),await session({nbf:Math.floor(Date.now()/1000)+3600}),await session({}, {alg:'HS256'}),ownerSession.split('.').slice(0,2).join('.')+'.AAAA']){response=await request({'Cf-Access-Jwt-Assertion':token});assert.equal(response.status,401);await responseJson(response);}assert.equal(calls.length,beforeAuthCalls,'invalid signatures/claims must never query SumUp');
+response=await request({'Cf-Access-Jwt-Assertion':'','Cf-Access-Authenticated-User-Email':'','Cookie':'CF_Authorization='+ownerSession,'X-Booking-Kind':'special','X-Booking-Reference':'BSE-SYNTHETIC-ONE'});assert.equal(response.status,200);assert.equal((await responseJson(response)).payment_match_verified,true,'signed owner cookie authenticates without forwarded headers');assert.equal(snapshot(),before);console.log('PASS cryptographic owner-cookie verification; wrong signatures, issuer, audience, expiry, not-before and algorithms fail closed');
