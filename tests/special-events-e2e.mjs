@@ -26,6 +26,7 @@ db.exec(`PRAGMA foreign_keys=ON;
 db.exec(readFileSync(new URL('../migrations/0032_special_events.sql',import.meta.url),'utf8'));
 db.exec(readFileSync(new URL('../migrations/0033_johnny_programme_times.sql',import.meta.url),'utf8'));
 db.exec(readFileSync(new URL('../migrations/0034_johnny_owner_decisions.sql',import.meta.url),'utf8'));
+db.exec(readFileSync(new URL('../migrations/0038_confirmation_dispatch_reliability.sql',import.meta.url),'utf8'));
 const prepare=(sql,params=[])=>({sql,params,bind(...values){return prepare(sql,values)},async first(){return db.prepare(sql).get(...params)||null},async all(){return {results:db.prepare(sql).all(...params)}},async run(){return {success:true,meta:db.prepare(sql).run(...params)}}});
 const objects=new Map(),uploads=new Map();
 const env={ADMIN_EMAIL:'owner@example.test',SUMUP_MERCHANT_CODE:'LOCAL_ONLY',BOOKINGS_DB:{prepare,async batch(items){db.exec('BEGIN');try{const result=items.map(item=>({success:true,meta:db.prepare(item.sql).run(...item.params)}));db.exec('COMMIT');return result}catch(error){db.exec('ROLLBACK');throw error}}},MEDIA_BUCKET:{async put(key,body,options){objects.set(key,{body:new Uint8Array(body),options})},async get(key,options={}){const value=objects.get(key);if(!value)return null;const range=options.range;if(!range)return {body:value.body};return {body:value.body.slice(range.offset,range.offset+range.length)}},async delete(key){objects.delete(key)},async createMultipartUpload(key,options){const uploadId=`upload-${uploads.size+1}`;uploads.set(uploadId,{key,options,parts:new Map()});return {uploadId}},resumeMultipartUpload(key,uploadId){const upload=uploads.get(uploadId);if(!upload||upload.key!==key)throw new Error('upload missing');return {async uploadPart(partNumber,bytes){upload.parts.set(partNumber,new Uint8Array(bytes));return {partNumber,etag:`etag-${partNumber}`}},async complete(parts){const combined=parts.sort((a,b)=>a.partNumber-b.partNumber).flatMap(part=>[...upload.parts.get(part.partNumber)]);objects.set(key,{body:new Uint8Array(combined),options:upload.options});uploads.delete(uploadId)}}}}};
@@ -267,3 +268,25 @@ const ownerDeliveries=[];env.ADMIN_EMAIL='owner@example.test';env.SPECIAL_EVENT_
 delivery=await processSpecialEventConfirmations(env,async()=>{throw new Error('duplicate owner test email')});assert.equal(delivery.processed,0,'owner payment confirmation must be exactly once');
 assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
 console.log('PASS isolated Special Events purchase, owner-only Draft £15 checkout, simultaneous launch, complimentary capacity/competition/QR/cancellation, payment and email idempotency, failure release, private evidence and unauthorised rejection');
+
+// Reliability fixtures are disposable: no production data or network access.
+const existingHistory=JSON.stringify(db.prepare('SELECT * FROM special_event_confirmation_outbox ORDER BY id').all());
+env.SPECIAL_EVENT_EMAILS_ENABLED='true';
+db.prepare(`INSERT INTO special_event_bookings(id,reference,event_id,product_id,customer_id,customer_name,customer_email,quantity,product_code_snapshot,product_name_snapshot,unit_price_pence_snapshot,amount_pence,status,payment_provider,secure_token,customer_token,terms_accepted_at)
+ SELECT 'reliability-booking','BSE-SYNTHETIC-RELIABILITY',event_id,product_id,customer_id,customer_name,customer_email,quantity,product_code_snapshot,product_name_snapshot,unit_price_pence_snapshot,amount_pence,'PENDING',payment_provider,'reliability-secure','reliability-customer',terms_accepted_at FROM special_event_bookings WHERE id=?`).run(ownerTestBooking.id);
+let reliabilityBooking=db.prepare("SELECT * FROM special_event_bookings WHERE id='reliability-booking'").get();
+await applySpecialEventCheckoutState(env,reliabilityBooking,{status:'PAID',transactions:[{id:'failed-attempt',status:'FAILED'},{id:'successful-attempt',status:'SUCCESSFUL'}]});
+assert.equal(db.prepare("SELECT provider_transaction_id FROM special_event_bookings WHERE id='reliability-booking'").get().provider_transaction_id,'successful-attempt','record the successful attempt, not the first attempt');
+const reliabilityMessages=[];const sendReliably=async(to,subject,html,text,options)=>{reliabilityMessages.push({to,subject,html,text,options});if(reliabilityMessages.length===1)throw new Error('Synthetic timeout after provider acceptance');return {id:'same-idempotent-provider-message'}};
+await processSpecialEventConfirmations(env,sendReliably,1,{bookingId:'reliability-booking'});
+assert.equal(reliabilityMessages.length,1);
+assert.equal(db.prepare("SELECT status FROM special_event_confirmation_outbox WHERE booking_id='reliability-booking'").get().status,'FAILED');
+db.exec("UPDATE special_event_confirmation_outbox SET next_attempt_at=datetime('now','-1 minute') WHERE booking_id='reliability-booking'; UPDATE special_event_bookings SET customer_email='changed@example.test' WHERE id='reliability-booking'");
+await Promise.all([processSpecialEventConfirmations(env,sendReliably,1,{bookingId:'reliability-booking'}),processSpecialEventConfirmations(env,sendReliably,1,{bookingId:'reliability-booking'})]);
+assert.equal(reliabilityMessages.length,2,'only one retry claim sends under concurrency');assert.deepEqual(reliabilityMessages[0],reliabilityMessages[1],'recipient, sender, body and idempotency key remain frozen after an ambiguous send');
+await processSpecialEventConfirmations(env,sendReliably,1,{bookingId:'reliability-booking'});assert.equal(reliabilityMessages.length,2,'SENT history cannot be resent');
+db.exec("UPDATE special_event_confirmation_outbox SET status='SENDING',lease_until=datetime('now','-1 minute'),first_attempt_at=datetime('now','-21 hours') WHERE booking_id='reliability-booking'");
+await processSpecialEventConfirmations(env,sendReliably,1,{bookingId:'reliability-booking'});
+assert.equal(reliabilityMessages.length,2,'expired provider dedupe window never blindly retries');assert.equal(db.prepare("SELECT review_required FROM special_event_confirmation_outbox WHERE booking_id='reliability-booking'").get().review_required,1);
+assert.equal(JSON.stringify(db.prepare("SELECT * FROM special_event_confirmation_outbox WHERE booking_id<>'reliability-booking' ORDER BY id").all()),existingHistory,'targeted dispatch preserves unrelated history');
+console.log('PASS special-event successful-attempt selection, targeted leased dispatch, concurrent claims, frozen-payload retries, expired-window review and unrelated history preservation');

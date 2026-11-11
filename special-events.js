@@ -640,7 +640,7 @@ export async function createSpecialEventReservation(request,env,services,options
 export async function applySpecialEventCheckoutState(env,booking,checkout){
   const status=String(checkout?.status||'').toUpperCase();
   if(status==='PAID'){
-    const transaction=tidy(checkout?.transactions?.[0]?.id||checkout?.transaction_id,180)||null;
+    const transaction=tidy(checkout?.transactions?.find(item=>item.status==='SUCCESSFUL')?.id||checkout?.transaction_id,180)||null;
     const ownerPaymentTest=await env.BOOKINGS_DB.prepare(`SELECT id FROM special_event_activity WHERE target_type='BOOKING' AND target_id=? AND action='OWNER_PAYMENT_TEST_CREATED' LIMIT 1`).bind(booking.id).first();
     const confirmationStatus=ownerPaymentTest?'READY':(String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()==='true'?'READY':'DISABLED');
     await env.BOOKINGS_DB.batch([
@@ -695,24 +695,39 @@ export function verifySpecialEventCheckout(booking,checkout,merchantCode){
   return failed?{ok:false,code:failed[0]}:{ok:true,status:tidy(checkout.status,40).toUpperCase()};
 }
 
-export async function processSpecialEventConfirmations(env,sendEmail,limit=20){
+export async function processSpecialEventConfirmations(env,sendEmail,limit=20,{bookingId=null}={}){
   if(!env.BOOKINGS_DB||typeof sendEmail!=='function')return {processed:0,disabled:true};
   const emailsEnabled=String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()==='true';
-  const rows=await env.BOOKINGS_DB.prepare(`SELECT o.id outbox_id,o.attempt_count,b.*,p.description product_description,e.title event_title,e.venue_name,e.venue_address,e.refund_policy FROM special_event_confirmation_outbox o JOIN special_event_bookings b ON b.id=o.booking_id JOIN special_event_ticket_products p ON p.id=b.product_id JOIN special_events e ON e.id=b.event_id WHERE o.status IN ('READY','FAILED') AND b.status='PAID' AND (o.next_attempt_at IS NULL OR o.next_attempt_at<=CURRENT_TIMESTAMP) AND (?=1 OR (lower(b.customer_email)='nora@bootscootinlinedancing.co.uk' AND EXISTS(SELECT 1 FROM special_event_activity a WHERE a.target_type='BOOKING' AND a.target_id=b.id AND a.action='OWNER_PAYMENT_TEST_CREATED'))) ORDER BY o.created_at LIMIT ?`).bind(emailsEnabled?1:0,Math.max(1,Math.min(50,Number(limit)||20))).all();
+  const rows=await env.BOOKINGS_DB.prepare(`SELECT o.id outbox_id,o.attempt_count,o.first_attempt_at,o.payload_json,b.*,p.description product_description,e.title event_title,e.venue_name,e.venue_address,e.refund_policy FROM special_event_confirmation_outbox o JOIN special_event_bookings b ON b.id=o.booking_id JOIN special_event_ticket_products p ON p.id=b.product_id JOIN special_events e ON e.id=b.event_id WHERE o.review_required=0 AND b.status='PAID' AND (? IS NULL OR b.id=?) AND ((o.status IN ('READY','FAILED') AND (o.next_attempt_at IS NULL OR o.next_attempt_at<=CURRENT_TIMESTAMP)) OR (o.status='SENDING' AND o.lease_until<=CURRENT_TIMESTAMP)) AND (?=1 OR (lower(b.customer_email)='nora@bootscootinlinedancing.co.uk' AND EXISTS(SELECT 1 FROM special_event_activity a WHERE a.target_type='BOOKING' AND a.target_id=b.id AND a.action='OWNER_PAYMENT_TEST_CREATED'))) ORDER BY o.created_at LIMIT ?`).bind(bookingId,bookingId,emailsEnabled?1:0,Math.max(1,Math.min(50,Number(limit)||20))).all();
   let sent=0,failed=0;
   for(const booking of rows.results||[]){
-    const claim=await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='SENDING',attempt_count=attempt_count+1,last_error=NULL WHERE id=? AND status IN ('READY','FAILED')`).bind(booking.outbox_id).run();if(!Number(claim.meta?.changes||0))continue;
+    const claimId=crypto.randomUUID();
+    const claim=await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='SENDING',claim_id=?,lease_until=datetime('now','+5 minutes'),first_attempt_at=COALESCE(first_attempt_at,CURRENT_TIMESTAMP),attempt_count=attempt_count+1,last_error=NULL WHERE id=? AND review_required=0 AND ((status IN ('READY','FAILED') AND (next_attempt_at IS NULL OR next_attempt_at<=CURRENT_TIMESTAMP)) OR (status='SENDING' AND lease_until<=CURRENT_TIMESTAMP)) AND EXISTS(SELECT 1 FROM special_event_bookings b WHERE b.id=booking_id AND b.status='PAID')`).bind(claimId,booking.outbox_id).run();
+    if(!Number(claim.meta?.changes||0))continue;
+    const current=await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_confirmation_outbox WHERE id=? AND claim_id=?`).bind(booking.outbox_id,claimId).first();
+    if(!current)continue;
+    if(Date.now()-Date.parse(current.first_attempt_at.replace(' ','T')+'Z')>=20*3600000){
+      await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='FAILED',review_required=1,lease_until=NULL,last_error='Delivery outcome needs manual review; retry window expired.' WHERE id=? AND claim_id=?`).bind(booking.outbox_id,claimId).run();failed++;continue;
+    }
     try{
-      const [days,attendees,competition,programme]=await Promise.all([
-        env.BOOKINGS_DB.prepare(`SELECT d.label,d.event_date FROM special_event_booking_days bd JOIN special_event_days d ON d.id=bd.day_id WHERE bd.booking_id=? ORDER BY d.display_order`).bind(booking.id).all(),
-        env.BOOKINGS_DB.prepare(`SELECT name,age_at_event,guardian_email FROM special_event_attendees WHERE booking_id=? ORDER BY created_at,id`).bind(booking.id).all(),
-        env.BOOKINGS_DB.prepare(`SELECT a.name attendee_name FROM special_event_competition_entries c LEFT JOIN special_event_attendees a ON a.id=c.attendee_id WHERE c.booking_id=? AND c.status<>'WITHDRAWN'`).bind(booking.id).all(),
-        env.BOOKINGS_DB.prepare(`SELECT title,starts_at,ends_at,programme_status,display_order FROM special_event_programme_items WHERE event_id=? ORDER BY day_id,display_order`).bind(booking.event_id).all()
-      ]);
-      const copy=specialEventConfirmationCopy({booking,event:{title:booking.event_title,venue_name:booking.venue_name,venue_address:booking.venue_address,refund_policy:booking.refund_policy},days:days.results||[],attendees:attendees.results||[],competition:competition.results||[],programme:programme.results||[]});
-      const result=await sendEmail(booking.customer_email,copy.subject,copy.html,copy.text,{idempotencyKey:`special-event-paid:${booking.id}`});
-      await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='SENT',recipient_email=?,subject=?,provider_id=?,sent_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=?`).bind(booking.customer_email,copy.subject,result?.id||null,booking.outbox_id).run();sent++;
-    }catch(error){const attempts=Number(booking.attempt_count||0)+1,delay=Math.min(3600,Math.pow(2,attempts)*60);await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='FAILED',last_error=?,next_attempt_at=datetime('now',?) WHERE id=?`).bind(tidy(error?.message||error,500),`+${delay} seconds`,booking.outbox_id).run();failed++;}
+      let payload=current.payload_json?JSON.parse(current.payload_json):null;
+      if(!payload){
+        const [days,attendees,competition,programme]=await Promise.all([
+          env.BOOKINGS_DB.prepare(`SELECT d.label,d.event_date FROM special_event_booking_days bd JOIN special_event_days d ON d.id=bd.day_id WHERE bd.booking_id=? ORDER BY d.display_order`).bind(booking.id).all(),
+          env.BOOKINGS_DB.prepare(`SELECT name,age_at_event,guardian_email FROM special_event_attendees WHERE booking_id=? ORDER BY created_at,id`).bind(booking.id).all(),
+          env.BOOKINGS_DB.prepare(`SELECT a.name attendee_name FROM special_event_competition_entries c LEFT JOIN special_event_attendees a ON a.id=c.attendee_id WHERE c.booking_id=? AND c.status<>'WITHDRAWN'`).bind(booking.id).all(),
+          env.BOOKINGS_DB.prepare(`SELECT title,starts_at,ends_at,programme_status,display_order FROM special_event_programme_items WHERE event_id=? ORDER BY day_id,display_order`).bind(booking.event_id).all()
+        ]);
+        const copy=specialEventConfirmationCopy({booking,event:{title:booking.event_title,venue_name:booking.venue_name,venue_address:booking.venue_address,refund_policy:booking.refund_policy},days:days.results||[],attendees:attendees.results||[],competition:competition.results||[],programme:programme.results||[]});
+        payload={to:booking.customer_email,from:String(env.EMAIL_FROM_EVENTS||env.EMAIL_FROM_GENERAL||env.EMAIL_FROM||'').trim(),...copy};
+        await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET payload_json=? WHERE id=? AND claim_id=?`).bind(JSON.stringify(payload),booking.outbox_id,claimId).run();
+      }
+      const paid=await env.BOOKINGS_DB.prepare(`SELECT status FROM special_event_bookings WHERE id=?`).bind(booking.id).first();
+      if(paid?.status!=='PAID')throw new Error('Booking is no longer paid; confirmation withheld.');
+      const result=await sendEmail(payload.to,payload.subject,payload.html,payload.text,{idempotencyKey:`special-event-paid:${booking.id}`,from:payload.from||undefined});
+      if(result?.skipped||!result?.id)throw new Error('Email provider did not return an acceptance ID.');
+      await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='SENT',recipient_email=?,subject=?,provider_id=?,sent_at=CURRENT_TIMESTAMP,last_error=NULL,lease_until=NULL WHERE id=? AND claim_id=?`).bind(payload.to,payload.subject,result.id,booking.outbox_id,claimId).run();sent++;
+    }catch(error){const attempts=Number(current.attempt_count||0),delay=Math.min(3600,Math.pow(2,Math.min(attempts,6))*60);await env.BOOKINGS_DB.prepare(`UPDATE special_event_confirmation_outbox SET status='FAILED',last_error=?,next_attempt_at=datetime('now',?),lease_until=NULL WHERE id=? AND claim_id=?`).bind(tidy(error?.message||error,500),`+${delay} seconds`,booking.outbox_id,claimId).run();failed++;}
   }
   return {processed:sent+failed,sent,failed};
 }
