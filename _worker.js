@@ -3590,9 +3590,23 @@ async function readOnlyPaymentVerification(request,env){
   // Public aliases and pages.dev must not accept spoofed HQ headers/cookies.
   if(url.origin!==SITE_ORIGIN||url.pathname!=='/ranch/api/admin/payment-verification')return reply({error:'Not found.'},404);
   const owner=String(env.ADMIN_EMAIL||'nora@bootscootinlinedancing.co.uk').trim().toLowerCase();
-  const email=String(request.headers.get('Cf-Access-Authenticated-User-Email')||'').trim().toLowerCase();
-  if(!email||!request.headers.get('Cf-Access-Jwt-Assertion'))return reply({error:'HQ sign-in required.'},401);
-  if(!emailOk(owner)||email!==owner)return reply({error:'Owner access required.'},403);
+  let identity;
+  try{
+    const token=request.headers.get('Cf-Access-Jwt-Assertion')||accessCookieToken(request);
+    const parts=String(token||'').split('.');if(parts.length!==3)throw new Error();
+    const bytes=value=>Uint8Array.from(atob(value.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-value.length%4)%4)),character=>character.charCodeAt(0));
+    const header=JSON.parse(new TextDecoder().decode(bytes(parts[0])));
+    identity=JSON.parse(new TextDecoder().decode(bytes(parts[1])));
+    // Public signing keys pinned for this bounded diagnostic. Rotation fails closed.
+    const accessKeys=/*payment-verification-public-keys*/[{"kid": "6bf0d866e68daa7718f87ddef9265b13213411f77605b6fa941d55aa712dad13", "kty": "RSA", "alg": "RS256", "use": "sig", "e": "AQAB", "n": "rZTqvBrSE8CxVl_OjlZhexE00CqrkVckqQUMSBI-KDVsUamzLzmvw3qykP0KPG03K3hTTy8Wm-vQ3xRN92zZptN2HL_hzREN91O2I69e9AFsDxIdOp7f76XtDM9NyUCluhg7cv6q6SHI-WcDS1mgJwPx-6CBU-1x_lMZdaIy3RZkxKNkczmvP3f4lb6GUBDavzKW4l3K-1cnOmIpjdAJhpdYzWQ3nwlQRthYqAkLkGS2gSk_Fbq1EdYIgWPoSXes7eaZ1ioOor3FRdct33vpFiRY0INzB8sUKZOrAN5lFG-Vw2xLtQ7VkDq8IfDB378-LzfBa68m5UpoSe_pOJgxzw"}, {"kid": "16870b82dffc15ff575024b8d8e60762e70b375fd5750bfb0906d77756474129", "kty": "RSA", "alg": "RS256", "use": "sig", "e": "AQAB", "n": "xkUNm2Glj0RKlgpPv5F1wuAQuDvhTpcbrBJ2nBng9Ik0dWkuHz-7c24MwY1TYxl1cdMJjdwCC0B2_u3lg1S4EpGUb4imCBlIUvZ1E5XEfhvCZEsWX_cN9Q8p3_P3sSgeHUzuj-IgicNdNHbOxK5cMHvXwDP5zeBo911kB4R_tqX7nUrAodAngvYlR4oD9tKB42StVs9giIrK1EsDeAr4ONx1Fc0tsjP_faA5rhyD3sf2HiqAKEnHOB2v3F6xIK0XjfqDDO180HTPN_-gYWSqj1paeyAPRriFZQAmJqWYR7tVNUxsmJURLnDrabhlkw502qamkL4PfH24De6Z_auftw"}];
+    const jwk=accessKeys.find(key=>key.kid===header.kid);
+    if(header.alg!=='RS256'||!jwk||identity.iss!=='https://still-sunset-1371.cloudflareaccess.com'||![].concat(identity.aud||[]).includes('bad3d946a17b7b31b9c97dbfbe9ed3f55b1120ca47636adf95c3e918bf496eb3')||!Number.isFinite(identity.exp)||identity.exp*1000<=Date.now()||(identity.nbf&&identity.nbf*1000>Date.now()+60000))throw new Error();
+    const key=await crypto.subtle.importKey('jwk',jwk,{name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},false,['verify']);
+    if(!await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,bytes(parts[2]),new TextEncoder().encode(parts[0]+'.'+parts[1])))throw new Error();
+  }catch{return reply({error:'HQ sign-in required.'},401);}
+  const email=String(identity.email||'').trim().toLowerCase();
+  const forwardedEmail=String(request.headers.get('Cf-Access-Authenticated-User-Email')||'').trim().toLowerCase();
+  if(!emailOk(owner)||email!==owner||(forwardedEmail&&forwardedEmail!==email))return reply({error:'Owner access required.'},403);
   if(request.method!=='GET')return reply({error:'GET only.'},405);
   if(!env.BOOKINGS_DB)return reply({error:'Verification storage is unavailable.'},503);
   // References travel in headers, not URLs, to avoid putting them in URL logs/referrers.
