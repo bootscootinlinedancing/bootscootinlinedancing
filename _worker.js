@@ -2685,7 +2685,7 @@ function normaliseUkPhone(value) {
 
 async function sendTransactionalEmail(env, to, subject, html, text, senderType='general', options={}) {
   const apiKey = String(env.RESEND_API_KEY || env.EMAIL_API_KEY || '').trim();
-  const from = emailSender(env, senderType);
+  const from = String(options.from || emailSender(env, senderType)).trim();
   if (!apiKey || !from) return { skipped: true, reason: 'Email provider is not configured.' };
   const replyTo=emailOk(options.replyTo)?String(options.replyTo).trim().toLowerCase():'';
   const payload={ from, to: [to], subject, html, text };
@@ -2862,15 +2862,17 @@ function bookingConfirmationPayload(env,booking){
       buttons:[{label:'Manage my booking',href:links.manage},{label:'Add to Google Calendar',href:links.google,secondary:true},
         {label:'Add to Apple / Outlook Calendar',href:links.calendar,secondary:true}]})};
 }
-async function processBookingConfirmations(env){
-  await cleanupExpiredUnreferencedBookingHolds(env);
-  await recoverBookingConfirmations(env);
+async function processBookingConfirmations(env,{bookingId=null}={}){
+  if(!bookingId){
+    await cleanupExpiredUnreferencedBookingHolds(env);
+    await recoverBookingConfirmations(env);
+  }
   const policy=await env.BOOKINGS_DB.prepare(`SELECT delivery_enabled FROM booking_confirmation_policy WHERE id=1`).first();
   if(!policy?.delivery_enabled)return {paused:true};
   if(!String(env.RESEND_API_KEY||env.EMAIL_API_KEY||'').trim()||!emailSender(env,'bookings'))return {setup_required:true};
   const rows=await env.BOOKINGS_DB.prepare(`SELECT * FROM booking_confirmation_jobs
-    WHERE (status IN ('PENDING','RETRY') AND next_attempt_at<=CURRENT_TIMESTAMP)
-      OR (status='PROCESSING' AND lease_until<=CURRENT_TIMESTAMP) ORDER BY created_at LIMIT 50`).all();
+    WHERE (? IS NULL OR booking_id=?) AND ((status IN ('PENDING','RETRY') AND next_attempt_at<=CURRENT_TIMESTAMP)
+      OR (status='PROCESSING' AND lease_until<=CURRENT_TIMESTAMP)) ORDER BY created_at LIMIT 50`).bind(bookingId,bookingId).all();
   let sent=0,failed=0;
   for(const job of rows.results||[]){
     const claim=crypto.randomUUID();
@@ -2949,7 +2951,11 @@ async function adminBookingConfirmationDeliveryTest(request,env){
   }
 }
 async function safelyQueueBookingConfirmation(env,bookingId){
-  try{await enqueueBookingConfirmation(env,bookingId);}catch(error){
+  try{
+    await enqueueBookingConfirmation(env,bookingId);
+    // Dispatch only this paid booking; the durable scheduled processor remains the fallback.
+    await processBookingConfirmations(env,{bookingId});
+  }catch(error){
     // Payment stays authoritative; the scheduled recovery scan repairs a failed enqueue.
     console.error('BOOKING_CONFIRMATION_ENQUEUE_FAILED',bookingId,clean(error?.message||error,200));
   }
@@ -3575,6 +3581,33 @@ async function retrieveSumUpCheckout(env, checkoutId, credentialName = 'SUMUP_AP
   return response.json().catch(() => null);
 }
 
+// One provider lookup per request. This endpoint never reconciles, queues or sends.
+async function readOnlyPaymentVerification(request,env,url){
+  const access=requireAccessAdmin(request,env);if(access.response)return access.response;
+  const kind=clean(url.searchParams.get('kind'),20),reference=clean(url.searchParams.get('reference'),120);
+  if(!['regular','special'].includes(kind)||!/^BS(?:E)?-[A-Z0-9-]+$/.test(reference))return json({error:'Choose regular or special and an exact booking reference.'},400);
+  const table=kind==='regular'?'bookings':'special_event_bookings';
+  const booking=await env.BOOKINGS_DB.prepare(`SELECT * FROM ${table} WHERE reference=?`).bind(reference).first();
+  if(!booking)return json({error:'Booking not found.'},404);
+  if(booking.payment_provider!=='SUMUP'||!booking.provider_checkout_id)return json({error:'This booking has no SumUp checkout.'},409);
+  let checkout;try{checkout=await retrieveSumUpCheckout(env,booking.provider_checkout_id,kind==='special'?'SUMUP_SPECIAL_EVENTS_API_KEY':'SUMUP_API_KEY');}catch{return json({error:'SumUp lookup unavailable. No records changed.'},502);}
+  if(!checkout)return json({error:'SumUp checkout unavailable. No records changed.'},502);
+  const verification=verifySpecialEventCheckout(booking,checkout,env.SUMUP_MERCHANT_CODE);
+  const transactions=(checkout.transactions||[]).map(item=>({id:item.id||null,code:item.transaction_code||item.code||null,status:item.status||null,amount:item.amount??null,currency:item.currency||null}));
+  const successful=transactions.filter(item=>item.status==='SUCCESSFUL'&&Math.round(Number(item.amount)*100)===Number(booking.amount_pence)&&(!item.currency||item.currency==='GBP'));
+  const ids=successful.map(item=>item.id).filter(Boolean);
+  if(checkout.transaction_id)ids.push(String(checkout.transaction_id));
+  const duplicates=[];
+  // Check every booking family before recommending recovery; do not mutate any of them.
+  for(const [family,otherTable,idColumn] of [['regular','bookings','provider_checkout_id'],['special','special_event_bookings','provider_checkout_id'],['class_pass','member_passes','provider_checkout_id'],['merch','merch_orders','provider_checkout_id'],['private','private_event_payments','provider_reference'],['regular_payment','payments','provider_reference']]){
+    const txColumn=['private','regular_payment'].includes(family)?'provider_reference':'provider_transaction_id';
+    const txClause=ids.length?` OR ${txColumn} IN (${ids.map(()=>'?').join(',')})`:'';
+    const rows=await env.BOOKINGS_DB.prepare(`SELECT ${family==='regular_payment'?'booking_id AS id':'id'} FROM ${otherTable} WHERE (${idColumn}=?${txClause})`).bind(booking.provider_checkout_id,...ids).all();
+    for(const row of rows.results||[])if((family==='regular_payment'?'regular':family)!==kind||row.id!==booking.id)duplicates.push({kind:family,id:row.id});
+  }
+  return json({mode:'READ_ONLY',reference,kind,customer:{name:booking.customer_name,email:booking.customer_email},product:booking.ticket_product_label||booking.product_name_snapshot||booking.ticket_type,quantity:booking.quantity,website_status:booking.status,stored_transaction_id:booking.provider_transaction_id||null,checkout:{id:checkout.id,reference:checkout.checkout_reference,merchant:checkout.merchant_code,amount:checkout.amount,currency:checkout.currency,status:checkout.status,transaction_id:checkout.transaction_id||null},verification,transactions,duplicate_claims:duplicates,recovery_verified:verification.ok&&verification.status==='PAID'&&successful.length===1&&duplicates.length===0});
+}
+
 async function reconcileSpecialEventBooking(env, booking, {sendConfirmation = true} = {}) {
   if (!booking?.provider_checkout_id) return { outcome: 'SKIPPED', reason: 'CHECKOUT_ID_MISSING' };
   const checkout = await retrieveSumUpCheckout(env, booking.provider_checkout_id, 'SUMUP_SPECIAL_EVENTS_API_KEY');
@@ -3589,7 +3622,7 @@ async function reconcileSpecialEventBooking(env, booking, {sendConfirmation = tr
     await processSpecialEventConfirmations(
       env,
       (to, subject, html, text, options) => sendTransactionalEmail(env, to, subject, html, text, 'events', options),
-      20
+      1,{bookingId:booking.id}
     );
   }
   return { outcome: 'UPDATED', status: verification.status };
@@ -3796,6 +3829,8 @@ async function syncSumUpBooking(env, booking, actor = 'SUMUP_STATUS_CHECK') {
   if (!booking?.provider_checkout_id || !sumUpConfigured(env)) return booking;
   const checkout = await retrieveSumUpCheckout(env, booking.provider_checkout_id);
   if (!checkout) return booking;
+  const verification=verifySpecialEventCheckout(booking,checkout,env.SUMUP_MERCHANT_CODE);
+  if(!verification.ok)throw new Error(`SumUp checkout verification failed: ${verification.code}`);
   return applySumUpCheckoutState(env, booking, checkout, actor);
 }
 
@@ -3845,7 +3880,10 @@ async function sumUpWebhook(request, env) {
     specialEventBooking ? 'SUMUP_SPECIAL_EVENTS_API_KEY' : 'SUMUP_API_KEY'
   );
   if (booking) {
-    if (checkout) await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
+    if(!checkout)return json({error:'Payment verification temporarily unavailable.'},502);
+    const verification=verifySpecialEventCheckout(booking,checkout,env.SUMUP_MERCHANT_CODE);
+    if(!verification.ok)return json({error:'Payment verification failed.',code:verification.code},409);
+    await applySumUpCheckoutState(env, booking, checkout, 'SUMUP_WEBHOOK');
     return new Response(null, { status: 204 });
   }
   if(classPass){
@@ -3857,7 +3895,7 @@ async function sumUpWebhook(request, env) {
     const verification=verifySpecialEventCheckout(specialEventBooking,checkout,env.SUMUP_MERCHANT_CODE);
     if(!verification.ok)return json({error:'Special Event payment verification failed.',code:verification.code},409);
     await applySpecialEventCheckoutState(env,specialEventBooking,checkout);
-    await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1).catch(error=>console.error('SPECIAL_EVENT_CONFIRMATION_PROCESS_FAILED',specialEventBooking.id,clean(error?.message||error,200)));
+    await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1,{bookingId:specialEventBooking.id}).catch(error=>console.error('SPECIAL_EVENT_CONFIRMATION_PROCESS_FAILED',specialEventBooking.id,clean(error?.message||error,200)));
     return new Response(null,{status:204});
   }
   if(order&&checkout){
@@ -8173,6 +8211,7 @@ export default {
         const result=await reconcilePendingSpecialEventBookings(env);
         return json({ok:true,...result});
       }
+      if(path==='/api/admin/payment-verification' && request.method==='GET')return readOnlyPaymentVerification(request,env,url);
       if (path === '/api/admin/special-event-payment-email-audit' && ['GET','POST'].includes(request.method)) {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
         if(!specialEventSumUpConfigured(env))return json({error:'The dedicated Special Events payment connection is unavailable.'},503);
