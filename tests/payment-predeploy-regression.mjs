@@ -11,7 +11,7 @@ assert(schema.every(row=>['table','index','trigger'].includes(row.type)));
 let source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8')
   .replaceAll("'./special-events.js'",JSON.stringify(new URL('../special-events.js',import.meta.url).href))
   .replaceAll("'./payment-reconciliation.js'",JSON.stringify(new URL('../payment-reconciliation.js',import.meta.url).href));
-const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {applySumUpCheckoutState,processBookingConfirmations,runProtectedEmailAutomations};').toString('base64')}`);
+const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {applySumUpCheckoutState,processBookingConfirmations,runProtectedEmailAutomations,sumUpWebhook,bookingStatus};').toString('base64')}`);
 const sqlFile=name=>readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8');
 const originalFetch=globalThis.fetch;
 // 0038 must preserve old statuses/provider IDs and quarantine only ambiguous sends.
@@ -24,8 +24,9 @@ const originalFetch=globalThis.fetch;
   assert.throws(()=>db.exec(sqlFile('0038_confirmation_dispatch_reliability.sql')),/duplicate column/,'raw SQL is deliberately not run twice; migration history must gate application');
   db.close();console.log('PASS 0038 preserves historical statuses/provider IDs, quarantines ambiguous attempts; accidental raw reapplication fails closed');
 }
-const accepted=new Map();let uncertain=false;
+const accepted=new Map(),providerCheckouts=new Map();let uncertain=false;
 globalThis.fetch=async(url,options)=>{
+  if(String(url).startsWith('https://api.sumup.com/v0.1/checkouts/')){const data=providerCheckouts.get(decodeURIComponent(String(url).split('/').at(-1)));return Response.json(data||{}, {status:data?200:404});}
   assert.equal(url,'https://api.resend.com/emails','no external provider calls');
   const key=options.headers['Idempotency-Key'],payload=JSON.parse(options.body);
   assert(payload.to.toString().endsWith('@example.test'));
@@ -112,6 +113,13 @@ try{
     const before=off.db.totalChanges;assert.deepEqual(await runBoundedReconciliation(off.env),{disabled:true});assert.equal(off.db.totalChanges,before);
     console.log(`PASS ${kind}: frozen Resend retry after lost acknowledgement; flag-off fulfilment and disabled scheduler`);
   }
+  for(const entry of ['webhook','return']){
+    const hot=fixture(),booking=hot.regular('hot-'+entry);hot.env.SUMUP_API_KEY='SYNTHETIC_ONLY';providerCheckouts.set(booking.provider_checkout_id,checkout(booking));
+    const normalPrepare=hot.env.BOOKINGS_DB.prepare;hot.env.BOOKINGS_DB.prepare=sql=>{assert(!/^\s*(CREATE|ALTER)/i.test(sql),'no DDL on payment hot path');return normalPrepare(sql);};
+    const request=new Request('https://fixture.example.test/'+(entry==='webhook'?'api/sumup-webhook':'api/booking-status?reference='+booking.reference),entry==='webhook'?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:booking.provider_checkout_id,event_type:'CHECKOUT_STATUS_CHANGED'})}:{});
+    const result=entry==='webhook'?await mod.sumUpWebhook(request,hot.env):await mod.bookingStatus(request,hot.env,new URL(request.url));assert.equal(result.status,entry==='webhook'?204:200);assert.equal(hot.db.prepare('SELECT status FROM bookings').get().status,'PAID');assert.equal(hot.db.prepare('SELECT status FROM booking_confirmation_jobs').get().status,'SENT');
+  }
+  console.log('PASS actual webhook and customer-return handlers fulfil without runtime DDL/bootstrap');
   const disabledHourly=fixture({enabled:false});disabledHourly.special('disabled-hourly-pending');disabledHourly.env.EMAIL_AUTOMATION_SECRET='synthetic-automation';
   const onlyResend=globalThis.fetch;let disabledProviderReads=0;globalThis.fetch=async(url,options)=>{if(String(url).includes('api.sumup.com')){disabledProviderReads++;throw Error('Disabled recovery must not access payment provider');}return onlyResend(url,options);};
   const hourlyResponse=await mod.runProtectedEmailAutomations(new Request('https://fixture.example.test/api/automation/run',{method:'POST',headers:{authorization:'Bearer synthetic-automation'}}),disabledHourly.env);globalThis.fetch=onlyResend;
@@ -146,7 +154,7 @@ try{
   if(process.argv[3]){
     const oldSpecialUrl=pathToFileURL(process.argv[3]+'/special-events.js').href;
     const oldSource=readFileSync(process.argv[3]+'/_worker.js','utf8').replaceAll("'./special-events.js'",JSON.stringify(oldSpecialUrl));
-    const oldWorker=await import(`data:text/javascript;base64,${Buffer.from(oldSource+'\nexport {applySumUpCheckoutState,processBookingConfirmations,runProtectedEmailAutomations};').toString('base64')}`);
+    const oldWorker=await import(`data:text/javascript;base64,${Buffer.from(oldSource+'\nexport {applySumUpCheckoutState,processBookingConfirmations,runProtectedEmailAutomations,sumUpWebhook,bookingStatus};').toString('base64')}`);
     const oldSpecial=await import(oldSpecialUrl);
     await oldWorker.applySumUpCheckoutState(rollback.env,rollback.regular('original-main'),checkout(rollback.db.prepare("SELECT * FROM bookings WHERE id='original-main'").get()));
     await oldWorker.processBookingConfirmations(rollback.env);

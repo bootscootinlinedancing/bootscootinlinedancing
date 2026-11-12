@@ -3910,7 +3910,8 @@ async function syncPendingSumUpBookings(env, limit = 20) {
 
 async function sumUpWebhook(request, env) {
   if (!env.BOOKINGS_DB) return new Response(null, { status: 204 });
-  await ensureBookingSchema(env);
+  // Payment hot paths use the versioned installed schema; runtime bootstrap
+  // can exceed Worker limits before an authoritative payment is fulfilled.
   const payload = await request.json().catch(() => null);
   const checkoutId = clean(payload?.id, 160);
   if (!checkoutId || clean(payload?.event_type, 80) !== 'CHECKOUT_STATUS_CHANGED') {
@@ -3973,7 +3974,8 @@ async function sumUpWebhook(request, env) {
 
 async function bookingStatus(request,env,url){
   if(!env.BOOKINGS_DB)return json({error:'Booking database is not connected.'},503);
-  await ensureBookingSchema(env);
+  // Payment hot paths use the versioned installed schema; runtime bootstrap
+  // can exceed Worker limits before an authoritative payment is fulfilled.
   const token=clean(url.searchParams.get('token'),160),reference=clean(url.searchParams.get('reference'),120);
   let booking=null;
   if(token)booking=await env.BOOKINGS_DB.prepare(`SELECT b.*,c.title class_title,c.starts_at,c.venue,c.location FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.secure_token=?`).bind(token).first();
