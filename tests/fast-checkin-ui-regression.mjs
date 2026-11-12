@@ -27,6 +27,10 @@ w.state.classRegister.attendees.find(x=>x.id==='two').attendance_status='EXPECTE
 // Late responses cannot patch a different class/day after navigation.
 w.state.classRegister.attendees.find(x=>x.id==='two').attendance_status='EXPECTED';mode='defer';const late=w.state.classCheckin.check(['two']);w.state.classRegister={class:{id:'different'},attendees:[],bookings:[]};resolveSend();await late;assert.equal(w.state.classRegister.class.id,'different');
 const css=readFileSync(new URL('../check-in.css',import.meta.url),'utf8');assert(css.includes('min-height:48px'));assert(css.includes('@media(max-width:600px)'));assert(!render.includes('loadClassRegister(classId)'));
+// A valid group booking can retain unnamed guest places. They count toward
+// expected capacity but must neither crash rendering nor become selectable people.
+w.state.classRegister={class:{id:'unnamed-class',title:'Synthetic unnamed group'},bookings:[{id:'unnamed-booking',reference:'BS-UNNAMED',customer_name:'Synthetic Lead',status:'PAID',quantity:2}],attendees:[{id:'named-lead',booking_id:'unnamed-booking',snapshot_name:'Synthetic Lead',attendance_status:'EXPECTED',role:'LEAD'}],stats:{}};
+assert.doesNotThrow(()=>w.renderFixture());assert(w.$('#classRegisterPanel').textContent.includes('1 unnamed guest place'));assert.equal(w.$('#classRegisterPanel').querySelectorAll('[data-checkin-pick]').length,1);assert.equal(w.$('#classCheckinTotal').textContent,'0 / 2');
 // Optional local-only review artifact, never production data.
 if(process.env.CHECKIN_FIXTURE_OUTPUT)writeFileSync(process.env.CHECKIN_FIXTURE_OUTPUT,initialPreview);
 console.log('PASS actual register renderer: stable rows/scroll, search/filter retention, group selection, totals, partial failures, duplicate taps, uncertain retries, navigation and mobile control rules');

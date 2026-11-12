@@ -43,3 +43,7 @@ Physical iPhone Safari was NOT tested. The available iPhone Mirroring app report
 Readiness: GO for staging/review of the corrected commit; NO-GO for final production release until the physical Safari smoke (or an explicit owner waiver of that limitation) and combined-on-new-main check are complete. No code/cron/database deployment occurred during review.
 
 Deploy PR80 first and observe its monitored gates including one hourly email cycle. Then stage/approve PR81 independently. Record the Pages version immediately BEFORE PR81 (which must include the deployed PR80). Roll back PR81 by restoring that version/assets; never restore the pre-PR80 version just to undo check-in UI. Attendance, loyalty, audits and payment history stay in place. No schema reversal, payment flag change, reconciliation cron change or email replay is part of PR81 rollback.
+
+## Isolated hosted staging correction
+
+Staging review found an undefined attendee variable in the unnamed-guest placeholder. A booking with more reserved places than named attendees could throw while rendering the register. The placeholder now remains plain capacity information, with no selectable person checkbox. The real-renderer regression first reproduced the error, then passed with one named lead plus one unnamed place; expected attendance remains two. The frontend cache version was advanced. This is a targeted register correction; no payment, timetable or production record changes are included.
