@@ -19,7 +19,7 @@ body.ranch-v91 .checkin-mode{min-height:48px}body.ranch-v91 .checkin-mode input{
 /* Author grid rules otherwise override the browser default for [hidden]. */
 .checkin-surface [hidden],.checkin-toolbar [hidden],#specialAttendanceList [hidden]{display:none!important}
 /* Keep toolbar labels readable against its light background under HQ theme overrides. */
-body.ranch-v91 #classRegisterPanel .checkin-toolbar label,body.ranch-v91 #specialAttendanceList .checkin-toolbar label{color:#281711!important}
+body.ranch-v91 #classRegisterPanel .checkin-toolbar label,body.ranch-v91 #specialAttendanceList .checkin-toolbar label,body.ranch-v91 #classRegisterPanel [data-checkin-feedback],body.ranch-v91 #specialAttendanceList [data-checkin-feedback]{color:#281711!important}
 /* Reserve success-marker space so check-in does not change the row's geometry. */
 body.ranch-v91 #classRegisterPanel [data-checkin-row],body.ranch-v91 #specialAttendanceList [data-checkin-row]{border-left:5px solid transparent}
 body.ranch-v91 #classRegisterPanel [data-checkin-row].is-checked-in,body.ranch-v91 #specialAttendanceList [data-checkin-row].is-checked-in{border-left-color:#277342}
