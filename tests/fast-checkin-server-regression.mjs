@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 
-const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
-const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'');
+const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^import .*payment-reconciliation\.js';\s*/m,'').replace(/^export /gm,'');
+const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'').replaceAll("'./payment-reconciliation.js'",JSON.stringify(new URL('../payment-reconciliation.js',import.meta.url).href));
 const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {attendeeSchemaAvailable,bookingUsesPersonAttendance,bookingAttendeeRows,checkInBookingAttendee,deterministicAttendeeCustomer,syncLoyaltyForEmail,awardLoyaltyStampForBooking,uniqueAttendanceCountForCustomer,bulkRegisterCheckIn};').toString('base64')}`);
 const db=new DatabaseSync(':memory:');
 db.exec(`PRAGMA foreign_keys=ON;
