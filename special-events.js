@@ -430,15 +430,18 @@ export async function adminSpecialEvents(request,env,admin,services={}){
       return response({ok:true});
     }
     if(action==='CHECK_IN_ATTENDEE'){
-      const attendeeId=tidy(body.attendee_id,180),dayId=tidy(body.day_id,180),attended=Boolean(body.attended);
-      const attendance=await env.BOOKINGS_DB.prepare(`SELECT x.attendee_id,x.attended_at FROM special_event_attendance x JOIN special_event_attendees a ON a.id=x.attendee_id JOIN special_event_bookings b ON b.id=a.booking_id WHERE x.attendee_id=? AND x.day_id=? AND b.event_id=? AND a.status='ACTIVE' AND b.status='PAID'`).bind(attendeeId,dayId,eventId).first();
-      if(!attendance)return response({error:'Event attendee or day not found.'},404);
-      if(attended&&attendance.attended_at)return response({error:'This attendee is already checked in for this event day.'},409);
-      await env.BOOKINGS_DB.batch([
-        env.BOOKINGS_DB.prepare(`UPDATE special_event_attendance SET attended_at=${attended?'CURRENT_TIMESTAMP':'NULL'},checked_in_by=? WHERE attendee_id=? AND day_id=?`).bind(attended?admin.email:null,attendeeId,dayId),
-        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,?,'ATTENDEE',?,?,?,?)`).bind(crypto.randomUUID(),eventId,attended?'ATTENDEE_CHECKED_IN':'ATTENDEE_CHECK_IN_REVERSED',attendeeId,admin.email,`Attendance ${attended?'recorded':'reversed'} for ${dayId}.`,crypto.randomUUID())
-      ]);
-      return response({ok:true});
+      const result=await checkInSpecialEventAttendee(env,{eventId,attendeeId:tidy(body.attendee_id,180),dayId:tidy(body.day_id,180),attended:Boolean(body.attended),actor:admin.email,operationId:tidy(body.operation_id,120)||crypto.randomUUID()});
+      return response(result,result.error?409:200);
+    }
+    if(action==='BULK_CHECK_IN_ATTENDEES'){
+      const ids=Array.isArray(body.attendee_ids)?[...new Set(body.attendee_ids)]:[],dayId=tidy(body.day_id,180),operationId=tidy(body.operation_id,120);
+      if(!dayId||!operationId||!ids.length||ids.length>25||ids.some(id=>typeof id!=='string'||!id||id.length>180))return response({error:'Choose a day and 1–25 allocated attendees.'},400);
+      const results=[];
+      for(const attendeeId of ids){
+        try{results.push({id:attendeeId,...await checkInSpecialEventAttendee(env,{eventId,attendeeId,dayId,attended:true,actor:admin.email,operationId:`${operationId}:${attendeeId}:${dayId}`})});}
+        catch{results.push({id:attendeeId,error:'Check-in could not be confirmed. Retry this person safely.',status:503});}
+      }
+      return response({ok:true,results});
     }
     if(action==='ISSUE_COMPLIMENTARY_TICKETS'){
       const productId=tidy(body.product_id,160),recipientName=tidy(body.recipient_name,120),recipientEmail=tidy(body.recipient_email,160).toLowerCase(),reason=tidy(body.reason,1000)||null,quantity=Number(body.quantity),attendeeInput=Array.isArray(body.attendees)?body.attendees.slice(0,20):[];
@@ -955,4 +958,23 @@ export async function specialEventDocumentDownload(request,env,url){
   const object=await env.MEDIA_BUCKET.get(row.storage_key);if(!object)return response({error:'Stored document is unavailable.'},404);
   const headers=new Headers();headers.set('content-type',row.content_type);headers.set('cache-control','private, no-store');headers.set('content-disposition',`attachment; filename*=UTF-8''${encodeURIComponent(row.original_filename)}`);
   return new Response(object.body,{headers});
+}
+
+// The conditional UPDATE and audit are one transaction. An already checked-in
+// admission is successful/idempotent, never another attendance or loyalty credit.
+export async function checkInSpecialEventAttendee(env,{eventId,attendeeId,dayId,attended=true,actor,operationId}){
+  const db=env.BOOKINGS_DB;
+  const eligible=`EXISTS(SELECT 1 FROM special_event_attendees a JOIN special_event_bookings b ON b.id=a.booking_id JOIN special_events e ON e.id=b.event_id WHERE a.id=special_event_attendance.attendee_id AND b.event_id=? AND a.status='ACTIVE' AND b.status='PAID' AND e.status<>'CANCELLED' AND EXISTS(SELECT 1 FROM special_event_booking_days bd WHERE bd.booking_id=b.id AND bd.day_id=special_event_attendance.day_id AND bd.places>0))`;
+  const current=await db.prepare(`SELECT attended_at FROM special_event_attendance WHERE attendee_id=? AND day_id=? AND ${eligible}`).bind(attendeeId,dayId,eventId).first();
+  const prior=await db.prepare(`SELECT action FROM special_event_activity WHERE idempotency_key=?`).bind(`attendance:${operationId}`).first();
+  if(prior&&Boolean(current?.attended_at)!==attended)return {error:'That operation was already applied before a correction. Refresh this admission.'};
+  if(!current)return {error:'Attendee is not eligible or allocated to this event day.'};
+  if(Boolean(current.attended_at)===attended)return {ok:true,idempotent:true,attendee_id:attendeeId,day_id:dayId,attended_at:current.attended_at};
+  const result=await db.batch([
+    db.prepare(`UPDATE special_event_attendance SET attended_at=${attended?'CURRENT_TIMESTAMP':'NULL'},checked_in_by=? WHERE attendee_id=? AND day_id=? AND attended_at IS ${attended?'NULL':'NOT NULL'} AND ${eligible}`).bind(attended?actor:null,attendeeId,dayId,eventId),
+    db.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) SELECT ?,?,?,'ATTENDEE',?,?,?,? WHERE changes()>0`).bind(crypto.randomUUID(),eventId,attended?'ATTENDEE_CHECKED_IN':'ATTENDEE_CHECK_IN_REVERSED',attendeeId,actor,`Attendance ${attended?'recorded':'reversed'} for ${dayId}.`,`attendance:${operationId}`)
+  ]);
+  const after=await db.prepare(`SELECT attended_at FROM special_event_attendance WHERE attendee_id=? AND day_id=? AND ${eligible}`).bind(attendeeId,dayId,eventId).first();
+  if(!after||Boolean(after.attended_at)!==attended)return {error:'Eligibility changed. Check-in was not applied.'};
+  return {ok:true,idempotent:!Number(result[0]?.meta?.changes),attendee_id:attendeeId,day_id:dayId,attended_at:after.attended_at};
 }

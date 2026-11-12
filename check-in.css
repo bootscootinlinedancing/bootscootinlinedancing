@@ -1,0 +1,17 @@
+/* Local register controls only. Stable rows preserve mobile scroll/focus. */
+.checkin-surface,.checkin-toolbar{overflow-anchor:none}
+.checkin-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem;padding:1rem;margin:1rem 0;border:1px solid #d7c4a5;border-radius:12px;background:#fff7e8;color:#281711}
+.checkin-toolbar label{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+.checkin-toolbar input[type=search]{min-width:180px;flex:1}
+body.ranch-v91 .checkin-toolbar button,body.ranch-v91 .checkin-toolbar select,body.ranch-v91 .checkin-toolbar input[type=search],body.ranch-v91 [data-checkin-single]{min-height:48px;font:inherit;padding:.65rem .9rem;border-radius:8px}
+.checkin-toolbar [data-checkin-feedback]{flex-basis:100%;margin:0;overflow-wrap:anywhere}
+body.ranch-v91 .checkin-surface [data-checkin-pick]{width:28px;height:28px;min-width:28px;margin:.65rem;accent-color:#a71924}
+[data-checkin-pick][hidden]{display:none}
+[data-checkin-row].is-checked-in{border-left:5px solid #277342;background:rgba(65,148,89,.12)}
+.checkin-summary{font-size:1.1rem;font-weight:700}
+@media(max-width:600px){.checkin-toolbar{align-items:stretch}.checkin-toolbar>label,.checkin-toolbar>button,.checkin-toolbar>span{width:100%}.checkin-toolbar input[type=search],.checkin-toolbar select{width:100%}.class-register-attendee{flex-wrap:wrap}[data-checkin-single]{flex:1}.special-attendee-row button{min-height:48px}}
+
+.checkin-toolbar button[hidden]{display:none}
+@media(max-width:600px){body.ranch-v91 .checkin-toolbar>button{width:auto;flex:1 1 130px}}
+
+body.ranch-v91 .checkin-mode{min-height:48px}body.ranch-v91 .checkin-mode input{width:24px;height:24px;flex:none}

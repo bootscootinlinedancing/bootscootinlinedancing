@@ -332,12 +332,13 @@ async function attendanceForClass(env,classId){
   `).bind(classId).all();
   return result.results||[];
 }
-async function recordAttendance(env,{bookingId,checkedInBy,checkedInAt=null}){
+async function recordAttendance(env,{bookingId,checkedInBy,checkedInAt=null,requirePaid=false}){
   const id=crypto.randomUUID();
   const result=await env.BOOKINGS_DB.prepare(`
     INSERT OR IGNORE INTO attendance(id,booking_id,checked_in_at,recorded_at,checked_in_by)
-    VALUES(?,?,COALESCE(?,CURRENT_TIMESTAMP),CURRENT_TIMESTAMP,?)
-  `).bind(id,bookingId,checkedInAt||null,checkedInBy||null).run();
+    SELECT ?,?,COALESCE(?,CURRENT_TIMESTAMP),CURRENT_TIMESTAMP,?
+    ${requirePaid?`WHERE EXISTS(SELECT 1 FROM bookings b JOIN classes c ON c.id=b.class_id WHERE b.id=? AND b.status='PAID' AND c.status<>'cancelled')`:''}
+  `).bind(id,bookingId,checkedInAt||null,checkedInBy||null,...(requirePaid?[bookingId]:[])).run();
   const attendance=await attendanceForBooking(env,bookingId);
   return {attendance,created:Number(result?.meta?.changes||0)>0};
 }
@@ -384,19 +385,23 @@ function bookingAttendeeInsert(env,row){
   return env.BOOKINGS_DB.prepare(`INSERT INTO booking_attendees(id,booking_id,class_id,place_number,role,snapshot_name,snapshot_email,normalized_email,customer_id,admission_category) VALUES(?,?,?,?,?,?,?,?,?,?)`)
     .bind(row.id,row.booking_id,row.class_id,row.place_number,row.role,row.snapshot_name,row.snapshot_email,row.normalized_email,row.customer_id,row.admission_category||null);
 }
-async function checkInBookingAttendee(env,{attendeeId,actor,operationId,reason='Class register check-in'}){
-  const attendee=await env.BOOKINGS_DB.prepare(`SELECT ba.*,b.status booking_status,b.amount_pence,b.payment_provider FROM booking_attendees ba LEFT JOIN bookings b ON b.id=ba.booking_id WHERE ba.id=?`).bind(attendeeId).first();
+async function checkInBookingAttendee(env,{attendeeId,actor,operationId,classId=null,reason='Class register check-in'}){
+  const attendee=await env.BOOKINGS_DB.prepare(`SELECT ba.*,b.status booking_status,b.amount_pence,b.payment_provider,b.quantity booking_quantity,b.class_id booking_class_id FROM booking_attendees ba LEFT JOIN bookings b ON b.id=ba.booking_id WHERE ba.id=?`).bind(attendeeId).first();
   if(!attendee)return {error:'Attendee not found.',status:404};
+  if(classId&&attendee.class_id!==classId)return {error:'Attendee is not allocated to this class.',status:409};
+  const session=await env.BOOKINGS_DB.prepare(`SELECT status FROM classes WHERE id=?`).bind(attendee.class_id).first();
+  if(!session||session.status==='cancelled')return {error:'This class is unavailable or cancelled.',status:409};
   const prior=await env.BOOKINGS_DB.prepare(`SELECT attendee_id,action,reason FROM booking_attendee_audit WHERE operation_id=?`).bind(operationId).first();
   if(prior)return prior.attendee_id===attendeeId&&prior.action==='ATTENDEE_CHECKED_IN'&&prior.reason===reason?{ok:true,idempotent:true,attendee}:{error:'Operation ID conflict.',status:409};
   if(attendee.attendance_status==='CANCELLED')return {error:'A cancelled attendee cannot be checked in.',status:409};
   if(attendee.attendance_status==='ATTENDED')return {ok:true,idempotent:true,attendee};
   if(attendee.role!=='COMPLIMENTARY'&&attendee.booking_status!=='PAID')return {error:'This booking must be paid before person-level attendance is recorded.',status:409};
+  if(attendee.role!=='COMPLIMENTARY'&&(attendee.booking_class_id!==attendee.class_id||Number(attendee.place_number)>Number(attendee.booking_quantity)))return {error:'This person has no valid allocated place in the selected class.',status:409};
   const identifiable=Boolean(attendee.customer_id);
   const qualifies=attendee.role==='COMPLIMENTARY'||(attendee.booking_status==='PAID'&&(Number(attendee.amount_pence||0)>0||attendee.payment_provider==='CLASS_PASS'));
   const claimId=crypto.randomUUID(),transactionId=crypto.randomUUID(),next={attendance_status:'ATTENDED'};
   const statements=[
-    env.BOOKINGS_DB.prepare(`UPDATE booking_attendees SET attendance_status='ATTENDED',checked_in_at=CURRENT_TIMESTAMP,checked_in_by=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND attendance_status='EXPECTED'`).bind(actor,attendeeId),
+    env.BOOKINGS_DB.prepare(`UPDATE booking_attendees SET attendance_status='ATTENDED',checked_in_at=CURRENT_TIMESTAMP,checked_in_by=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND attendance_status='EXPECTED' AND EXISTS(SELECT 1 FROM classes c WHERE c.id=booking_attendees.class_id AND c.status<>'cancelled') AND (role='COMPLIMENTARY' OR EXISTS(SELECT 1 FROM bookings b WHERE b.id=booking_attendees.booking_id AND b.status='PAID' AND b.class_id=booking_attendees.class_id AND booking_attendees.place_number<=b.quantity))`).bind(actor,attendeeId),
     env.BOOKINGS_DB.prepare(`INSERT INTO booking_attendee_audit(id,attendee_id,class_id,booking_id,customer_id,action,actor,reason,operation_id,previous_json,next_json)
       SELECT ?,?,?,?,?,'ATTENDEE_CHECKED_IN',?,?,?,?,?
       WHERE EXISTS(SELECT 1 FROM booking_attendees WHERE id=? AND attendance_status='ATTENDED')
@@ -404,13 +409,15 @@ async function checkInBookingAttendee(env,{attendeeId,actor,operationId,reason='
       .bind(crypto.randomUUID(),attendeeId,attendee.class_id,attendee.booking_id,attendee.customer_id,actor,reason,operationId,JSON.stringify({attendance_status:'EXPECTED'}),JSON.stringify(next),attendeeId,attendeeId)
   ];
   if(identifiable&&qualifies){
-    statements.push(env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO attendee_loyalty_credits(id,attendee_id,class_id,customer_id) VALUES(?,?,?,?)`).bind(claimId,attendeeId,attendee.class_id,attendee.customer_id));
+    statements.push(env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO attendee_loyalty_credits(id,attendee_id,class_id,customer_id) SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM booking_attendees WHERE id=? AND attendance_status='ATTENDED')`).bind(claimId,attendeeId,attendee.class_id,attendee.customer_id,attendeeId));
     statements.push(env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO loyalty_transactions(id,customer_id,customer_email,member_id,booking_id,amount,transaction_type,reason,source_type,source_id,created_by)
       SELECT ?,c.id,lower(c.email),m.id,?,1,'ATTENDANCE_CREDIT',?,'ATTENDEE_ATTENDANCE',?,?
       FROM attendee_loyalty_credits alc JOIN customers c ON c.id=alc.customer_id LEFT JOIN member_accounts m ON m.customer_id=c.id
       WHERE alc.attendee_id=?`).bind(transactionId,attendee.booking_id,reason,attendeeId,actor,attendeeId));
   }
   const results=await env.BOOKINGS_DB.batch(statements);
+  const latest=await env.BOOKINGS_DB.prepare(`SELECT attendance_status FROM booking_attendees WHERE id=?`).bind(attendeeId).first();
+  if(latest?.attendance_status!=='ATTENDED')return {error:'Attendance changed or booking is no longer eligible. Refresh this person before retrying.',status:409};
   const loyaltyInserted=identifiable&&qualifies&&Number(results[3]?.meta?.changes||0)>0;
   if(loyaltyInserted){
     const customer=await env.BOOKINGS_DB.prepare(`SELECT id,name,email FROM customers WHERE id=?`).bind(attendee.customer_id).first();
@@ -426,6 +433,16 @@ async function checkInBookingAttendee(env,{attendeeId,actor,operationId,reason='
   const credit=await env.BOOKINGS_DB.prepare(`SELECT id FROM attendee_loyalty_credits WHERE attendee_id=?`).bind(attendeeId).first();
   const ownAudit=await env.BOOKINGS_DB.prepare(`SELECT id FROM booking_attendee_audit WHERE operation_id=?`).bind(operationId).first();
   return {ok:true,idempotent:!ownAudit,loyalty_credited:loyaltyInserted,attendee:await env.BOOKINGS_DB.prepare(`SELECT * FROM booking_attendees WHERE id=?`).bind(attendeeId).first()};
+}
+async function bulkRegisterCheckIn(env,body,actor){
+    const classId=clean(body.class_id,120),operationId=clean(body.operation_id,120),ids=Array.isArray(body.attendee_ids)?[...new Set(body.attendee_ids)]:[];
+    if(!classId||!operationId||!ids.length||ids.length>25||ids.some(id=>typeof id!=='string'||!id||id.length>180))return {error:'Choose 1–25 people from one class and an operation reference.',status:400};
+    const results=[];
+    for(const attendeeId of ids){
+      try{const result=await checkInBookingAttendee(env,{attendeeId,classId,actor,operationId:await memberSha256Hex(`${operationId}:${attendeeId}`)});results.push({id:attendeeId,...result});}
+      catch{results.push({id:attendeeId,error:'Check-in could not be confirmed. Retry this person safely.',status:503});}
+    }
+    return {ok:true,results};
 }
 async function loyaltyTransactionBalance(env,email,customerId=null){
   const normalized=String(email||'').trim().toLowerCase();
@@ -7287,10 +7304,14 @@ async function adminBookings(request, env, ctx) {
 
   if(action==='PROMOTE_SUNDAY_WAITING')return promoteSundayWaiting(request,env,check.state.email,body);
 
+  if(action==='REGISTER_ATTENDEES_CHECK_IN'){
+    if(!await attendeeSchemaAvailable(env))return json({error:'Person-level attendance migration is required.'},503);
+    const result=await bulkRegisterCheckIn(env,body,check.state.email);return json(result,result.error?result.status:200);
+  }
   if(action==='REGISTER_ATTENDEE_CHECK_IN'){
     if(!await attendeeSchemaAvailable(env))return json({error:'Person-level attendance is not available until its database migration is complete.'},503);
     const operationId=clean(body.operation_id,120);if(!id||!operationId)return json({error:'Attendee and operation reference are required.'},400);
-    const result=await checkInBookingAttendee(env,{attendeeId:id,actor:check.state.email,operationId});
+    const result=await checkInBookingAttendee(env,{attendeeId:id,actor:check.state.email,operationId,classId:clean(body.class_id,120)||null});
     return result.error?json({error:result.error},result.status||409):json(result);
   }
   if(action==='ADD_COMPLIMENTARY_ATTENDANCE'){
@@ -7467,8 +7488,11 @@ async function adminBookings(request, env, ctx) {
       .bind(check.state.email,action,'booking',id,JSON.stringify({...body,created:attendanceResult.created})).run();
     return json({ok:true,checked_in:true,already_checked_in:!attendanceResult.created});
   }else if(action==='REGISTER_CHECK_IN'){
+    if(body.class_id&&booking.class_id!==clean(body.class_id,120))return json({error:'Booking is not allocated to this class.'},409);
+    if(booking.status!=='PAID')return json({error:'Only a paid booking can be checked in.'},409);
     if(await bookingUsesPersonAttendance(env,id))return json({error:'This booking uses person-level attendance. Check in each person from the class register.',code:'PERSON_ATTENDANCE_REQUIRED'},409);
-    const attendanceResult=await recordAttendance(env,{bookingId:id,checkedInBy:check.state.email});
+    const attendanceResult=await recordAttendance(env,{bookingId:id,checkedInBy:check.state.email,requirePaid:true});
+    if(!attendanceResult.attendance)return json({error:'Booking or class is no longer eligible.'},409);
     const loyaltyResult=await attendanceLoyaltyCredit(env,{booking,attendance:attendanceResult.attendance,createdBy:check.state.email});
     await env.BOOKINGS_DB.prepare(`INSERT INTO audit_log(actor,action,target_type,target_id,metadata_json) VALUES(?,?,?,?,?)`)
       .bind(check.state.email,action,'booking',id,JSON.stringify({created:attendanceResult.created,loyalty_credited:loyaltyResult.credited,reconciliation:loyaltyResult.reconciled_to})).run();

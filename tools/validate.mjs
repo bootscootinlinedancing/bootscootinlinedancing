@@ -60,7 +60,9 @@ const standaloneTests=[
   'special-events-e2e.mjs',
   'special-events-regression.mjs',
   'sunday-sessions-regression.mjs',
-  'welcome-offer-regression.mjs'
+  'welcome-offer-regression.mjs',
+  'fast-checkin-ui-regression.mjs',
+  'fast-checkin-server-regression.mjs'
 ];
 for(const test of standaloneTests){
   const result=spawnSync(process.execPath,[join(rootPath,'tests',test)],{encoding:'utf8'});

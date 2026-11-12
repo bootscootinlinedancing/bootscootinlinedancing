@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {JSDOM} from 'jsdom';
+const ui=readFileSync(new URL('../check-in-ui.js',import.meta.url),'utf8');
+const ranch=readFileSync(new URL('../ranch.js',import.meta.url),'utf8');
+const render=ranch.slice(ranch.indexOf('  function renderClassRegister(){'),ranch.indexOf('  async function addComplimentaryAttendance('));
+const dom=new JSDOM('<main><section id="classRegisterPanel"></section></main>',{url:'https://fixture.example.test',runScripts:'outside-only'}),w=dom.window;
+let scroll=[0,450],requests=[],mode='ok',resolveSend;
+Object.defineProperty(w,'scrollY',{get:()=>scroll[1]});Object.defineProperty(w,'scrollX',{get:()=>scroll[0]});w.scrollTo=(x,y)=>{scroll=[x,y]};w.HTMLElement.prototype.scrollIntoView=()=>{throw Error('Check-in must never scrollIntoView')};
+w.eval(ui);
+w.state={classRegister:{class:{id:'class-1',title:'Synthetic family class'},bookings:[{id:'booking-1',reference:'BS-FAMILY',customer_name:'Family Booker',status:'PAID',quantity:2},{id:'unpaid',reference:'BS-UNPAID',customer_name:'Unpaid',status:'PENDING',quantity:1}],attendees:[{id:'one',booking_id:'booking-1',snapshot_name:'Family One',attendance_status:'EXPECTED',role:'LEAD'},{id:'two',booking_id:'booking-1',snapshot_name:'Family Two',attendance_status:'EXPECTED',role:'GUEST'},{id:'unpaid-person',booking_id:'unpaid',snapshot_name:'Unpaid Person',attendance_status:'EXPECTED',role:'LEAD'},{id:'helper',snapshot_name:'Support Person',attendance_status:'EXPECTED',role:'COMPLIMENTARY'}],stats:{}}};
+w.ADMIN_API_PREFIX='/ranch/api/admin';w.$=q=>w.document.querySelector(q);w.bookingSortRows=x=>[...x];w.esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));w.fmt=()=>'';w.money=()=>'';w.ticketLabel=()=>'';w.bookingSortOptions=()=>'<option>Newest</option>';w.emptyPanel=x=>x;
+for(const name of ['checkInFromRegister','undoCheckInFromRegister','exportClassRegisterCsv','addComplimentaryAttendance'])w[name]=()=>{};
+w.jsonFetch=async(url,options)=>{const body=JSON.parse(options.body);requests.push(body);if(mode==='defer')return new Promise(resolve=>resolveSend=()=>resolve({results:body.attendee_ids.map(id=>({id,ok:true,attendee:{attendance_status:'ATTENDED'}}))}));if(mode==='network')throw Error('Fixture connection lost');return {results:body.attendee_ids.map(id=>mode==='partial'&&id==='two'?{id,error:'Fixture rejection'}:{id,ok:true,attendee:{attendance_status:'ATTENDED'}})};};
+w.eval(render+'\nglobalThis.renderFixture=renderClassRegister;');w.renderFixture();const initialPreview=dom.serialize();
+const panel=w.$('#classRegisterPanel'),surface=w.$('.checkin-surface'),one=surface.querySelector('[data-checkin-row="one"]'),input=surface.querySelector('[data-checkin-search]'),pick=id=>surface.querySelector(`[data-checkin-pick="${id}"]`);
+assert.equal(panel.querySelectorAll('[data-checkin-row]').length,4,'group and complimentary rows render');assert.equal(surface.querySelector('[data-checkin-single="unpaid-person"]').disabled,true);
+input.value='Family';input.dispatchEvent(new w.Event('input',{bubbles:true}));surface.querySelector('[data-checkin-filter]').value='unchecked';surface.querySelector('[data-checkin-filter]').dispatchEvent(new w.Event('change'));
+await w.state.classCheckin.check(['one']);assert.equal(one,surface.querySelector('[data-checkin-row="one"]'),'same DOM row retained');assert.equal(surface,w.$('.checkin-surface'),'whole register not rebuilt');assert.equal(input.value,'Family');assert.equal(surface.querySelector('[data-checkin-filter]').value,'unchecked');assert.deepEqual(scroll,[0,450]);assert(one.classList.contains('is-checked-in'),surface.querySelector('[data-checkin-feedback]').textContent);assert.equal(w.$('#classCheckinTotal').textContent,'1 / 3');
+// Bulk: a successful person is removed, failed person stays selected, search/scroll survive.
+surface.querySelector('[data-checkin-mode]').checked=true;surface.querySelector('[data-checkin-mode]').dispatchEvent(new w.Event('change'));
+for(const id of ['two','helper']){pick(id).checked=true;pick(id).dispatchEvent(new w.Event('change',{bubbles:true}));}
+mode='partial';await w.state.classCheckin.check(['two','helper']);assert(w.state.classCheckin.selected.has('two'));assert(!w.state.classCheckin.selected.has('helper'));assert.equal(w.$('#classCheckinTotal').textContent,'2 / 3');assert.equal(input.value,'Family');assert.equal(surface.querySelector('[data-checkin-submit]').textContent,'Check in 1 person');
+mode='network';const before=requests.length;await w.state.classCheckin.check(['two']);const failedOperation=requests.at(-1).operation_id;assert(w.state.classCheckin.selected.has('two'));mode='defer';const pending=w.state.classCheckin.check(['two']);await w.state.classCheckin.check(['two']);assert.equal(requests.length,before+2,'rapid duplicate tap has no second in-flight request');assert.equal(requests.at(-1).operation_id,failedOperation,'uncertain network retry retains operation ID');resolveSend();await pending;assert.equal(w.$('#classCheckinTotal').textContent,'3 / 3');assert.deepEqual(scroll,[0,450]);
+// Scrolling while a request is in flight must not snap back to the tap position.
+w.state.classRegister.attendees.find(x=>x.id==='two').attendance_status='EXPECTED';mode='defer';const scrolling=w.state.classCheckin.check(['two']);scroll=[0,900];resolveSend();await scrolling;assert.deepEqual(scroll,[0,900]);
+// Late responses cannot patch a different class/day after navigation.
+w.state.classRegister.attendees.find(x=>x.id==='two').attendance_status='EXPECTED';mode='defer';const late=w.state.classCheckin.check(['two']);w.state.classRegister={class:{id:'different'},attendees:[],bookings:[]};resolveSend();await late;assert.equal(w.state.classRegister.class.id,'different');
+const css=readFileSync(new URL('../check-in.css',import.meta.url),'utf8');assert(css.includes('min-height:48px'));assert(css.includes('@media(max-width:600px)'));assert(!render.includes('loadClassRegister(classId)'));
+// A valid group booking can retain unnamed guest places. They count toward
+// expected capacity but must neither crash rendering nor become selectable people.
+w.state.classRegister={class:{id:'unnamed-class',title:'Synthetic unnamed group'},bookings:[{id:'unnamed-booking',reference:'BS-UNNAMED',customer_name:'Synthetic Lead',status:'PAID',quantity:2}],attendees:[{id:'named-lead',booking_id:'unnamed-booking',snapshot_name:'Synthetic Lead',attendance_status:'EXPECTED',role:'LEAD'}],stats:{}};
+assert.doesNotThrow(()=>w.renderFixture());assert(w.$('#classRegisterPanel').textContent.includes('1 unnamed guest place'));assert.equal(w.$('#classRegisterPanel').querySelectorAll('[data-checkin-pick]').length,1);assert.equal(w.$('#classCheckinTotal').textContent,'0 / 2');
+// Optional local-only review artifact, never production data.
+if(process.env.CHECKIN_FIXTURE_OUTPUT)writeFileSync(process.env.CHECKIN_FIXTURE_OUTPUT,initialPreview);
+console.log('PASS actual register renderer: stable rows/scroll, search/filter retention, group selection, totals, partial failures, duplicate taps, uncertain retries, navigation and mobile control rules');

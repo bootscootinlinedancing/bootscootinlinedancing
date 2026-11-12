@@ -8,5 +8,8 @@
     "deploy:special-events-staging": "node tools/deploy-special-events-staging.mjs",
     "smoke:staging": "node tools/staging-special-events-smoke.mjs",
     "serve": "python3 -m http.server 8788"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
   }
 }
