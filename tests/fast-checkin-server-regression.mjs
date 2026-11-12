@@ -4,7 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 
 const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^import .*payment-reconciliation\.js';\s*/m,'').replace(/^export /gm,'');
 const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'').replaceAll("'./payment-reconciliation.js'",JSON.stringify(new URL('../payment-reconciliation.js',import.meta.url).href));
-const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {attendeeSchemaAvailable,bookingUsesPersonAttendance,bookingAttendeeRows,checkInBookingAttendee,deterministicAttendeeCustomer,syncLoyaltyForEmail,awardLoyaltyStampForBooking,uniqueAttendanceCountForCustomer,bulkRegisterCheckIn};').toString('base64')}`);
+const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {attendeeSchemaAvailable,bookingUsesPersonAttendance,bookingAttendeeRows,checkInBookingAttendee,deterministicAttendeeCustomer,syncLoyaltyForEmail,awardLoyaltyStampForBooking,uniqueAttendanceCountForCustomer,bulkRegisterCheckIn,adminBookings,adminClasses};').toString('base64')}`);
 const db=new DatabaseSync(':memory:');
 db.exec(`PRAGMA foreign_keys=ON;
 CREATE TABLE classes(id TEXT PRIMARY KEY,title TEXT,status TEXT DEFAULT 'open');
@@ -42,3 +42,12 @@ person('race','unpaid',2);db.exec(`UPDATE bookings SET status='PAID',quantity=2 
 result=await mod.checkInBookingAttendee(env,{attendeeId:'race',classId:'class-1',actor:'staff',operationId:'race'});assert(result.error);assert.equal(db.prepare(`SELECT attendance_status FROM booking_attendees WHERE id='race'`).get().attendance_status,'EXPECTED');assert.equal(db.prepare(`SELECT COUNT(*) n FROM booking_attendee_audit WHERE attendee_id='race'`).get().n,0);env.BOOKINGS_DB.batch=originalBatch;
 db.exec(`UPDATE classes SET status='cancelled' WHERE id='class-1'`);assert((await mod.checkInBookingAttendee(env,{attendeeId:'family-a',classId:'class-1',actor:'staff',operationId:'closed'})).error);
 console.log('PASS regular single/bulk check-in, simultaneous staff, scope/eligibility, partial failures, retry, immutable audit, unchanged loyalty and cancellation race');
+
+// The real HTTP register routes must avoid runtime schema bootstrap work.
+db.exec("UPDATE classes SET status='open'; INSERT INTO bookings VALUES('fast-route','class-1','lead','Route Guest','route@example.test',1,800,'PAID','SUMUP')");person('fast-person','fast-route');
+let ddl=0;env.BOOKINGS_DB.prepare=sql=>{if(/^\s*(CREATE|ALTER)/i.test(sql)){ddl++;throw Error('DDL is forbidden on the register request');}return prepare(sql);};
+const route=await mod.adminBookings(new Request('https://fixture.example.test/ranch/api/admin/bookings',{method:'PATCH',headers:{Origin:'https://fixture.example.test','Cf-Access-Authenticated-User-Email':'staff@example.test','Content-Type':'application/json'},body:JSON.stringify({action:'REGISTER_ATTENDEES_CHECK_IN',class_id:'class-1',attendee_ids:['fast-person'],operation_id:'http-fast-checkin'})}),env,{});
+assert.equal(route.status,200);assert.equal((await route.json()).results[0].ok,true);assert.equal(ddl,0);
+const readEnv={BOOKINGS_DB:{prepare(sql){assert(!/^\s*(CREATE|ALTER)/i.test(sql));return {bind(){return this},async first(){return null}}}}};
+const missingRegister=await mod.adminClasses(new Request('https://fixture.example.test/ranch/api/admin/classes?register=missing',{headers:{'Cf-Access-Authenticated-User-Email':'staff@example.test'}}),readEnv);assert.equal(missingRegister.status,404);
+console.log('PASS authenticated HTTP check-in and register read avoid runtime DDL/bootstrap');

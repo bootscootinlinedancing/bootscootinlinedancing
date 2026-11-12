@@ -5567,7 +5567,10 @@ async function adminClassGuests(request,env){
 async function adminClasses(request, env) {
   const check=requireAccessAdmin(request,env);
   if(check.response)return check.response;
-  await ensureBookingSchema(env);
+  // Versioned deployment migrations provision the register. Replaying the full
+  // schema bootstrap here can exceed HQ's request deadline before its first row.
+  const registerRead=request.method==='GET'&&Boolean(new URL(request.url).searchParams.get('register'));
+  if(!registerRead)await ensureBookingSchema(env);
 
   if(request.method==='GET'){
     const registerClassId=clean(new URL(request.url).searchParams.get('register')||'',120);
@@ -7261,7 +7264,11 @@ async function promoteSundayWaiting(request,env,actor,body){
 
 async function adminBookings(request, env, ctx) {
   const check=requireAccessAdmin(request,env);if(check.response)return check.response;
-  await ensureBookingSchema(env);
+  const body=request.method==='GET'?null:await request.json().catch(()=>null);
+  const registerAction=request.method==='PATCH'&&['REGISTER_ATTENDEES_CHECK_IN','REGISTER_ATTENDEE_CHECK_IN','REGISTER_CHECK_IN'].includes(clean(body?.action,40));
+  // Check-in uses the installed schema and retains the authentication, origin,
+  // eligibility and transaction checks below. No DDL belongs on this hot path.
+  if(!registerAction)await ensureBookingSchema(env);
 
   if(request.method==='GET'){
     const {results}=await env.BOOKINGS_DB.prepare(`
@@ -7297,7 +7304,6 @@ async function adminBookings(request, env, ctx) {
     });
   }
 
-  const body=await request.json().catch(()=>null);
   if(!body)return json({error:'Invalid booking action.'},400);
   if(!request.headers.get('Origin')||!sameOriginWrite(request))return json({error:'This HQ request could not be verified.'},403);
   const id=clean(body.id,120),action=clean(body.action,40);
