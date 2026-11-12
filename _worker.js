@@ -1,3 +1,4 @@
+import {fulfilVerifiedPayment,runBoundedReconciliation,reconciliationWarnings,reconciliationEnabled,paymentFulfilmentFence,paymentFulfilmentCommit} from './payment-reconciliation.js';
 import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,verifySpecialEventCheckout,processSpecialEventConfirmations,sendSpecialEventConfirmationDeliveryTest,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
 
 const INDEX_KEY = '__system/media-index.json';
@@ -2685,7 +2686,7 @@ function normaliseUkPhone(value) {
 
 async function sendTransactionalEmail(env, to, subject, html, text, senderType='general', options={}) {
   const apiKey = String(env.RESEND_API_KEY || env.EMAIL_API_KEY || '').trim();
-  const from = emailSender(env, senderType);
+  const from = String(options.from||emailSender(env, senderType)).trim();
   if (!apiKey || !from) return { skipped: true, reason: 'Email provider is not configured.' };
   const replyTo=emailOk(options.replyTo)?String(options.replyTo).trim().toLowerCase():'';
   const payload={ from, to: [to], subject, html, text };
@@ -2862,15 +2863,17 @@ function bookingConfirmationPayload(env,booking){
       buttons:[{label:'Manage my booking',href:links.manage},{label:'Add to Google Calendar',href:links.google,secondary:true},
         {label:'Add to Apple / Outlook Calendar',href:links.calendar,secondary:true}]})};
 }
-async function processBookingConfirmations(env){
-  await cleanupExpiredUnreferencedBookingHolds(env);
-  await recoverBookingConfirmations(env);
+async function processBookingConfirmations(env,{bookingId=null}={}){
+  if(!bookingId){
+    await cleanupExpiredUnreferencedBookingHolds(env);
+    await recoverBookingConfirmations(env);
+  }
   const policy=await env.BOOKINGS_DB.prepare(`SELECT delivery_enabled FROM booking_confirmation_policy WHERE id=1`).first();
   if(!policy?.delivery_enabled)return {paused:true};
   if(!String(env.RESEND_API_KEY||env.EMAIL_API_KEY||'').trim()||!emailSender(env,'bookings'))return {setup_required:true};
   const rows=await env.BOOKINGS_DB.prepare(`SELECT * FROM booking_confirmation_jobs
-    WHERE (status IN ('PENDING','RETRY') AND next_attempt_at<=CURRENT_TIMESTAMP)
-      OR (status='PROCESSING' AND lease_until<=CURRENT_TIMESTAMP) ORDER BY created_at LIMIT 50`).all();
+    WHERE (? IS NULL OR booking_id=?) AND ((status IN ('PENDING','RETRY') AND next_attempt_at<=CURRENT_TIMESTAMP)
+      OR (status='PROCESSING' AND lease_until<=CURRENT_TIMESTAMP)) ORDER BY created_at LIMIT 50`).bind(bookingId,bookingId).all();
   let sent=0,failed=0;
   for(const job of rows.results||[]){
     const claim=crypto.randomUUID();
@@ -2949,7 +2952,11 @@ async function adminBookingConfirmationDeliveryTest(request,env){
   }
 }
 async function safelyQueueBookingConfirmation(env,bookingId){
-  try{await enqueueBookingConfirmation(env,bookingId);}catch(error){
+  try{
+    await enqueueBookingConfirmation(env,bookingId);
+    // Dispatch only this paid booking; the durable scheduled processor remains the fallback.
+    await processBookingConfirmations(env,{bookingId});
+  }catch(error){
     // Payment stays authoritative; the scheduled recovery scan repairs a failed enqueue.
     console.error('BOOKING_CONFIRMATION_ENQUEUE_FAILED',bookingId,clean(error?.message||error,200));
   }
@@ -3495,7 +3502,10 @@ async function settleSundayWaitingOffer(env,bookingId,status){
   }
 }
 
-async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RECONCILIATION') {
+async function applySumUpCheckoutState(env,booking,checkout,actor='SUMUP_RECONCILIATION'){
+  return fulfilVerifiedPayment(env,'regular',booking,checkout,(current,verified)=>applySumUpCheckoutStateLegacy(env,current,verified,actor));
+}
+async function applySumUpCheckoutStateLegacy(env, booking, checkout, actor = 'SUMUP_RECONCILIATION') {
   if (!booking || !checkout) return booking;
   const checkoutStatus = String(checkout.status || '').toUpperCase();
   const transactionId = checkoutTransactionId(checkout);
@@ -3507,6 +3517,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
     // one D1 transaction. A crash can therefore leave either the original
     // PENDING state or the complete PAID state, never a half-confirmed booking.
     const results=await env.BOOKINGS_DB.batch([
+      ...paymentFulfilmentFence(env,'regular',booking.id,checkout),
       env.BOOKINGS_DB.prepare(
         `UPDATE bookings
          SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),
@@ -3522,9 +3533,12 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
           AND NOT EXISTS(SELECT 1 FROM audit_log WHERE target_type='booking' AND target_id=? AND action='SUMUP_PAYMENT_CONFIRMED')`)
         .bind(actor,booking.id,JSON.stringify({checkout_id:booking.provider_checkout_id,transaction_id:transactionId,
           transaction_code:transactionCode,checkout_status:checkoutStatus}),booking.id,booking.id),
-      bookingConfirmationInsert(env,booking.id)
+      bookingConfirmationInsert(env,booking.id),
+      env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=classes.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0),updated_at=CURRENT_TIMESTAMP WHERE id=? AND EXISTS(SELECT 1 FROM bookings WHERE id=? AND status='PAID')`).bind(booking.class_id,booking.id),
+      ...paymentFulfilmentCommit(env,'regular',booking.id)
     ]);
-    const paid=results[0];
+    const paid=results[reconciliationEnabled(env)?2:0];
+    if(!Number(paid?.meta?.changes||0))return env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=?`).bind(booking.id).first();
     if (Number(paid?.meta?.changes || 0) > 0) {
       await settleSundayWaitingOffer(env,booking.id,'PAID');
       await reconcileClassSold(env,booking.class_id);
@@ -3542,7 +3556,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
   if (['FAILED','EXPIRED'].includes(checkoutStatus) && booking.status === 'PENDING') {
     const failed = await env.BOOKINGS_DB.prepare(
       `UPDATE bookings SET status=? WHERE id=? AND status='PENDING'`
-    ).bind(checkoutStatus, booking.id).run();
+    ).bind('FAILED', booking.id).run();
     if (Number(failed?.meta?.changes || 0) > 0) {
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE booking_holds SET expires_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?`).bind(booking.hold_id),
@@ -3560,7 +3574,7 @@ async function applySumUpCheckoutState(env, booking, checkout, actor = 'SUMUP_RE
       }
       await settleSundayWaitingOffer(env,booking.id,checkoutStatus);
     }
-    booking.status = checkoutStatus;
+    booking.status = 'FAILED';
   }
   return booking;
 }
@@ -3936,7 +3950,7 @@ async function sumUpWebhook(request, env) {
     const verification=verifySpecialEventCheckout(specialEventBooking,checkout,env.SUMUP_MERCHANT_CODE);
     if(!verification.ok)return json({error:'Special Event payment verification failed.',code:verification.code},409);
     await applySpecialEventCheckoutState(env,specialEventBooking,checkout);
-    await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1).catch(error=>console.error('SPECIAL_EVENT_CONFIRMATION_PROCESS_FAILED',specialEventBooking.id,clean(error?.message||error,200)));
+    await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1,{bookingId:specialEventBooking.id}).catch(error=>console.error('SPECIAL_EVENT_CONFIRMATION_PROCESS_FAILED',specialEventBooking.id,clean(error?.message||error,200)));
     return new Response(null,{status:204});
   }
   if(order&&checkout){
@@ -6002,6 +6016,7 @@ async function adminBootstrap(request, env) {
     }
   }
 
+  try{result.payment_reconciliation=await reconciliationWarnings(env);}catch{result.payment_reconciliation=[{code:'PAYMENT_RECONCILIATION_STORAGE_UNAVAILABLE'}];}
   return json(result);
 }
 
@@ -6545,6 +6560,21 @@ async function secureSecretMatch(provided, expected) {
   return difference === 0;
 }
 
+async function runPaymentReconciliation(request,env){
+  if(request.method!=='POST')return json({error:'POST required.'},405);
+  const expected=String(env.EMAIL_AUTOMATION_SECRET||'').trim();
+  const provided=String(request.headers.get('authorization')||'').replace(/^Bearer /i,'');
+  if(!expected||!await secureSecretMatch(provided,expected))return json({error:'Not authorised.'},401);
+  try{
+    const result=await runBoundedReconciliation(env,{
+      retrieve:(kind,id)=>retrieveSumUpCheckout(env,id,kind==='special'?'SUMUP_SPECIAL_EVENTS_API_KEY':'SUMUP_API_KEY'),
+      regular:(booking,checkout)=>applySumUpCheckoutState(env,booking,checkout,'SUMUP_SCHEDULED_RECOVERY'),
+      special:async(booking,checkout)=>{await applySpecialEventCheckoutState(env,booking,checkout);await processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options),1,{bookingId:booking.id});}
+    });
+    return json({ok:true,...result});
+  }catch{return json({error:'Payment reconciliation unavailable; inspect HQ. No provider error is treated as failed payment.'},503);}
+}
+
 async function runProtectedEmailAutomations(request, env) {
   if (request.method !== 'POST') return json({ error: 'Method not allowed.' }, 405);
   const expected = String(env.EMAIL_AUTOMATION_SECRET || '').trim();
@@ -6558,7 +6588,7 @@ async function runProtectedEmailAutomations(request, env) {
     const [campaigns, journeys, specialEventReconciliation, specialEventConfirmations] = await Promise.all([
       processDueCampaigns(env),
       processAutomaticBookingNotifications(env),
-      reconcilePendingSpecialEventBookings(env),
+      Promise.resolve({delegated:true,enabled:reconciliationEnabled(env)}),
       processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))
     ]);
     return json({
@@ -8132,7 +8162,7 @@ async function serveMedia(request, env, pathname) {
 
 export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),Promise.resolve({delegated:true,enabled:reconciliationEnabled(env)}),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
@@ -8326,6 +8356,7 @@ export default {
       if (path === '/api/admin/emails') return adminEmailCentre(request, env, ctx);
       if (path === '/api/mailing-list/subscribe' && request.method === 'POST') return subscribeMailingList(request, env);
       if (path === '/api/email/unsubscribe' && request.method === 'GET') return unsubscribeEmail(request, env, url);
+      if(path==='/api/automation/reconcile-payments')return runPaymentReconciliation(request,env);
       if (path === '/api/automation/run') return runProtectedEmailAutomations(request, env);
       if (path === '/api/admin/operations' && request.method === 'GET') return adminOperations(request, env);
       if (path === '/api/admin/private-events') return adminPrivateEvents(request, env);

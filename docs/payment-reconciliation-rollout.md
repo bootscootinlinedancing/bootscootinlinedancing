@@ -1,0 +1,71 @@
+# Payment reconciliation: review and deployment plan
+
+No production action is part of this draft. Base: d8cffbcb6485fef2895345046f7ecbd0bba171f0.
+
+## Evidence and root causes
+
+The investigated regular class and Johnny event bookings had matching captured payments while local fulfilment remained PENDING. Both are now recovered. Retained evidence does not prove the specific reason SumUp's callback/return did not complete; do not label this a proven provider webhook outage.
+
+Confirmed code gaps: regular pending bookings are not scanned by the scheduled endpoint; events depend on an hourly, unbounded pending scan; regular confirmations queue until the hourly processor; event status/outbox and attendees used separate transactions; event transaction selection chose transactions[0], including failed attempts; regular EXPIRED handling tried a value not permitted by the status constraint. Callback and customer-return handlers exist, but neither guarantees the customer returns or that a callback completes.
+
+## Design
+
+`PAYMENT_RECONCILIATION_ENABLED=true` enables a shared strict verifier and leased fulfilment guard for regular and special-event payment entry points. Exact ID/reference/merchant/GBP/amount and exactly one successful matching transaction are required. Cross-family checks plus durable unique checkout/transaction claims reject payment reuse; SQL triggers also prevent future claims from another family. Historical PAID rows return without transaction-ID rewrites. Capacity limits including active holds/guest allocations are checked inside the PAID transaction. A transaction fence rejects concurrent cancellation. Event status, attendee/day allocation, audit and outbox now commit together. Regular attendee inconsistencies go to review rather than inventing guests.
+
+A separate secret-authenticated POST `/api/automation/reconcile-payments` handles at most four due pending checkouts. Every five minutes the existing cron worker invokes that endpoint in a separate HTTP request budget. The original minute-five hourly journeys/campaigns are retained. Provider downtime leaves PENDING untouched and backs off 5 minutes to 6 hours; fixed status codes and count-only monitoring avoid logging contacts/provider bodies. Expired/failed observations are reviewed, never inferred captures or unavailable-provider declines. REVIEW entries are not auto-replayed. HQ overview exposes review and incomplete event-fulfilment warnings.
+
+Existing confirmation copy, provider idempotency keys and historical outboxes are preserved. The regular targeted sender and event leased/frozen-payload retry code are reused from draft PR77, not a second mailer. Event acceptance requires an ID. Ambiguous attempts older than 20 hours require manual review instead of replaying beyond Resend's retention. No PDFs, customer QR images or new templates.
+
+## PR77 overlap
+
+PR77 remains untouched. This PR incorporates its targeted regular confirmation processor, event leased/frozen payload retry processor, sender override and additive migration0038 verbatim or with integration adjustments. Its read-only verifier already shipped in PR78/79 and is not replaced here. Do not merge PR77 wholesale afterward: rebase it and drop the already-adopted hunks/migration; keep one dispatch path and one idempotency key. PR74's delivery webhook remains independent and unmerged; provider acceptance is not proof of delivery.
+
+## Deployment (separate owner approval required)
+
+1. Export D1 and record the exact current Pages/cron SHAs/configuration. Validate synthetic tests and stage both regular/event flows; never stage with production SumUp/Resend credentials or customers.
+2. Apply migration0038 once (check D1 migration history first), then0039. They are additive and preserve provider IDs/history;0038 flags legacy ambiguous failed/in-flight sends for manual review. No bulk sending/backfill.
+3. Deploy Pages code with fallback flag initially false. The updated event sender requires0038 columns even while fallback is off. Verify the existing read-only endpoint and owner HQ.
+4. Inspect REVIEW/capacity fixtures and compare current inventory. Enable the fallback flag, then deploy the cron worker with its existing secret and five-minute schedule. Confirm one bounded run, count-only logs, last worker invocation and provider error response monitoring. A missing worker/flag must not be mistaken for a working fallback.
+5. Observe callback duplication, PAID transitions, queue/acceptance IDs, provider delivery independently and unchanged historical records. Check recovery backlog count and oldest retry age; surface storage failures in HQ and alert on cron HTTP failures.
+
+## Rollback
+
+Disable the fallback flag and keep the corrected Pages code. The prior hourly email cron may run against this code, which no longer invokes the legacy payment scan. If restoring an older Pages deployment, pause scheduled automations first: older code re-enables its legacy event scan. Do not resume it without a safe email-only path. Keep0038/0039 columns, claims, audit and outbox history; do not drop tables or rewrite PAID rows. Capacity/duplicate triggers remain protective. Do not resend an ambiguous delivery during rollback; verify the provider ID first. Review any in-flight claim after its lease and retry only through the approved flow.
+
+## Validation
+
+`npm run validate` includes the new real SQLite synthetic suite: exact mismatch rejection, failed-then-successful attempt selection, duplicate callbacks, regular/event concurrent fulfilment, expired holds, competing capacity requests, cross-family claims including later writes, atomic allocation failure rollback, cancellation during fulfilment, mocked Resend acceptance/idempotency and bounded provider downtime. Existing suites cover reservation/cancellation/loyalty and event admission. No production data or provider call is made by these tests.
+
+## Final safety review — 12 November 2026
+
+The final review found and corrected two deployment blockers: cron recovery was awaited before hourly email processing, and the payment claim was committed outside the fulfilment batch. Recovery and hourly email now have independent waitUntil promises. Claims, PAID status, hold consumption/expiry, sold/release counters, event attendee/day allocations, payment audit, outbox and job completion now commit in one D1 batch. A final SQL guard rejects incomplete allocations; claim insertion rechecks all families inside that transaction. Competition number collisions and inconsistent day allocations abort the whole batch. Anniversary release checks include external recorded sales and separate guest allocations. Regular unnamed guest places retain their existing quantity entitlement without invented attendee rows.
+
+Cloudflare documents D1 batch transaction rollback on statement failure: https://developers.cloudflare.com/d1/worker-api/d1-database/#batch. Provider sending is an external operation and cannot share a D1 transaction: a durable frozen payload plus the existing Resend key deduplicates retry after acceptance/acknowledgement loss; after 20 hours an uncertain result stops for manual review. Acceptance is not delivery or customer receipt.
+
+Live SELECT-only preflight observed production main d8cffbcb6485fef2895345046f7ecbd0bba171f0, deployment edd8319f-36a4-43f8-aff3-d66d9c90acba; reconciliation flag absent (disabled); existing cron remains `5 * * * *`. The live schema contained 420 table/index/trigger objects and 24 migration records through0035. Neither0038 nor0039 is recorded, and the new columns/tables are absent. Numbering gaps do not indicate missing prerequisites in this repository. Migration0038 is byte-identical to PR77 (SHA256 33658de1695b1a322dc534a0785b867ea030e75b263621e0664de9a08f85ed46). Use the migration runner/history, never rerun its raw ALTER statements or import it again from PR77. If the ledger and columns disagree at deployment time, STOP and inspect; do not mark an unknown migration applied or rerun blindly.
+
+Historical aggregate checks found no duplicated non-null checkout/transaction IDs across regular, special, passes and merch; no attendee-count mismatch or missing outbox among48 paid SumUp event bookings. Existing event outboxes:47 SENT with provider IDs,3 DISABLED, no SENDING/FAILED rows.0038 therefore has no currently ambiguous legacy attempts to flag. This is a schema/history preflight, not a fresh delivery audit or proof that disabled confirmations should be sent. One regular PENDING SumUp checkout had an expired/missing hold; no special PENDING checkout was present. These counts are a point-in-time observation, not an instruction to change records.
+
+The bounded scan verifies a PAID provider checkout before considering recovery. An expired/missing reservation goes to REVIEW even if captured; local FAILED/CANCELLED/REFUNDED and provider FAILED/EXPIRED are never automatically resurrected. Mismatched references, duplicate claims, missing allocations and capacity conflicts stop for review. Provider failure stays PENDING with backoff. Existing callbacks remain capacity-guarded; no manual review record is a permission for an operator to bypass verification.
+
+Final local checks:15 standard regression suites; additional explicit actual-production-schema end-to-end suite with synthetic records only. It injects failure after each of8 regular and12 weekend fulfilment statements, eight simultaneous callers per family, cross-family race, competition collision, missing day, external release capacity, unnamed groups, acknowledgement loss after mocked Resend acceptance, flag false, expired hold review, historical migration preservation and original-main code rollback on the retained schema. The scheduler suite separately checks HTTP error, network failure, timeout and a hung recovery request without blocking the minute-five email request. No provider message/charge or remote write is made by any test.
+
+Run the explicit preflight with `node tests/payment-predeploy-regression.mjs /path/to/select-only-schema.json /path/to/exact-original-main-source`. The second directory must contain the recorded production `_worker.js` and `special-events.js`; it is optional but was supplied for this review. Private live metadata/schema snapshots stay outside Git.
+
+Readiness: GO for the next approved staging/flag-off rollout step after the corrected commit is reviewed; NO-GO for unattended production enablement until the staging and monitored gates below pass. No migration, flag change, cron update, merge or deployment was performed in this review.
+
+Approved rollout gates, in order:
+1. Capture a fresh database export/Time Travel bookmark, Pages version and cron worker version/configuration before any write. The read-only schema snapshot is NOT a data backup. Recheck migration ledger and columns and rerun local preflight against that snapshot.
+2. Stage with isolated synthetic D1 and mocked/sandbox providers; run duplicate callback/customer return/recovery and email acceptance tests there. No production credentials or customer recipients.
+3. Only after approval, apply0038 once then0039, checking each migration result/ledger. Deploy Pages with `PAYMENT_RECONCILIATION_ENABLED=false`; keep existing hourly cron. Smoke regular/event checkout verification and standard confirmation, owner-only endpoint/HQ, and counts. The email lease columns are required even while the fallback flag is false. Failed schema/flow checks stop rollout.
+4. Review the expired/ambiguous backlog and capacity. In a separately approved monitored window enable reconciliation, then update the cron worker. Its recovery request remains bounded to4; hourly journeys/campaigns still run independently at minute5. Inspect first run, WAIT/REVIEW counts and age, claim/PAID/outbox consistency, accepted IDs and provider delivery separately. An HTTP failure, growing backlog or any duplicate/partial fulfilment stops expansion.
+5. Observe at least one full hourly automation cycle and a regular/event payment cycle before advancing to PR81. Do not use a bulk recovery or customer email send as a smoke test.
+
+Rollback order: disable reconciliation and retain the corrected atomic Pages code. Restore the recorded hourly email cron only against that corrected endpoint. If reverting Pages code to the original main is necessary, pause scheduled automation while that older code is active; do not allow its legacy event scan to resume unattended. The explicit test ran original-main payment/sender modules successfully on the retained0038/0039 schema and verified prior claims/accepted confirmation history stayed unchanged. Retain all additive tables/columns, triggers, claims, outboxes, attendees and audits. Do not restore an older database export over newer payments, delete history, reset email attempts or resend uncertain messages. Old-main rollback returns to its known reliability limitations; it is a containment option, not the permanent fix. Investigate in-flight/REVIEW records individually and verify provider acceptance before any approved resend.
+
+
+## Hosted staging containment correction
+
+The isolated rollback rehearsal preserved all synthetic history, but review exposed a flag-off containment gap: the hourly endpoint and Pages scheduled handler still invoked the old unbounded event scan when the new flag was false. Both now always delegate payment recovery to the dedicated bounded endpoint. With the flag false, there is no scheduled payment recovery; regular/event callbacks and customer returns still work, and hourly campaigns, journeys and confirmation processors continue independently. No production configuration or migration was changed.
+
+The actual-schema regression calls the authenticated hourly endpoint with reconciliation disabled and a pending event, verifies a successful email-automation response, zero SumUp calls and no payment transition. The hosted staging test repeats this with a synthetic ambiguous checkout. Original-main code remains schema-compatible and preserves records when restored, but its old scheduled scanner is a known limitation: pause scheduled automation during an emergency old-code rollback. Do not equate schema compatibility with payment-scan safety.
