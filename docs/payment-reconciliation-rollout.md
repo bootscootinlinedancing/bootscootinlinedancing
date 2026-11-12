@@ -4,7 +4,7 @@ No production action is part of this draft. Base: d8cffbcb6485fef2895345046f7ecb
 
 ## Evidence and root causes
 
-The investigated regular booking BS-261110-18B769 and event booking BSE-261111-39FAFD had matching captured payments while local fulfilment remained PENDING. Both are now recovered. Retained evidence does not prove the specific reason SumUp's callback/return did not complete; do not label this a proven provider webhook outage.
+The investigated regular class and Johnny event bookings had matching captured payments while local fulfilment remained PENDING. Both are now recovered. Retained evidence does not prove the specific reason SumUp's callback/return did not complete; do not label this a proven provider webhook outage.
 
 Confirmed code gaps: regular pending bookings are not scanned by the scheduled endpoint; events depend on an hourly, unbounded pending scan; regular confirmations queue until the hourly processor; event status/outbox and attendees used separate transactions; event transaction selection chose transactions[0], including failed attempts; regular EXPIRED handling tried a value not permitted by the status constraint. Callback and customer-return handlers exist, but neither guarantees the customer returns or that a callback completes.
 
