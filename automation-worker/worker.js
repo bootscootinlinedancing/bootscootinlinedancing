@@ -16,7 +16,15 @@ async function processDueEmails(env){
 }
 
 export default {
-  async scheduled(_controller,env,ctx){
-    ctx.waitUntil(processDueEmails(env));
+  async scheduled(controller,env,ctx){
+    // Separate HTTP invocation gives the recovery scan its own subrequest budget.
+    ctx.waitUntil((async()=>{
+      const endpoint='https://bootscootinlinedancing.co.uk/api/automation/reconcile-payments';
+      const response=await fetch(endpoint,{method:'POST',headers:{authorization:`Bearer ${String(env.EMAIL_AUTOMATION_SECRET||'').trim()}`}});
+      if(!response.ok)throw Error(`Payment recovery HTTP ${response.status}`);
+      const summary=await response.json();console.info('PAYMENT_RECOVERY_RUN',JSON.stringify(summary));
+      // Existing hourly journeys/campaigns remain on their original minute-five slot.
+      if(new Date(controller.scheduledTime).getUTCMinutes()===5)await processDueEmails(env);
+    })());
   }
 };
