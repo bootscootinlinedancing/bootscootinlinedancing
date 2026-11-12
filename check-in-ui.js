@@ -22,18 +22,22 @@
       if(ids.length>25){$('[data-checkin-feedback]').textContent='Choose up to 25 people at a time.';return;}
       const session=context();if(!session){$('[data-checkin-feedback]').textContent='Choose a single event day before checking in several people.';return;}
       const key=session+':'+ids.slice().sort().join(',');if(!operations.has(key))operations.set(key,crypto.randomUUID());
-      ids.forEach(id=>busy.add(id));refresh();$('[data-checkin-feedback]').textContent='Recording attendance…';
+      const position=()=>({x:window.scrollX,y:window.scrollY});
+      const retain=point=>{if(point&&(window.scrollX!==point.x||window.scrollY!==point.y))window.scrollTo({left:point.x,top:point.y,behavior:'instant'});};
+      const pendingPosition=position();let completedPosition=null;
+      ids.forEach(id=>busy.add(id));refresh();$('[data-checkin-feedback]').textContent='Recording attendance…';retain(pendingPosition);
       try{
         const response=await send(ids,operations.get(key),session);
         if(!root.isConnected||context()!==session)return; // Navigation must never patch another register/day.
+        completedPosition=position(); // Includes any scrolling while awaiting the server.
         const results=response.results||[];let succeeded=0;const errors=[];
         for(const id of ids){const result=results.find(x=>x.id===id);if(result?.ok&&!result.error){apply(id,result,session);selected.delete(id);succeeded++;}else{selected.add(id);errors.push(`${map.get(id)?.name||'Attendee'}: ${result?.error||'No confirmed result; retry safely.'}`);}}
         $('[data-checkin-feedback]').textContent=`${succeeded} checked in.${errors.length?' Still selected: '+errors.join(' '):''}`;
         if(!errors.length)operations.delete(key);
-      }catch(error){if(root.isConnected&&context()===session){ids.forEach(id=>selected.add(id));$('[data-checkin-feedback]').textContent=`Check-in not confirmed. Selection kept; retry safely. ${error.message||''}`;}}
-      // Stable rows need no forced scrolling. Staff may have scrolled further
-      // while the request was pending; never snap them back to the tap position.
-      finally{ids.forEach(id=>busy.delete(id));if(root.isConnected&&context()===session)refresh();}
+      }catch(error){if(root.isConnected&&context()===session){completedPosition=position();ids.forEach(id=>selected.add(id));$('[data-checkin-feedback]').textContent=`Check-in not confirmed. Selection kept; retry safely. ${error.message||''}`;}}
+      // Preserve each synchronous update's current view, never a stale tap-time
+      // position. This also neutralises browser anchoring when feedback appears.
+      finally{ids.forEach(id=>busy.delete(id));if(root.isConnected&&context()===session){refresh();retain(completedPosition);}}
     }
     root.addEventListener('click',event=>{const button=event.target.closest('[data-checkin-single]');if(button&&root.contains(button))check([button.dataset.checkinSingle]);});
     root.addEventListener('change',event=>{const box=event.target.closest('[data-checkin-pick]');if(box){box.checked?selected.add(box.dataset.checkinPick):selected.delete(box.dataset.checkinPick);refresh();}});
