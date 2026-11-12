@@ -15,3 +15,6 @@ body.ranch-v91 .checkin-surface [data-checkin-pick]{width:28px;height:28px;min-w
 @media(max-width:600px){body.ranch-v91 .checkin-toolbar>button{width:auto;flex:1 1 130px}}
 
 body.ranch-v91 .checkin-mode{min-height:48px}body.ranch-v91 .checkin-mode input{width:24px;height:24px;flex:none}
+
+/* Author grid rules otherwise override the browser default for [hidden]. */
+.checkin-surface [hidden],.checkin-toolbar [hidden],#specialAttendanceList [hidden]{display:none!important}

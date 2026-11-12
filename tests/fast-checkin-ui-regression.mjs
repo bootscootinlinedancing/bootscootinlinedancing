@@ -7,6 +7,10 @@ const render=ranch.slice(ranch.indexOf('  function renderClassRegister(){'),ranc
 const dom=new JSDOM('<main><section id="classRegisterPanel"></section></main>',{url:'https://fixture.example.test',runScripts:'outside-only'}),w=dom.window;
 let scroll=[0,450],requests=[],mode='ok',resolveSend;
 Object.defineProperty(w,'scrollY',{get:()=>scroll[1]});Object.defineProperty(w,'scrollX',{get:()=>scroll[0]});w.scrollTo=(x,y)=>{scroll=[x,y]};w.HTMLElement.prototype.scrollIntoView=()=>{throw Error('Check-in must never scrollIntoView')};
+w.document.body.className='ranch-v91';
+const hostStyles=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
+const registerStyles=[...hostStyles.matchAll(/body\.ranch-v91 \.class-register-(?:row|attendee)\{[^}]*\}/g)].map(match=>match[0]).join('\n');
+const stylesheet=w.document.createElement('style');stylesheet.textContent=registerStyles+'\n'+readFileSync(new URL('../check-in.css',import.meta.url),'utf8');w.document.head.append(stylesheet);
 w.eval(ui);
 w.state={classRegister:{class:{id:'class-1',title:'Synthetic family class'},bookings:[{id:'booking-1',reference:'BS-FAMILY',customer_name:'Family Booker',status:'PAID',quantity:2},{id:'unpaid',reference:'BS-UNPAID',customer_name:'Unpaid',status:'PENDING',quantity:1}],attendees:[{id:'one',booking_id:'booking-1',snapshot_name:'Family One',attendance_status:'EXPECTED',role:'LEAD'},{id:'two',booking_id:'booking-1',snapshot_name:'Family Two',attendance_status:'EXPECTED',role:'GUEST'},{id:'unpaid-person',booking_id:'unpaid',snapshot_name:'Unpaid Person',attendance_status:'EXPECTED',role:'LEAD'},{id:'helper',snapshot_name:'Support Person',attendance_status:'EXPECTED',role:'COMPLIMENTARY'}],stats:{}}};
 w.ADMIN_API_PREFIX='/ranch/api/admin';w.$=q=>w.document.querySelector(q);w.bookingSortRows=x=>[...x];w.esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));w.fmt=()=>'';w.money=()=>'';w.ticketLabel=()=>'';w.bookingSortOptions=()=>'<option>Newest</option>';w.emptyPanel=x=>x;
@@ -17,6 +21,7 @@ const panel=w.$('#classRegisterPanel'),surface=w.$('.checkin-surface'),one=surfa
 assert.equal(panel.querySelectorAll('[data-checkin-row]').length,4,'group and complimentary rows render');assert.equal(surface.querySelector('[data-checkin-single="unpaid-person"]').disabled,true);
 input.value='Family';input.dispatchEvent(new w.Event('input',{bubbles:true}));surface.querySelector('[data-checkin-filter]').value='unchecked';surface.querySelector('[data-checkin-filter]').dispatchEvent(new w.Event('change'));
 await w.state.classCheckin.check(['one']);assert.equal(one,surface.querySelector('[data-checkin-row="one"]'),'same DOM row retained');assert.equal(surface,w.$('.checkin-surface'),'whole register not rebuilt');assert.equal(input.value,'Family');assert.equal(surface.querySelector('[data-checkin-filter]').value,'unchecked');assert.deepEqual(scroll,[0,450]);assert(one.classList.contains('is-checked-in'),surface.querySelector('[data-checkin-feedback]').textContent);assert.equal(w.$('#classCheckinTotal').textContent,'1 / 3');
+const hiddenRows=[...surface.querySelectorAll('[data-checkin-row][hidden]')];assert(hiddenRows.length>0);for(const row of hiddenRows)assert.equal(w.getComputedStyle(row).display,'none','filtered rows must be visually hidden under actual register grid CSS');
 // Bulk: a successful person is removed, failed person stays selected, search/scroll survive.
 surface.querySelector('[data-checkin-mode]').checked=true;surface.querySelector('[data-checkin-mode]').dispatchEvent(new w.Event('change'));
 for(const id of ['two','helper']){pick(id).checked=true;pick(id).dispatchEvent(new w.Event('change',{bubbles:true}));}
