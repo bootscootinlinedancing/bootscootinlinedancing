@@ -6588,7 +6588,7 @@ async function runProtectedEmailAutomations(request, env) {
     const [campaigns, journeys, specialEventReconciliation, specialEventConfirmations] = await Promise.all([
       processDueCampaigns(env),
       processAutomaticBookingNotifications(env),
-      (reconciliationEnabled(env)?Promise.resolve({delegated:true}):reconcilePendingSpecialEventBookings(env)),
+      Promise.resolve({delegated:true,enabled:reconciliationEnabled(env)}),
       processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))
     ]);
     return json({
@@ -8162,7 +8162,7 @@ async function serveMedia(request, env, pathname) {
 
 export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),(reconciliationEnabled(env)?Promise.resolve({delegated:true}):reconcilePendingSpecialEventBookings(env)),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),Promise.resolve({delegated:true,enabled:reconciliationEnabled(env)}),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;

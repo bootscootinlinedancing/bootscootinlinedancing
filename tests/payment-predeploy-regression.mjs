@@ -11,7 +11,7 @@ assert(schema.every(row=>['table','index','trigger'].includes(row.type)));
 let source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8')
   .replaceAll("'./special-events.js'",JSON.stringify(new URL('../special-events.js',import.meta.url).href))
   .replaceAll("'./payment-reconciliation.js'",JSON.stringify(new URL('../payment-reconciliation.js',import.meta.url).href));
-const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {applySumUpCheckoutState,processBookingConfirmations};').toString('base64')}`);
+const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {applySumUpCheckoutState,processBookingConfirmations,runProtectedEmailAutomations};').toString('base64')}`);
 const sqlFile=name=>readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8');
 const originalFetch=globalThis.fetch;
 // 0038 must preserve old statuses/provider IDs and quarantine only ambiguous sends.
@@ -112,6 +112,11 @@ try{
     const before=off.db.totalChanges;assert.deepEqual(await runBoundedReconciliation(off.env),{disabled:true});assert.equal(off.db.totalChanges,before);
     console.log(`PASS ${kind}: frozen Resend retry after lost acknowledgement; flag-off fulfilment and disabled scheduler`);
   }
+  const disabledHourly=fixture({enabled:false});disabledHourly.special('disabled-hourly-pending');disabledHourly.env.EMAIL_AUTOMATION_SECRET='synthetic-automation';
+  const onlyResend=globalThis.fetch;let disabledProviderReads=0;globalThis.fetch=async(url,options)=>{if(String(url).includes('api.sumup.com')){disabledProviderReads++;throw Error('Disabled recovery must not access payment provider');}return onlyResend(url,options);};
+  const hourlyResponse=await mod.runProtectedEmailAutomations(new Request('https://fixture.example.test/api/automation/run',{method:'POST',headers:{authorization:'Bearer synthetic-automation'}}),disabledHourly.env);globalThis.fetch=onlyResend;
+  assert.equal(hourlyResponse.status,200);assert.equal(disabledProviderReads,0);assert.equal(disabledHourly.db.prepare('SELECT status FROM special_event_bookings').get().status,'PENDING');
+  console.log('PASS flag-off hourly email endpoint performs no legacy payment scan and leaves pending event unchanged');
   const old=fixture(),oldBooking=old.regular('expired');old.db.exec("UPDATE booking_holds SET expires_at='2000-01-01'");
   const result=await runBoundedReconciliation(old.env,{retrieve:async()=>checkout(oldBooking),regular:()=>{throw Error('Expired hold must not auto-recover')},special:()=>{}});
   assert.equal(result.review,1);assert.equal(old.count('verified_payment_claims'),0);assert.equal(old.db.prepare('SELECT status FROM bookings').get().status,'PENDING');
@@ -141,7 +146,7 @@ try{
   if(process.argv[3]){
     const oldSpecialUrl=pathToFileURL(process.argv[3]+'/special-events.js').href;
     const oldSource=readFileSync(process.argv[3]+'/_worker.js','utf8').replaceAll("'./special-events.js'",JSON.stringify(oldSpecialUrl));
-    const oldWorker=await import(`data:text/javascript;base64,${Buffer.from(oldSource+'\nexport {applySumUpCheckoutState,processBookingConfirmations};').toString('base64')}`);
+    const oldWorker=await import(`data:text/javascript;base64,${Buffer.from(oldSource+'\nexport {applySumUpCheckoutState,processBookingConfirmations,runProtectedEmailAutomations};').toString('base64')}`);
     const oldSpecial=await import(oldSpecialUrl);
     await oldWorker.applySumUpCheckoutState(rollback.env,rollback.regular('original-main'),checkout(rollback.db.prepare("SELECT * FROM bookings WHERE id='original-main'").get()));
     await oldWorker.processBookingConfirmations(rollback.env);
