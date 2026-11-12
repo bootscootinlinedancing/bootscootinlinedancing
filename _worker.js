@@ -1,4 +1,4 @@
-import {fulfilVerifiedPayment,runBoundedReconciliation,reconciliationWarnings,reconciliationEnabled,paymentFulfilmentFence} from './payment-reconciliation.js';
+import {fulfilVerifiedPayment,runBoundedReconciliation,reconciliationWarnings,reconciliationEnabled,paymentFulfilmentFence,paymentFulfilmentCommit} from './payment-reconciliation.js';
 import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,verifySpecialEventCheckout,processSpecialEventConfirmations,sendSpecialEventConfirmationDeliveryTest,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
 
 const INDEX_KEY = '__system/media-index.json';
@@ -3517,7 +3517,7 @@ async function applySumUpCheckoutStateLegacy(env, booking, checkout, actor = 'SU
     // one D1 transaction. A crash can therefore leave either the original
     // PENDING state or the complete PAID state, never a half-confirmed booking.
     const results=await env.BOOKINGS_DB.batch([
-      ...paymentFulfilmentFence(env,'regular',booking.id),
+      ...paymentFulfilmentFence(env,'regular',booking.id,checkout),
       env.BOOKINGS_DB.prepare(
         `UPDATE bookings
          SET status='PAID',paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),
@@ -3533,9 +3533,12 @@ async function applySumUpCheckoutStateLegacy(env, booking, checkout, actor = 'SU
           AND NOT EXISTS(SELECT 1 FROM audit_log WHERE target_type='booking' AND target_id=? AND action='SUMUP_PAYMENT_CONFIRMED')`)
         .bind(actor,booking.id,JSON.stringify({checkout_id:booking.provider_checkout_id,transaction_id:transactionId,
           transaction_code:transactionCode,checkout_status:checkoutStatus}),booking.id,booking.id),
-      bookingConfirmationInsert(env,booking.id)
+      bookingConfirmationInsert(env,booking.id),
+      env.BOOKINGS_DB.prepare(`UPDATE classes SET sold=COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=classes.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0),updated_at=CURRENT_TIMESTAMP WHERE id=? AND EXISTS(SELECT 1 FROM bookings WHERE id=? AND status='PAID')`).bind(booking.class_id,booking.id),
+      ...paymentFulfilmentCommit(env,'regular',booking.id)
     ]);
-    const paid=results[reconciliationEnabled(env)?1:0];
+    const paid=results[reconciliationEnabled(env)?2:0];
+    if(!Number(paid?.meta?.changes||0))return env.BOOKINGS_DB.prepare(`SELECT * FROM bookings WHERE id=?`).bind(booking.id).first();
     if (Number(paid?.meta?.changes || 0) > 0) {
       await settleSundayWaitingOffer(env,booking.id,'PAID');
       await reconcileClassSold(env,booking.class_id);

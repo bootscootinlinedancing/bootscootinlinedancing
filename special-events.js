@@ -1,4 +1,4 @@
-import {fulfilVerifiedPayment,reconciliationEnabled,paymentFulfilmentFence} from './payment-reconciliation.js';
+import {fulfilVerifiedPayment,reconciliationEnabled,paymentFulfilmentFence,paymentFulfilmentCommit} from './payment-reconciliation.js';
 const response=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const tidy=(value,max=500)=>String(value??'').trim().slice(0,max);
 const specialHtmlEscape=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
@@ -644,12 +644,15 @@ export async function applySpecialEventCheckoutState(env,booking,checkout){
 async function applySpecialEventCheckoutStateLegacy(env,booking,checkout){
   const status=String(checkout?.status||'').toUpperCase();
   if(status==='PAID'){
+    const current=await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_bookings WHERE id=?`).bind(booking.id).first();
+    if(!current||current.status!=='PENDING')return current;
+    booking=current;
     const transaction=tidy(checkout?.transactions?.find(item=>item.status==='SUCCESSFUL')?.id||checkout?.transaction_id,180)||null;
     const ownerPaymentTest=await env.BOOKINGS_DB.prepare(`SELECT id FROM special_event_activity WHERE target_type='BOOKING' AND target_id=? AND action='OWNER_PAYMENT_TEST_CREATED' LIMIT 1`).bind(booking.id).first();
     const confirmationStatus=ownerPaymentTest?'READY':(String(env.SPECIAL_EVENT_EMAILS_ENABLED||'').toLowerCase()==='true'?'READY':'DISABLED');
     const statements=[
-      ...paymentFulfilmentFence(env,'special',booking.id),
-      env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='PAID',provider_transaction_id=?,paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('PENDING','FAILED')`).bind(transaction,booking.id),
+      ...paymentFulfilmentFence(env,'special',booking.id,checkout),
+      env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='PAID',provider_transaction_id=?,paid_at=COALESCE(paid_at,CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`).bind(transaction,booking.id),
       env.BOOKINGS_DB.prepare(`UPDATE special_event_holds SET status='CONSUMED' WHERE id=? AND status IN ('ACTIVE','RELEASED')`).bind(booking.hold_id),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_confirmation_outbox(id,booking_id,status,idempotency_key,recipient_email,subject) VALUES(?,?,?, ?,?,?)`).bind(crypto.randomUUID(),booking.id,confirmationStatus,`special-event-paid:${booking.id}`,booking.customer_email,SPECIAL_EVENT_CONFIRMATION_SUBJECT),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'PAYMENT_CONFIRMED','BOOKING',?,'SUMUP','Authoritative SumUp payment confirmed.',?)`).bind(crypto.randomUUID(),booking.event_id,booking.id,`special-event-paid:${booking.id}`)
@@ -677,8 +680,9 @@ async function applySpecialEventCheckoutStateLegacy(env,booking,checkout){
       statements.push(env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_competition_entries(id,event_id,booking_id,admission_booking_id,customer_id,attendee_id,contact_email,contact_phone,contact_is_guardian,entry_number)
         SELECT ?,?,?,?,?,?,CASE WHEN a.age_at_event<18 THEN a.guardian_email ELSE b.customer_email END,CASE WHEN a.age_at_event<18 THEN a.guardian_phone ELSE b.customer_phone END,CASE WHEN a.age_at_event<18 THEN 1 ELSE 0 END,COALESCE(MAX(c.entry_number),0)+1 FROM special_event_attendees a JOIN special_event_bookings b ON b.id=a.booking_id LEFT JOIN special_event_competition_entries c ON c.event_id=b.event_id WHERE a.id=? AND b.event_id=?`).bind(`${booking.id}:competition`,booking.event_id,booking.id,booking.qualifying_booking_id,booking.customer_id,booking.qualifying_attendee_id,booking.qualifying_attendee_id,booking.event_id));
     }
+    statements.push(env.BOOKINGS_DB.prepare(`UPDATE special_event_ticket_products AS early SET release_state='SOLD_OUT',updated_at=CURRENT_TIMESTAMP WHERE early.event_id=? AND early.code='EARLY_BIRD_WEEKEND' AND early.release_state='ACTIVE' AND early.allocation IS NOT NULL AND early.allocation<=COALESCE((SELECT SUM(quantity) FROM special_event_bookings WHERE product_id=early.id AND status='PAID'),0)`).bind(booking.event_id));
+    statements.push(...paymentFulfilmentCommit(env,'special',booking.id));
     await env.BOOKINGS_DB.batch(statements);
-    await refreshAutomaticReleases(env.BOOKINGS_DB,booking.event_id);
   }else if(['FAILED','EXPIRED'].includes(status)){
     await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`UPDATE special_event_bookings SET status='FAILED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'`).bind(booking.id),

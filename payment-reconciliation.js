@@ -11,8 +11,16 @@ export function verifiedTransaction(booking,checkout,merchant){
 export async function paymentReview(env,kind,booking,code){
   await env.BOOKINGS_DB.prepare(`INSERT INTO payment_reconciliation_jobs(kind,booking_id,checkout_id,state,code,next_attempt_at) VALUES(?,?,?,'REVIEW',?,datetime('now','+1 day')) ON CONFLICT(kind,booking_id) DO UPDATE SET state='REVIEW',code=excluded.code,updated_at=CURRENT_TIMESTAMP`).bind(kind,booking.id,booking.provider_checkout_id,code).run();
 }
-export function paymentFulfilmentFence(env,kind,id){
-  return reconciliationEnabled(env)?[env.BOOKINGS_DB.prepare(`UPDATE payment_reconciliation_jobs SET fulfil_guard=fulfil_guard+1 WHERE kind=? AND booking_id=?`).bind(kind,id)]:[];
+export function paymentFulfilmentFence(env,kind,id,checkout){
+  return reconciliationEnabled(env)?[
+    env.BOOKINGS_DB.prepare(`UPDATE payment_reconciliation_jobs SET fulfil_guard=fulfil_guard+1 WHERE kind=? AND booking_id=?`).bind(kind,id),
+    // The claim commits or rolls back WITH payment, capacity, allocations and outbox.
+    // Its INSERT trigger rechecks all families inside this same transaction.
+    env.BOOKINGS_DB.prepare(`INSERT INTO verified_payment_claims(checkout_id,transaction_id,kind,booking_id) VALUES(?,?,?,?)`).bind(checkout.id,checkout.transaction_id,kind,id)
+  ]:[];
+}
+export function paymentFulfilmentCommit(env,kind,id){
+  return reconciliationEnabled(env)?[env.BOOKINGS_DB.prepare(`UPDATE payment_reconciliation_jobs SET state='COMPLETE',code=NULL,updated_at=CURRENT_TIMESTAMP WHERE kind=? AND booking_id=?`).bind(kind,id)]:[];
 }
 export async function fulfilVerifiedPayment(env,kind,booking,checkout,fulfil){
   if(!reconciliationEnabled(env))return fulfil(booking,checkout);
@@ -32,17 +40,14 @@ export async function fulfilVerifiedPayment(env,kind,booking,checkout,fulfil){
     }
     if(kind==='regular'){
       const people=await db.prepare(`SELECT COUNT(*) total FROM booking_attendees WHERE booking_id=? AND attendance_status<>'CANCELLED'`).bind(current.id).first();
-      if(Number(people?.total)!==Number(current.quantity))throw Error('PAYMENT_ATTENDEE_REVIEW');
+      // Regular checkout permits unnamed guest places. Quantity reserves their
+      // capacity; do not invent named attendees or reject that existing flow.
+      if(Number(people?.total)<1||Number(people?.total)>Number(current.quantity))throw Error('PAYMENT_ATTENDEE_REVIEW');
     }
-    // Unique keys close the race between different families/bookings claiming one payment.
-    await db.prepare(`INSERT OR IGNORE INTO verified_payment_claims(checkout_id,transaction_id,kind,booking_id) VALUES(?,?,?,?)`).bind(checkout.id,transaction.id,kind,current.id).run();
-    const claim=await db.prepare(`SELECT * FROM verified_payment_claims WHERE checkout_id=? OR transaction_id=?`).bind(checkout.id,transaction.id).all();
-    if(claim.results?.length!==1||claim.results[0].kind!==kind||claim.results[0].booking_id!==current.id||claim.results[0].transaction_id!==transaction.id)throw Error('PAYMENT_DUPLICATE_CLAIM');
     // Capacity/cancellation triggers run in the same D1 transaction as the PAID transition.
     await fulfil(current,{...checkout,transaction_id:transaction.id,transactions:[transaction]});
     const after=await db.prepare(`SELECT * FROM ${table} WHERE id=?`).bind(current.id).first();
     if(after?.status!=='PAID')throw Error('PAYMENT_FULFILMENT_INCOMPLETE');
-    await db.prepare(`UPDATE payment_reconciliation_jobs SET state='COMPLETE',code=NULL,updated_at=CURRENT_TIMESTAMP WHERE kind=? AND booking_id=? AND lease_id=?`).bind(kind,current.id,lease).run();
     return after;
   }catch(error){
     // Fixed codes only: no provider payloads, credentials, contacts or exceptions in logs.
@@ -67,6 +72,12 @@ export async function runBoundedReconciliation(env,{retrieve,regular,special,lim
       if(!checkout)throw Error('PROVIDER_UNAVAILABLE');
       verifiedTransaction(booking,checkout,env.SUMUP_MERCHANT_CODE);
       if(checkout.status==='PAID'){
+        // A late capture after the reservation expired needs owner review, not
+        // unattended recovery. Live callbacks still check capacity atomically.
+        const hold=await db.prepare(row.kind==='regular'
+          ?`SELECT id FROM booking_holds WHERE id=? AND julianday(expires_at)>julianday('now')`
+          :`SELECT id FROM special_event_holds WHERE id=? AND status='ACTIVE' AND julianday(expires_at)>julianday('now')`).bind(booking.hold_id).first();
+        if(!hold){await paymentReview(env,row.kind,booking,'PAYMENT_HOLD_EXPIRED');summary.review++;continue;}
         await (row.kind==='regular'?regular:special)(booking,checkout);
         const fresh=await db.prepare(`SELECT status FROM ${tableFor(row.kind)} WHERE id=?`).bind(row.id).first();
         if(fresh?.status==='PAID'){summary.paid++;continue;}
