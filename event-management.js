@@ -45,7 +45,7 @@ export async function verifyAccess(env,{challenge,code}){
 export async function bookingManagementView(env,bookingId){
  const booking=await stmt(env,`SELECT b.reference,b.customer_name,b.quantity,b.status,b.effective_quantity,p.name AS ticket_type,e.refund_policy FROM event_effective_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id JOIN special_events e ON e.id=b.event_id WHERE b.id=?`,bookingId).first();
  if(!booking)throw new Error('NOT_FOUND');
- return {booking,attendees:await rows(stmt(env,`SELECT a.id,a.name,a.status,a.age_at_event,group_concat(d.label,', ') AS sessions FROM special_event_attendees a LEFT JOIN special_event_attendance x ON x.attendee_id=a.id LEFT JOIN special_event_days d ON d.id=x.day_id WHERE a.booking_id=? GROUP BY a.id ORDER BY a.name`,bookingId)),requests:await rows(stmt(env,`SELECT id,kind,status,cancellation_state,transfer_state,requested_refund_pence,created_at,closed_at FROM event_change_requests WHERE booking_id=? ORDER BY created_at DESC`,bookingId))};
+ return {booking,attendees:await rows(stmt(env,`SELECT a.id,a.name,a.status,a.age_at_event,group_concat(d.label,', ') AS sessions FROM special_event_attendees a LEFT JOIN special_event_attendance x ON x.attendee_id=a.id LEFT JOIN special_event_days d ON d.id=x.day_id WHERE a.booking_id=? GROUP BY a.id ORDER BY a.name`,bookingId)),requests:await rows(stmt(env,`SELECT id,kind,status,cancellation_state,transfer_state,requested_refund_pence,created_at,closed_at,(SELECT customer_message FROM event_change_operations o WHERE o.request_id=event_change_requests.id AND o.customer_message<>'' ORDER BY o.created_at DESC,o.rowid DESC LIMIT 1) AS customer_message FROM event_change_requests WHERE booking_id=? ORDER BY created_at DESC`,bookingId))};
 }
 export async function submitRequest(env,bookingId,body){
  if(!['CANCELLATION','REFUND','TRANSFER'].includes(body.kind)||!text(body.idempotency_key,100))throw new Error('INVALID_INPUT');
@@ -73,7 +73,7 @@ export async function decideRequest(env,actor,body){
  if(!text(body.operation_id,100)||!text(body.reason)||!Number.isInteger(body.version))throw new Error('INVALID_INPUT');
  const prior=await stmt(env,`SELECT * FROM event_change_operations WHERE id=?`,body.operation_id).first();
  if(prior){if(prior.request_id!==body.request_id||prior.action!==body.action||prior.actor!==actor||prior.reason!==text(body.reason)||prior.expected_version!==body.version)throw new Error('INVALID_INPUT');return {ok:true,duplicate:true};}
- await stmt(env,`INSERT INTO event_change_operations(id,request_id,expected_version,action,actor,reason) VALUES(?,?,?,?,?,?)`,body.operation_id,body.request_id,body.version,body.action,actor,text(body.reason)).run();
+ await stmt(env,`INSERT INTO event_change_operations(id,request_id,expected_version,action,actor,reason,customer_message) VALUES(?,?,?,?,?,?,?)`,body.operation_id,body.request_id,body.version,body.action,actor,text(body.reason),text(body.customer_message)).run();
  return {ok:true};
 }
 export async function authoriseRefund(env,actor,body){
@@ -118,6 +118,7 @@ export function validateEvidence(bytes,type){
 }
 export async function uploadEvidence(env,bookingId,requestId,file){
  const owned=await stmt(env,`SELECT id FROM event_change_requests WHERE id=? AND booking_id=? AND closed_at IS NULL`,requestId,bookingId).first();
+ if(!enabled(env,'EVENT_EVIDENCE_ENABLED'))throw new Error('EVIDENCE_NOT_AVAILABLE');
  if(!owned||!env.EVENT_EVIDENCE_BUCKET)throw new Error('NOT_FOUND');
  const bytes=new Uint8Array(await file.arrayBuffer());validateEvidence(bytes,file.type);
  const id=uid(),key=`quarantine/${id}`;
@@ -191,6 +192,10 @@ export async function customerManagement(request,env){
  }
  const session=await manageSession(request,env);if(!session)return reply({error:'SIGN_IN_REQUIRED'},401);
  if(action==='booking'&&request.method==='GET')return reply(await bookingManagementView(env,session.booking_id));
+ if(action==='reply'&&request.method==='POST'){
+ const body=await request.json();if(!text(body.message))throw new Error('INVALID_INPUT');
+ const result=await stmt(env,`INSERT INTO event_change_replies(id,request_id,body) SELECT ?,id,? FROM event_change_requests WHERE id=? AND booking_id=? AND status='NEEDS_INFORMATION'`,uid(),text(body.message),body.request_id,session.booking_id).run();if(!result.meta?.changes)throw new Error('NOT_FOUND');return reply({ok:true});
+ }
  if(action==='request'&&request.method==='POST')return reply(await submitRequest(env,session.booking_id,await request.json()),201);
  if(action==='evidence'&&request.method==='POST'){
  const length=Number(request.headers.get('content-length'));if(!length||length>5242880+65536)return reply({error:'UPLOAD_TOO_LARGE_OR_LENGTH_MISSING'},413);
@@ -209,7 +214,7 @@ export async function adminManagement(request,env,admin,services={}){
  if(request.method==='GET'){
  if(url.searchParams.get('evidence'))return evidenceDownload(env,url.searchParams.get('evidence'));
  const eventId=url.searchParams.get('event_id');if(!eventId)throw new Error('INVALID_INPUT');
- return reply({requests:await rows(stmt(env,`SELECT r.*,b.reference,b.customer_name,b.customer_email,b.amount_pence FROM event_change_requests r JOIN special_event_bookings b ON b.id=r.booking_id WHERE b.event_id=? ORDER BY r.created_at DESC LIMIT 250`,eventId)),items:await rows(stmt(env,`SELECT i.*,a.name AS original_name FROM event_change_items i JOIN event_change_requests r ON r.id=i.request_id JOIN special_event_bookings b ON b.id=r.booking_id JOIN special_event_attendees a ON a.id=i.attendee_id WHERE b.event_id=?`,eventId)),refunds:await rows(stmt(env,`SELECT r.* FROM event_refund_operations r JOIN special_event_bookings b ON b.id=r.booking_id WHERE b.event_id=?`,eventId)),evidence:await rows(stmt(env,`SELECT e.id,e.request_id,e.media_type,e.bytes,e.state,e.legal_hold,e.created_at FROM event_evidence e JOIN event_change_requests r ON r.id=e.request_id JOIN special_event_bookings b ON b.id=r.booking_id WHERE b.event_id=?`,eventId)),notifications:await rows(stmt(env,`SELECT n.id,n.kind,n.status,n.provider_id,n.created_at,n.sent_at FROM event_management_notifications n JOIN special_event_bookings b ON b.id=n.booking_id WHERE b.event_id=?`,eventId))});
+ return reply({replies:await rows(stmt(env,`SELECT m.* FROM event_change_replies m JOIN event_change_requests r ON r.id=m.request_id JOIN special_event_bookings b ON b.id=r.booking_id WHERE b.event_id=? ORDER BY m.created_at`,eventId)),requests:await rows(stmt(env,`SELECT r.*,b.reference,b.customer_name,b.customer_email,b.amount_pence FROM event_change_requests r JOIN special_event_bookings b ON b.id=r.booking_id WHERE b.event_id=? ORDER BY r.created_at DESC LIMIT 250`,eventId)),items:await rows(stmt(env,`SELECT i.*,a.name AS original_name FROM event_change_items i JOIN event_change_requests r ON r.id=i.request_id JOIN special_event_bookings b ON b.id=r.booking_id JOIN special_event_attendees a ON a.id=i.attendee_id WHERE b.event_id=?`,eventId)),refunds:await rows(stmt(env,`SELECT r.* FROM event_refund_operations r JOIN special_event_bookings b ON b.id=r.booking_id WHERE b.event_id=?`,eventId)),evidence:await rows(stmt(env,`SELECT e.id,e.request_id,e.media_type,e.bytes,e.state,e.legal_hold,e.created_at FROM event_evidence e JOIN event_change_requests r ON r.id=e.request_id JOIN special_event_bookings b ON b.id=r.booking_id WHERE b.event_id=?`,eventId)),notifications:await rows(stmt(env,`SELECT n.id,n.kind,n.status,n.provider_id,n.created_at,n.sent_at FROM event_management_notifications n JOIN special_event_bookings b ON b.id=n.booking_id WHERE b.event_id=?`,eventId))});
  }
  requireWrite(request);const body=await request.json();
  if(body.action==='AUTHORISE_REFUND')return reply(await authoriseRefund(env,admin.email,body));

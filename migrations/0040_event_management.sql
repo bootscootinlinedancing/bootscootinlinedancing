@@ -30,7 +30,7 @@ CREATE TABLE event_admission_releases(
 CREATE TABLE event_change_operations(
  id TEXT PRIMARY KEY, request_id TEXT NOT NULL REFERENCES event_change_requests(id), expected_version INTEGER NOT NULL,
  action TEXT NOT NULL CHECK(action IN ('NEEDS_INFORMATION','DECLINE','APPROVE','CANCEL','TRANSFER','COMPLETE')),
- actor TEXT NOT NULL, reason TEXT NOT NULL CHECK(length(trim(reason))>0), created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+ actor TEXT NOT NULL, reason TEXT NOT NULL CHECK(length(trim(reason))>0), customer_message TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE event_management_notifications(
  id TEXT PRIMARY KEY, booking_id TEXT NOT NULL REFERENCES special_event_bookings(id), recipient_email TEXT NOT NULL,
@@ -163,3 +163,5 @@ CREATE TRIGGER event_no_admission_resurrection BEFORE UPDATE OF status ON specia
 END;
 
 CREATE TRIGGER event_evidence_deletion_fence BEFORE UPDATE OF legal_hold ON event_evidence WHEN NEW.legal_hold=1 AND OLD.state IN('DELETE_PENDING','DELETED') BEGIN SELECT RAISE(ABORT,'DELETION_ALREADY_CLAIMED'); END;
+
+CREATE TABLE event_change_replies(id TEXT PRIMARY KEY,request_id TEXT NOT NULL REFERENCES event_change_requests(id),body TEXT NOT NULL CHECK(length(body) BETWEEN 1 AND 4000),created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);

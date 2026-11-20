@@ -1,3 +1,4 @@
+import {eventOwnerAccess} from './event-management-access.js';
 import {sumUpRefundProvider} from './event-management-sumup.js';
 import {customerManagement,adminManagement,processManagementNotifications} from './event-management.js';
 import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,verifySpecialEventCheckout,processSpecialEventConfirmations,sendSpecialEventConfirmationDeliveryTest,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
@@ -6556,12 +6557,13 @@ async function runProtectedEmailAutomations(request, env) {
   if (!(await secureSecretMatch(provided, expected))) return json({ error: 'Not authorised.', code: 'AUTOMATION_NOT_AUTHORISED' }, 401);
 
   const startedAt = new Date().toISOString();
+  const managementFallback=processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>({manual_review:true}));
   try {
     const [campaigns, journeys, specialEventReconciliation, specialEventConfirmations] = await Promise.all([
       processDueCampaigns(env),
       processAutomaticBookingNotifications(env),
       reconcilePendingSpecialEventBookings(env),
-      processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))
+      processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)),managementFallback
     ]);
     return json({
       ok: true,
@@ -8134,7 +8136,7 @@ async function serveMedia(request, env, pathname) {
 
 export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.allSettled([processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)),processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
@@ -8215,13 +8217,13 @@ export default {
       }
       if (path === '/api/admin/event-management') {
         if(incomingPath!=='/ranch/api/admin/event-management')return json({error:'Not found.'},404);
-        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        const check=await eventOwnerAccess(request,env);if(check.response)return check.response;
         const result=await adminManagement(request,env,check.state,{refundProvider:sumUpRefundProvider(env,specialEventSumUpFetch),sendEmail:(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)});
         if(request.method==='POST'&&result.ok)ctx.waitUntil(processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>{}));
         return result;
       }
       if (path === '/ranch/event-management' && request.method==='GET') {
-        const check=requireAccessAdmin(request,env);if(check.response)return check.response;
+        const check=await eventOwnerAccess(request,env);if(check.response)return check.response;
         const page=await env.ASSETS.fetch(new Request(new URL('/event-management.html',request.url),request));
         const headers=new Headers(page.headers);headers.set('cache-control','private, no-store');return new Response(page.body,{status:page.status,headers});
       }

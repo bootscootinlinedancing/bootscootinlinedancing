@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 
 const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
-const worker=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'').replaceAll("'./event-management.js'",JSON.stringify(new URL('../event-management.js',import.meta.url).href)).replaceAll("'./event-management-sumup.js'",JSON.stringify(new URL('../event-management-sumup.js',import.meta.url).href));
+const worker=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'').replaceAll("'./event-management.js'",JSON.stringify(new URL('../event-management.js',import.meta.url).href)).replaceAll("'./event-management-access.js'",JSON.stringify(new URL('../event-management-access.js',import.meta.url).href)).replaceAll("'./event-management-sumup.js'",JSON.stringify(new URL('../event-management-sumup.js',import.meta.url).href));
 const mod=await import(`data:text/javascript;base64,${Buffer.from(worker+'\nexport {isOwnerAccountRemovalSuppression,sendCampaign};').toString('base64')}`);
 
 assert.equal(mod.isOwnerAccountRemovalSuppression({source:'OWNER_ACCOUNT_REMOVAL'}),true);
