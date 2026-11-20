@@ -1,3 +1,4 @@
+import {waitingListApi,adminWaitingList,processWaitingNotifications,processWaitingList} from './event-waiting-list.js';
 import {eventOwnerAccess} from './event-management-access.js';
 import {sumUpRefundProvider} from './event-management-sumup.js';
 import {customerManagement,adminManagement,processManagementNotifications} from './event-management.js';
@@ -8136,7 +8137,7 @@ async function serveMedia(request, env, pathname) {
 
 export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.allSettled([processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)),processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.allSettled([processWaitingList(env).then(()=>processWaitingNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))),processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)),processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
@@ -8210,8 +8211,30 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if(path==='/api/event-waiting-list'){
+        const result=await waitingListApi(request,env,{resume:async id=>{
+          const booking=await env.BOOKINGS_DB.prepare('SELECT * FROM special_event_bookings WHERE id=?').bind(id).first();
+          if(!booking||!booking.provider_checkout_id)return json({error:'CHECKOUT_REQUIRES_OWNER_REVIEW'},409);
+          const checkout=await retrieveSumUpCheckout(env,booking.provider_checkout_id,'SUMUP_SPECIAL_EVENTS_API_KEY');
+          if(!verifySpecialEventCheckout(booking,checkout,env.SUMUP_MERCHANT_CODE).ok)return json({error:'CHECKOUT_REQUIRES_OWNER_REVIEW'},409);
+          const raw=checkout.hosted_checkout_url||checkout.hosted_checkout?.url;
+          if(booking.status==='PAID')return json({ok:true,checkout_url:`/johnny-rossato?reference=${encodeURIComponent(booking.reference)}&token=${encodeURIComponent(booking.secure_token)}`});
+          if(booking.status!=='PENDING'||checkout.status!=='PENDING'||!raw||new URL(raw).protocol!=='https:')return json({error:'CHECKOUT_REQUIRES_OWNER_REVIEW'},409);
+          return json({ok:true,checkout_url:raw,resumed:true});
+        },reserve:(req,context,waitingHold)=>createSpecialEventReservation(req,context,{sumUpFetch:specialEventSumUpFetch,resolveCustomerIdentity},{waitingHold})});
+        if(request.method==='POST'&&result.ok)ctx.waitUntil(processWaitingNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>{}));
+        return result;
+      }
+      if(path==='/api/admin/event-waiting-list'){
+        if(incomingPath!=='/ranch/api/admin/event-waiting-list')return json({error:'Not found.'},404);
+        const check=await eventOwnerAccess(request,env);if(check.response)return check.response;
+        const result=await adminWaitingList(request,env,check.state);
+        if(request.method==='POST'&&result.ok)ctx.waitUntil(processWaitingNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>{}));
+        return result;
+      }
       if (path === '/api/event-management') {
         const result=await customerManagement(request,env);
+        if(request.method==='POST'&&result.ok)ctx.waitUntil(processWaitingList(env).then(()=>processWaitingNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))).catch(()=>{}));
         if(request.method==='POST'&&result.ok)ctx.waitUntil(processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>{}));
         return result;
       }
@@ -8219,6 +8242,7 @@ export default {
         if(incomingPath!=='/ranch/api/admin/event-management')return json({error:'Not found.'},404);
         const check=await eventOwnerAccess(request,env);if(check.response)return check.response;
         const result=await adminManagement(request,env,check.state,{refundProvider:sumUpRefundProvider(env,specialEventSumUpFetch),sendEmail:(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)});
+        if(request.method==='POST'&&result.ok)ctx.waitUntil(processWaitingList(env).then(()=>processWaitingNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))).catch(()=>{}));
         if(request.method==='POST'&&result.ok)ctx.waitUntil(processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>{}));
         return result;
       }

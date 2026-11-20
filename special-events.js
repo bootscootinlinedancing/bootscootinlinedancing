@@ -129,7 +129,7 @@ export async function publicSpecialEvents(request,env,url){
         const {allocation:_allocation,sold_count:_sold,remaining:_remaining,shared_capacity_sold_out:_shared,...safe}=product;
         return {...safe,availability_status};
       });
-      return response({event,days:days.results||[],programme:programme.results||[],ticket_products:publicProducts,choreographies:choreographies.results||[]});
+      return response({event,waiting_list_enabled:String(env.EVENT_WAITLIST_ENABLED||'').toLowerCase()==='true'&&String(env.EVENT_WAITLIST_JOIN_ENABLED||'').toLowerCase()==='true',days:days.results||[],programme:programme.results||[],ticket_products:publicProducts,choreographies:choreographies.results||[]});
     }
     const rows=await env.BOOKINGS_DB.prepare(`SELECT e.slug,e.title,e.subtitle,e.venue_name,e.public_summary,e.artwork_url,
       (SELECT MIN(d.event_date) FROM special_event_days d WHERE d.event_id=e.id) starts_on,
@@ -554,7 +554,7 @@ export async function createSpecialEventReservation(request,env,services,options
   if(!ownerPaymentTest)await refreshAutomaticReleases(env.BOOKINGS_DB,event.id);
   const product=ownerPaymentTest
     ?await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code='SATURDAY_SOCIAL' AND name='Saturday Social & Spectator' AND price_pence=1500`).bind(event.id).first()
-    :await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code=? AND release_state='ACTIVE'`).bind(event.id,code).first();
+    :await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code=? AND (release_state='ACTIVE' OR (?=1 AND release_state='SOLD_OUT' AND code NOT IN('EARLY_BIRD_WEEKEND','LOYALTY_WEEKEND')))` ).bind(event.id,code,options.waitingHold?1:0).first();
   if(!product)return response({error:'This ticket is not currently available.'},409);
   const maximum=Math.min(Number(event.max_admission_per_checkout||4),Number(product.max_per_checkout||event.max_admission_per_checkout||4));
   if(quantity>maximum)return response({error:`Choose no more than ${maximum} ticket${maximum===1?'':'s'} per checkout.`},400);
@@ -579,7 +579,7 @@ export async function createSpecialEventReservation(request,env,services,options
   }
   let customer;
   try{customer=await services.resolveCustomerIdentity(env,{email,name,phone,marketingConsent:false,source:'BOOKING'});}catch(_){return response({error:'This customer identity could not be verified safely.'},409);}
-  const holdId=crypto.randomUUID(),bookingId=crypto.randomUUID(),idempotencyKey=tidy(body.idempotency_key,160)||crypto.randomUUID(),expiresAt=new Date(Date.now()+15*60*1000).toISOString();
+  const holdId=options.waitingHold?.hold_id||crypto.randomUUID(),bookingId=crypto.randomUUID(),idempotencyKey=tidy(body.idempotency_key,160)||crypto.randomUUID(),expiresAt=options.waitingHold?.expires_at||new Date(Date.now()+15*60*1000).toISOString();
   const competitionQuantity=attendeeInput.filter(item=>item?.competition_entry).length;
   const competitionInventoryQuantity=product.code==='MINI_COMPETITION'?quantity:competitionQuantity;
   if(competitionInventoryQuantity){
@@ -590,7 +590,7 @@ export async function createSpecialEventReservation(request,env,services,options
   const secureToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-',''),customerToken=crypto.randomUUID()+crypto.randomUUID().replaceAll('-','');
   const eventAvailability=ownerPaymentTest?"e.id=? AND e.status='DRAFT' AND e.publication_enabled=0 AND e.checkout_enabled=0":"e.id=? AND e.status='PUBLISHED' AND e.checkout_enabled=1";
   const productAvailability=ownerPaymentTest?'p.id=?':"p.id=? AND p.release_state='ACTIVE'";
-  const holdInsert=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_holds(id,event_id,product_id,customer_id,customer_email,quantity,amount_pence,competition_quantity,status,expires_at,idempotency_key)
+  let holdInsert=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_holds(id,event_id,product_id,customer_id,customer_email,quantity,amount_pence,competition_quantity,status,expires_at,idempotency_key)
     SELECT ?,e.id,p.id,?,?,?,?,?,'ACTIVE',?,?
     FROM special_events e JOIN special_event_ticket_products p ON p.event_id=e.id
     WHERE ${eventAvailability} AND ${productAvailability}
@@ -608,7 +608,10 @@ export async function createSpecialEventReservation(request,env,services,options
         -COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0)
         -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND hp.includes_saturday_evening=1),0))`)
     .bind(holdId,customer.id,email,quantity,amount,competitionQuantity,expiresAt,idempotencyKey,event.id,product.id,quantity,quantity,competitionInventoryQuantity,competitionInventoryQuantity,quantity);
-  const holdDays=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_hold_days(hold_id,day_id,places)
+  if(options.waitingHold){
+    holdInsert=env.BOOKINGS_DB.prepare(`UPDATE special_event_holds SET customer_id=? WHERE id=? AND customer_email=? AND product_id=? AND quantity=? AND amount_pence=? AND competition_quantity=? AND status='ACTIVE' AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND EXISTS(SELECT 1 FROM event_waitlist_offers WHERE hold_id=? AND status='CHECKOUT') AND EXISTS(SELECT 1 FROM event_waitlist_checkout_claims WHERE hold_id=?) AND NOT EXISTS(SELECT 1 FROM special_event_bookings WHERE hold_id=?)`).bind(customer.id,holdId,email,product.id,quantity,amount,competitionQuantity,holdId,holdId,holdId);
+  }
+  const holdDays=env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO special_event_hold_days(hold_id,day_id,places)
     SELECT h.id,pd.day_id,?*pd.places_per_ticket FROM special_event_holds h JOIN special_event_product_days pd ON pd.product_id=h.product_id
     WHERE h.id=? AND pd.product_id=?`).bind(quantity,holdId,product.id);
   const results=await env.BOOKINGS_DB.batch([holdInsert,holdDays]);

@@ -149,21 +149,22 @@ export async function evidenceDownload(env,id,bookingId=null){
  if(!object)return reply({error:'NOT_FOUND'},404);
  return new Response(object.body,{headers:{'content-type':record.media_type,'content-disposition':`attachment; filename="evidence.${record.media_type==='application/pdf'?'pdf':record.media_type==='image/png'?'png':'jpg'}"`,'cache-control':'private, no-store','x-content-type-options':'nosniff','content-security-policy':"sandbox; default-src 'none'"}});
 }
-export async function processManagementNotifications(env,send,limit=10){
+export async function processManagementNotifications(env,send,limit=10,table='event_management_notifications'){
+ if(!['event_management_notifications','event_waitlist_notifications'].includes(table))throw new Error('INVALID_INPUT');
  if(!enabled(env,'EVENT_MANAGEMENT_NOTIFICATIONS_ENABLED'))return {disabled:true};
  // Crash/timeout after a send may have been accepted. Do not blindly reclaim and send again.
- await stmt(env,`UPDATE event_management_notifications SET status='UNKNOWN_REVIEW' WHERE status='SENDING' AND leased_at<datetime('now','-10 minutes')`).run();
- const pending=await rows(stmt(env,`SELECT * FROM event_management_notifications WHERE status IN('READY','RETRY') AND (next_attempt_at IS NULL OR next_attempt_at<=?) ORDER BY created_at,id LIMIT ?`,iso(0),Math.min(10,limit)));
+ await stmt(env,`UPDATE ${table} SET status='UNKNOWN_REVIEW' WHERE status='SENDING' AND leased_at<datetime('now','-10 minutes')`).run();
+ const pending=await rows(stmt(env,`SELECT * FROM ${table} WHERE status IN('READY','RETRY') AND (next_attempt_at IS NULL OR next_attempt_at<=?) ORDER BY created_at,id LIMIT ?`,iso(0),Math.min(10,limit)));
  let accepted=0;
  for(const item of pending){
- const lease=uid(),claimed=await stmt(env,`UPDATE event_management_notifications SET status='SENDING',lease_id=?,leased_at=CURRENT_TIMESTAMP,attempts=attempts+1 WHERE id=? AND status IN('READY','RETRY')`,lease,item.id).run();
+ const lease=uid(),claimed=await stmt(env,`UPDATE ${table} SET status='SENDING',lease_id=?,leased_at=CURRENT_TIMESTAMP,attempts=attempts+1 WHERE id=? AND status IN('READY','RETRY')`,lease,item.id).run();
  if(!claimed.meta?.changes)continue;
  const content=managementNotificationCopy(item);
  try{
  const result=await send(item.recipient_email,content.subject,content.html,content.text,{idempotencyKey:`event-care:${item.id}`,replyTo:'bookings@bootscootinlinedancing.co.uk'});
- if(result?.id||result?.provider_id){await stmt(env,`UPDATE event_management_notifications SET status='SENT',provider_id=?,sent_at=CURRENT_TIMESTAMP WHERE id=? AND lease_id=?`,result.id||result.provider_id,item.id,lease).run();accepted++;}
- else await stmt(env,`UPDATE event_management_notifications SET status=?,next_attempt_at=? WHERE id=? AND lease_id=?`,result?.definitely_not_accepted?'RETRY':'UNKNOWN_REVIEW',iso(5),item.id,lease).run();
- }catch{await stmt(env,`UPDATE event_management_notifications SET status='UNKNOWN_REVIEW' WHERE id=? AND lease_id=?`,item.id,lease).run();}
+ if(result?.id||result?.provider_id){await stmt(env,`UPDATE ${table} SET status='SENT',provider_id=?,sent_at=CURRENT_TIMESTAMP WHERE id=? AND lease_id=?`,result.id||result.provider_id,item.id,lease).run();accepted++;}
+ else await stmt(env,`UPDATE ${table} SET status=?,next_attempt_at=? WHERE id=? AND lease_id=?`,result?.definitely_not_accepted?'RETRY':'UNKNOWN_REVIEW',iso(5),item.id,lease).run();
+ }catch{await stmt(env,`UPDATE ${table} SET status='UNKNOWN_REVIEW' WHERE id=? AND lease_id=?`,item.id,lease).run();}
  }
  return {accepted};
 }
@@ -171,7 +172,9 @@ const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>'
 export function managementNotificationCopy(item){
  const data=JSON.parse(item.payload_json),base='Please reply to bookings@bootscootinlinedancing.co.uk if you need help. No card or bank details are needed.';
  let message;
- if(item.kind==='ACCESS_CODE')message=`Your booking-management verification code is ${data.code}. Enter challenge ${data.challenge} with this code on the booking-management page. It expires after 10 minutes. If you did not request this, ignore this email.`;
+ if(item.kind==='WAITLIST_CODE')message=`Your waiting-list verification code is ${data.code}. Enter challenge ${data.challenge} and the code on the waiting-list page within 10 minutes. Joining does not guarantee a place.`;
+ else if(item.kind==='WAITLIST_OFFER')message=`There is a Johnny Rossato waiting-list offer for your group of ${data.quantity}. Sign in to the waiting-list page to review and accept before ${data.expiry}. Acceptance gives a 15-minute checkout reservation; a place is confirmed only after successful payment and booking confirmation. No payment has been taken automatically.`;
+ else if(item.kind==='ACCESS_CODE')message=`Your booking-management verification code is ${data.code}. Enter challenge ${data.challenge} with this code on the booking-management page. It expires after 10 minutes. If you did not request this, ignore this email.`;
  else if(item.kind==='REQUEST_RECEIVED')message=`We have received your booking change request (${data.request_id}). Your admission has not been cancelled or transferred, and no refund has been issued. We will review your request under the published event policy.`;
  else if(item.kind==='TRANSFER_COMPLETED')message='An owner-approved Johnny Rossato attendee transfer has been completed. The purchaser retains control of the booking. Please contact us for admission enquiries.';
  else message=`Your Johnny Rossato booking change request has been updated: ${data.status}. ${data.action==='CANCEL'?'The approved admission cancellation is committed. This does not mean money has been refunded.':data.action==='TRANSFER'?'The approved attendee transfer is complete.':'Please open Manage My Booking for the operational status. Approval alone does not mean a refund has been issued.'}`;
