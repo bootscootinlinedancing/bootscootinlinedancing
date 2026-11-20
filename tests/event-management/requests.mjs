@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import {fixture} from './fixture.mjs';
+import {submitRequest,decideRequest,authoriseRefund,executeRefund,requestAccess,verifyAccess,uploadEvidence,evidenceDownload,deleteEvidence,validateEvidence,processManagementNotifications,customerManagement,adminManagement} from '../../event-management.js';
+const {db,env,booking,objects,failBatchAt}=fixture();booking();
+const owner='owner@example.test';let counter=0;
+const decision=(id,version,action,operation_id=`op-${++counter}`)=>decideRequest(env,owner,{request_id:id,version,action,operation_id,reason:'Synthetic owner decision'});
+const request=(kind,items,extra={})=>submitRequest(env,'booking',{kind,items:items.map(attendee_id=>({attendee_id})),idempotency_key:crypto.randomUUID(),...extra});
+// Submission never cancels or refunds; whole atomic batch rolls back on any failure.
+failBatchAt(1);await assert.rejects(()=>request('CANCELLATION',['booking-a1']));assert.equal(db.prepare('SELECT count(*) n FROM event_change_requests').get().n,0);failBatchAt(-1);
+const cancel=await request('CANCELLATION',['booking-a1']);assert.equal(db.prepare('SELECT effective_quantity n FROM event_effective_bookings').get().n,3);
+await assert.rejects(()=>decision(cancel.id,0,'CANCEL'),/APPROVAL_REQUIRED/);await decision(cancel.id,0,'APPROVE');
+// Failure in the last trigger write rolls back release, invalidation, version, outbox and audit.
+db.exec(`CREATE TRIGGER synthetic_fail BEFORE INSERT ON event_management_notifications WHEN NEW.kind='REQUEST_DECISION' BEGIN SELECT RAISE(ABORT,'INJECTED_FAILURE'); END;`);
+await assert.rejects(()=>decision(cancel.id,1,'CANCEL'));assert.equal(db.prepare('SELECT count(*) n FROM event_admission_releases').get().n,0);assert.equal(db.prepare("SELECT status FROM special_event_attendees WHERE id='booking-a1'").get().status,'ACTIVE');db.exec('DROP TRIGGER synthetic_fail');
+const cancelOp='cancel-once';await decision(cancel.id,1,'CANCEL',cancelOp);await decision(cancel.id,1,'CANCEL',cancelOp);
+assert.equal(db.prepare('SELECT quantity,effective_quantity FROM event_effective_bookings').get().quantity,3);assert.equal(db.prepare('SELECT effective_quantity n FROM event_effective_bookings').get().n,2);
+assert.deepEqual(db.prepare('SELECT places FROM event_effective_booking_days').all().map(x=>x.places),[2,2]);assert.equal(db.prepare('SELECT count(*) n FROM event_capacity_releases').get().n,1);
+await assert.rejects(()=>decision(cancel.id,1,'CANCEL'),/STALE_REQUEST/);
+assert.throws(()=>db.prepare("UPDATE special_event_attendance SET attended_at=CURRENT_TIMESTAMP WHERE attendee_id='booking-a1'").run(),/INVALID_ADMISSION/);
+// Transfer is atomic, one root entitlement, identical day admissions and original purchaser/payment retained.
+const transfer=await request('TRANSFER',[],{items:[{attendee_id:'booking-a2',replacement_name:'Synthetic replacement',replacement_email:'replacement@example.test',replacement_age:29}]});await decision(transfer.id,0,'APPROVE');await decision(transfer.id,1,'TRANSFER','transfer-once');
+assert.equal(db.prepare("SELECT count(*) n FROM event_effective_attendees WHERE booking_id='booking'").get().n,2);assert.equal(db.prepare("SELECT count(*) n FROM special_event_attendance WHERE attendee_id='transfer-once:booking-a2'").get().n,2);assert.equal(db.prepare('SELECT count(*) n FROM event_admission_releases').get().n,1);
+const checkin=await request('TRANSFER',[],{items:[{attendee_id:'booking-a3',replacement_name:'No entry',replacement_email:'no@example.test',replacement_age:30}]});await decision(checkin.id,0,'APPROVE');db.prepare("UPDATE special_event_attendance SET attended_at=CURRENT_TIMESTAMP WHERE attendee_id='booking-a3' AND day_id=(SELECT id FROM special_event_days ORDER BY event_date LIMIT 1)").run();await assert.rejects(()=>decision(checkin.id,1,'TRANSFER'),/INVALID_OR_USED_ADMISSION/);
+// Refund amount exact, separate authorisation/execution, no duplicate POST on timeout/concurrency.
+const refund=await request('REFUND',[]);await decision(refund.id,0,'APPROVE');await authoriseRefund(env,owner,{request_id:refund.id,operation_id:'refund-1',amount_pence:2000});let posts=0;
+const provider={verifyExactPayment:async()=>({exact:true,refunded_pence:0}),refundMinorUnits:async input=>{posts++;assert.equal(input.amount,2000);throw Error('timeout')}};
+const results=await Promise.all([executeRefund(env,owner,'refund-1',provider),executeRefund(env,owner,'refund-1',provider)]);assert.equal(posts,1);assert(results.some(x=>x.status==='UNKNOWN_REVIEW'));await executeRefund(env,owner,'refund-1',provider);assert.equal(posts,1);
+await assert.rejects(()=>authoriseRefund(env,owner,{request_id:refund.id,operation_id:'refund-2',amount_pence:2000}));
+// A confirmed refund never changes admissions; refund history retained.
+booking('refund-booking',1);const good=await submitRequest(env,'refund-booking',{kind:'REFUND',items:[],idempotency_key:'good-refund'});await decision(good.id,0,'APPROVE');await authoriseRefund(env,owner,{request_id:good.id,operation_id:'refund-good',amount_pence:4000});assert.equal((await executeRefund(env,owner,'refund-good',{verifyExactPayment:async()=>({exact:true,refunded_pence:0}),refundMinorUnits:async x=>({confirmed:true,operation_id:x.operation_id,amount_pence:x.amount,provider_refund_id:'synthetic-refund-id'})})).status,'CONFIRMED');assert.equal(db.prepare("SELECT effective_quantity n FROM event_effective_bookings WHERE id='refund-booking'").get().n,1);
+// Access codes never create sessions before exact one-use verification; all subsequent attempts exhaust.
+await requestAccess(env,{reference:'SYNTH-booking',contact:'purchaser@example.test'});
+const notice=db.prepare("SELECT payload_json FROM event_management_notifications WHERE kind='ACCESS_CODE'").get();const access=JSON.parse(notice.payload_json);
+for(let i=0;i<5;i++)assert.equal(await verifyAccess(env,{challenge:access.challenge,code:'XXXXXX'}),null);
+assert.equal(await verifyAccess(env,access),null,'sixth attempt cannot succeed');
+await requestAccess(env,{reference:'SYNTH-booking',contact:'purchaser@example.test'});const next=JSON.parse(db.prepare("SELECT payload_json FROM event_management_notifications WHERE kind='ACCESS_CODE' ORDER BY rowid DESC").get().payload_json);assert(await verifyAccess(env,next));assert.equal(await verifyAccess(env,next),null);
+// Evidence limit, signatures, ownership, quarantine, clean access, deletion and legal hold.
+assert.throws(()=>validateEvidence(new Uint8Array([60,115,99,114]),'application/pdf'));
+const file=new File(['%PDF-1.7\nSynthetic private content'],'note.pdf',{type:'application/pdf'});
+const e=await uploadEvidence(env,'booking',cancel.id,file);assert.equal(e.state,'QUARANTINED');assert.equal((await evidenceDownload(env,e.id)).status,404);await assert.rejects(()=>uploadEvidence(env,'refund-booking',cancel.id,file));
+await uploadEvidence(env,'booking',cancel.id,file);await uploadEvidence(env,'booking',cancel.id,file);await assert.rejects(()=>uploadEvidence(env,'booking',cancel.id,file),/EVIDENCE_LIMIT/);
+db.prepare("UPDATE event_evidence SET state='CLEAN' WHERE id=?").run(e.id);assert.equal((await evidenceDownload(env,e.id,'refund-booking')).status,404);assert.equal((await evidenceDownload(env,e.id,'booking')).status,200);await deleteEvidence(env,e.id,owner);assert.equal((await evidenceDownload(env,e.id)).status,404);assert.equal(objects.has(`quarantine/${e.id}`),false);
+const held=db.prepare("SELECT id FROM event_evidence WHERE state='QUARANTINED' LIMIT 1").get().id;db.prepare('UPDATE event_evidence SET legal_hold=1 WHERE id=?').run(held);await assert.rejects(()=>deleteEvidence(env,held,owner));
+// Durable notification claim: racing processors only send once; uncertain outcomes never auto-retry.
+let sends=0;const sender=async()=>{sends++;return {id:`synthetic-email-${sends}`}};await Promise.all([processManagementNotifications(env,sender),processManagementNotifications(env,sender)]);const after=sends;await processManagementNotifications(env,sender);assert(sends>=after);const settled=sends;await processManagementNotifications(env,sender);assert.equal(sends,settled);
+assert.equal((await customerManagement(new Request('https://example.test/api/event-management'),{...env,EVENT_MANAGEMENT_ENABLED:'false'})).status,404);assert.equal((await customerManagement(new Request('https://example.test/api/event-management'),env)).status,401);assert.equal((await adminManagement(new Request('https://example.test/api/admin/event-management'),env,{email:'intruder@example.test'})).status,403);
+console.log('PASS: synthetic request/cancellation/transfer/refund/access/evidence/outbox safety, atomic failure and concurrent claims. No network services used.');
