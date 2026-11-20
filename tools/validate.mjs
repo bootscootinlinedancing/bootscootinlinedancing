@@ -50,6 +50,7 @@ for(const path of files.filter(path=>extname(path)==='.css')){
 
 const standaloneTests=[
   'event-management/requests.mjs',
+  'event-management/registers.mjs',
   'read-only-payment-verification.mjs',
   'admission-rewards-regression.mjs',
   'attendee-loyalty-regression.mjs',

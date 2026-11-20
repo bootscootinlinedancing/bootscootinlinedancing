@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 
 const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
-const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'').replaceAll("'./event-management.js'",JSON.stringify(new URL('../event-management.js',import.meta.url).href)).replaceAll("'./event-management-sumup.js'",JSON.stringify(new URL('../event-management-sumup.js',import.meta.url).href));
+const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'').replaceAll("'./event-management.js'",JSON.stringify(new URL('../event-management.js',import.meta.url).href)).replaceAll("'./event-registers.js'",JSON.stringify(new URL('../event-registers.js',import.meta.url).href)).replaceAll("'./event-management-sumup.js'",JSON.stringify(new URL('../event-management-sumup.js',import.meta.url).href));
 assert.match(source,/if\(!name\) return json\(\{error:'Please enter your first name\.'/,'mailing-list endpoint rejects a blank first name server-side');
 assert.match(source,/INSERT INTO bookings\([\s\S]+welcomePromotionClaimed=await claimWelcomePromotion/,'booking marker is created before atomic welcome claim');
 assert.match(source,/if\(!welcomePromotionClaimed\)\{[\s\S]+DELETE FROM bookings WHERE id=\?[\s\S]+UPDATE booking_holds SET expires_at/,'losing checkout removes its provisional booking and expires its hold');

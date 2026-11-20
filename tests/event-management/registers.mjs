@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';import {createRequire} from 'node:module';
+import {fixture} from './fixture.mjs';import {submitRequest,decideRequest} from '../../event-management.js';import {registerData,adminRegister} from '../../event-registers.js';import {createRegisterPDF} from '../../event-register-pdf.js';
+const require=createRequire(import.meta.url),PDFLib=require('../../assets/vendor/register-pdf/pdf-lib.min.js'),fontkit=require('../../assets/vendor/register-pdf/fontkit.umd.min.js'),fontBytes=new Uint8Array(readFileSync(new URL('../../assets/vendor/register-pdf/NotoSans-Regular.ttf',import.meta.url)));
+const {db,env,booking}=fixture();booking();booking('pending',1);db.exec("UPDATE special_event_bookings SET status='PENDING' WHERE id='pending'");
+const cancel=await submitRequest(env,'booking',{kind:'CANCELLATION',items:[{attendee_id:'booking-a1'}],idempotency_key:'register-cancel'});for(const [version,action] of [[0,'APPROVE'],[1,'CANCEL']])await decideRequest(env,'owner@example.test',{request_id:cancel.id,version,action,operation_id:`register-${action}`,reason:'Synthetic register fixture'});
+db.prepare("UPDATE special_event_attendance SET attended_at=CURRENT_TIMESTAMP WHERE attendee_id='booking-a2' AND day_id=(SELECT id FROM special_event_days WHERE event_date='2027-02-20')").run();
+const data=await registerData(env,'special-event-johnny-rossato-2027');assert.equal(data.totals.expected,2);assert.deepEqual(data.totals.by_day.map(d=>d.checked_in),[1,0]);assert(!data.attendees.some(a=>a.name==='Synthetic attendee 1'));assert.equal((await registerData(env,'special-event-johnny-rossato-2027','saturday')).attendees[0].sessions.length,1);
+for(const secret of ['email','qr_token','ticket_number','customer_token','provider_transaction','amount_pence','purchaser@example.test','grouping_id'])assert(!JSON.stringify(data).includes(secret),secret);
+assert.equal((await adminRegister(new Request('https://example.test/ranch/api/admin/event-register'),{...env,EVENT_REGISTERS_ENABLED:'true'},{email:'other@example.test'})).status,403);
+assert.equal((await adminRegister(new Request('https://example.test/ranch/api/admin/event-register'),env,{email:env.ADMIN_EMAIL})).status,404);
+// Export enough Unicode/long names to force multi-page headers and row wrapping.
+const out=process.env.REGISTER_PDF_OUTPUT;if(out)mkdirSync(out,{recursive:true});
+for(const scope of ['saturday','sunday','weekend'])for(const orientation of ['portrait','landscape']){
+ const source=await registerData(env,'special-event-johnny-rossato-2027',scope);source.attendees=Array.from({length:65},(_,i)=>({...source.attendees[i%2],name:i===0?'Łukasz Élodie O’Connor':`Synthetic long attendee ${i+1} Alexandra Montgomery-Wellington`,reference:`BSE-SYNTHETIC-${String(i+1).padStart(3,'0')}`}));source.totals.expected=65;source.totals.by_day=source.totals.by_day.map(d=>({...d,expected:65,checked_in:d.date==='2027-02-20'?33:0}));
+ const bytes=await createRegisterPDF(source,{PDFLib,fontkit,fontBytes,orientation}),pdf=await PDFLib.PDFDocument.load(bytes);assert(pdf.getPageCount()>1);const size=pdf.getPage(0).getSize();assert.equal(size.width>size.height,orientation==='landscape');if(out)writeFileSync(`${out}/Johnny-synthetic-${scope}-${orientation}.pdf`,bytes);
+}
+console.log('PASS sanitized registers, cancelled/pending exclusion, separate Saturday/Sunday counters, owner access, A4 portrait/landscape Unicode and multi-page PDF generation. Synthetic only.');
