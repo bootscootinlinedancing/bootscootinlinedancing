@@ -3,6 +3,9 @@
   --cream:#f2e5d0;--cream2:#dcc9aa;--ink:#211712;--white:#fff;
 }
 
+.special-event-health-summary,.special-event-health-products{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:.75rem}.special-event-health-summary article,.special-event-health-products article,.special-event-health-actions a,.special-event-health-recent a{display:grid;gap:.25rem;padding:.9rem;border:1px solid rgba(218,35,48,.45);background:rgba(12,7,7,.72);color:inherit;text-decoration:none}.special-event-health-summary b{font-size:clamp(1.35rem,4vw,2rem);color:#fff0d8}.special-event-health-actions,.special-event-health-recent{display:grid;gap:.65rem}.special-event-health-actions a strong{color:#ff6b73}.special-event-health .health-ok{padding:.85rem;border-left:4px solid #4ca870;background:rgba(28,92,52,.2)}
+@media(max-width:520px){.special-event-health{padding-inline:.75rem}.special-event-health-summary{grid-template-columns:1fr 1fr}.special-event-health-summary article{padding:.7rem}.special-event-health-products{grid-template-columns:1fr}}
+
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--black);color:#fff;font-family:Oswald,Arial,sans-serif;overflow-x:hidden}
