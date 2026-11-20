@@ -202,7 +202,8 @@ export async function adminSpecialEvents(request,env,admin,services={}){
           FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=?`).bind(eventId).first(),
         env.BOOKINGS_DB.prepare(`SELECT c.id FROM special_event_access_credentials c JOIN special_event_ticket_products p ON p.id=c.product_id WHERE c.event_id=? AND p.code='LOYALTY_WEEKEND' AND c.active=1 LIMIT 1`).bind(eventId).first()
       ]);
-      return response({...ready,programme:programme.results||[],bookings:bookings.results||[],attendees:attendees.results||[],attendance:attendance.results||[],competition:competition.results||[],confirmations:confirmations.results||[],competitor_messages:messages.results||[],tasks:tasks.results||[],documents:documents.results||[],activity:activity.results||[],choreographies:choreographies.results||[],capacity:[...(capacity.results||[]),{id:'saturday-evening',label:'Saturday evening',...evening}],reporting,loyalty_password_configured:Boolean(loyaltyCredential)});
+      const [financialPlan,expenses]=await Promise.all([env.BOOKINGS_DB.prepare(`SELECT projected_revenue_pence,notes,updated_at FROM special_event_financial_plans WHERE event_id=?`).bind(eventId).first(),env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_expenses WHERE event_id=? ORDER BY category,created_at`).bind(eventId).all()]);
+      return response({...ready,programme:programme.results||[],bookings:bookings.results||[],attendees:attendees.results||[],attendance:attendance.results||[],competition:competition.results||[],confirmations:confirmations.results||[],competitor_messages:messages.results||[],tasks:tasks.results||[],documents:documents.results||[],activity:activity.results||[],choreographies:choreographies.results||[],capacity:[...(capacity.results||[]),{id:'saturday-evening',label:'Saturday evening',...evening}],reporting,financial_plan:financialPlan,expenses:expenses.results||[],loyalty_password_configured:Boolean(loyaltyCredential)});
     }catch(error){if(schemaMissing(error))return response({error:'Migration 0032_special_events.sql has not been applied in this environment.',code:'SPECIAL_EVENTS_SCHEMA_MISSING'},503);throw error;}
   }
   const body=await request.json().catch(()=>null);
@@ -313,6 +314,19 @@ export async function adminSpecialEvents(request,env,admin,services={}){
       await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE special_events SET artwork_url=?,title=?,subtitle=?,public_summary=?,public_description=?,venue_name=?,venue_address=?,venue_notes=?,public_presentation_approved=?,updated_at=CURRENT_TIMESTAMP,version=version+1 WHERE id=?`).bind(artworkUrl,tidy(body.title,240),tidy(body.subtitle,240)||null,tidy(body.public_summary,500)||null,publicDescription,tidy(body.venue_name,240),tidy(body.venue_address,500)||null,venueNotes,body.public_presentation_approved?1:0,eventId),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'EVENT_PRESENTATION_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,tidy(body.reason,500)||'Event presentation updated in HQ.',crypto.randomUUID())
+      ]);
+      return response({ok:true});
+    }
+    if(action==='UPSERT_FINANCIAL_PLAN'){
+      const projected=body.projected_revenue_pence==null||body.projected_revenue_pence===''?null:Number(body.projected_revenue_pence),category=tidy(body.category,40),label=tidy(body.label,160),estimated=body.estimated_pence==null||body.estimated_pence===''?null:Number(body.estimated_pence),confirmed=body.confirmed_pence==null||body.confirmed_pence===''?null:Number(body.confirmed_pence),status=tidy(body.status,20)||'ESTIMATED';
+      if([projected,estimated,confirmed].some(value=>value!=null&&(!Number.isInteger(value)||value<0)))return response({error:'Financial amounts must be non-negative whole pence values.'},400);
+      if(!['ARTIST_FEES','TRAVEL','ACCOMMODATION','INSURANCE','OTHER'].includes(category)||!label)return response({error:'Choose an expense category and add a label.'},400);
+      if(!['ESTIMATED','CONFIRMED','PAID','CANCELLED'].includes(status))return response({error:'Choose a valid expense status.'},400);
+      const expenseId=tidy(body.expense_id,160)||crypto.randomUUID();
+      await env.BOOKINGS_DB.batch([
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_financial_plans(event_id,projected_revenue_pence,notes,updated_by) VALUES(?,?,?,?) ON CONFLICT(event_id) DO UPDATE SET projected_revenue_pence=excluded.projected_revenue_pence,notes=excluded.notes,updated_by=excluded.updated_by,updated_at=CURRENT_TIMESTAMP`).bind(eventId,projected,tidy(body.plan_notes,2000)||null,admin.email),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_expenses(id,event_id,category,label,estimated_pence,confirmed_pence,status,notes,created_by) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET category=excluded.category,label=excluded.label,estimated_pence=excluded.estimated_pence,confirmed_pence=excluded.confirmed_pence,status=excluded.status,notes=excluded.notes,updated_at=CURRENT_TIMESTAMP WHERE event_id=excluded.event_id`).bind(expenseId,eventId,category,label,estimated,confirmed,status,tidy(body.expense_notes,2000)||null,admin.email),
+        env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) VALUES(?,?,'FINANCIAL_PLAN_UPDATED','SPECIAL_EVENT',?,?,?,?)`).bind(crypto.randomUUID(),eventId,eventId,admin.email,'Owner financial planning update.',crypto.randomUUID())
       ]);
       return response({ok:true});
     }
