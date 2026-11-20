@@ -1,3 +1,6 @@
+import {eventOwnerAccess} from './event-management-access.js';
+import {sumUpRefundProvider} from './event-management-sumup.js';
+import {customerManagement,adminManagement,processManagementNotifications} from './event-management.js';
 import {adminSpecialEvents,publicSpecialEvents,createSpecialEventReservation,applySpecialEventCheckoutState,verifySpecialEventCheckout,processSpecialEventConfirmations,sendSpecialEventConfirmationDeliveryTest,specialEventDocumentUpload,specialEventDocumentDownload,specialEventArtworkUpload,specialEventArtwork,specialEventMediaUpload,specialEventMedia,specialEventMediaMultipartStart,specialEventMediaMultipartPart,specialEventMediaMultipartComplete} from './special-events.js';
 
 const INDEX_KEY = '__system/media-index.json';
@@ -1022,7 +1025,7 @@ async function classCreditOptions(request,env,url){
   const productCode=clean(url.searchParams.get('ticket_product_code')||url.searchParams.get('ticket_type'),40);
   const klass=classId?await env.BOOKINGS_DB.prepare(`
     SELECT c.*,COALESCE(e.eligible,0) pass_eligible,
-      c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+      c.capacity-COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
       -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND julianday(h.expires_at)>julianday('now')),0)
       -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0) spaces_remaining
     FROM classes c LEFT JOIN class_pass_class_eligibility e ON e.class_id=c.id WHERE c.id=?
@@ -1089,7 +1092,7 @@ async function createClassCreditBooking(request,env){
     SELECT ?,c.id,1,?,NULL,?,?,?,?,?,? FROM classes c
     WHERE c.id=? AND c.status='open' AND c.starts_at>?
       AND 1<=c.capacity
-        -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
         -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
   `).bind(holdId,holdExpiry,Number(product.price_pence),product.code,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null,classId,now,now).run();
@@ -1249,7 +1252,7 @@ async function createAdmissionRewardBooking(request,env){
     INSERT INTO booking_holds(id,class_id,quantity,expires_at,ticket_type,ticket_price_pence,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at,ticket_entry_at)
     SELECT ?,c.id,1,?,NULL,?,'CLASS_SOCIAL','Class + Social',?,?,? FROM classes c
     WHERE c.id=? AND c.status='open' AND c.starts_at>?
-      AND c.capacity-COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+      AND c.capacity-COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND julianday(h.expires_at)>julianday('now')),0)
         -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)>=1
   `).bind(holdId,holdExpiry,Number(context.ticket_price_pence||context.price_pence||0),context.ticket_starts_at||context.starts_at,context.ticket_ends_at||context.ends_at,context.ticket_entry_at||context.starts_at,classId,now).run();
@@ -1908,7 +1911,7 @@ async function anniversaryInventory(env,{includePrivate=false}={}){
   if(!event)return null;
   const releases=await env.BOOKINGS_DB.prepare(`
     SELECT r.*,
-      COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) native_used,
+      COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0) native_used,
       COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0) held,
       COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0) recorded_used
     FROM anniversary_ticket_releases r WHERE r.event_id=? AND r.active=1 ORDER BY r.display_order
@@ -1955,7 +1958,7 @@ async function adminAnniversary(request,env){
     const results=await env.BOOKINGS_DB.batch([env.BOOKINGS_DB.prepare(`
       INSERT INTO anniversary_guest_list(id,event_id,guest_name,places,category,notes,created_by,updated_by)
       SELECT ?,e.id,?,?,?,?,?,? FROM anniversary_events e WHERE e.id=? AND ?>0 AND ?<=e.total_capacity
-        -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=e.class_id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=e.class_id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=e.class_id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
         -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
         -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
@@ -1978,12 +1981,12 @@ async function adminAnniversary(request,env){
       INSERT INTO anniversary_ticket_adjustments(id,event_id,release_id,source,external_reference,places,notes,created_by)
       SELECT ?,e.id,r.id,?,?,?,?,? FROM anniversary_events e JOIN anniversary_ticket_releases r ON r.event_id=e.id
       WHERE e.id=? AND r.id=? AND r.active=1 AND ?<=e.total_capacity
-        -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=e.class_id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=e.class_id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=e.class_id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
         -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
         -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
         AND (r.allocation IS NULL OR ?<=r.allocation
-          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
           -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0))
     `).bind(id,source,reference,places,notes||null,actor,eventId,releaseId,places,places),
@@ -2031,7 +2034,7 @@ async function publicClasses(env, includeHistory = false, request = null) {
     const { results } = await env.BOOKINGS_DB.prepare(`
       SELECT c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
       COALESCE((
-        SELECT SUM(b.quantity)
+        SELECT SUM(b.effective_quantity)
         FROM bookings b
         WHERE b.class_id=c.id
           AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
@@ -2041,7 +2044,7 @@ async function publicClasses(env, includeHistory = false, request = null) {
         0,
         c.capacity
         - COALESCE((
-            SELECT SUM(b.quantity)
+            SELECT SUM(b.effective_quantity)
             FROM bookings b
             WHERE b.class_id=c.id
               AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
@@ -3021,7 +3024,7 @@ async function reconcileClassSold(env, classId) {
   await env.BOOKINGS_DB.prepare(`
     UPDATE classes
     SET sold=COALESCE((
-      SELECT SUM(b.quantity)
+      SELECT SUM(b.effective_quantity)
       FROM bookings b
       WHERE b.class_id=classes.id
         AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
@@ -3171,7 +3174,7 @@ async function createClassReservation(request, env) {
   const occupancy = await env.BOOKINGS_DB.prepare(`
     SELECT
       COALESCE((
-        SELECT SUM(b.quantity) FROM bookings b
+        SELECT SUM(b.effective_quantity) FROM bookings b
         WHERE b.class_id=?
           AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
       ),0) booked,
@@ -3247,12 +3250,12 @@ async function createClassReservation(request, env) {
       SELECT ?,c.id,?,?,r.id FROM classes c JOIN anniversary_events e ON e.class_id=c.id JOIN anniversary_ticket_releases r ON r.event_id=e.id
       WHERE c.id=? AND r.id=? AND c.status='open' AND c.starts_at>? AND ?>0
         AND ?<=e.total_capacity
-          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
           -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.event_id=e.id AND a.status='ACTIVE'),0)
           -COALESCE((SELECT SUM(g.places) FROM anniversary_guest_list g WHERE g.event_id=e.id AND g.status='ACTIVE'),0)
         AND (r.allocation IS NULL OR ?<=r.allocation
-          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.anniversary_release_id=r.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.anniversary_release_id=r.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND NOT EXISTS(SELECT 1 FROM bookings hb WHERE hb.hold_id=h.id AND (hb.status!='PENDING' OR hb.payment_provider!='SUMUP'))),0)
           -COALESCE((SELECT SUM(a.places) FROM anniversary_ticket_adjustments a WHERE a.release_id=r.id AND a.status='ACTIVE'),0))
     `).bind(holdId,quantity,holdExpiry,classId,anniversaryRelease.id,new Date().toISOString(),quantity,quantity,quantity).run()
@@ -3262,7 +3265,7 @@ async function createClassReservation(request, env) {
       FROM classes c
       WHERE c.id=? AND c.status='open' AND c.starts_at>?
         AND ?<=c.capacity
-        - COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+        - COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
         - COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
         - COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)
     `).bind(holdId,classId,quantity,holdExpiry,['CLASS_SOCIAL','SOCIAL_ONLY'].includes(ticketType)?ticketType:null,unitPrice,ticketType==='SOCIAL_ONLY'?(product.entry_at||classRow.social_only_entry_time):null,ticketType,product.label,product.starts_at||null,product.ends_at||null,product.entry_at||null,classId,new Date().toISOString(),quantity,new Date().toISOString()).run();
@@ -3722,18 +3725,18 @@ async function specialEventRecoveryCapacity(env, booking) {
   const blockers = [];
   const days = await env.BOOKINGS_DB.prepare(
     `SELECT d.id,d.label,d.capacity,bd.places,
-      COALESCE((SELECT SUM(x.places) FROM special_event_booking_days x JOIN special_event_bookings b ON b.id=x.booking_id WHERE x.day_id=d.id AND b.status='PAID'),0) paid,
+      COALESCE((SELECT SUM(x.places) FROM event_effective_booking_days x JOIN event_effective_bookings b ON b.id=x.booking_id WHERE x.day_id=d.id AND b.status='PAID'),0) paid,
       COALESCE((SELECT SUM(x.places) FROM special_event_hold_days x JOIN special_event_holds h ON h.id=x.hold_id WHERE x.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND h.id<>COALESCE(?,'')),0) held
-     FROM special_event_booking_days bd JOIN special_event_days d ON d.id=bd.day_id WHERE bd.booking_id=?`
+     FROM event_effective_booking_days bd JOIN special_event_days d ON d.id=bd.day_id WHERE bd.booking_id=?`
   ).bind(booking.hold_id,booking.id).all();
   for (const day of days.results || []) {
     if (day.capacity != null && Number(day.places) > Number(day.capacity)-Number(day.paid)-Number(day.held)) blockers.push(`DAY_CAPACITY:${day.label}`);
   }
   const product = await env.BOOKINGS_DB.prepare(
     `SELECT p.allocation,p.includes_saturday_evening,p.product_type,e.saturday_evening_capacity,
-      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) product_paid,
+      COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) product_paid,
       COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND h.id<>COALESCE(?,'')),0) product_held,
-      COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=p.event_id AND b.status='PAID' AND bp.includes_saturday_evening=1),0) evening_paid,
+      COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=p.event_id AND b.status='PAID' AND bp.includes_saturday_evening=1),0) evening_paid,
       COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=p.event_id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND h.id<>COALESCE(?, '') AND hp.includes_saturday_evening=1),0) evening_held
      FROM special_event_ticket_products p JOIN special_events e ON e.id=p.event_id WHERE p.id=?`
   ).bind(booking.hold_id,booking.hold_id,booking.product_id).first();
@@ -5492,7 +5495,7 @@ async function adminClassGuests(request,env){
     const results=await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list(id,class_id,guest_name,places,category,notes,created_by,updated_by,last_operation_id,sunday_adult_count,sunday_child_10_17_count,sunday_child_5_9_count,sunday_under_5_count)
         SELECT ?,c.id,?,?,?,?,?,?,?,?,?,?,?,? FROM classes c WHERE c.id=? AND ?>0 AND ?<=c.capacity
-          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
           -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`).bind(id,name,places,category,notes||null,actor,actor,operationId,...sundayCounts,classId,places,places),
       env.BOOKINGS_DB.prepare(`INSERT OR IGNORE INTO class_guest_list_audit(id,class_id,guest_id,action,actor,reason,next_json,operation_id)
@@ -5516,7 +5519,7 @@ async function adminClassGuests(request,env){
     const results=await env.BOOKINGS_DB.batch([
       env.BOOKINGS_DB.prepare(`UPDATE class_guest_list SET guest_name=?,places=?,category=?,notes=?,updated_by=?,last_operation_id=?,sunday_adult_count=?,sunday_child_10_17_count=?,sunday_child_5_9_count=?,sunday_under_5_count=?,updated_at=CURRENT_TIMESTAMP
         WHERE id=? AND class_id=? AND status='ACTIVE' AND last_operation_id=? AND ?<=(SELECT c.capacity
-          -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+          -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
           -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
           -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE' AND g.id<>?),0)
           FROM classes c WHERE c.id=?)`).bind(name,places,category,notes||null,actor,operationId,...sundayCounts,id,classId,row.last_operation_id,places,id,classId),
@@ -5882,7 +5885,7 @@ async function adminBootstrap(request, env) {
         SELECT
           c.id,c.title,c.venue,c.location,c.starts_at,c.ends_at,c.price_pence,c.capacity,
           COALESCE((
-            SELECT SUM(b.quantity)
+            SELECT SUM(b.effective_quantity)
             FROM bookings b
             WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))
           ),0) AS sold,
@@ -6554,12 +6557,13 @@ async function runProtectedEmailAutomations(request, env) {
   if (!(await secureSecretMatch(provided, expected))) return json({ error: 'Not authorised.', code: 'AUTOMATION_NOT_AUTHORISED' }, 401);
 
   const startedAt = new Date().toISOString();
+  const managementFallback=processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>({manual_review:true}));
   try {
     const [campaigns, journeys, specialEventReconciliation, specialEventConfirmations] = await Promise.all([
       processDueCampaigns(env),
       processAutomaticBookingNotifications(env),
       reconcilePendingSpecialEventBookings(env),
-      processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))
+      processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)),managementFallback
     ]);
     return json({
       ok: true,
@@ -7193,7 +7197,7 @@ async function promoteSundayWaiting(request,env,actor,body){
   const hold=await env.BOOKINGS_DB.prepare(`INSERT INTO booking_holds(id,class_id,quantity,expires_at,ticket_type,ticket_price_pence,ticket_product_code,ticket_product_label,ticket_starts_at,ticket_ends_at)
     SELECT ?,c.id,?,?,'CLASS_SOCIAL',?,'CLASS_SOCIAL',?,?,? FROM classes c WHERE c.id=? AND c.status='open' AND c.starts_at>?
       AND ?<=c.capacity
-      -COALESCE((SELECT SUM(b.quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
+      -COALESCE((SELECT SUM(b.effective_quantity) FROM bookings b WHERE b.class_id=c.id AND (b.status='PAID' OR (b.status='PENDING' AND b.payment_provider='MANUAL'))),0)
       -COALESCE((SELECT SUM(h.quantity) FROM booking_holds h WHERE h.class_id=c.id AND h.expires_at>?),0)
       -COALESCE((SELECT SUM(g.places) FROM class_guest_list g WHERE g.class_id=c.id AND g.status='ACTIVE'),0)`)
     .bind(holdId,quantity,holdExpiry,amount,wait.ticket_product_label||`Sunday Sessions — ${details.selection_code.replaceAll('_',' ')}`,wait.starts_at,wait.ends_at,wait.class_id,new Date().toISOString(),quantity,new Date().toISOString()).run();
@@ -8132,7 +8136,7 @@ async function serveMedia(request, env, pathname) {
 
 export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
 export default {
-  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(Promise.allSettled([processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)),processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const incomingPath = url.pathname;
@@ -8206,6 +8210,23 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if (path === '/api/event-management') {
+        const result=await customerManagement(request,env);
+        if(request.method==='POST'&&result.ok)ctx.waitUntil(processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>{}));
+        return result;
+      }
+      if (path === '/api/admin/event-management') {
+        if(incomingPath!=='/ranch/api/admin/event-management')return json({error:'Not found.'},404);
+        const check=await eventOwnerAccess(request,env);if(check.response)return check.response;
+        const result=await adminManagement(request,env,check.state,{refundProvider:sumUpRefundProvider(env,specialEventSumUpFetch),sendEmail:(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)});
+        if(request.method==='POST'&&result.ok)ctx.waitUntil(processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>{}));
+        return result;
+      }
+      if (path === '/ranch/event-management' && request.method==='GET') {
+        const check=await eventOwnerAccess(request,env);if(check.response)return check.response;
+        const page=await env.ASSETS.fetch(new Request(new URL('/event-management.html',request.url),request));
+        const headers=new Headers(page.headers);headers.set('cache-control','private, no-store');return new Response(page.body,{status:page.status,headers});
+      }
       if (path === '/api/admin/special-events') {
         const check=requireAccessAdmin(request,env);if(check.response)return check.response;
         return adminSpecialEvents(request,env,check.state,{sendEmail:(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)});

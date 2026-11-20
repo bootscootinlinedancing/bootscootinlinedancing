@@ -4,7 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 const [sqlPath,mappingPath]=process.argv.slice(2);
 if(!sqlPath||!mappingPath)throw new Error('Usage: node tests/customer-crm-regression.mjs <backup.sql> <approved-mappings.json>');
 const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
-const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'');
+const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'').replaceAll("'./event-management.js'",JSON.stringify(new URL('../event-management.js',import.meta.url).href)).replaceAll("'./event-management-access.js'",JSON.stringify(new URL('../event-management-access.js',import.meta.url).href)).replaceAll("'./event-management-sumup.js'",JSON.stringify(new URL('../event-management-sumup.js',import.meta.url).href));
 const {default:worker}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const db=new DatabaseSync(':memory:'); db.exec('PRAGMA foreign_keys=OFF'); db.exec(readFileSync(sqlPath,'utf8')); db.exec('PRAGMA foreign_keys=ON');
 for(const file of ['0019_booking_confirmation_outbox.sql','0020_member_access_lifecycle.sql','0021_merch_external_refund.sql'])db.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));

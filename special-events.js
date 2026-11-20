@@ -72,11 +72,11 @@ export async function specialEventReadiness(db,eventId){
   const [days,products,credentials]=await Promise.all([
     db.prepare(`SELECT * FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(eventId).all(),
     db.prepare(`SELECT p.*,
-      CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN special_event_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) ELSE COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) END sold_count,
-      CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN special_event_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) ELSE COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) END complimentary_count,
+      CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN event_effective_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) ELSE COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) END sold_count,
+      CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN event_effective_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) ELSE COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) END complimentary_count,
       COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) held_count,
       CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation
-        -CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN special_event_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID'),0) ELSE COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) END
+        -CASE WHEN p.code='MINI_COMPETITION' THEN COALESCE((SELECT COUNT(*) FROM special_event_competition_entries c JOIN event_effective_bookings b ON b.id=c.booking_id WHERE c.event_id=p.event_id AND c.status<>'WITHDRAWN' AND b.status='PAID'),0) ELSE COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) END
         -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)) END remaining
       FROM special_event_ticket_products p WHERE p.event_id=? ORDER BY p.display_order`).bind(eventId).all(),
     db.prepare(`SELECT product_id FROM special_event_access_credentials WHERE event_id=? AND active=1`).bind(eventId).all()
@@ -103,11 +103,11 @@ export async function publicSpecialEvents(request,env,url){
     const reference=tidy(url.searchParams.get('reference'),120),token=tidy(url.searchParams.get('token'),180);
     if(reference||token){
       if(!reference||!token)return response({error:'Confirmation details are incomplete.'},400);
-      const booking=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.customer_name,b.quantity,b.product_name_snapshot,b.amount_pence,b.status,b.paid_at,e.title,e.venue_name
-        FROM special_event_bookings b JOIN special_events e ON e.id=b.event_id WHERE b.reference=? AND b.secure_token=?`).bind(reference,token).first();
+      const booking=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.customer_name,b.quantity,b.effective_quantity,b.product_name_snapshot,b.amount_pence,b.status,b.paid_at,e.title,e.venue_name
+        FROM event_effective_bookings b JOIN special_events e ON e.id=b.event_id WHERE b.reference=? AND b.secure_token=?`).bind(reference,token).first();
       if(!booking)return response({error:'Booking confirmation not found.'},404);
       if(booking.status!=='PAID')return response({status:booking.status==='PENDING'?'PENDING':'NOT_CONFIRMED'});
-      return response({status:'PAID',booking});
+      return response({status:'PAID',admission_status:booking.effective_quantity===0?'CANCELLED':booking.effective_quantity<booking.quantity?'PARTIALLY_CANCELLED':'CONFIRMED',booking});
     }
     if(slug){
       const event=await env.BOOKINGS_DB.prepare(`SELECT id,slug,title,subtitle,venue_name,venue_address,venue_notes,public_summary,public_description,artwork_url,promo_video_url,promo_video_title,promo_video_caption,promo_video_poster_url,promo_video_display_enabled,instructor_name,instructor_intro,instructor_biography,instructor_website_url,instructor_photo_url,instructor_photo_caption,programme_approval_status,status,checkout_enabled,age_terms,age_terms_confirmed,refund_policy,refund_policy_confirmed
@@ -117,9 +117,9 @@ export async function publicSpecialEvents(request,env,url){
         env.BOOKINGS_DB.prepare(`SELECT id,event_date,label,display_order FROM special_event_days WHERE event_id=? ORDER BY display_order`).bind(event.id).all(),
         env.BOOKINGS_DB.prepare(`SELECT p.day_id,p.item_type,p.title,p.description,p.starts_at,p.ends_at,p.timing_confirmed,p.programme_status,p.display_order FROM special_event_programme_items p WHERE p.event_id=? ORDER BY p.day_id,p.display_order`).bind(event.id).all(),
         env.BOOKINGS_DB.prepare(`SELECT p.id,p.code,p.name,p.description,p.product_type,p.price_pence,p.allocation,p.release_state,p.password_required,p.requires_qualifying_admission,p.is_junior,p.requires_guardian,p.competition_eligible,p.includes_saturday_evening,p.max_per_checkout,p.display_order,
-          COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) sold_count,
-          CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation-COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)-COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)) END remaining,
-          CASE WHEN EXISTS(SELECT 1 FROM special_event_product_days pd JOIN special_event_days d ON d.id=pd.day_id WHERE pd.product_id=p.id AND d.capacity IS NOT NULL AND d.capacity<=COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)) OR (p.includes_saturday_evening=1 AND (SELECT saturday_evening_capacity FROM special_events WHERE id=p.event_id) IS NOT NULL AND (SELECT saturday_evening_capacity FROM special_events WHERE id=p.event_id)<=COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=p.event_id AND b.status='PAID' AND bp.includes_saturday_evening=1),0)) THEN 1 ELSE 0 END shared_capacity_sold_out
+          COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0) sold_count,
+          CASE WHEN p.allocation IS NULL THEN NULL ELSE MAX(0,p.allocation-COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)-COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)) END remaining,
+          CASE WHEN EXISTS(SELECT 1 FROM special_event_product_days pd JOIN special_event_days d ON d.id=pd.day_id WHERE pd.product_id=p.id AND d.capacity IS NOT NULL AND d.capacity<=COALESCE((SELECT SUM(bd.places) FROM event_effective_booking_days bd JOIN event_effective_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)) OR (p.includes_saturday_evening=1 AND (SELECT saturday_evening_capacity FROM special_events WHERE id=p.event_id) IS NOT NULL AND (SELECT saturday_evening_capacity FROM special_events WHERE id=p.event_id)<=COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=p.event_id AND b.status='PAID' AND bp.includes_saturday_evening=1),0)) THEN 1 ELSE 0 END shared_capacity_sold_out
           FROM special_event_ticket_products p WHERE p.event_id=? AND p.release_state IN ('ACTIVE','SOLD_OUT') ORDER BY p.display_order`).bind(event.id).all(),
         env.BOOKINGS_DB.prepare(`SELECT id,title,info_url,copperknob_url,bootstepper_url,display_order FROM special_event_choreographies WHERE event_id=? ORDER BY display_order`).bind(event.id).all()
       ]);
@@ -180,26 +180,26 @@ export async function adminSpecialEvents(request,env,admin,services={}){
         env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_choreographies WHERE event_id=? ORDER BY display_order`).bind(eventId).all(),
         env.BOOKINGS_DB.prepare(`SELECT d.id,d.label,d.capacity,
           COALESCE((SELECT SUM(p.allocation*pd.places_per_ticket) FROM special_event_product_days pd JOIN special_event_ticket_products p ON p.id=pd.product_id WHERE pd.day_id=d.id AND p.product_type='ADMISSION' AND p.allocation IS NOT NULL),0) configured_allocation,
-          COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) paid,
-          COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) complimentary,
+          COALESCE((SELECT SUM(bd.places) FROM event_effective_booking_days bd JOIN event_effective_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY'),0) paid,
+          COALESCE((SELECT SUM(bd.places) FROM event_effective_booking_days bd JOIN event_effective_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY'),0) complimentary,
           COALESCE((SELECT SUM(hd.places) FROM special_event_hold_days hd JOIN special_event_holds h ON h.id=hd.hold_id WHERE hd.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) held,
-          COALESCE((SELECT COUNT(*) FROM special_event_attendance x JOIN special_event_attendees a ON a.id=x.attendee_id JOIN special_event_bookings b ON b.id=a.booking_id WHERE x.day_id=d.id AND x.attended_at IS NOT NULL AND a.status='ACTIVE' AND b.status='PAID'),0) checked_in
+          COALESCE((SELECT COUNT(*) FROM special_event_attendance x JOIN special_event_attendees a ON a.id=x.attendee_id JOIN event_effective_bookings b ON b.id=a.booking_id WHERE x.day_id=d.id AND x.attended_at IS NOT NULL AND a.status='ACTIVE' AND b.status='PAID'),0) checked_in
           FROM special_event_days d WHERE d.event_id=? ORDER BY d.display_order`).bind(eventId).all(),
         env.BOOKINGS_DB.prepare(`SELECT o.*,b.reference,b.customer_name,b.product_name_snapshot,b.status booking_status FROM special_event_confirmation_outbox o JOIN special_event_bookings b ON b.id=o.booking_id WHERE b.event_id=? ORDER BY o.created_at DESC`).bind(eventId).all(),
         env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_competitor_messages WHERE event_id=? ORDER BY created_at DESC LIMIT 50`).bind(eventId).all()
       ]);
       const evening=await env.BOOKINGS_DB.prepare(`SELECT e.saturday_evening_capacity capacity,e.saturday_evening_capacity_confirmed capacity_confirmed,
         COALESCE((SELECT SUM(p.allocation) FROM special_event_ticket_products p WHERE p.event_id=e.id AND p.product_type='ADMISSION' AND p.includes_saturday_evening=1 AND p.allocation IS NOT NULL),0) configured_allocation,
-        COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY' AND p.includes_saturday_evening=1),0) paid,
-        COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY' AND p.includes_saturday_evening=1),0) complimentary,
+        COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY' AND p.includes_saturday_evening=1),0) paid,
+        COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND b.payment_provider='COMPLIMENTARY' AND p.includes_saturday_evening=1),0) complimentary,
         COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products p ON p.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND p.includes_saturday_evening=1),0) held
         FROM special_events e WHERE e.id=?`).bind(eventId).first();
       const [reporting,loyaltyCredential]=await Promise.all([
         env.BOOKINGS_DB.prepare(`SELECT
-          COALESCE(SUM(CASE WHEN b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY' AND p.product_type='ADMISSION' THEN b.quantity ELSE 0 END),0) paid_tickets,
-          COALESCE(SUM(CASE WHEN b.status='PAID' AND b.payment_provider='COMPLIMENTARY' AND p.product_type='ADMISSION' THEN b.quantity ELSE 0 END),0) complimentary_tickets,
+          COALESCE(SUM(CASE WHEN b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY' AND p.product_type='ADMISSION' THEN b.effective_quantity ELSE 0 END),0) paid_tickets,
+          COALESCE(SUM(CASE WHEN b.status='PAID' AND b.payment_provider='COMPLIMENTARY' AND p.product_type='ADMISSION' THEN b.effective_quantity ELSE 0 END),0) complimentary_tickets,
           COALESCE(SUM(CASE WHEN b.status='PAID' AND b.payment_provider<>'COMPLIMENTARY' THEN b.amount_pence ELSE 0 END),0) paid_revenue_pence
-          FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=?`).bind(eventId).first(),
+          FROM event_effective_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=?`).bind(eventId).first(),
         env.BOOKINGS_DB.prepare(`SELECT c.id FROM special_event_access_credentials c JOIN special_event_ticket_products p ON p.id=c.product_id WHERE c.event_id=? AND p.code='LOYALTY_WEEKEND' AND c.active=1 LIMIT 1`).bind(eventId).first()
       ]);
       return response({...ready,programme:programme.results||[],bookings:bookings.results||[],attendees:attendees.results||[],attendance:attendance.results||[],competition:competition.results||[],confirmations:confirmations.results||[],competitor_messages:messages.results||[],tasks:tasks.results||[],documents:documents.results||[],activity:activity.results||[],choreographies:choreographies.results||[],capacity:[...(capacity.results||[]),{id:'saturday-evening',label:'Saturday evening',...evening}],reporting,loyalty_password_configured:Boolean(loyaltyCredential)});
@@ -289,11 +289,11 @@ export async function adminSpecialEvents(request,env,admin,services={}){
       const saturday=body.saturday_capacity==null?null:Number(body.saturday_capacity),sunday=body.sunday_capacity==null?null:Number(body.sunday_capacity),evening=body.saturday_evening_capacity==null?null:Number(body.saturday_evening_capacity),eveningConfirmed=body.saturday_evening_capacity_confirmed?1:0;
       if([saturday,sunday,evening].some(value=>value!=null&&(!Number.isInteger(value)||value<1)))return response({error:'Capacities must be positive whole numbers or left unconfirmed.'},400);
       const usage=await env.BOOKINGS_DB.prepare(`SELECT d.display_order,
-        COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)+
+        COALESCE((SELECT SUM(bd.places) FROM event_effective_booking_days bd JOIN event_effective_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)+
         COALESCE((SELECT SUM(hd.places) FROM special_event_hold_days hd JOIN special_event_holds h ON h.id=hd.hold_id WHERE hd.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) committed
         FROM special_event_days d WHERE d.event_id=? ORDER BY d.display_order`).bind(eventId).all();
       const eveningUsage=await env.BOOKINGS_DB.prepare(`SELECT
-        COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=? AND b.status='PAID' AND p.includes_saturday_evening=1),0)+
+        COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=? AND b.status='PAID' AND p.includes_saturday_evening=1),0)+
         COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products p ON p.id=h.product_id WHERE h.event_id=? AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND p.includes_saturday_evening=1),0) committed`).bind(eventId,eventId).first();
       const byDay=new Map((usage.results||[]).map(row=>[Number(row.display_order),Number(row.committed||0)]));
       if(saturday!=null&&saturday<(byDay.get(1)||0))return response({error:'Saturday capacity cannot be lower than paid, complimentary and actively held places.'},409);
@@ -324,7 +324,7 @@ export async function adminSpecialEvents(request,env,admin,services={}){
       if(!['INACTIVE','ACTIVE','SOLD_OUT','CLOSED'].includes(state))return response({error:'Choose a valid release state.'},400);
       const product=await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE id=? AND event_id=?`).bind(productId,eventId).first();if(!product)return response({error:'Ticket product not found.'},404);
       const claimed=await env.BOOKINGS_DB.prepare(`SELECT
-        COALESCE((SELECT SUM(quantity) FROM special_event_bookings WHERE product_id=? AND status='PAID'),0)+
+        COALESCE((SELECT SUM(effective_quantity) FROM event_effective_bookings WHERE product_id=? AND status='PAID'),0)+
         COALESCE((SELECT SUM(quantity) FROM special_event_holds WHERE product_id=? AND status='ACTIVE' AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0) total`).bind(productId,productId).first();
       if(allocation!=null&&allocation<Number(claimed?.total||0))return response({error:'Allocation cannot be lower than paid, complimentary and actively held ticket quantity.'},409);
       await env.BOOKINGS_DB.batch([
@@ -343,7 +343,7 @@ export async function adminSpecialEvents(request,env,admin,services={}){
       const [updated]=await env.BOOKINGS_DB.batch([
         env.BOOKINGS_DB.prepare(`UPDATE special_event_ticket_products SET allocation=?,release_state=CASE WHEN release_state='SOLD_OUT' THEN 'ACTIVE' ELSE release_state END,updated_at=CURRENT_TIMESTAMP
           WHERE id=? AND event_id=? AND allocation IS ? AND ?>=(
-            COALESCE((SELECT SUM(quantity) FROM special_event_bookings WHERE product_id=? AND status='PAID'),0)+
+            COALESCE((SELECT SUM(effective_quantity) FROM event_effective_bookings WHERE product_id=? AND status='PAID'),0)+
             COALESCE((SELECT SUM(quantity) FROM special_event_holds WHERE product_id=? AND status='ACTIVE' AND expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0)
           )`).bind(allocation,productId,eventId,product.allocation,allocation,productId,productId),
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,metadata_json,idempotency_key)
@@ -460,10 +460,10 @@ export async function adminSpecialEvents(request,env,admin,services={}){
       const bookingInsert=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_bookings(id,reference,event_id,product_id,customer_id,customer_name,customer_email,quantity,product_code_snapshot,product_name_snapshot,unit_price_pence_snapshot,amount_pence,competition_quantity,status,payment_provider,secure_token,customer_token,terms_accepted_at,paid_at,issued_by,internal_reason)
         SELECT ?,?,e.id,p.id,?,?,?,?,p.code,p.name,0,0,?,'PAID','COMPLIMENTARY',?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,?,?
         FROM special_events e JOIN special_event_ticket_products p ON p.event_id=e.id WHERE e.id=? AND p.id=? AND p.product_type='ADMISSION' AND p.allocation IS NOT NULL
-          AND ?<=p.allocation-COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
-          AND NOT EXISTS(SELECT 1 FROM special_event_product_days pd JOIN special_event_days d ON d.id=pd.day_id WHERE pd.product_id=p.id AND d.capacity IS NOT NULL AND (?*pd.places_per_ticket)>d.capacity-COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0))
+          AND ?<=p.allocation-COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
+          AND NOT EXISTS(SELECT 1 FROM special_event_product_days pd JOIN special_event_days d ON d.id=pd.day_id WHERE pd.product_id=p.id AND d.capacity IS NOT NULL AND (?*pd.places_per_ticket)>d.capacity-COALESCE((SELECT SUM(bd.places) FROM event_effective_booking_days bd JOIN event_effective_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0))
           AND (?=0 OR ?<=(SELECT allocation FROM special_event_ticket_products WHERE event_id=e.id AND code='MINI_COMPETITION')-COALESCE((SELECT COUNT(*) FROM special_event_competition_entries ce WHERE ce.event_id=e.id AND ce.status<>'WITHDRAWN'),0))
-          AND (p.includes_saturday_evening=0 OR e.saturday_evening_capacity IS NULL OR ?<=e.saturday_evening_capacity-COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0))`).bind(bookingId,reference,customer.id,recipientName,recipientEmail,quantity,competitionIndexes.length,secureToken,customerToken,admin.email,reason,eventId,productId,quantity,quantity,competitionIndexes.length,competitionIndexes.length,quantity);
+          AND (p.includes_saturday_evening=0 OR e.saturday_evening_capacity IS NULL OR ?<=e.saturday_evening_capacity-COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0))`).bind(bookingId,reference,customer.id,recipientName,recipientEmail,quantity,competitionIndexes.length,secureToken,customerToken,admin.email,reason,eventId,productId,quantity,quantity,competitionIndexes.length,competitionIndexes.length,quantity);
       const statements=[bookingInsert,
         env.BOOKINGS_DB.prepare(`INSERT INTO special_event_booking_days(booking_id,day_id,places) SELECT ?,pd.day_id,?*pd.places_per_ticket FROM special_event_product_days pd WHERE pd.product_id=? AND EXISTS(SELECT 1 FROM special_event_bookings WHERE id=?)`).bind(bookingId,quantity,productId,bookingId)];
       attendeeInput.forEach((item,index)=>{const attendeeId=`${bookingId}:attendee:${index+1}`;statements.push(env.BOOKINGS_DB.prepare(`INSERT INTO special_event_attendees(id,booking_id,customer_id,name,email,age_at_event,guardian_name,guardian_email,guardian_phone,ticket_number,qr_token) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM special_event_bookings WHERE id=?)`).bind(attendeeId,bookingId,customer.id,tidy(item.name,120),recipientEmail,Number(item.age),tidy(item.guardian_name,120)||null,tidy(item.guardian_email,160).toLowerCase()||null,tidy(item.guardian_phone,40)||null,`${reference}-${String(index+1).padStart(2,'0')}`,specialRandomHex(32),bookingId),env.BOOKINGS_DB.prepare(`INSERT INTO special_event_attendance(attendee_id,day_id) SELECT ?,day_id FROM special_event_booking_days WHERE booking_id=?`).bind(attendeeId,bookingId));});
@@ -534,7 +534,7 @@ async function refreshAutomaticReleases(db,eventId){
   await db.prepare(`UPDATE special_event_ticket_products AS early SET release_state='SOLD_OUT',updated_at=CURRENT_TIMESTAMP
     WHERE early.event_id=? AND early.code='EARLY_BIRD_WEEKEND' AND early.release_state='ACTIVE' AND early.allocation IS NOT NULL
       AND early.allocation<=
-        COALESCE((SELECT SUM(quantity) FROM special_event_bookings WHERE product_id=early.id AND status='PAID'),0)`).bind(eventId).run();
+        COALESCE((SELECT SUM(effective_quantity) FROM event_effective_bookings WHERE product_id=early.id AND status='PAID'),0)`).bind(eventId).run();
 }
 
 export async function createSpecialEventReservation(request,env,services,options={}){
@@ -595,17 +595,17 @@ export async function createSpecialEventReservation(request,env,services,options
     FROM special_events e JOIN special_event_ticket_products p ON p.event_id=e.id
     WHERE ${eventAvailability} AND ${productAvailability}
       AND (p.allocation IS NULL OR ?<=p.allocation
-        -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
+        -COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID'),0)
         -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h WHERE h.product_id=p.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
       AND NOT EXISTS(SELECT 1 FROM special_event_product_days pd JOIN special_event_days d ON d.id=pd.day_id
         WHERE pd.product_id=p.id AND d.capacity IS NOT NULL AND (?*pd.places_per_ticket)>d.capacity
-          -COALESCE((SELECT SUM(bd.places) FROM special_event_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)
+          -COALESCE((SELECT SUM(bd.places) FROM event_effective_booking_days bd JOIN event_effective_bookings b ON b.id=bd.booking_id WHERE bd.day_id=d.id AND b.status='PAID'),0)
           -COALESCE((SELECT SUM(hd.places) FROM special_event_hold_days hd JOIN special_event_holds h ON h.id=hd.hold_id WHERE hd.day_id=d.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
       AND (?=0 OR ?<=(SELECT allocation FROM special_event_ticket_products WHERE event_id=e.id AND code='MINI_COMPETITION')
-        -COALESCE((SELECT COUNT(*) FROM special_event_competition_entries ce JOIN special_event_bookings b ON b.id=ce.booking_id WHERE ce.event_id=e.id AND ce.status<>'WITHDRAWN' AND b.status='PAID'),0)
+        -COALESCE((SELECT COUNT(*) FROM special_event_competition_entries ce JOIN event_effective_bookings b ON b.id=ce.booking_id WHERE ce.event_id=e.id AND ce.status<>'WITHDRAWN' AND b.status='PAID'),0)
         -COALESCE((SELECT SUM(CASE WHEN hp.code='MINI_COMPETITION' THEN h.quantity ELSE h.competition_quantity END) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')),0))
       AND (p.includes_saturday_evening=0 OR e.saturday_evening_capacity IS NULL OR ?<=e.saturday_evening_capacity
-        -COALESCE((SELECT SUM(b.quantity) FROM special_event_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0)
+        -COALESCE((SELECT SUM(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products bp ON bp.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND bp.includes_saturday_evening=1),0)
         -COALESCE((SELECT SUM(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=e.id AND h.status='ACTIVE' AND h.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now') AND hp.includes_saturday_evening=1),0))`)
     .bind(holdId,customer.id,email,quantity,amount,competitionQuantity,expiresAt,idempotencyKey,event.id,product.id,quantity,quantity,competitionInventoryQuantity,competitionInventoryQuantity,quantity);
   const holdDays=env.BOOKINGS_DB.prepare(`INSERT INTO special_event_hold_days(hold_id,day_id,places)

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 const special=readFileSync(new URL('../special-events.js',import.meta.url),'utf8').replace(/^export /gm,'');
-let source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'');
+let source=readFileSync(new URL('../_worker.js',import.meta.url),'utf8').replace(/^import .*special-events\.js';\s*/m,'').replaceAll("'./event-management.js'",JSON.stringify(new URL('../event-management.js',import.meta.url).href)).replaceAll("'./event-management-access.js'",JSON.stringify(new URL('../event-management-access.js',import.meta.url).href)).replaceAll("'./event-management-sumup.js'",JSON.stringify(new URL('../event-management-sumup.js',import.meta.url).href));
 const signingKey=await crypto.subtle.generateKey({name:'RSASSA-PKCS1-v1_5',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['sign','verify']);
 const publicKey={...await crypto.subtle.exportKey('jwk',signingKey.publicKey),kid:'synthetic-key'};
 source=source.replace(/const accessKeys=\/\*payment-verification-public-keys\*\/.*;/,`const accessKeys=${JSON.stringify([publicKey])};`);
