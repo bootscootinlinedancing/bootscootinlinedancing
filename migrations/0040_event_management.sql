@@ -7,7 +7,7 @@ CREATE TABLE event_change_requests(
  cancellation_state TEXT NOT NULL DEFAULT 'NONE' CHECK(cancellation_state IN ('NONE','REQUESTED','COMMITTED')),
  transfer_state TEXT NOT NULL DEFAULT 'NONE' CHECK(transfer_state IN ('NONE','REQUESTED','COMMITTED')),
  version INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, closed_at TEXT,
- submission_key TEXT NOT NULL UNIQUE
+ submission_key TEXT NOT NULL UNIQUE, submission_hash TEXT NOT NULL
 );
 CREATE TABLE event_change_items(
  request_id TEXT NOT NULL REFERENCES event_change_requests(id), attendee_id TEXT NOT NULL REFERENCES special_event_attendees(id),
@@ -95,7 +95,7 @@ CREATE TRIGGER event_operation_validate BEFORE INSERT ON event_change_operations
  SELECT CASE WHEN NEW.action IN ('CANCEL','TRANSFER') AND NOT EXISTS(SELECT 1 FROM event_change_requests WHERE id=NEW.request_id AND status='APPROVED' AND kind=CASE WHEN NEW.action='CANCEL' THEN 'CANCELLATION' ELSE 'TRANSFER' END) THEN RAISE(ABORT,'APPROVAL_REQUIRED') END;
  SELECT CASE WHEN NEW.action IN ('CANCEL','TRANSFER') AND NOT EXISTS(SELECT 1 FROM event_change_items WHERE request_id=NEW.request_id) THEN RAISE(ABORT,'NO_ATTENDEES') END;
  SELECT CASE WHEN NEW.action IN ('CANCEL','TRANSFER') AND EXISTS(SELECT 1 FROM event_change_items i JOIN event_change_requests r ON r.id=i.request_id LEFT JOIN event_effective_attendees a ON a.id=i.attendee_id AND a.booking_id=r.booking_id WHERE i.request_id=NEW.request_id AND (a.id IS NULL OR EXISTS(SELECT 1 FROM special_event_attendance x WHERE x.attendee_id=a.id AND x.attended_at IS NOT NULL))) THEN RAISE(ABORT,'INVALID_OR_USED_ADMISSION') END;
- SELECT CASE WHEN NEW.action='TRANSFER' AND EXISTS(SELECT 1 FROM event_change_items i JOIN special_event_attendees a ON a.id=i.attendee_id WHERE i.request_id=NEW.request_id AND (length(trim(coalesce(i.replacement_name,'')))=0 OR i.replacement_age IS NULL OR (a.age_at_event<18)<>(i.replacement_age<18) OR (i.replacement_age<18 AND (coalesce(i.guardian_name,'')='' OR coalesce(i.guardian_email,'')='')))) THEN RAISE(ABORT,'TRANSFER_ELIGIBILITY') END;
+ SELECT CASE WHEN NEW.action='TRANSFER' AND EXISTS(SELECT 1 FROM event_change_items i JOIN special_event_attendees a ON a.id=i.attendee_id WHERE i.request_id=NEW.request_id AND (length(trim(coalesce(i.replacement_name,'')))=0 OR i.replacement_age IS NULL OR (a.age_at_event<18)<>(i.replacement_age<18) OR (i.replacement_age<18 AND (coalesce(i.guardian_name,'')='' OR coalesce(i.guardian_email,'')='' OR coalesce(i.guardian_phone,'')='')))) THEN RAISE(ABORT,'TRANSFER_ELIGIBILITY') END;
  SELECT CASE WHEN NEW.action='COMPLETE' AND EXISTS(SELECT 1 FROM event_change_requests WHERE id=NEW.request_id AND (status<>'APPROVED' OR (kind='CANCELLATION' AND cancellation_state<>'COMMITTED') OR (kind='TRANSFER' AND transfer_state<>'COMMITTED') OR (kind='REFUND' AND NOT EXISTS(SELECT 1 FROM event_refund_operations WHERE request_id=NEW.request_id AND status='CONFIRMED')))) THEN RAISE(ABORT,'OPERATION_INCOMPLETE') END;
 END;
 CREATE TRIGGER event_operation_apply AFTER INSERT ON event_change_operations BEGIN
@@ -165,3 +165,27 @@ END;
 CREATE TRIGGER event_evidence_deletion_fence BEFORE UPDATE OF legal_hold ON event_evidence WHEN NEW.legal_hold=1 AND OLD.state IN('DELETE_PENDING','DELETED') BEGIN SELECT RAISE(ABORT,'DELETION_ALREADY_CLAIMED'); END;
 
 CREATE TABLE event_change_replies(id TEXT PRIMARY KEY,request_id TEXT NOT NULL REFERENCES event_change_requests(id),body TEXT NOT NULL CHECK(length(body) BETWEEN 1 AND 4000),created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+
+-- Complimentary/manual PAID inserts also respect every active offer/checkout hold.
+CREATE TRIGGER event_effective_insert_capacity BEFORE INSERT ON special_event_bookings WHEN NEW.status='PAID'
+BEGIN
+ SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM special_events WHERE id=NEW.event_id AND status<>'CANCELLED') THEN RAISE(ABORT,'PAYMENT_EVENT_CANCELLED') END;
+ SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM special_event_ticket_products WHERE id=NEW.product_id AND event_id=NEW.event_id) THEN RAISE(ABORT,'PAYMENT_PRODUCT_MISMATCH') END;
+ SELECT CASE WHEN NEW.qualifying_booking_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM event_effective_bookings b JOIN special_event_attendees a ON a.booking_id=b.id WHERE b.id=NEW.qualifying_booking_id AND b.event_id=NEW.event_id AND b.status='PAID' AND a.id=NEW.qualifying_attendee_id AND a.status='ACTIVE') THEN RAISE(ABORT,'PAYMENT_QUALIFYING_ADMISSION_REVIEW') END;
+ SELECT CASE WHEN EXISTS(SELECT 1 FROM special_event_ticket_products p JOIN special_event_ticket_products mini ON mini.event_id=p.event_id AND mini.code='MINI_COMPETITION' WHERE p.id=NEW.product_id AND mini.allocation IS NOT NULL AND (CASE WHEN p.code='MINI_COMPETITION' THEN NEW.quantity ELSE NEW.competition_quantity END)>0 AND
+ (CASE WHEN p.code='MINI_COMPETITION' THEN NEW.quantity ELSE NEW.competition_quantity END)
+ +(SELECT COUNT(*) FROM special_event_competition_entries ce JOIN event_effective_bookings b ON b.id=ce.booking_id WHERE ce.event_id=NEW.event_id AND ce.status<>'WITHDRAWN' AND b.status='PAID')
+ +(SELECT COALESCE(SUM(CASE WHEN hp.code='MINI_COMPETITION' THEN h.quantity ELSE h.competition_quantity END),0) FROM special_event_holds h JOIN special_event_ticket_products hp ON hp.id=h.product_id WHERE h.event_id=NEW.event_id AND h.id<>COALESCE(NEW.hold_id,'') AND h.status='ACTIVE' AND julianday(h.expires_at)>julianday('now'))>mini.allocation) THEN RAISE(ABORT,'PAYMENT_COMPETITION_CAPACITY_CONFLICT') END;
+ SELECT CASE WHEN EXISTS(SELECT 1 FROM special_event_ticket_products p WHERE p.id=NEW.product_id AND p.allocation IS NOT NULL AND
+ NEW.quantity+(SELECT COALESCE(SUM(effective_quantity),0) FROM event_effective_bookings b WHERE b.product_id=p.id AND b.status='PAID')+
+ (SELECT COALESCE(SUM(quantity),0) FROM special_event_holds h WHERE h.product_id=p.id AND h.id<>COALESCE(NEW.hold_id,'') AND h.status='ACTIVE' AND julianday(h.expires_at)>julianday('now'))>p.allocation)
+ THEN RAISE(ABORT,'PAYMENT_PRODUCT_CAPACITY_CONFLICT') END;
+ SELECT CASE WHEN EXISTS(SELECT 1 FROM special_event_product_days pd JOIN special_event_days d ON d.id=pd.day_id WHERE pd.product_id=NEW.product_id AND d.capacity IS NOT NULL AND
+ NEW.quantity*pd.places_per_ticket+(SELECT COALESCE(SUM(x.places),0) FROM event_effective_booking_days x JOIN event_effective_bookings b ON b.id=x.booking_id WHERE x.day_id=d.id AND b.status='PAID')+
+ (SELECT COALESCE(SUM(x.places),0) FROM special_event_hold_days x JOIN special_event_holds h ON h.id=x.hold_id WHERE x.day_id=d.id AND h.id<>COALESCE(NEW.hold_id,'') AND h.status='ACTIVE' AND julianday(h.expires_at)>julianday('now'))>d.capacity)
+ THEN RAISE(ABORT,'PAYMENT_DAY_CAPACITY_CONFLICT') END;
+ SELECT CASE WHEN EXISTS(SELECT 1 FROM special_event_ticket_products p JOIN special_events e ON e.id=p.event_id WHERE p.id=NEW.product_id AND p.includes_saturday_evening=1 AND e.saturday_evening_capacity IS NOT NULL AND
+ NEW.quantity+(SELECT COALESCE(SUM(b.effective_quantity),0) FROM event_effective_bookings b JOIN special_event_ticket_products p2 ON p2.id=b.product_id WHERE b.event_id=e.id AND b.status='PAID' AND p2.includes_saturday_evening=1)+
+ (SELECT COALESCE(SUM(h.quantity),0) FROM special_event_holds h JOIN special_event_ticket_products p2 ON p2.id=h.product_id WHERE h.event_id=e.id AND h.id<>COALESCE(NEW.hold_id,'') AND h.status='ACTIVE' AND julianday(h.expires_at)>julianday('now') AND p2.includes_saturday_evening=1)>e.saturday_evening_capacity)
+ THEN RAISE(ABORT,'PAYMENT_EVENING_CAPACITY_CONFLICT') END;
+END;

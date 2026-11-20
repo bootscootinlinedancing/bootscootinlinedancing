@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {JSDOM} from 'jsdom';
+const html=readFileSync(new URL('../../event-management.html',import.meta.url),'utf8'),script=readFileSync(new URL('../../event-management-ui.js',import.meta.url),'utf8');
+const flush=async()=>{for(let i=0;i<8;i++)await new Promise(r=>setTimeout(r,0))};
+const response=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json'}});
+function page(url){const dom=new JSDOM(html,{url,runScripts:'outside-only'});Object.defineProperty(dom.window,'crypto',{value:crypto});return dom}
+// Owner screens render untrusted names/reasons as text; failed decisions preserve disabled refund controls.
+const owner=page('https://fixture.example.test/ranch/event-management');let posts=[];
+owner.window.prompt=()=> 'Synthetic owner reason';owner.window.confirm=()=>true;
+owner.window.fetch=async(_url,options={})=>{if(options.method==='POST'){posts.push(JSON.parse(options.body));return response({error:'STALE_REQUEST'},409)}return response({requests:[{id:'request',booking_id:'booking',reference:'BSE-SYNTHETIC',customer_name:'<img src=x onerror=alert(1)>',kind:'REFUND',status:'APPROVED',version:1,cancellation_state:'NONE',transfer_state:'NONE',amount_pence:8000}],items:[],replies:[],refunds:[{id:'refund',request_id:'request',booking_id:'booking',amount_pence:1000,status:'UNKNOWN_REVIEW'}],evidence:[],notifications:[],entries:[]})};
+owner.window.eval(script);await flush();assert.equal(owner.window.document.querySelectorAll('img').length,0);assert(owner.window.document.body.textContent.includes('<img src=x'));
+const buttons=[...owner.window.document.querySelectorAll('button')],execute=buttons.find(b=>b.textContent==='Execute authorised refund'),approve=buttons.find(b=>b.textContent==='APPROVE');assert(execute.disabled);approve.click();approve.click();await flush();assert.equal(posts.length,1);assert(execute.disabled);assert.equal(posts[0].version,1);assert(posts[0].operation_id);owner.window.close();
+// A lost response must reuse the form operation key; no second key for an unchanged retry.
+const customer=page('https://fixture.example.test/event-management.html');posts=[];
+customer.window.fetch=async(_url,options={})=>{if(options.method==='POST'){posts.push(JSON.parse(options.body));throw Error('Synthetic lost response')}return response({booking:{reference:'BSE-SYNTHETIC',ticket_type:'Synthetic weekend',quantity:3,effective_quantity:2,refund_policy:'Synthetic policy'},attendees:[{id:'a1',name:'Cancelled synthetic',status:'CANCELLED',sessions:'Saturday'}, {id:'a2',name:'Active synthetic',status:'ACTIVE',sessions:'Saturday, Sunday'}],requests:[]})};
+customer.window.eval(script);await flush();assert(customer.window.document.body.textContent.includes('Current places: 2'));assert(customer.window.document.querySelector('input[value="a1"]').disabled);customer.window.document.querySelector('input[value="a2"]').checked=true;
+const form=customer.window.document.getElementById('request-form');form.dispatchEvent(new customer.window.Event('submit',{cancelable:true}));await flush();form.dispatchEvent(new customer.window.Event('submit',{cancelable:true}));await flush();assert.equal(posts.length,2);assert.equal(posts[0].idempotency_key,posts[1].idempotency_key);customer.window.close();
+console.log('PASS synthetic customer/owner DOM, literal untrusted text, duplicate taps, disabled-state preservation and stable retry idempotency. No physical-device test claimed.');
