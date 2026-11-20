@@ -20,12 +20,12 @@ export async function availablePlaces(env,productId){
 export async function requestWaitingAccess(env,body){
  const contact=email(body.email),name=String(body.name||'').trim().slice(0,120),q=Number(body.quantity);
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)||!name||!Number.isInteger(q)||q<1||q>20)throw Error('INVALID_INPUT');
- const inventory=await availablePlaces(env,body.product_id);if(!inventory.eligible||q>Math.min(inventory.product.max_per_checkout||20,20))throw Error('WAIT_NOT_ELIGIBLE');
+ const inventory=await availablePlaces(env,body.product_id);
  const existing=await stmt(env,`SELECT id FROM event_waitlist_entries WHERE product_id=? AND email=? AND status IN('WAITING','OFFERED','CHECKOUT')`,body.product_id,contact).first();
- if(!existing&&inventory.available>=q)throw Error('PLACES_CURRENTLY_AVAILABLE');
+ if(!existing&&(!inventory.eligible||q>Math.min(inventory.product?.max_per_checkout||20,20)||!enabled(env,'EVENT_WAITLIST_JOIN_ENABLED')||inventory.available>=q))return {ok:true};
  const id=uid(),code=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');
  await env.BOOKINGS_DB.batch([
- stmt(env,`INSERT INTO event_waitlist_challenges(id,product_id,name,email,quantity,code_hash,expires_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT count(*) FROM event_waitlist_challenges WHERE email=? AND created_at>datetime('now','-1 hour'))<3`,id,body.product_id,name,contact,q,await digest(`${id}:${code}`),iso(10),contact),
+ stmt(env,`INSERT INTO event_waitlist_challenges(id,product_id,name,email,quantity,code_hash,expires_at,existing_entry_id) SELECT ?,?,?,?,?,?,?,? WHERE (SELECT count(*) FROM event_waitlist_challenges WHERE email=? AND created_at>datetime('now','-1 hour'))<3`,id,body.product_id,name,contact,q,await digest(`${id}:${code}`),iso(10),existing?.id||null,contact),
  stmt(env,`INSERT INTO event_waitlist_notifications(id,recipient_email,kind,payload_json) SELECT ?,?,'WAITLIST_CODE',? WHERE EXISTS(SELECT 1 FROM event_waitlist_challenges WHERE id=?)`,id,contact,JSON.stringify({challenge:id,code}),id)
  ]);return {ok:true};
 }
@@ -33,11 +33,11 @@ export async function verifyWaitingAccess(env,body){
  const value=token(),hash=await digest(`${body.challenge}:${body.code}`),entryId=uid(),sessionHash=await digest(value);
  const result=await env.BOOKINGS_DB.batch([
  stmt(env,`UPDATE event_waitlist_challenges SET attempts=attempts+1,verification_lease=? WHERE id=? AND consumed_at IS NULL AND attempts<5 AND expires_at>?`,sessionHash,body.challenge,iso(0)),
- stmt(env,`INSERT INTO event_waitlist_sessions(token_hash,entry_id,expires_at) SELECT ?,w.id,? FROM event_waitlist_challenges c JOIN event_waitlist_entries w ON w.product_id=c.product_id AND w.email=c.email AND w.status IN('WAITING','OFFERED','CHECKOUT') WHERE c.verification_lease=? AND c.id=? AND c.code_hash=? AND c.consumed_at IS NULL AND c.expires_at>?`,sessionHash,iso(60),sessionHash,body.challenge,hash,iso(0)),
+ stmt(env,`INSERT INTO event_waitlist_sessions(token_hash,entry_id,expires_at) SELECT ?,w.id,? FROM event_waitlist_challenges c JOIN event_waitlist_entries w ON (w.id=c.existing_entry_id OR (c.existing_entry_id IS NULL AND w.product_id=c.product_id AND w.email=c.email AND w.status IN('WAITING','OFFERED','CHECKOUT'))) WHERE c.verification_lease=? AND c.id=? AND c.code_hash=? AND c.consumed_at IS NULL AND c.expires_at>?`,sessionHash,iso(60),sessionHash,body.challenge,hash,iso(0)),
  // A temporary one-use verification receipt makes the next statements independent of changes() chains.
  stmt(env,`UPDATE event_waitlist_challenges SET consumed_at=? WHERE id=? AND code_hash=? AND attempts BETWEEN 1 AND 5 AND expires_at>? AND consumed_at IS NULL AND verification_lease=?`,sessionHash,body.challenge,hash,iso(0),sessionHash),
- stmt(env,`INSERT INTO event_waitlist_entries(id,product_id,name,email,quantity) SELECT ?,product_id,name,email,quantity FROM event_waitlist_challenges c WHERE id=? AND consumed_at=? AND NOT EXISTS(SELECT 1 FROM event_waitlist_entries w WHERE w.product_id=c.product_id AND w.email=c.email AND w.status IN('WAITING','OFFERED','CHECKOUT'))`,entryId,body.challenge,sessionHash),
- stmt(env,`INSERT OR IGNORE INTO event_waitlist_sessions(token_hash,entry_id,expires_at) SELECT ?,w.id,? FROM event_waitlist_challenges c JOIN event_waitlist_entries w ON w.product_id=c.product_id AND w.email=c.email AND w.status IN('WAITING','OFFERED','CHECKOUT') WHERE c.id=? AND c.consumed_at=?`,sessionHash,iso(60),body.challenge,sessionHash)
+ stmt(env,`INSERT INTO event_waitlist_entries(id,product_id,name,email,quantity) SELECT ?,product_id,name,email,quantity FROM event_waitlist_challenges c WHERE id=? AND consumed_at=? AND c.existing_entry_id IS NULL AND ?=1 AND NOT EXISTS(SELECT 1 FROM event_waitlist_entries w WHERE (w.id=c.existing_entry_id OR (c.existing_entry_id IS NULL AND w.product_id=c.product_id AND w.email=c.email AND w.status IN('WAITING','OFFERED','CHECKOUT'))))`,entryId,body.challenge,sessionHash,enabled(env,'EVENT_WAITLIST_JOIN_ENABLED')?1:0),
+ stmt(env,`INSERT OR IGNORE INTO event_waitlist_sessions(token_hash,entry_id,expires_at) SELECT ?,w.id,? FROM event_waitlist_challenges c JOIN event_waitlist_entries w ON (w.id=c.existing_entry_id OR (c.existing_entry_id IS NULL AND w.product_id=c.product_id AND w.email=c.email AND w.status IN('WAITING','OFFERED','CHECKOUT'))) WHERE c.id=? AND c.consumed_at=?`,sessionHash,iso(60),body.challenge,sessionHash)
  ]);
  return result[1]?.meta?.changes||result[4]?.meta?.changes?value:null;
 }
@@ -51,8 +51,8 @@ export async function makeOffer(env,entryId,actor='WAITLIST_PROCESSOR',overrideR
  const id=uid();await stmt(env,`INSERT INTO event_waitlist_offers(id,entry_id,hold_id,expires_at,override_reason,actor) VALUES(?,?,?,?,?,?)`,id,entryId,`wait:${id}`,iso(config?.offer_minutes||1440),overrideReason,actor).run();return {id};
 }
 export async function processWaitingList(env,limit=4){
- if(!enabled(env,'EVENT_WAITLIST_OFFERS_ENABLED'))return {disabled:true};
- await expireOffers(env);const heads=await rows(stmt(env,`SELECT w.id FROM event_waitlist_entries w WHERE w.status='WAITING' AND NOT EXISTS(SELECT 1 FROM event_waitlist_entries h WHERE h.product_id=w.product_id AND h.status='WAITING' AND h.seq<w.seq) ORDER BY w.seq LIMIT ?`,Math.min(4,limit)));
+ if(!enabled(env,'EVENT_WAITLIST_ENABLED'))return {disabled:true};
+ await expireOffers(env);if(!enabled(env,'EVENT_WAITLIST_OFFERS_ENABLED'))return {offers_disabled:true};const heads=await rows(stmt(env,`SELECT w.id FROM event_waitlist_entries w WHERE w.status='WAITING' AND NOT EXISTS(SELECT 1 FROM event_waitlist_entries h WHERE h.product_id=w.product_id AND h.status='WAITING' AND h.seq<w.seq) ORDER BY w.seq LIMIT ?`,Math.min(4,limit)));
  let offers=0;for(const head of heads){try{await makeOffer(env,head.id);offers++}catch{/* Capacity/eligibility/duplicate races leave the head in place; never skip to a smaller party. */}}
  return {offers};
 }
@@ -82,11 +82,11 @@ export async function waitingListApi(request,env,services={}){
  }
  if(action==='checkout'&&request.method==='POST'){
  const entry=await stmt(env,`SELECT w.*,o.hold_id,o.checkout_expires_at,p.code,e.slug FROM event_waitlist_entries w JOIN event_waitlist_offers o ON o.entry_id=w.id JOIN special_event_ticket_products p ON p.id=w.product_id JOIN special_events e ON e.id=p.event_id WHERE w.id=? AND o.status='CHECKOUT' AND o.checkout_expires_at>?`,session.entry_id,iso(0)).first();if(!entry||!services.reserve)throw Error('WAIT_OFFER_EXPIRED_OR_CHANGED');
- const existing=await stmt(env,`SELECT id,status FROM special_event_bookings WHERE hold_id=?`,entry.hold_id).first();if(existing){if(services.resume)return services.resume(existing.id);return reply({error:'CHECKOUT_ALREADY_CREATED',status:existing.status},409);}
+ const existing=await stmt(env,`SELECT id,status FROM special_event_bookings WHERE hold_id=?`,entry.hold_id).first();if(existing){if(services.resume)return await services.resume(existing.id);return reply({error:'CHECKOUT_ALREADY_CREATED',status:existing.status},409);}
  const body=await request.json();if(body.attendees?.some(a=>a.competition_entry))throw Error('ADDITIONAL_COMPETITION_REQUIRES_SEPARATE_BOOKING');
  await stmt(env,`INSERT INTO event_waitlist_checkout_claims(hold_id,operation_id) VALUES(?,?)`,entry.hold_id,uid()).run();
  const bookingRequest=new Request(request.url,{method:'POST',headers:request.headers,body:JSON.stringify({...body,slug:entry.slug,product_code:entry.code,name:entry.name,email:entry.email,quantity:entry.quantity})});
- return services.reserve(bookingRequest,env,{hold_id:entry.hold_id,expires_at:entry.checkout_expires_at});
+ return await services.reserve(bookingRequest,env,{hold_id:entry.hold_id,expires_at:entry.checkout_expires_at});
  }
  return reply({error:'NOT_FOUND'},404);
  }catch(error){return safeError(error)}

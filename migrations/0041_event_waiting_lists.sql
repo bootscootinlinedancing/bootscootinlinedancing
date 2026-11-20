@@ -1,5 +1,5 @@
 CREATE TABLE event_waitlist_settings(event_id TEXT PRIMARY KEY REFERENCES special_events(id),offer_minutes INTEGER NOT NULL DEFAULT 1440 CHECK(offer_minutes BETWEEN 15 AND 10080));
-CREATE TABLE event_waitlist_challenges(id TEXT PRIMARY KEY,product_id TEXT NOT NULL REFERENCES special_event_ticket_products(id),name TEXT NOT NULL,email TEXT NOT NULL,quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 20),code_hash TEXT NOT NULL,verification_lease TEXT,attempts INTEGER NOT NULL DEFAULT 0,expires_at TEXT NOT NULL,consumed_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE event_waitlist_challenges(id TEXT PRIMARY KEY,product_id TEXT NOT NULL REFERENCES special_event_ticket_products(id),name TEXT NOT NULL,email TEXT NOT NULL,quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 20),code_hash TEXT NOT NULL,existing_entry_id TEXT,verification_lease TEXT,attempts INTEGER NOT NULL DEFAULT 0,expires_at TEXT NOT NULL,consumed_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE event_waitlist_entries(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,product_id TEXT NOT NULL REFERENCES special_event_ticket_products(id),name TEXT NOT NULL,email TEXT NOT NULL,quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 20),status TEXT NOT NULL DEFAULT 'WAITING' CHECK(status IN('WAITING','OFFERED','CHECKOUT','EXPIRED','LEFT','FULFILLED')),verified_joined_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
 CREATE UNIQUE INDEX event_waitlist_active_unique ON event_waitlist_entries(product_id,email) WHERE status IN('WAITING','OFFERED','CHECKOUT');
 CREATE TABLE event_waitlist_sessions(token_hash TEXT PRIMARY KEY,entry_id TEXT NOT NULL REFERENCES event_waitlist_entries(id),expires_at TEXT NOT NULL);
@@ -42,3 +42,10 @@ CREATE TRIGGER event_waitlist_paid AFTER UPDATE OF status ON special_event_booki
 END;
 
 CREATE TABLE event_waitlist_checkout_claims(hold_id TEXT PRIMARY KEY REFERENCES special_event_holds(id),operation_id TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+
+CREATE TRIGGER event_waitlist_join_audit AFTER INSERT ON event_waitlist_entries BEGIN
+ INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) SELECT NEW.id||':JOIN',p.event_id,'WAITLIST_VERIFIED_JOIN','WAITLIST_ENTRY',NEW.id,'VERIFIED_CUSTOMER','Verified request joined the FIFO queue.','wait-join:'||NEW.id FROM special_event_ticket_products p WHERE p.id=NEW.product_id;
+END;
+CREATE TRIGGER event_waitlist_entry_status_audit AFTER UPDATE OF status ON event_waitlist_entries WHEN NEW.status<>OLD.status BEGIN
+ INSERT INTO special_event_activity(id,event_id,action,target_type,target_id,actor,reason,idempotency_key) SELECT NEW.id||':'||NEW.status,p.event_id,'WAITLIST_'||NEW.status,'WAITLIST_ENTRY',NEW.id,CASE NEW.status WHEN 'FULFILLED' THEN 'VERIFIED_PAYMENT' WHEN 'EXPIRED' THEN 'EXPIRY_PROCESSOR' WHEN 'OFFERED' THEN 'OFFER_PROCESSOR' ELSE 'VERIFIED_CUSTOMER' END,'Waiting-list transition committed.','wait-state:'||NEW.id||':'||NEW.status FROM special_event_ticket_products p WHERE p.id=NEW.product_id;
+END;
