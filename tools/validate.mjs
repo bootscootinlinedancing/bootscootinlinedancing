@@ -53,6 +53,7 @@ const standaloneTests=[
   'event-management/access.mjs',
   'event-management/sumup.mjs',
   'event-management/requests.mjs',
+  'event-management/registers.mjs',
   'read-only-payment-verification.mjs',
   'admission-rewards-regression.mjs',
   'attendee-loyalty-regression.mjs',

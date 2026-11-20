@@ -1,3 +1,4 @@
+import {adminRegister} from './event-registers.js';
 import {eventOwnerAccess} from './event-management-access.js';
 import {sumUpRefundProvider} from './event-management-sumup.js';
 import {customerManagement,adminManagement,processManagementNotifications} from './event-management.js';
@@ -8210,6 +8211,15 @@ export default {
       // or an older payment alias from a cached proposal page, so accept all known variants.
       if ((path === '/api/private-events/pay' || path === '/api/private-events/pay/' || path === '/api/private-event-pay' || path === '/api/private-events/payment') && (request.method === 'POST' || request.method === 'GET')) return privateEventPay(request, env);
       if (path === '/api/admin/classes') return adminClasses(request, env);
+      if(path==='/api/admin/event-register'){
+        if(incomingPath!=='/ranch/api/admin/event-register')return json({error:'Not found.'},404);
+        const check=await eventOwnerAccess(request,env);if(check.response)return check.response;
+        return adminRegister(request,env,check.state);
+      }
+      if(path==='/ranch/event-registers'&&request.method==='GET'){
+        const check=await eventOwnerAccess(request,env);if(check.response)return check.response;
+        const result=await env.ASSETS.fetch(new Request(new URL('/event-registers.html',request.url),request));const headers=new Headers(result.headers);headers.set('cache-control','private, no-store');return new Response(result.body,{status:result.status,headers});
+      }
       if (path === '/api/event-management') {
         const result=await customerManagement(request,env);
         if(request.method==='POST'&&result.ok)ctx.waitUntil(processManagementNotifications(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options)).catch(()=>{}));
