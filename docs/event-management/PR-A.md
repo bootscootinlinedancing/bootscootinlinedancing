@@ -18,9 +18,9 @@ Evidence uses a separate deletable `EVENT_EVIDENCE_BUCKET`, opaque keys, three f
 
 ## Flags and remaining gates
 
-Default OFF: EVENT_MANAGEMENT_ENABLED, EVENT_MANAGEMENT_NOTIFICATIONS_ENABLED, EVENT_REFUND_EXECUTION_ENABLED. No production configuration or cron changed. Customer/admin POST can dispatch the new outbox through the existing transactional-email service using durable keys. Uncertain send is UNKNOWN_REVIEW, not an automatic resend; positively rejected sends may be retried. Confirmation outboxes and standard booking-confirmation copy are unchanged.
+Default OFF: EVENT_MANAGEMENT_ENABLED, EVENT_MANAGEMENT_NOTIFICATIONS_ENABLED, EVENT_REFUND_EXECUTION_ENABLED, EVENT_EVIDENCE_ENABLED. No production configuration or cron changed. Customer/admin POST and the existing scheduled handler can dispatch the new outbox through the existing transactional-email service using durable keys. Uncertain send is UNKNOWN_REVIEW, not an automatic resend; positively rejected sends may be retried. Confirmation outboxes and standard booking-confirmation copy are unchanged.
 
-**Not production-ready yet:** independent security review; authenticated browser acceptance; scanner and private bucket provisioning; evidence/health-data legal review; combined PR80/81 integration; real provider contract verification with authorised sandbox only. Refund execution/provider-event verification and evidence deletion have protected API actions; their full guided owner UI remains to finish (decision/authorisation UI is implemented). Customer further-information replies currently require contact with bookings@bootscootinlinedancing.co.uk; a threaded reply UI is outstanding. Automated fallback processing of new notification outbox is not yet scheduled; manual owner processor plus post-request dispatch exist. Do not enable until these gaps are resolved and staging is explicitly authorised.
+**Not production-ready yet:** independent security review; authenticated browser acceptance; scanner and private bucket provisioning; evidence/health-data legal review; combined PR80/81 integration; real provider contract verification with authorised sandbox only. Secure further-information replies, explicit refund execution/provider-event verification, deletion controls and independent scheduled/protected-automation notification fallback are now included. Do not enable until these gaps are resolved and staging is explicitly authorised.
 
 ## Rollout and rollback
 
@@ -30,3 +30,5 @@ Default OFF: EVENT_MANAGEMENT_ENABLED, EVENT_MANAGEMENT_NOTIFICATIONS_ENABLED, E
 4. Roll back by disabling actions/sending/refund execution and retaining effective-admission readers and invalidation fences. Keep additive schema and all decisions, releases, lineage, financial/audit/outbox history. Never restore old admissions or drop tables. A pre-0040 Worker alone is not the supported rollback once cancellation decisions exist; retain this compatibility kernel.
 
 Provider sources verified 20 November 2026: https://developer.sumup.com/api/transactions/refund/ and https://developer.sumup.com/api/transactions/get/ . No authenticated provider was contacted in development.
+
+Owner gate independently verifies RS256 signature, pinned public keys (rotation fails closed), issuer, audience, expiry, not-before, owner email and configured HQ origin. Forwarded email alone is rejected. Isolated staging must use its own Access application/public-key configuration, never production authentication keys or services.

@@ -49,6 +49,8 @@ for(const path of files.filter(path=>extname(path)==='.css')){
 }
 
 const standaloneTests=[
+  'event-management/access.mjs',
+  'event-management/sumup.mjs',
   'event-management/requests.mjs',
   'event-management/waiting.mjs',
   'read-only-payment-verification.mjs',

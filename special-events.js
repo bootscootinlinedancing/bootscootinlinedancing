@@ -554,7 +554,7 @@ export async function createSpecialEventReservation(request,env,services,options
   if(!ownerPaymentTest)await refreshAutomaticReleases(env.BOOKINGS_DB,event.id);
   const product=ownerPaymentTest
     ?await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code='SATURDAY_SOCIAL' AND name='Saturday Social & Spectator' AND price_pence=1500`).bind(event.id).first()
-    :await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code=? AND release_state='ACTIVE'`).bind(event.id,code).first();
+    :await env.BOOKINGS_DB.prepare(`SELECT * FROM special_event_ticket_products WHERE event_id=? AND code=? AND (release_state='ACTIVE' OR (?=1 AND release_state='SOLD_OUT' AND code NOT IN('EARLY_BIRD_WEEKEND','LOYALTY_WEEKEND')))` ).bind(event.id,code,options.waitingHold?1:0).first();
   if(!product)return response({error:'This ticket is not currently available.'},409);
   const maximum=Math.min(Number(event.max_admission_per_checkout||4),Number(product.max_per_checkout||event.max_admission_per_checkout||4));
   if(quantity>maximum)return response({error:`Choose no more than ${maximum} ticket${maximum===1?'':'s'} per checkout.`},400);

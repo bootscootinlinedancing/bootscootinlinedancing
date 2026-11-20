@@ -15,7 +15,7 @@ export async function availablePlaces(env,productId){
  const used=await stmt(env,`SELECT coalesce((SELECT sum(bd.places) FROM event_effective_booking_days bd JOIN special_event_bookings b ON b.id=bd.booking_id WHERE bd.day_id=? AND b.status='PAID'),0)+coalesce((SELECT sum(h.quantity*pd.places_per_ticket) FROM special_event_holds h JOIN special_event_product_days pd ON pd.product_id=h.product_id WHERE pd.day_id=? AND h.status='ACTIVE' AND julianday(h.expires_at)>julianday('now')),0) n`,day.id,day.id).first();available=Math.min(available,Math.floor(((day.capacity??0)-used.n)/day.places_per_ticket));
  }
  if(product.includes_saturday_evening){const used=await stmt(env,`SELECT coalesce((SELECT sum(b.effective_quantity) FROM event_effective_bookings b JOIN special_event_ticket_products p ON p.id=b.product_id WHERE b.event_id=? AND b.status='PAID' AND p.includes_saturday_evening=1),0)+coalesce((SELECT sum(h.quantity) FROM special_event_holds h JOIN special_event_ticket_products p ON p.id=h.product_id WHERE h.event_id=? AND h.status='ACTIVE' AND julianday(h.expires_at)>julianday('now') AND p.includes_saturday_evening=1),0) n`,product.event_id,product.event_id).first();available=Math.min(available,(product.saturday_evening_capacity??0)-used.n)}
- return {product,available:Math.max(0,available),eligible:product.product_type==='ADMISSION'&&product.release_state==='ACTIVE'&&product.event_status==='PUBLISHED'&&!!product.checkout_enabled};
+ return {product,available:Math.max(0,available),eligible:product.product_type==='ADMISSION'&&['ACTIVE','SOLD_OUT'].includes(product.release_state)&&product.event_status==='PUBLISHED'&&!!product.checkout_enabled};
 }
 export async function requestWaitingAccess(env,body){
  const contact=email(body.email),name=String(body.name||'').trim().slice(0,120),q=Number(body.quantity);
@@ -82,7 +82,7 @@ export async function waitingListApi(request,env,services={}){
  }
  if(action==='checkout'&&request.method==='POST'){
  const entry=await stmt(env,`SELECT w.*,o.hold_id,o.checkout_expires_at,p.code,e.slug FROM event_waitlist_entries w JOIN event_waitlist_offers o ON o.entry_id=w.id JOIN special_event_ticket_products p ON p.id=w.product_id JOIN special_events e ON e.id=p.event_id WHERE w.id=? AND o.status='CHECKOUT' AND o.checkout_expires_at>?`,session.entry_id,iso(0)).first();if(!entry||!services.reserve)throw Error('WAIT_OFFER_EXPIRED_OR_CHANGED');
- const existing=await stmt(env,`SELECT id,status FROM special_event_bookings WHERE hold_id=?`,entry.hold_id).first();if(existing)return reply({error:'CHECKOUT_ALREADY_CREATED',status:existing.status},409);
+ const existing=await stmt(env,`SELECT id,status FROM special_event_bookings WHERE hold_id=?`,entry.hold_id).first();if(existing){if(services.resume)return services.resume(existing.id);return reply({error:'CHECKOUT_ALREADY_CREATED',status:existing.status},409);}
  const body=await request.json();if(body.attendees?.some(a=>a.competition_entry))throw Error('ADDITIONAL_COMPETITION_REQUIRES_SEPARATE_BOOKING');
  await stmt(env,`INSERT INTO event_waitlist_checkout_claims(hold_id,operation_id) VALUES(?,?)`,entry.hold_id,uid()).run();
  const bookingRequest=new Request(request.url,{method:'POST',headers:request.headers,body:JSON.stringify({...body,slug:entry.slug,product_code:entry.code,name:entry.name,email:entry.email,quantity:entry.quantity})});
