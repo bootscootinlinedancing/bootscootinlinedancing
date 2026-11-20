@@ -549,6 +549,11 @@
   function renderOverview(){
     const b=state.bootstrap;
     if(!b)return;
+    let paymentWarning=$('#paymentReconciliationWarning');
+    if(!paymentWarning){paymentWarning=document.createElement('div');paymentWarning.id='paymentReconciliationWarning';paymentWarning.setAttribute('role','alert');$('#overviewUpcoming')?.closest('section')?.before(paymentWarning);}
+    const paymentIssues=b.payment_reconciliation||[];
+    paymentWarning.hidden=!paymentIssues.length;
+    paymentWarning.innerHTML=paymentIssues.length?`<div class="ranch92-state setup"><strong>Payment review required — ${paymentIssues.length} booking(s)</strong><p>Do not charge again or resend confirmations until reviewed.</p>${paymentIssues.map(x=>`<p>${esc(x.kind||'')} ${esc(x.booking_id||'')} · ${esc(x.code||'Unresolved payment')}</p>`).join('')}</div>`:'';
     $('#overviewUpcoming').textContent=b.summary.upcoming_classes;
     $('#overviewBooked').textContent=b.summary.places_booked;
     const cleanupCard=document.getElementById('knownTestCleanupCard');
