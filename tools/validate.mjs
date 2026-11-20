@@ -49,6 +49,7 @@ for(const path of files.filter(path=>extname(path)==='.css')){
 }
 
 const standaloneTests=[
+  'event-management/ui.mjs',
   'event-management/access.mjs',
   'event-management/sumup.mjs',
   'event-management/requests.mjs',

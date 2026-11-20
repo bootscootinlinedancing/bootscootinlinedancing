@@ -20,7 +20,7 @@ Evidence uses a separate deletable `EVENT_EVIDENCE_BUCKET`, opaque keys, three f
 
 Default OFF: EVENT_MANAGEMENT_ENABLED, EVENT_MANAGEMENT_NOTIFICATIONS_ENABLED, EVENT_REFUND_EXECUTION_ENABLED, EVENT_EVIDENCE_ENABLED. No production configuration or cron changed. Customer/admin POST and the existing scheduled handler can dispatch the new outbox through the existing transactional-email service using durable keys. Uncertain send is UNKNOWN_REVIEW, not an automatic resend; positively rejected sends may be retried. Confirmation outboxes and standard booking-confirmation copy are unchanged.
 
-**Not production-ready yet:** independent security review; authenticated browser acceptance; scanner and private bucket provisioning; evidence/health-data legal review; combined PR80/81 integration; real provider contract verification with authorised sandbox only. Secure further-information replies, explicit refund execution/provider-event verification, deletion controls and independent scheduled/protected-automation notification fallback are now included. Do not enable until these gaps are resolved and staging is explicitly authorised.
+**Not production-ready yet:** independent security review; authenticated browser acceptance; scanner and private bucket provisioning; evidence/health-data legal review; authenticated isolated staging after the passing local PR80/81 integration; real provider contract verification with authorised sandbox only. Secure further-information replies, explicit refund execution/provider-event verification, deletion controls and independent scheduled/protected-automation notification fallback are now included. Do not enable until these gaps are resolved and staging is explicitly authorised.
 
 ## Rollout and rollback
 

@@ -5,8 +5,8 @@ export async function createRegisterPDF(data,{PDFLib,fontkit,fontBytes,orientati
  const supported=new Set(font.getCharacterSet());
  const clean=value=>{const text=String(value??'').normalize('NFC');for(const ch of text)if(ch!=='\n'&&ch!=='\r'&&!supported.has(ch.codePointAt(0)))throw Error('This register contains characters outside the bundled PDF font. Use Print to preserve the complete names.');return text};
  const [width,height]=orientation==='landscape'?[841.89,595.28]:[595.28,841.89],margin=30,usable=width-margin*2;
- const columns=orientation==='landscape'?[165,110,125,170,75,usable-645]:[112,86,95,113,54,usable-460];
- const wrap=(value,width,size=9)=>{const lines=[];for(const paragraph of clean(value).split(/\r?\n/)){let line='';for(const word of paragraph.split(/\s+/)){const candidate=line?line+' '+word:word;if(font.widthOfTextAtSize(candidate,size)<=width){line=candidate;continue}if(line){lines.push(line);line=''}for(const char of word){if(font.widthOfTextAtSize(line+char,size)>width&&line){lines.push(line);line=char}else line+=char}}lines.push(line)}return lines};
+ const columns=orientation==='landscape'?[165,110,125,170,75,usable-645]:[133,86,85,102,54,usable-460];
+ const wrap=(value,width,size=9)=>{const lines=[];for(const paragraph of clean(value).split(/\r?\n/)){let line='';for(const token of paragraph.match(/[^\s-]+-?|\s+/g)||[]){if(font.widthOfTextAtSize(line+token,size)<=width){line+=token;continue}if(line.trim()){lines.push(line.trimEnd());line=''}for(const char of token.trimStart()){if(font.widthOfTextAtSize(line+char,size)>width&&line){lines.push(line);line=char}else line+=char}}lines.push(line.trimEnd())}return lines};
  const label=data.scope==='weekend'?'Full weekend':data.scope==='saturday'?'Saturday 20 February 2027':'Sunday 21 February 2027';
  const generated=new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/London'}).format(new Date(data.generated_at));
  let page,y,pageNumber=0;

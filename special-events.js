@@ -103,11 +103,11 @@ export async function publicSpecialEvents(request,env,url){
     const reference=tidy(url.searchParams.get('reference'),120),token=tidy(url.searchParams.get('token'),180);
     if(reference||token){
       if(!reference||!token)return response({error:'Confirmation details are incomplete.'},400);
-      const booking=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.customer_name,b.quantity,b.product_name_snapshot,b.amount_pence,b.status,b.paid_at,e.title,e.venue_name
-        FROM special_event_bookings b JOIN special_events e ON e.id=b.event_id WHERE b.reference=? AND b.secure_token=?`).bind(reference,token).first();
+      const booking=await env.BOOKINGS_DB.prepare(`SELECT b.reference,b.customer_name,b.quantity,b.effective_quantity,b.product_name_snapshot,b.amount_pence,b.status,b.paid_at,e.title,e.venue_name
+        FROM event_effective_bookings b JOIN special_events e ON e.id=b.event_id WHERE b.reference=? AND b.secure_token=?`).bind(reference,token).first();
       if(!booking)return response({error:'Booking confirmation not found.'},404);
       if(booking.status!=='PAID')return response({status:booking.status==='PENDING'?'PENDING':'NOT_CONFIRMED'});
-      return response({status:'PAID',booking});
+      return response({status:'PAID',admission_status:booking.effective_quantity===0?'CANCELLED':booking.effective_quantity<booking.quantity?'PARTIALLY_CANCELLED':'CONFIRMED',booking});
     }
     if(slug){
       const event=await env.BOOKINGS_DB.prepare(`SELECT id,slug,title,subtitle,venue_name,venue_address,venue_notes,public_summary,public_description,artwork_url,promo_video_url,promo_video_title,promo_video_caption,promo_video_poster_url,promo_video_display_enabled,instructor_name,instructor_intro,instructor_biography,instructor_website_url,instructor_photo_url,instructor_photo_caption,programme_approval_status,status,checkout_enabled,age_terms,age_terms_confirmed,refund_policy,refund_policy_confirmed

@@ -8,7 +8,7 @@ PDF rendering is entirely local to the owner browser with pinned self-hosted pdf
 
 Flag default OFF: EVENT_REGISTERS_ENABLED. Shared signed owner gate is provided by PR A. Protected JSON and page responses are private/no-store. Existing HQ has a separate Print / PDF link; PR81 itself is untouched.
 
-Synthetic tests check privacy fields, paid/cancelled filtering, day counters, access denial, Unicode, pagination and A4 dimensions for all three scopes in both orientations. Six synthetic PDFs generated for visual QA, with long names and 65 rows to exercise repeated headers and page breaks. Remaining gates: authenticated browser acceptance, joint PR81 check-in dataset verification, vendor notice review, and physical venue print check. No physical iPhone testing is claimed.
+Synthetic tests check privacy fields, paid/cancelled filtering, day counters, access denial, Unicode, pagination and A4 dimensions for all three scopes in both orientations. Six synthetic PDFs generated for visual QA, with long names and 65 rows to exercise repeated headers and page breaks. Remaining gates: authenticated browser acceptance, authenticated PR81 check-in staging acceptance, vendor notice review, and physical venue print check. No physical iPhone testing is claimed.
 
 Rollout: after PR80/81 integration and PR A/0040, explicitly authorised isolated staging with synthetic attendees; enable only EVENT_REGISTERS_ENABLED and test current check-in versus exports. Production still requires separate approval. No remote staging or production deployment has occurred.
 
