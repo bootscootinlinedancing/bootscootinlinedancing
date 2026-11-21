@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
-const root=new URL('../',import.meta.url).pathname;
+const root=fileURLToPath(new URL('../',import.meta.url));
 const migration=readFileSync(join(root,'migrations/0030_admission_rewards.sql'),'utf8');
 const worker=readFileSync(join(root,'_worker.js'),'utf8');
 const temp=mkdtempSync(join(tmpdir(),'boots-admission-reward-'));

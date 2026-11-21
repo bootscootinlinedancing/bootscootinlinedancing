@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
 import {readdirSync,readFileSync,statSync} from 'node:fs';
 import {extname,join,relative} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const root=new URL('../',import.meta.url);
-const rootPath=root.pathname;
+const rootPath=fileURLToPath(root);
 const ignored=new Set(['.git','node_modules','work']);
 
 function filesUnder(directory){
@@ -60,7 +61,10 @@ const standaloneTests=[
   'special-events-e2e.mjs',
   'special-events-regression.mjs',
   'sunday-sessions-regression.mjs',
-  'welcome-offer-regression.mjs'
+  'welcome-offer-regression.mjs',
+  'fast-checkin-ui-regression.mjs',
+  'fast-checkin-server-regression.mjs',
+  'johnny-checkin-ui-regression.mjs'
 ];
 for(const test of standaloneTests){
   const result=spawnSync(process.execPath,[join(rootPath,'tests',test)],{encoding:'utf8'});

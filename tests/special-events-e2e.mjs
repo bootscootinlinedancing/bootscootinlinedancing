@@ -16,7 +16,8 @@ import {
   specialEventMediaMultipartComplete,
   specialEventMedia,
   publicSpecialEvents,
-  specialEventConfirmationCopy
+  specialEventConfirmationCopy,
+  checkInSpecialEventAttendee
 } from '../special-events.js';
 
 const db=new DatabaseSync(':memory:');
@@ -221,7 +222,7 @@ response=await adminSpecialEvents(new Request('https://example.test/api/admin/sp
 const compAttendee=db.prepare(`SELECT * FROM special_event_attendees WHERE booking_id=? ORDER BY ticket_number LIMIT 1`).get(complimentary.id);
 response=await adminSpecialEvents(new Request(`https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027&verify_qr=${compAttendee.qr_token}`),env,{email:'owner@example.test'});assert.equal(response.status,200);assert.equal((await response.json()).valid,true);
 response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'CHECK_IN_ATTENDEE',attendee_id:compAttendee.id,day_id:'johnny-2027-saturday',attended:true})}),env,{email:'owner@example.test'});assert.equal(response.status,200);
-response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'CHECK_IN_ATTENDEE',attendee_id:compAttendee.id,day_id:'johnny-2027-saturday',attended:true})}),env,{email:'owner@example.test'});assert.equal(response.status,409,'duplicate check-in must be rejected');
+response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'CHECK_IN_ATTENDEE',attendee_id:compAttendee.id,day_id:'johnny-2027-saturday',attended:true})}),env,{email:'owner@example.test'});assert.equal(response.status,200,'duplicate check-in must be an idempotent success');assert.equal((await response.json()).idempotent,true);
 assert.equal(db.prepare(`SELECT attended_at IS NOT NULL checked FROM special_event_attendance WHERE attendee_id=? AND day_id='johnny-2027-sunday'`).get(compAttendee.id).checked,0,'Saturday check-in must not mark Sunday attendance');
 response=await adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action:'CHECK_IN_ATTENDEE',attendee_id:compAttendee.id,day_id:'johnny-2027-saturday',attended:false})}),env,{email:'owner@example.test'});assert.equal(response.status,200,'owner must be able to reverse an accidental check-in');
 assert.equal(db.prepare(`SELECT attended_at FROM special_event_attendance WHERE attendee_id=? AND day_id='johnny-2027-saturday'`).get(compAttendee.id).attended_at,null);assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_activity WHERE action='ATTENDEE_CHECK_IN_REVERSED'`).get().n,1);
@@ -266,4 +267,20 @@ assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_confirmation_outbo
 const ownerDeliveries=[];env.ADMIN_EMAIL='owner@example.test';env.SPECIAL_EVENT_EMAILS_ENABLED='false';delivery=await processSpecialEventConfirmations(env,async(to,_subject,_html,_text,options)=>{ownerDeliveries.push({to,options});return {id:'owner-payment-email'}});assert.deepEqual(delivery,{processed:1,sent:1,failed:0});assert.equal(ownerDeliveries.length,1);assert.equal(ownerDeliveries[0].to,'nora@bootscootinlinedancing.co.uk');
 delivery=await processSpecialEventConfirmations(env,async()=>{throw new Error('duplicate owner test email')});assert.equal(delivery.processed,0,'owner payment confirmation must be exactly once');
 assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);assert.equal(db.prepare('PRAGMA integrity_check').get().integrity_check,'ok');
+
+// Concurrent staff checks and bounded family selection must respect event-day entitlements.
+const checkinPeople=db.prepare(`SELECT id FROM special_event_attendees WHERE booking_id=? ORDER BY id`).all(booking.id);
+assert.equal(checkinPeople.length,2);
+const priorCheckins=db.prepare(`SELECT COUNT(*) n FROM special_event_activity WHERE action='ATTENDEE_CHECKED_IN'`).get().n;
+await Promise.all(Array.from({length:8},(_,i)=>checkInSpecialEventAttendee(env,{eventId:'special-event-johnny-rossato-2027',attendeeId:checkinPeople[0].id,dayId:'johnny-2027-saturday',actor:'staff-'+i,operationId:'staff-operation-'+i})));
+assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_activity WHERE action='ATTENDEE_CHECKED_IN'`).get().n,priorCheckins+1);
+assert.equal(db.prepare(`SELECT attended_at FROM special_event_attendance WHERE attendee_id=? AND day_id='johnny-2027-sunday'`).get(checkinPeople[0].id).attended_at,null);
+const bulkBody={action:'BULK_CHECK_IN_ATTENDEES',day_id:'johnny-2027-saturday',operation_id:'family-checkin',attendee_ids:[...checkinPeople.map(x=>x.id),compAttendee.id]};
+const bulkRequest=body=>adminSpecialEvents(new Request('https://example.test/api/admin/special-events?id=special-event-johnny-rossato-2027',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),env,{email:'owner@example.test'});
+let bulkResponse=await bulkRequest(bulkBody);assert.equal(bulkResponse.status,200);let bulkData=await bulkResponse.json();assert.equal(bulkData.results.filter(x=>x.ok).length,2);assert.equal(bulkData.results.filter(x=>x.error).length,1,'cancelled complimentary attendee is not admitted');
+bulkResponse=await bulkRequest(bulkBody);assert.equal((await bulkResponse.json()).results.filter(x=>x.ok).length,2);assert.equal(db.prepare(`SELECT COUNT(*) n FROM special_event_activity WHERE action='ATTENDEE_CHECKED_IN'`).get().n,priorCheckins+2);
+const socialAttendee=db.prepare(`SELECT id FROM special_event_attendees WHERE booking_id=?`).get(socialResult.booking_id);assert((await checkInSpecialEventAttendee(env,{eventId:'special-event-johnny-rossato-2027',attendeeId:socialAttendee.id,dayId:'johnny-2027-sunday',actor:'staff',operationId:'wrong-entitlement'})).error);
+assert((await checkInSpecialEventAttendee(env,{eventId:'wrong-event',attendeeId:checkinPeople[0].id,dayId:'johnny-2027-sunday',actor:'staff',operationId:'wrong-event'})).error);
+console.log('PASS event family bulk check-in, two-staff concurrency, partial failures, Saturday/Sunday separation, cancellation and social-only entitlement');
+
 console.log('PASS isolated Special Events purchase, owner-only Draft £15 checkout, simultaneous launch, complimentary capacity/competition/QR/cancellation, payment and email idempotency, failure release, private evidence and unauthorised rejection');

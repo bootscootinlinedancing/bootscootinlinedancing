@@ -7,7 +7,7 @@ const source=special+'\n'+readFileSync(new URL('../_worker.js',import.meta.url),
 const mod=await import(`data:text/javascript;base64,${Buffer.from(source+'\nexport {attendeeSchemaAvailable,bookingUsesPersonAttendance,bookingAttendeeRows,checkInBookingAttendee,deterministicAttendeeCustomer,syncLoyaltyForEmail,awardLoyaltyStampForBooking,uniqueAttendanceCountForCustomer};').toString('base64')}`);
 const db=new DatabaseSync(':memory:');
 db.exec(`PRAGMA foreign_keys=ON;
-CREATE TABLE classes(id TEXT PRIMARY KEY,title TEXT);
+CREATE TABLE classes(id TEXT PRIMARY KEY,title TEXT,status TEXT DEFAULT 'open');
 CREATE TABLE customers(id TEXT PRIMARY KEY,name TEXT NOT NULL,email TEXT NOT NULL UNIQUE);
 CREATE TABLE member_accounts(id TEXT PRIMARY KEY,customer_id TEXT,email TEXT);
 CREATE TABLE customer_email_identities(id TEXT PRIMARY KEY,customer_id TEXT,normalized_email TEXT,status TEXT);
@@ -17,7 +17,7 @@ CREATE TABLE loyalty_stamp_ledger(id TEXT PRIMARY KEY,customer_email TEXT,member
 CREATE TABLE customer_crm_profiles(customer_key TEXT PRIMARY KEY,loyalty_adjustment INTEGER DEFAULT 0);
 CREATE TABLE promotions(id TEXT PRIMARY KEY,name TEXT,code_prefix TEXT,discount_type TEXT,discount_value INTEGER,starts_at TEXT,ends_at TEXT,max_uses INTEGER,uses_per_customer INTEGER,applicable_class_id TEXT,personal_only INTEGER,active INTEGER,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE promotion_codes(id TEXT PRIMARY KEY,promotion_id TEXT REFERENCES promotions(id),code TEXT UNIQUE,customer_email TEXT,issued_reason TEXT,issued_at TEXT DEFAULT CURRENT_TIMESTAMP,expires_at TEXT,max_uses INTEGER,active INTEGER);
-INSERT INTO classes VALUES('class-1','Local class');
+INSERT INTO classes(id,title) VALUES('class-1','Local class');
 INSERT INTO customers VALUES('lead','Lead Person','lead@example.test'),('guest-a','Guest A','a@example.test'),('guest-b','Guest B','b@example.test'),('helper','Helper','helper@example.test');
 INSERT INTO member_accounts VALUES('member-a','guest-a','a@example.test');
 INSERT INTO customer_email_identities VALUES('identity-lead','lead','lead@example.test','ACTIVE'),('identity-a','guest-a','a@example.test','ACTIVE'),('identity-b','guest-b','b@example.test','ACTIVE'),('identity-helper','helper','helper@example.test','ACTIVE');
@@ -43,6 +43,7 @@ assert.equal(db.prepare(`SELECT COUNT(*) n FROM loyalty_transactions WHERE custo
 assert.equal(db.prepare(`SELECT COUNT(*) n FROM promotion_codes WHERE issued_reason='LOYALTY' AND customer_email IN ('lead@example.test','a@example.test')`).get().n,2);
 
 const duplicateId='duplicate-lead';
+db.exec(`UPDATE bookings SET quantity=4 WHERE id='booking-1'`);
 db.prepare(`INSERT INTO booking_attendees(id,booking_id,class_id,place_number,role,snapshot_name,snapshot_email,normalized_email,customer_id) VALUES(?,?,?,?,?,?,?,?,?)`).run(duplicateId,'booking-1','class-1',4,'GUEST','Lead again','lead@example.test','lead@example.test','lead');
 const duplicate=await mod.checkInBookingAttendee(env,{attendeeId:duplicateId,actor:'admin@example.test',operationId:'duplicate-person'});assert.equal(duplicate.ok,true);assert.equal(duplicate.loyalty_credited,false);
 assert.equal(db.prepare(`SELECT COUNT(*) n FROM loyalty_transactions WHERE customer_id='lead'`).get().n,9);
