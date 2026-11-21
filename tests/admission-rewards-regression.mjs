@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {fileURLToPath} from 'node:url';
 import {join} from 'node:path';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
