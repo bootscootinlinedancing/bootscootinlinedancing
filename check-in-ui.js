@@ -14,7 +14,7 @@
       $('[data-checkin-submit]').hidden=!multi;$('[data-checkin-clear]').hidden=!multi;
       $('[data-checkin-submit]').textContent=`Check in ${selected.size} ${selected.size===1?'person':'people'}`;
       $('[data-checkin-submit]').disabled=!selected.size||busy.size>0;
-      $('[data-checkin-mode]').disabled=busy.size>0;onChange({busy:busy.size});
+      $('[data-checkin-mode]').disabled=busy.size>0;onChange({busy:busy.size});filter();
     }
     async function check(ids){
       const map=new Map(items().map(x=>[x.id,x]));ids=[...new Set(ids)].filter(id=>map.get(id)?.eligible&&!map.get(id)?.checked&&!busy.has(id));
