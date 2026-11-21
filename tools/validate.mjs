@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
 import {readdirSync,readFileSync,statSync} from 'node:fs';
 import {extname,join,relative} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
 const root=new URL('../',import.meta.url);
-const rootPath=root.pathname;
+const rootPath=fileURLToPath(root);
 const ignored=new Set(['.git','node_modules','work']);
 
 function filesUnder(directory){
@@ -48,6 +49,7 @@ for(const path of files.filter(path=>extname(path)==='.css')){
 }
 
 const standaloneTests=[
+  'christmas-hoedown-regression.mjs',
   'read-only-payment-verification.mjs',
   'admission-rewards-regression.mjs',
   'attendee-loyalty-regression.mjs',

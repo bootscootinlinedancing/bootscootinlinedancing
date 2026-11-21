@@ -597,6 +597,19 @@ function completeSundayAttendeeRows(rows,{bookingId,classId,details}){
   return [...byPlace.values()].sort((a,b)=>Number(a.place_number)-Number(b.place_number)).map(row=>({...row,admission_category:categories[Number(row.place_number)-1]||null}));
 }
 
+const CHRISTMAS_HOEDOWN=Object.freeze({id:'christmas-hoedown-2026-12-18-low-places',price_pence:800,starts_at:'2026-12-18T19:15:00.000Z',ends_at:'2026-12-19T01:00:00.000Z'});
+const isChristmasHoedown=row=>String(row?.class_id||row?.id||'')===CHRISTMAS_HOEDOWN.id;
+function christmasHoedownProduct(){
+  return {...ticketDefinition('CLASS_SOCIAL'),code:'CLASS_SOCIAL',enabled:1,event_type:'CHRISTMAS_HOEDOWN',
+    label:'Christmas Hoedown admission',sumup_description:'Christmas Hoedown admission — one hour of tuition + Christmas social',
+    description:'£8 admission. Christmas social with one hour of tuition (7:30–8:30 pm), Christmas song swaps, Santa’s Naughty List, social dancing and Bradley Rivers live. Arrive 7:15 pm; finish 1:00 am Saturday.',
+    price_pence:800,starts_at:CHRISTMAS_HOEDOWN.starts_at,ends_at:CHRISTMAS_HOEDOWN.ends_at,entry_at:CHRISTMAS_HOEDOWN.starts_at,
+    class_pass_eligible:false,class_pass_credit_cost:1,display_order:10};
+}
+function christmasHoedownTicketText(label='Christmas Hoedown admission'){
+  return `${label} · £8 per person · Arrivals 7:15 pm Friday 18 December · One hour of tuition 7:30–8:30 pm, including Christmas song swaps · Santa’s Naughty List 8:30 pm · Social dancing and requests 8:50 pm · Bradley Rivers live 9:00 pm · Finish 1:00 am Saturday 19 December`;
+}
+
 function ticketDefinition(code){return CLASS_TICKET_DEFINITIONS[String(code||'')]||null;}
 function ticketSnapshotCode(row){return row?.ticket_product_code||row?.ticket_type||'CLASS_SOCIAL';}
 function ticketSnapshotLabel(row){return row?.ticket_product_label||ticketDefinition(ticketSnapshotCode(row))?.label||'Class + Social';}
@@ -607,6 +620,7 @@ function ticketTimeText(value){
 }
 function ticketSnapshotText(row){
   const label=ticketSnapshotLabel(row),code=ticketSnapshotCode(row);
+  if(isChristmasHoedown(row))return christmasHoedownTicketText(label);
   const sunday=sundaySessionCompositionText(row);
   if(sunday)return `${label} · ${sunday}`;
   if(code==='SOCIAL_ONLY'){
@@ -622,6 +636,7 @@ function ticketSnapshotText(row){
 
 async function classTicketProducts(env,klass,{includeDisabled=false}={}){
   if(!klass)return [];
+  if(isChristmasHoedown(klass))return [christmasHoedownProduct()];
   if(klass.special_booking_format==='SUNDAY_SESSIONS')return sundaySessionProducts();
   if(klass.booking_format==='BEGINNER_IMPROVER'){
     const result=await env.BOOKINGS_DB.prepare(`SELECT * FROM class_ticket_products WHERE class_id=? ${includeDisabled?'':'AND enabled=1'} ORDER BY display_order,product_code`).bind(klass.id).all();
@@ -646,6 +661,7 @@ async function resolveTicketProduct(env,klass,body,{anniversary=false,anniversar
   const supplied=Object.prototype.hasOwnProperty.call(body||{},'ticket_product_code')||Object.prototype.hasOwnProperty.call(body||{},'ticket_type');
   const code=clean(body?.ticket_product_code??body?.ticket_type,40);
   if(supplied&&!code)return {error:'Unsupported ticket type.',status:400};
+  if(isChristmasHoedown(klass))return !supplied||code==='CLASS_SOCIAL'?{product:christmasHoedownProduct()}:{error:'Christmas Hoedown has one £8 admission ticket; other class and social-only options are not available.',status:409};
   if(anniversary){
     if(supplied&&code!=='CLASS_SOCIAL')return {error:'That ticket type is not available for the Anniversary event.',status:409};
     const product=anniversaryTicketProduct(klass,anniversaryRelease);
@@ -2063,6 +2079,7 @@ async function publicClasses(env, includeHistory = false, request = null) {
         const ticketProduct=anniversaryTicketProduct(row,anniversary.current_release);
         return withClassCalendarStatus({...row,price_pence:price,price:price/100,spaces_remaining:anniversary.current_release?.remaining??0,overall_spaces_remaining:anniversary.remaining,event_type:'ANNIVERSARY',ticket_release:anniversary.current_release,ticket_products:ticketProduct?[ticketProduct]:[],releases:anniversary.releases.map(({id,code,name,price_pence,allocation,sold,remaining})=>({id,code,name,price_pence,allocation,sold,remaining}))},currentInstant,true);
       }
+      if(isChristmasHoedown(row))Object.assign(row,{price_pence:800,booking_format:'STANDARD',special_booking_format:null,social_only_enabled:0,social_only_price_pence:null,social_only_entry_time:null,class_pass_eligible:0,event_type:'CHRISTMAS_HOEDOWN'});
       return withClassCalendarStatus({ ...row, price: row.price_pence / 100,ticket_products:await classTicketProducts(env,row) },currentInstant,true);
     })));
   } catch (error) {
@@ -2634,7 +2651,8 @@ function bookingActionLinks(booking) {
   const location = [booking.venue, booking.location].filter(Boolean).join(', ');
   const directions = location ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}` : '';
   const start = booking.starts_at ? new Date(booking.starts_at) : null;
-  const end = booking.ends_at ? new Date(booking.ends_at) : (start ? new Date(start.getTime()+3600000) : null);
+  const confirmedEnd=isChristmasHoedown(booking)?CHRISTMAS_HOEDOWN.ends_at:booking.ends_at;
+  const end = confirmedEnd ? new Date(confirmedEnd) : (start ? new Date(start.getTime()+3600000) : null);
   const gdate = d => d ? d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z$/,'Z') : '';
   const google = start ? `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(booking.class_title || booking.title || 'Boot Scootin’ class')}&dates=${gdate(start)}/${gdate(end)}&location=${encodeURIComponent(location)}&details=${encodeURIComponent(`Boot Scootin’ booking ${booking.reference || ''}`)}` : '';
   return { calendar, manage, directions, google };
@@ -3102,6 +3120,7 @@ async function issueWelcomePromotion(env,email){
 async function publicPromoValidate(request,env){
   await ensureBookingSchema(env); const body=await request.json().catch(()=>null); if(!body)return json({error:'The promo code request could not be read.'},400);
   const classRow=await env.BOOKINGS_DB.prepare(`SELECT * FROM classes WHERE id=?`).bind(clean(body.classId,120)).first(); if(!classRow)return json({error:'Choose a class first.'},404);
+  if(isChristmasHoedown(classRow))return json({error:'Christmas Hoedown admission is £8; promotion codes are not enabled for this event.'},409);
   if(classRow.special_booking_format==='SUNDAY_SESSIONS')return json({error:'Promotion codes cannot be used with Sunday Sessions tickets.'},400);
   const anniversary=await anniversaryInventory(env).catch(()=>null),classId=clean(body.classId,120);
   const anniversaryClass=anniversary?.event?.class_id===classId;
@@ -3147,6 +3166,7 @@ async function createClassReservation(request, env) {
 
   if (!classRow) return json({ error: 'This class is no longer open for booking.' }, 404);
 
+  if(isChristmasHoedown(classRow)&&requestedPromoCode)return json({error:'Christmas Hoedown admission is £8; promotion codes are not enabled for this event.'},409);
   const sundaySession=classRow.special_booking_format==='SUNDAY_SESSIONS';
   let sundayDetails=null;
   if(sundaySession){
@@ -3975,6 +3995,7 @@ async function bookingStatus(request,env,url){
   const guidance=hours>=48?'A cancellation now qualifies for a full refund or class credit.':hours>=24?'A cancellation now qualifies for one transfer or class credit.':'This is within 24 hours. A refund or credit is normally available only if the place is resold or exceptional circumstances are agreed.';
   return json({
     reference:booking.reference,status:booking.status,class_title:booking.class_title,starts_at:booking.starts_at,
+    event_type:isChristmasHoedown(booking)?'CHRISTMAS_HOEDOWN':null,
     venue:booking.venue,location:booking.location,quantity:booking.quantity,amount_pence:booking.amount_pence,ticket_type:booking.ticket_type,ticket_entry_time:booking.ticket_entry_time,
     ticket_product_code:booking.ticket_product_code,ticket_product_label:booking.ticket_product_label,ticket_unit_price_pence:booking.ticket_unit_price_pence,
     ticket_starts_at:booking.ticket_starts_at,ticket_ends_at:booking.ticket_ends_at,ticket_entry_at:booking.ticket_entry_at,
@@ -8130,7 +8151,7 @@ async function serveMedia(request, env, pathname) {
   return new Response(object.body, { headers });
 }
 
-export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate};
+export {sundaySessionSelection,sundaySessionProducts,announcementIsVisible,londonCalendarDate,CHRISTMAS_HOEDOWN,christmasHoedownProduct};
 export default {
   async scheduled(event, env, ctx) { ctx.waitUntil(Promise.all([processDueCampaigns(env),processAutomaticBookingNotifications(env),reconcilePendingSpecialEventBookings(env),processSpecialEventConfirmations(env,(to,subject,html,text,options)=>sendTransactionalEmail(env,to,subject,html,text,'events',options))])); },
   async fetch(request, env, ctx) {
