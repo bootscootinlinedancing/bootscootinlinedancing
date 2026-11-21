@@ -44,3 +44,16 @@ The production event does **not** yet exist. After separate approval: recheck cu
 Rollback by closing **this new event** to new sales using the existing audited HQ process and restoring the previous compatible assets after approval. Do not delete the event after any booking exists; keep its attendee/payment/outbox history. Do not undo cancellation decisions, published policies, existing attendance or other classes. Do not drop unrelated migrations. Any refunds, cancellations or customer messages require separate owner approval.
 
 Production recommendation: NO-GO until owner review and explicit merge/migration/deployment/publication approval. Physical Safari remains a check-in release gate as detailed in the review.
+
+## Final validation evidence
+
+- Christmas branch: **14 suites passed**, 42 scripts plus HTML/CSS checks.
+- Exact original PR81 archive: **15 suites passed**, 43 scripts.
+- Christmas + PR81 local rehearsal: **16 suites passed**, 45 scripts.
+- Christmas + PR80 + PR81 local rehearsal: **18 suites passed**, 49 scripts.
+- The Christmas booking regression also passed with `TEST_RECONCILIATION=true` in that combined build: synthetic £16 captured checkout, two named attendees and one confirmation job.
+- Desktop 1440×1000 and mobile 390×844 actual Chromium browser submissions passed, with all external requests intercepted/blocked. Flyer containment, visible programme/prize, one £8 product, correct teaching/finish times, promo/credit controls and horizontal bounds were checked. Screenshots were visually reviewed. Physical iPhone Safari remains untested.
+
+Local-only combined branch: `codex/fast-checkin-review-20261121`, commit `def8b27b1ef714f80d4e784691bf8b3573e68477`. It was not pushed or deployed. The only merge conflict was combining independent test entries in the validator; the actual check-in/payment source merged without overwriting either draft. Production main remained `d8cffbcb6485fef2895345046f7ecbd0bba171f0`.
+
+Protected remote heads checked unchanged: PR80 `1d97ee70572318de3bea1b6152195259eba8d65e`, PR81 `1485d01fea01e2091016af3d583bbf63cd16c3d1`, PR82 `5de68438fb05e9ac68b1595cd93096d3fdeb7adb`, PR83 `d85e1cc6691ecbf7cde6c13bcbc386a22743aa54`, PR84 `e9c8434b57b823b79f3bd8f121fd95367aef9485`. PR73–77 were also unchanged. The protected original ranch.js remains byte-identical to its existing UK-time backup.

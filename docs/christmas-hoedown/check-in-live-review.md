@@ -28,3 +28,5 @@ Exact PR81 archived source rerun: `npm run validate` passed 43 scripts and 15 su
 6. Obtain separate merge/production deployment approval. Confirm the served controller/HTML/CSS cache versions and successful synthetic smoke checks after deployment. A read-only production check can verify the assets; customer attendance writes need their own authorisation.
 
 PR81 has no database migration or payment dependency. Its code can be reviewed independently; the order above preserves the owner's existing staged rollout plan. Roll back only to the Pages version immediately before PR81, retaining any already-deployed PR80. Keep attendance, loyalty and audit history; do not replay check-ins or remove payment changes to undo UI changes.
+
+Additional compatibility checks completed in a local-only branch: Christmas + PR81 passes 16 suites; adding PR80 passes 18. The new Christmas payment flow also passes with reconciliation enabled. This supports reusing the existing fast-check-in fix without another implementation. It is still not a physical Safari or production deployment test.
