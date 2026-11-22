@@ -49,6 +49,7 @@ for(const path of files.filter(path=>extname(path)==='.css')){
 }
 
 const standaloneTests=[
+  'christmas-hoedown-regression.mjs',
   'payment-reconciliation-regression.mjs',
   'payment-scheduler-regression.mjs',
   'read-only-payment-verification.mjs',

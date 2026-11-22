@@ -51,7 +51,7 @@
     if(!paragraphs.length)return '';
     const totalLength=paragraphs.reduce((sum,paragraph)=>sum+paragraph.length,0);
     const sectionId=`event-description-${String(eventId).replace(/[^a-z0-9_-]/gi,'')}`;
-    if(totalLength<=560||paragraphs.length<3){
+    if(totalLength<=560||paragraphs.length<3||eventId==='christmas-hoedown-2026-12-18-low-places'){
       return `<section class="event-description-section" aria-labelledby="${sectionId}-title"><h3 id="${sectionId}-title">About this event</h3><div class="event-full-description">${descriptionHtml(text)}</div></section>`;
     }
     let visibleCount=0,visibleLength=0;
@@ -92,6 +92,7 @@
   function ticketUnitPrice(c,type=selectedTicketType()){const product=ticketProduct(c,type);return product?Number(product.price_pence||0)/100:Number(c.price||0);}
   function productTime(product){
     if(!product)return '';
+    if(product.event_type==='CHRISTMAS_HOEDOWN')return 'Arrivals 7:15 pm · Teaching 7:30–8:30 pm · Christmas social · Finish 1:00 am Saturday';
     const shown=value=>/^([01]\d|2[0-3]):[0-5]\d$/.test(String(value||''))?String(value):timeFmt(value);
     if(product.code==='SOCIAL_ONLY')return product.entry_at?`Entry from ${shown(product.entry_at)}`:'';
     if(product.starts_at&&product.ends_at)return product.code==='BEGINNER_IMPROVER_SOCIAL'?`Teaching ${timeFmt(product.starts_at)}–${timeFmt(product.ends_at)} + social afterwards`:`${timeFmt(product.starts_at)}–${timeFmt(product.ends_at)} + social afterwards`;
@@ -155,7 +156,7 @@
         ${c.poster_url?`<div class="class-poster"><img src="${esc(c.poster_url)}" alt="${esc(c.title)} poster" loading="lazy"></div>`:''}
         <div class="class-date"><span>${new Date(c.starts_at).toLocaleDateString('en-GB',{month:'short'}).toUpperCase()}</span><strong>${new Date(c.starts_at).getDate()}</strong></div>
         <div class="class-info">
-          <p class="class-venue">${esc(venueLabel(c.venue))}</p><h3>${esc(c.title)}</h3>${c.event_type==='ANNIVERSARY'&&c.ticket_release?`<p class="anniversary-ticket-release"><strong>${esc(c.ticket_release.name)}</strong> · ${money(c.ticket_release.price_pence/100)} · ${esc(c.ticket_release.remaining)} left in this release${Number.isFinite(Number(c.overall_spaces_remaining))?`<br><span>${esc(c.overall_spaces_remaining)} event places remain overall</span>`:''}</p>`:c.booking_format==='BEGINNER_IMPROVER'?`<p class="social-ticket-note"><strong>Beginner, Improver, Full Evening or Social Only</strong></p>`:Number(c.social_only_enabled)===1?`<p class="social-ticket-note"><strong>Class + Social or Social Only</strong> · Social entry from ${esc(c.social_only_entry_time)}</p>`:''}
+          <p class="class-venue">${esc(venueLabel(c.venue))}</p><h3>${esc(c.title)}</h3>${c.event_type==='CHRISTMAS_HOEDOWN'?'<p class="social-ticket-note"><strong>Christmas social · one hour of tuition</strong><br>7:30–8:30 pm teaching · finish 1:00 am Saturday</p>':c.event_type==='ANNIVERSARY'&&c.ticket_release?`<p class="anniversary-ticket-release"><strong>${esc(c.ticket_release.name)}</strong> · ${money(c.ticket_release.price_pence/100)} · ${esc(c.ticket_release.remaining)} left in this release${Number.isFinite(Number(c.overall_spaces_remaining))?`<br><span>${esc(c.overall_spaces_remaining)} event places remain overall</span>`:''}</p>`:c.booking_format==='BEGINNER_IMPROVER'?`<p class="social-ticket-note"><strong>Beginner, Improver, Full Evening or Social Only</strong></p>`:Number(c.social_only_enabled)===1?`<p class="social-ticket-note"><strong>Class + Social or Social Only</strong> · Social entry from ${esc(c.social_only_entry_time)}</p>`:''}
           <p>${esc(dateFmt(c.starts_at))}</p><p>${esc(c.location)}</p>
           <div class="class-footer"><span><b>${c.special_booking_format==='SUNDAY_SESSIONS'?'From £3 · Under 5s free':`${money(c.price)} per person`}</b></span>
           <span class="spaces ${nearly?'low':''} ${full?'full':''}">${closed?'Booking closed':full?'Class full':`${c.spaces_remaining} spaces left`}</span></div>
@@ -172,7 +173,8 @@
     const overall=c.event_type==='ANNIVERSARY'&&Number.isFinite(Number(c.overall_spaces_remaining))?Number(c.overall_spaces_remaining):null;
     const anniversaryReleases=c.event_type==='ANNIVERSARY'?(c.releases||[]):[];
     const releaseLadder=anniversaryReleases.length?`<div class="anniversary-release-ladder" aria-label="Anniversary ticket releases"><p class="eyebrow">Ticket release schedule</p>${anniversaryReleases.map(release=>{const current=release.id===c.ticket_release?.id;return `<div class="anniversary-release-row ${current?'is-current':'is-upcoming'}"><span><strong>${esc(release.name)}</strong><small>${current?'Available now':'Coming next'}</small></span><b>${money(Number(release.price_pence)/100)}</b>${current?`<em>${esc(release.remaining)} left in this release</em>`:'<em>Opens automatically after the current release</em>'}</div>`;}).join('')}<p class="anniversary-capacity-note"><strong>${esc(overall)} places remain across the whole event.</strong> Release availability is shown separately above.</p></div>`:'';
-    const schedule=`${dayFmt(c.starts_at)} · ${timeFmt(c.starts_at)}${c.ends_at?`–${timeFmt(c.ends_at)}`:''}`;
+    const crossesMidnight=c.ends_at&&new Date(c.ends_at).toLocaleDateString('en-GB',{timeZone:'Europe/London'})!==new Date(c.starts_at).toLocaleDateString('en-GB',{timeZone:'Europe/London'});
+    const schedule=`${dayFmt(c.starts_at)} · ${timeFmt(c.starts_at)}${c.ends_at?`–${timeFmt(c.ends_at)}${crossesMidnight?' (next day)':''}`:''}`;
     const products=(c.ticket_products||[]).map(product=>`${esc(product.label)} ${money(Number(product.price_pence)/100)}${productTime(product)?` · ${esc(productTime(product))}`:''}`).join('<br>');
     const posters=[c.poster_url&&{url:c.poster_url,label:`${c.title} event poster`},c.promo_poster_url&&{url:c.promo_poster_url,label:`${c.title} promotional poster`}].filter(Boolean);
     const posterGallery=posters.length?`<div class="event-detail-poster-gallery ${posters.length>1?'has-two-posters':''}">${posters.map(poster=>`<a class="event-detail-poster-shell" href="${esc(poster.url)}" target="_blank" rel="noopener" aria-label="Open ${esc(poster.label)} at full size"><img class="event-detail-poster" src="${esc(poster.url)}" alt="${esc(poster.label)}"></a>`).join('')}</div>`:'';
@@ -232,6 +234,7 @@
     document.getElementById('bookingMode').value=waitlist?'waitlist':'booking';
     document.getElementById('bookingDialogKicker').textContent=waitlist?'Join the waiting list':'Book your place';
     document.getElementById('selectedClassName').textContent=c.title;
+    dialog.dataset.eventType=c.event_type||'';
     form.reset();
     updateGuestFields();
     document.getElementById('promoMessage').textContent='';document.getElementById('promoTotals').hidden=true;
@@ -242,8 +245,8 @@
     sundayPicker.hidden=!sunday;
     form.elements.quantity.closest('label').hidden=sunday;
     [...form.elements.quantity.options].forEach(option=>{if(Number(option.value)>4){option.disabled=!sunday;option.hidden=!sunday;}});
-    document.getElementById('promoBox').hidden=sunday;
-    const showSingleAnniversaryProduct=c.event_type==='ANNIVERSARY'&&products.length===1;
+    document.getElementById('promoBox').hidden=sunday||c.event_type==='CHRISTMAS_HOEDOWN';
+    const showSingleAnniversaryProduct=['ANNIVERSARY','CHRISTMAS_HOEDOWN'].includes(c.event_type)&&products.length===1;
     picker.hidden=sunday||products.length===0||(!showSingleAnniversaryProduct&&products.length<2&&c.booking_format!=='BEGINNER_IMPROVER');
     choices.innerHTML=products.map((product,index)=>`<label class="ticket-product-card"><input type="radio" name="ticket_product_code" value="${esc(product.code)}" ${c.booking_format!=='BEGINNER_IMPROVER'&&index===0?'checked':''} required><span>${product.badge?`<em>${esc(product.badge)}</em>`:''}<strong>${esc(product.label)} — ${money(Number(product.price_pence)/100)}</strong><small>${esc(productTime(product))}</small><small>${esc(product.description||'')}</small>${product.class_pass_eligible?'<b>Class Pass eligible</b>':''}</span></label>`).join('');
     choices.querySelectorAll('input').forEach(input=>input.addEventListener('change',()=>{updateTicketChoice();loadClassCreditOption(c);}));

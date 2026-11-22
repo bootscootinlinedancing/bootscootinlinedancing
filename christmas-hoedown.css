@@ -1,0 +1,5 @@
+/* Preserve the supplied flyer in full; never crop its logos, programme or £8 price. */
+#event-christmas-hoedown-2026-12-18-low-places .class-poster img{display:block;width:100%;height:auto;max-height:none;object-fit:contain}
+#eventDetailsContent .event-detail-poster[src$="christmas-hoedown-18-december-2026.png"]{object-fit:contain!important}
+
+#bookingDialog[data-event-type="CHRISTMAS_HOEDOWN"] #ticketProductChoices{grid-template-columns:minmax(0,1fr)}

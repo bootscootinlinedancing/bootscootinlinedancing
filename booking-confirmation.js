@@ -22,6 +22,7 @@
   const ticketTime=value=>value?new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'';
   const ticketDetail=b=>{
     const code=b.ticket_product_code||b.ticket_type,label=ticket(b);
+    if(b.event_type==='CHRISTMAS_HOEDOWN')return `${label} · Christmas social with one hour of tuition, 7:30–8:30 pm · Arrivals 7:15 pm Friday · Bradley Rivers live 9:00 pm · Finish 1:00 am Saturday 19 December`;
     if(code==='SOCIAL_ONLY')return `${label}${b.ticket_entry_at||b.ticket_entry_time?` · Entry from ${ticketTime(b.ticket_entry_at||b.ticket_entry_time)}`:''}`;
     if(['BEGINNER_SOCIAL','IMPROVER_SOCIAL','BEGINNER_IMPROVER_SOCIAL'].includes(code))return `${label}${b.ticket_starts_at?` · Teaching ${ticketTime(b.ticket_starts_at)}${b.ticket_ends_at?`–${ticketTime(b.ticket_ends_at)}`:''} + social afterwards`:''}`;
     return label;
