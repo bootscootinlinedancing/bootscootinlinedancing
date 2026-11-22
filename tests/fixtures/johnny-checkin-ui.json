@@ -1,0 +1,84 @@
+{
+  "attendees": [
+    {
+      "id": "phone-johnny-1795266520811-person-1",
+      "booking_id": "phone-johnny-1795266520811",
+      "name": "Safari Weekend 1",
+      "age_at_event": null,
+      "ticket_number": "TEST-phone-johnny-1795266520811-person-1",
+      "status": "ACTIVE",
+      "reference": "BSE-phone-johnny-1795266520811",
+      "booking_status": "PAID",
+      "payment_provider": "SUMUP",
+      "product_id": "johnny-standard-weekend",
+      "product_name_snapshot": "Standard Weekend Pass",
+      "competition_registered": 0
+    },
+    {
+      "id": "phone-johnny-1795266520811-person-2",
+      "booking_id": "phone-johnny-1795266520811",
+      "name": "Safari Weekend 2",
+      "age_at_event": null,
+      "ticket_number": "TEST-phone-johnny-1795266520811-person-2",
+      "status": "ACTIVE",
+      "reference": "BSE-phone-johnny-1795266520811",
+      "booking_status": "PAID",
+      "payment_provider": "SUMUP",
+      "product_id": "johnny-standard-weekend",
+      "product_name_snapshot": "Standard Weekend Pass",
+      "competition_registered": 0
+    }
+  ],
+  "attendance": [
+    {
+      "attendee_id": "phone-johnny-1795266520811-person-1",
+      "day_id": "johnny-2027-saturday",
+      "attended_at": null
+    },
+    {
+      "attendee_id": "phone-johnny-1795266520811-person-2",
+      "day_id": "johnny-2027-saturday",
+      "attended_at": null
+    },
+    {
+      "attendee_id": "phone-johnny-1795266520811-person-1",
+      "day_id": "johnny-2027-sunday",
+      "attended_at": null
+    },
+    {
+      "attendee_id": "phone-johnny-1795266520811-person-2",
+      "day_id": "johnny-2027-sunday",
+      "attended_at": null
+    }
+  ],
+  "days": [
+    {
+      "id": "johnny-2027-saturday",
+      "label": "Saturday workshops",
+      "event_date": "2027-02-20"
+    },
+    {
+      "id": "johnny-2027-sunday",
+      "label": "Sunday workshops",
+      "event_date": "2027-02-21"
+    }
+  ],
+  "event": {
+    "id": "special-event-johnny-rossato-2027",
+    "title": "Synthetic Johnny Weekend",
+    "venue_name": "Synthetic venue",
+    "status": "DRAFT"
+  },
+  "products": [
+    {
+      "id": "johnny-standard-weekend",
+      "name": "Synthetic Weekend Pass",
+      "code": "SYNTHETIC_WEEKEND",
+      "price_pence": 5000,
+      "allocation": 10,
+      "release_state": "ACTIVE",
+      "product_type": "ADMISSION",
+      "max_per_checkout": 4
+    }
+  ]
+}
